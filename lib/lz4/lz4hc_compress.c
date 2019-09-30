@@ -613,6 +613,7 @@ int LZ4_compress_HC(const char *src, char *dst, int srcSize,
 }
 EXPORT_SYMBOL(LZ4_compress_HC);
 
+#if 0
 /**************************************
  *	Streaming Functions
  **************************************/
@@ -728,7 +729,6 @@ static int LZ4_compress_HC_continue(
 }
 
 /* dictionary saving */
-
 static int LZ4_saveDictHC(
 	LZ4_streamHC_t *LZ4_streamHCPtr,
 	char *safeBuffer,
@@ -760,6 +760,7 @@ static int LZ4_saveDictHC(
 	}
 	return dictSize;
 }
+#endif
 
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_DESCRIPTION("LZ4 HC compressor");
