@@ -2520,12 +2520,12 @@ static void sde_crtc_frame_event_cb(void *data, u32 event, ktime_t ts)
 	SDE_DEBUG("crtc%d\n", crtc->base.id);
 	SDE_EVT32_VERBOSE(DRMID(crtc), event);
 
-	spin_lock_irqsave(&sde_crtc->fevent_spin_lock, flags);
+	spin_lock_irqsave(&sde_crtc->event_spin_lock, flags);
 	fevent = list_first_entry_or_null(&sde_crtc->frame_event_list,
 			struct sde_crtc_frame_event, list);
 	if (fevent)
 		list_del_init(&fevent->list);
-	spin_unlock_irqrestore(&sde_crtc->fevent_spin_lock, flags);
+	spin_unlock_irqrestore(&sde_crtc->event_spin_lock, flags);
 
 	if (!fevent) {
 		SDE_ERROR("crtc%d event %d overflow\n",
@@ -2717,9 +2717,8 @@ struct drm_encoder *sde_crtc_get_src_encoder_of_clone(struct drm_crtc *crtc)
 	return NULL;
 }
 
-static void sde_crtc_vblank_cb(void *data, ktime_t ts)
+static void sde_crtc_vblank_notify(struct drm_crtc *crtc, ktime_t ts)
 {
-	struct drm_crtc *crtc = (struct drm_crtc *)data;
 	struct sde_crtc *sde_crtc = to_sde_crtc(crtc);
 
 	/* keep statistics on vblank callback - with auto reset via debugfs */
@@ -2733,7 +2732,76 @@ static void sde_crtc_vblank_cb(void *data, ktime_t ts)
 
 	drm_crtc_handle_vblank(crtc);
 	DRM_DEBUG_VBL("crtc%d, ts:%llu\n", crtc->base.id, ktime_to_us(ts));
-	SDE_EVT32_VERBOSE(DRMID(crtc), ktime_to_us(ts));
+	SDE_EVT32(DRMID(crtc), ktime_to_us(ts));
+}
+
+static void sde_crtc_vblank_notify_work(struct kthread_work *work)
+{
+	struct drm_crtc *crtc;
+	struct sde_crtc *sde_crtc;
+	struct sde_crtc_vblank_event *vevent = container_of(work,
+					struct sde_crtc_vblank_event, work);
+
+	if (!vevent->crtc) {
+		SDE_ERROR("invalid crtc\n");
+		return;
+	}
+
+	crtc = vevent->crtc;
+	sde_crtc = to_sde_crtc(crtc);
+
+	sde_crtc_vblank_notify(vevent->crtc, vevent->ts);
+
+	spin_lock(&sde_crtc->event_spin_lock);
+	list_add_tail(&vevent->list, &sde_crtc->vblank_event_list);
+	spin_unlock(&sde_crtc->event_spin_lock);
+}
+
+static void sde_crtc_vblank_cb(void *data, ktime_t ts)
+{
+	struct drm_crtc *crtc = (struct drm_crtc *)data;
+	struct sde_kms *sde_kms;
+	struct msm_drm_private *priv;
+	int crtc_id = drm_crtc_index(crtc);
+	struct sde_crtc *sde_crtc = to_sde_crtc(crtc);
+	struct sde_crtc_vblank_event *vevent;
+	unsigned long flags;
+
+	sde_kms = _sde_crtc_get_kms(crtc);
+	if (!sde_kms) {
+		SDE_ERROR("invalid kms handle\n");
+		return;
+	}
+
+	if (!(sde_kms->catalog->has_precise_vsync_ts)) {
+		sde_crtc_vblank_notify(crtc, ts);
+		return;
+	}
+
+	spin_lock_irqsave(&sde_crtc->event_spin_lock, flags);
+	vevent = list_first_entry_or_null(&sde_crtc->vblank_event_list,
+			struct sde_crtc_vblank_event, list);
+	if (vevent)
+		list_del_init(&vevent->list);
+	spin_unlock_irqrestore(&sde_crtc->event_spin_lock, flags);
+
+	/*
+	 * schedule vblank notification to event thread when precise vsync
+	 * timestamp feature is supported. This would ensure the vblank hook
+	 * gets the precise hw timestamp even if the event thread is scheduled
+	 * with slight delays
+	 */
+	priv = sde_kms->dev->dev_private;
+
+	if (!vevent) {
+		SDE_ERROR("crtc%d vblank event overflow\n", DRMID(crtc));
+		SDE_EVT32(DRMID(crtc), SDE_EVTLOG_ERROR);
+		return;
+	}
+
+	vevent->ts = ts;
+	vevent->crtc = crtc;
+	kthread_queue_work(&priv->event_thread[crtc_id].worker, &vevent->work);
 }
 
 static void _sde_crtc_retire_event(struct drm_connector *connector,
@@ -2832,9 +2900,9 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 		SDE_ERROR("crtc%d ts:%lld received panel dead event\n",
 				crtc->base.id, ktime_to_ns(fevent->ts));
 
-	spin_lock_irqsave(&sde_crtc->fevent_spin_lock, flags);
+	spin_lock_irqsave(&sde_crtc->event_spin_lock, flags);
 	list_add_tail(&fevent->list, &sde_crtc->frame_event_list);
-	spin_unlock_irqrestore(&sde_crtc->fevent_spin_lock, flags);
+	spin_unlock_irqrestore(&sde_crtc->event_spin_lock, flags);
 	SDE_ATRACE_END("crtc_frame_event");
 }
 
@@ -3859,6 +3927,25 @@ static int _sde_crtc_flush_frame_events(struct drm_crtc *crtc)
 	return 0;
 }
 
+static void _sde_crtc_flush_vblank_events(struct drm_crtc *crtc)
+{
+	struct sde_crtc *sde_crtc;
+	int i;
+
+	if (!crtc) {
+		SDE_ERROR("invalid argument\n");
+		return;
+	}
+	sde_crtc = to_sde_crtc(crtc);
+
+	for (i = 0; i < ARRAY_SIZE(sde_crtc->vblank_events); i++) {
+		if (list_empty(&sde_crtc->vblank_events[i].list))
+			kthread_flush_work(&sde_crtc->vblank_events[i].work);
+	}
+
+	SDE_EVT32(DRMID(crtc), SDE_EVTLOG_FUNC_EXIT);
+}
+
 /**
  * _sde_crtc_remove_pipe_flush - remove staged pipes from flush mask
  * @crtc: Pointer to crtc structure
@@ -4516,6 +4603,7 @@ static void sde_crtc_disable(struct drm_crtc *crtc)
 
 	SDE_DEBUG("crtc%d\n", crtc->base.id);
 
+	_sde_crtc_flush_vblank_events(crtc);
 	drm_crtc_vblank_off(crtc);
 
 	mutex_lock(&sde_crtc->crtc_lock);
@@ -7289,7 +7377,7 @@ struct drm_crtc *sde_crtc_init(struct drm_device *dev, struct drm_plane *plane)
 
 	mutex_init(&sde_crtc->crtc_lock);
 	spin_lock_init(&sde_crtc->spin_lock);
-	spin_lock_init(&sde_crtc->fevent_spin_lock);
+	spin_lock_init(&sde_crtc->event_spin_lock);
 	atomic_set(&sde_crtc->frame_pending, 0);
 
 	sde_crtc->enabled = false;
@@ -7317,6 +7405,15 @@ struct drm_crtc *sde_crtc_init(struct drm_device *dev, struct drm_plane *plane)
 	}
 
 	crtc_funcs = kms->catalog->has_precise_vsync_ts ? &sde_crtc_funcs_v1 : &sde_crtc_funcs;
+	INIT_LIST_HEAD(&sde_crtc->vblank_event_list);
+	for (i = 0; i < ARRAY_SIZE(sde_crtc->vblank_events); i++) {
+		INIT_LIST_HEAD(&sde_crtc->vblank_events[i].list);
+		list_add(&sde_crtc->vblank_events[i].list,
+				&sde_crtc->vblank_event_list);
+		kthread_init_work(&sde_crtc->vblank_events[i].work,
+				sde_crtc_vblank_notify_work);
+	}
+
 	drm_crtc_init_with_planes(dev, crtc, plane, NULL, crtc_funcs, NULL);
 	drm_crtc_helper_add(crtc, &sde_crtc_helper_funcs);
 
