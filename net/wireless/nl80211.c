@@ -4614,7 +4614,8 @@ static int nl80211_parse_tx_bitrate_mask(struct genl_info *info,
 					 struct nlattr *attrs[],
 					 enum nl80211_attrs attr,
 					 struct cfg80211_bitrate_mask *mask,
-					 struct net_device *dev)
+					 struct net_device *dev,
+					 bool default_all_enabled)
 {
 	struct nlattr *tb[NL80211_TXRATE_MAX + 1];
 	struct cfg80211_registered_device *rdev = info->user_ptr[0];
@@ -4628,6 +4629,9 @@ static int nl80211_parse_tx_bitrate_mask(struct genl_info *info,
 	/* Default to all rates enabled */
 	for (i = 0; i < NUM_NL80211_BANDS; i++) {
 		const struct ieee80211_sta_he_cap *he_cap;
+
+		if (!default_all_enabled)
+			break;
 
 		sband = rdev->wiphy.bands[i];
 
@@ -5262,7 +5266,7 @@ static int nl80211_start_ap(struct sk_buff *skb, struct genl_info *info)
 		err = nl80211_parse_tx_bitrate_mask(info, info->attrs,
 						    NL80211_ATTR_TX_RATES,
 						    &params.beacon_rate,
-						    dev);
+						    dev, false);
 		if (err)
 			return err;
 
@@ -11114,7 +11118,7 @@ static int nl80211_set_tx_bitrate_mask(struct sk_buff *skb,
 	wdev_lock(wdev);
 	err = nl80211_parse_tx_bitrate_mask(info, info->attrs,
 					    NL80211_ATTR_TX_RATES, &mask,
-					    dev);
+					    dev, true);
 	if (err)
 		goto out;
 
@@ -11726,7 +11730,7 @@ static int nl80211_join_mesh(struct sk_buff *skb, struct genl_info *info)
 		err = nl80211_parse_tx_bitrate_mask(info, info->attrs,
 						    NL80211_ATTR_TX_RATES,
 						    &setup.beacon_rate,
-						    dev);
+						    dev, false);
 		if (err)
 			return err;
 
@@ -14518,7 +14522,8 @@ static int parse_tid_conf(struct cfg80211_registered_device *rdev,
 		if (tid_conf->txrate_type != NL80211_TX_RATE_AUTOMATIC) {
 			attr = NL80211_TID_CONFIG_ATTR_TX_RATE;
 			err = nl80211_parse_tx_bitrate_mask(info, attrs, attr,
-						    &tid_conf->txrate_mask, dev);
+						    &tid_conf->txrate_mask, dev,
+						    true);
 			if (err)
 				return err;
 
