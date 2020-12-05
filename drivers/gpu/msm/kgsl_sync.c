@@ -452,8 +452,7 @@ static void kgsl_count_hw_fences(struct kgsl_drawobj_sync_event *event, struct d
 
 }
 
-static void kgsl_get_fence_info(struct dma_fence *fence,
-	struct event_fence_info *info_ptr, void *priv)
+static void kgsl_get_fence_info(struct dma_fence *fence, void *priv)
 {
 	unsigned int num_fences;
 	struct dma_fence **fences;
@@ -471,43 +470,12 @@ static void kgsl_get_fence_info(struct dma_fence *fence,
 		fences = &fence;
 	}
 
-	if (!info_ptr)
-		goto count;
-
-	info_ptr->fences = kcalloc(num_fences, sizeof(struct fence_info),
-			GFP_KERNEL);
-	if (info_ptr->fences == NULL)
-		goto count;
-
-	info_ptr->num_fences = num_fences;
-
-	for (i = 0; i < num_fences; i++) {
-		struct dma_fence *f = fences[i];
-		struct fence_info *fi = &info_ptr->fences[i];
-		int len;
-
-		len =  scnprintf(fi->name, sizeof(fi->name), "%s %s",
-			f->ops->get_driver_name(f),
-			f->ops->get_timeline_name(f));
-
-		if (f->ops->fence_value_str) {
-			len += scnprintf(fi->name + len, sizeof(fi->name) - len,
-				": ");
-			f->ops->fence_value_str(f, fi->name + len,
-				sizeof(fi->name) - len);
-		}
-
-		kgsl_count_hw_fences(event, f);
-	}
-
-	return;
-count:
 	for (i = 0; i < num_fences; i++)
 		kgsl_count_hw_fences(event, fences[i]);
 }
 
 struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
-	bool (*func)(void *priv), void *priv, struct event_fence_info *info_ptr)
+	bool (*func)(void *priv), void *priv)
 {
 	struct kgsl_sync_fence_cb *kcb;
 	struct dma_fence *fence;
@@ -528,7 +496,7 @@ struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
 	kcb->priv = priv;
 	kcb->func = func;
 
-	kgsl_get_fence_info(fence, info_ptr, priv);
+	kgsl_get_fence_info(fence, priv);
 
 	/* if status then error or signaled */
 	status = dma_fence_add_callback(fence, &kcb->fence_cb,
