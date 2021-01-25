@@ -42,6 +42,7 @@ void tfanone_ops(struct tfa_device_ops *ops);
 void tfa9872_ops(struct tfa_device_ops *ops);
 void tfa9873_ops(struct tfa_device_ops *ops);
 void tfa9874_ops(struct tfa_device_ops *ops);
+void tfa9875_ops(struct tfa_device_ops *ops);
 void tfa9878_ops(struct tfa_device_ops *ops);
 void tfa9912_ops(struct tfa_device_ops *ops);
 void tfa9888_ops(struct tfa_device_ops *ops);
@@ -294,6 +295,16 @@ void tfa_set_query_info(struct tfa_device *tfa)
 		tfa->daimap = Tfa98xx_DAI_TDM;
 		tfa9874_ops(&tfa->dev_ops); /* register device operations */
 		break;
+	case 0x75:
+		/* tfa9875 */
+		tfa->supportDrc = supportYes;
+		tfa->tfa_family = 2;
+		tfa->spkr_count = 1;
+		tfa->is_probus_device = 1;
+		tfa->advance_keys_handling = 1; /*artf65038*/
+		tfa->daimap = Tfa98xx_DAI_TDM;
+		tfa9875_ops(&tfa->dev_ops); /* register device operations */
+		break;
 	case 0x78:
 		/* tfa9878 */
 		tfa->supportDrc = supportYes;
@@ -393,6 +404,7 @@ int tfa98xx_dev2family(int dev_type)
 	case 0x73:
 	case 0x13:
 	case 0x74:
+	case 0x75:
     case 0x78:
     case 0x94:
 		return 2;
@@ -462,6 +474,7 @@ enum Tfa98xx_DMEM tfa98xx_filter_mem(struct tfa_device *tfa, int filter_index, u
 		case 0x72:
 		case 0x73:
 		case 0x74:
+		case 0x75:
         case 0x78:
         case 0x13:
 		default:
@@ -2654,6 +2667,8 @@ enum Tfa98xx_Error tfa_show_current_state(struct tfa_device *tfa)
 	if (tfa->tfa_family == 2 && tfa->verbose) {
 		if (tfa_is_94_N2_device(tfa))
 			manstate = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+		else if ((tfa->rev & 0xff) == 0x75)
+			manstate = tfa_get_bf(tfa, TFA9875_BF_MANSTATE);
 		else
 			manstate = TFA_GET_BF(tfa, MANSTATE);
 		if (manstate < 0)
@@ -3426,6 +3441,8 @@ int tfa_reset(struct tfa_device *tfa)
 			for (retry_cnt = 0; retry_cnt < TFA98XX_WAITRESULT_NTRIES; retry_cnt++) {
 				if (tfa_is_94_N2_device(tfa))
 					state = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+				else if ((tfa->rev & 0xff) == 0x75)
+					state = tfa_get_bf(tfa, TFA9875_BF_MANSTATE);
 				else
 					state = TFA_GET_BF(tfa, MANSTATE);
 				if (state < 0) {
@@ -3983,6 +4000,8 @@ enum tfa_state tfa_dev_get_state(struct tfa_device *tfa)
 	else /* family 2 */ {
 		if (tfa_is_94_N2_device(tfa))
 			manstate = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+		else if ((tfa->rev & 0xff) == 0x75)
+			manstate = tfa_get_bf(tfa, TFA9875_BF_MANSTATE);
 		else
 			manstate = TFA_GET_BF(tfa, MANSTATE);
 		switch (manstate) {
@@ -4115,6 +4134,8 @@ enum Tfa98xx_Error tfa_status(struct tfa_device *tfa)
 	int value;
 	uint16_t val;
 
+	if (tfa->dev_ops.tfa_status != NULL)
+		return(tfa->dev_ops.tfa_status(tfa));
 	/*
 	 * check IC status bits: cold start
 	 * and DSP watch dog bit to re init

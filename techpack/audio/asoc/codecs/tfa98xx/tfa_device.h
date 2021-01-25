@@ -73,6 +73,8 @@ struct tfa_device_ops {
 	enum Tfa98xx_Error (*faim_protect)(struct tfa_device *tfa, int state); /**< Protect FAIM from being corrupted  */
 	enum Tfa98xx_Error(*set_osc_powerdown)(struct tfa_device *tfa, int state); /**< Allow to change internal osc. gating settings */
 	enum Tfa98xx_Error(*update_lpm)(struct tfa_device *tfa, int state); /**< Allow to change lowpowermode settings */
+	int (*tfa_set_bitfield)(struct tfa_device* tfa, uint16_t bitfield, uint16_t value);
+	enum Tfa98xx_Error (*tfa_status)(struct tfa_device *tfa);
 };
 
 /**

@@ -176,6 +176,11 @@ tfa_set_mute_nodsp(struct tfa_device *tfa, int mute)
 	return Tfa98xx_Error_Ok;
 }
 
+static int tfa_set_bitfield(struct tfa_device* tfa, uint16_t bitfield, uint16_t value)
+{
+	return tfa_set_bf(tfa, (uint16_t)bitfield, value);
+}
+
 void tfa_set_ops_defaults(struct tfa_device_ops *ops)
 {
 	/* defaults */
@@ -199,6 +204,7 @@ void tfa_set_ops_defaults(struct tfa_device_ops *ops)
 	ops->faim_protect = tfa_faim_protect;
 	ops->set_osc_powerdown = tfa_set_osc_powerdown;
 	ops->update_lpm = tfa_update_lpm;
+	ops->tfa_set_bitfield = tfa_set_bitfield;
 }
 
 /***********************************************************************************/
@@ -782,12 +788,13 @@ static enum Tfa98xx_Error tfa9873_specific(struct tfa_device* tfa)
 		break;
 	case 0x0b73:
 		/* ----- generated code start ----- */
-		/* -----  version 16 ----- */
+		/* -----  version 20 ----- */
 		tfa_reg_write(tfa, 0x02, 0x0628); //POR=0x0008
 		tfa_reg_write(tfa, 0x61, 0x0183); //POR=0x0182
 		tfa_reg_write(tfa, 0x63, 0x005a); //POR=0x055a
 		tfa_reg_write(tfa, 0x6f, 0x0082); //POR=0x00a5
 		tfa_reg_write(tfa, 0x70, 0xa3eb); //POR=0x23fb
+		tfa_reg_write(tfa, 0x71, 0x107e); //POR=0x007e
 		tfa_reg_write(tfa, 0x73, 0x0187); //POR=0x0107
 		tfa_reg_write(tfa, 0x83, 0x071c); //POR=0x0799
 		tfa_reg_write(tfa, 0x85, 0x0380); //POR=0x0382
@@ -986,6 +993,203 @@ void tfa9874_ops(struct tfa_device_ops *ops)
 	ops->faim_protect = tfa9874_faim_protect;
 	ops->get_mtpb = tfa9874_get_mtpb;
 	ops->set_mute = tfa_set_mute_nodsp;
+}
+/***********************************************************************************/
+/* TFA9875                                                                         */
+/***********************************************************************************/
+static enum Tfa98xx_Error tfa9875_faim_protect(struct tfa_device *tfa, int status)
+{
+	enum Tfa98xx_Error ret = Tfa98xx_Error_Ok;
+	/* 0b = FAIM protection enabled 1b = FAIM protection disabled*/
+	ret = tfa_set_bf_volatile(tfa, TFA9875_BF_OPENMTP, (uint16_t)(status));
+	return ret;
+}
+
+
+static enum Tfa98xx_Error tfa9875_specific(struct tfa_device *tfa)
+{
+	enum Tfa98xx_Error error = Tfa98xx_Error_Ok;
+	unsigned short value, xor;
+
+	if (tfa->in_use == 0)
+		return Tfa98xx_Error_NotOpen;
+
+	/* Unlock key 1 and 2 */
+	error = tfa_reg_write(tfa, 0x0F, 0x5A6B);
+	error = tfa_reg_read(tfa, 0xFB, &value);
+	xor = value ^ 0x005A;
+	error = tfa_reg_write(tfa, 0xA0, xor);
+	tfa98xx_key2(tfa, 0);
+
+	switch (tfa->rev) {
+	case 0x0a75: /* Initial revision ID */
+		/* ----- generated code start ----- */
+		/* -----  version 26 ----- */
+		tfa_reg_write(tfa, 0x02, 0x0628); //POR=0x0008
+		tfa_reg_write(tfa, 0x53, 0x0237); //POR=0x0337
+		tfa_reg_write(tfa, 0x58, 0x0210); //POR=0x0200
+		tfa_reg_write(tfa, 0x5f, 0x0080); //POR=0x00c0
+		tfa_reg_write(tfa, 0x61, 0x0183); //POR=0x0182
+		tfa_reg_write(tfa, 0x64, 0x4040); //POR=0x0040
+		tfa_reg_write(tfa, 0x6f, 0x0083); //POR=0x00a5
+		tfa_reg_write(tfa, 0x70, 0xdedf); //POR=0xdefb
+		tfa_reg_write(tfa, 0x73, 0x0182); //POR=0x0187
+		tfa_reg_write(tfa, 0x74, 0xd0f8); //POR=0x50f8
+		tfa_reg_write(tfa, 0x75, 0xd57a); //POR=0xd278
+		tfa_reg_write(tfa, 0x83, 0x009a); //POR=0x0799
+		tfa_reg_write(tfa, 0x85, 0x0380); //POR=0x0382
+		tfa_reg_write(tfa, 0xd5, 0x004d); //POR=0x014d
+		/* ----- generated code end   ----- */
+		break;
+	case 0x1a75: /* Initial revision ID */
+		/* ----- generated code start ----- */
+		/* -----  version 10 ----- */
+		tfa_reg_write(tfa, 0x02, 0x0628); //POR=0x0008
+		tfa_reg_write(tfa, 0x51, 0x0020); //POR=0x0000
+		tfa_reg_write(tfa, 0x53, 0x0237); //POR=0x0337
+		tfa_reg_write(tfa, 0x58, 0x0210); //POR=0x0200
+		tfa_reg_write(tfa, 0x5f, 0x0080); //POR=0x00c0
+		tfa_reg_write(tfa, 0x61, 0x0183); //POR=0x0182
+		tfa_reg_write(tfa, 0x63, 0x056a); //POR=0x055a
+		tfa_reg_write(tfa, 0x64, 0x4040); //POR=0x0040
+		tfa_reg_write(tfa, 0x6f, 0x00a3); //POR=0x00a5
+		tfa_reg_write(tfa, 0x70, 0xdedf); //POR=0xdefb
+		tfa_reg_write(tfa, 0x71, 0x206e); //POR=0x306e
+		tfa_reg_write(tfa, 0x73, 0x0183); //POR=0x0187
+		tfa_reg_write(tfa, 0x74, 0xd118); //POR=0x50f8
+		tfa_reg_write(tfa, 0x75, 0xd57a); //POR=0xd278
+		tfa_reg_write(tfa, 0x83, 0x06dc); //POR=0x0799
+		tfa_reg_write(tfa, 0xd5, 0x004d); //POR=0x014d
+		/* ----- generated code end   ----- */
+		break;
+	default:
+		pr_info("\nWarning: Optimal settings not found for device with revid = 0x%x \n", tfa->rev);
+		break;
+	}
+
+	return error;
+}
+
+static int tfa9875_set_bitfield(struct tfa_device* tfa, uint16_t bitfield, uint16_t value)
+{
+	if (((bitfield >> 8) & 0xff) == 0x10 || ((bitfield >> 8) & 0xff) == 0x13)
+		return tfa_set_bf_volatile(tfa, (uint16_t)bitfield, value);
+	else
+		return tfa_set_bf(tfa, (uint16_t)bitfield, value);
+}
+enum Tfa98xx_Error tfa9875_tfa_status(struct tfa_device* tfa)
+{
+	int value;
+	uint16_t val;
+	value = tfa_read_reg(tfa, TFA9875_BF_VDDS); /* STATUSREG */
+	if (value < 0)
+		return -value;
+	val = (uint16_t)value;
+	if (!tfa_get_bf_value(TFA9875_BF_UVDS, val) ||
+		!tfa_get_bf_value(TFA9875_BF_OVDS, val) ||
+		!tfa_get_bf_value(TFA9875_BF_OTDS, val) ||
+		tfa_get_bf_value(TFA9875_BF_OCDS, val) ||
+		tfa_get_bf_value(TFA9875_BF_NOCLK, val))
+		pr_err("Misc errors detected: STATUS_FLAG0 = 0x%x\n", val);
+	if (!tfa_get_bf_value(TFA9875_BF_UVDS, val))
+		tfa_set_bf(tfa, (uint16_t)TFA9875_BF_UVDS, 1);
+	if (!tfa_get_bf_value(TFA9875_BF_OVDS, val))
+		tfa_set_bf(tfa, (uint16_t)TFA9875_BF_OVDS, 1);
+	if (!tfa_get_bf_value(TFA9875_BF_OTDS, val))
+		tfa_set_bf(tfa, (uint16_t)TFA9875_BF_OTDS, 1);
+	if (tfa_get_bf_value(TFA9875_BF_OCDS, val))
+		tfa_set_bf(tfa, (uint16_t)TFA9875_BF_OCDS, 1);
+	if (tfa_get_bf_value(TFA9875_BF_NOCLK, val))
+		tfa_set_bf(tfa, (uint16_t)TFA9875_BF_NOCLK, 1);
+	/*
+	 * checking clocking stability.
+	 */
+	if (!tfa_get_bf(tfa, TFA9875_BF_CLKS))
+		pr_err("ERROR: CLKS is unstable\n");
+	if (!tfa_get_bf(tfa, TFA9875_BF_PLLS))
+		pr_err("ERROR: PLL not locked\n");
+	if (tfa_get_bf(tfa, TFA9875_BF_TDMERR) ||
+		tfa_get_bf(tfa, TFA9875_BF_TDMLUTER))
+		pr_err("TDM related errors: STATUS_FLAG1 = 0x%x\n", (uint16_t)tfa_read_reg(tfa, TFA9875_BF_TDMERR));
+	if (tfa_get_bf(tfa, TFA9875_BF_BODNOK))
+	{
+		pr_err("BODNOK error detected : STATUS_FLAG3 = 0x%x\n", (uint16_t)tfa_read_reg(tfa, TFA9875_BF_BODNOK));
+		tfa_set_bf(tfa, (uint16_t)TFA9875_BF_BODNOK, 1);
+	}
+
+	return Tfa98xx_Error_Ok;
+}
+static int tfa9875_set_swprofile(struct tfa_device *tfa, unsigned short new_value)
+{
+	int active_value = tfa_dev_get_swprof(tfa);
+
+	/* Set the new value in the struct */
+	tfa->profile = new_value - 1;
+
+	/* Set the new value in the hw register */
+	tfa_set_bf_volatile(tfa, TFA9875_BF_SWPROFIL, new_value);
+
+	return active_value;
+}
+
+static int tfa9875_get_swprofile(struct tfa_device *tfa)
+{
+	return tfa_get_bf(tfa, TFA9875_BF_SWPROFIL) - 1;
+}
+
+static int tfa9875_set_swvstep(struct tfa_device *tfa, unsigned short new_value)
+{
+
+	/* Set the new value in the struct */
+	tfa->vstep = new_value - 1;
+
+	/* Set the new value in the hw register */
+	tfa_set_bf_volatile(tfa, TFA9875_BF_SWVSTEP, new_value);
+
+	return new_value;
+}
+
+static int tfa9875_get_swvstep(struct tfa_device *tfa)
+{
+	return tfa_get_bf(tfa, TFA9875_BF_SWVSTEP) - 1;
+}
+
+/* tfa98xx_dsp_system_stable
+*  return: *ready = 1 when clocks are stable to allow DSP subsystem access
+*/
+static enum Tfa98xx_Error tfa9875_dsp_system_stable(struct tfa_device *tfa, int *ready)
+{
+	enum Tfa98xx_Error error = Tfa98xx_Error_Ok;
+
+	/* check CLKS: ready if set */
+	*ready = tfa_get_bf(tfa, TFA9875_BF_CLKS) == 1;
+
+	return error;
+}
+
+static int tfa9875_get_mtpb(struct tfa_device *tfa) {
+
+	int value;
+	value = tfa_get_bf(tfa, TFA9875_BF_MTPB);
+	return value;
+}
+
+void tfa9875_ops(struct tfa_device_ops *ops)
+{
+	/* Set defaults for ops */
+	tfa_set_ops_defaults(ops);
+
+	ops->tfa_init = tfa9875_specific;
+	ops->set_swprof = tfa9875_set_swprofile;
+	ops->get_swprof = tfa9875_get_swprofile;
+	ops->set_swvstep = tfa9875_set_swvstep;
+	ops->get_swvstep = tfa9875_get_swvstep;
+	ops->dsp_system_stable = tfa9875_dsp_system_stable;
+	ops->faim_protect = tfa9875_faim_protect;
+	ops->get_mtpb = tfa9875_get_mtpb;
+	ops->set_mute = tfa_set_mute_nodsp;
+	ops->tfa_set_bitfield = tfa9875_set_bitfield;
+	ops->tfa_status = tfa9875_tfa_status;
 }
 /***********************************************************************************/
 /* TFA9878                                                                         */

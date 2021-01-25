@@ -940,7 +940,7 @@ enum Tfa98xx_Error tfaRunWriteBitfield(struct tfa_device *tfa, TfaBitfield_t bf)
 		pr_debug("bitfield: %s=0x%x (0x%x[%d..%d]=0x%x)\n", tfaContBfName(bfUni.field, tfa->rev), value,
 			bfUni.Enum.address, bfUni.Enum.pos, bfUni.Enum.pos + bfUni.Enum.len, value);
 #endif
-	error = tfa_set_bf(tfa, bfUni.field, value);
+	error = tfa->dev_ops.tfa_set_bitfield(tfa, bfUni.field, value);
 
 	return error;
 }
@@ -1641,7 +1641,7 @@ enum Tfa98xx_Error tfaContWriteProfile(struct tfa_device *tfa, int prof_idx, int
 	char buffer[(MEMTRACK_MAX_WORDS * 4) + 4] = { 0 }; //every word requires 3 or 4 bytes, and 3 or 4 is the msg
 	unsigned int i, k = 0, j = 0, tries = 0;
 	TfaFileDsc_t *file = NULL;
-	int size = 0, ready, fs_previous_profile = 8; /* default fs is 48kHz*/
+	int manstate, size = 0, ready, fs_previous_profile = 8; /* default fs is 48kHz*/
 
 	if (!prof || !previous_prof) {
 		pr_err("Error trying to get the (previous) swprofile \n");
@@ -1676,7 +1676,13 @@ enum Tfa98xx_Error tfaContWriteProfile(struct tfa_device *tfa, int prof_idx, int
 		/* When we switch profile we first power down the subsystem
 		 * This should only be done when we are in operating mode
 		 */
-		if (((tfa->tfa_family == 2) && (TFA_GET_BF(tfa, MANSTATE) >= 6)) || (tfa->tfa_family != 2)) {
+		if (tfa_is_94_N2_device(tfa))
+			manstate = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+		else if ((tfa->rev & 0xff) == 0x75)
+			manstate = tfa_get_bf(tfa, TFA9875_BF_MANSTATE);
+		else
+			manstate = TFA_GET_BF(tfa, MANSTATE);
+		if (((tfa->tfa_family == 2) && (manstate >= 6)) || (tfa->tfa_family != 2)) {
 			err = tfa98xx_powerdown(tfa, 1);
 			if (err) return err;
 
