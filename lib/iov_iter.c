@@ -900,9 +900,9 @@ size_t copy_page_to_iter(struct page *page, size_t offset, size_t bytes,
 	if (unlikely(!page_copy_sane(page, offset, bytes)))
 		return 0;
 	if (i->type & (ITER_BVEC|ITER_KVEC)) {
-		void *kaddr = kmap_atomic(page);
-		size_t wanted = copy_to_iter(kaddr + offset, bytes, i);
-		kunmap_atomic(kaddr);
+		void *kaddr = kmap_local_page(page);
+		size_t wanted = _copy_to_iter(kaddr + offset, bytes, i);
+		kunmap_local(kaddr);
 		return wanted;
 	} else if (unlikely(iov_iter_is_discard(i))) {
 		if (unlikely(i->count < bytes))
