@@ -5317,7 +5317,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
 
 	/* Already populated array? */
 	if (unlikely(page_array && nr_pages - nr_populated == 0))
-		return 0;
+		return nr_populated;
 
 	/* Bulk allocator does not support memcg accounting. */
 	if (memcg_kmem_enabled() && (gfp & __GFP_ACCOUNT))
