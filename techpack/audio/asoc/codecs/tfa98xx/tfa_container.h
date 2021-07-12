@@ -340,6 +340,13 @@ void tfa_get_sw_features_from_cnt(struct tfa_device *tfa, int sw_feature_registe
 enum Tfa98xx_Error tfa98xx_factory_trimmer(struct tfa_device *tfa);
 
 /**
+ * Control for PWM phase shift
+ * @param tfa the device struct pointer
+ */
+ enum Tfa98xx_Error tfa98xx_set_phase_shift(struct tfa_device *tfa);
+
+
+/**
  * Search for filters settings and if found then write them to the device
  * @param tfa the device struct pointer
  * @param prof_idx profile to look in

@@ -249,7 +249,8 @@ void tfa_set_query_info(struct tfa_device *tfa)
 	tfa->partial_enable = 0;
 	tfa->convert_dsp32 = 0;
 	tfa->sync_iv_delay = 0;
-    tfa->dynamicTDMmode = -1; /**tracking dynamic TDM setting from alsa input stream*/
+	tfa->dynamicTDMmode = -1; /**tracking dynamic TDM setting from alsa input stream*/
+	tfa->rate = 0;
 	tfa->bitwidth = -1;/**bitwdith from alsa input stream*/
 
 	/* TODO use the getfeatures() for retrieving the features [artf103523]
@@ -3018,7 +3019,13 @@ enum Tfa98xx_Error tfaRunStartup(struct tfa_device *tfa, int profile)
 
 	/* Factory trimming for the Boost converter */
 	tfa98xx_factory_trimmer(tfa);
-
+#ifdef __KERNEL__
+#if 0
+	/* Control for PWM phase shift */
+	if (tfa->bitwidth == 24 && tfa->rate == 16)/*TFA9875-240*/
+		tfa98xx_set_phase_shift(tfa);
+#endif
+#endif
 	/* Go to the initCF state */
 	tfa_dev_set_state(tfa, TFA_STATE_INIT_CF, strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, profile), ".cal") != NULL);
 
