@@ -2090,17 +2090,17 @@ void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	if (hba->vops && hba->vops->setup_xfer_req)
 		hba->vops->setup_xfer_req(hba, task_tag, !!lrbp->cmd);
 	if (ufshcd_has_utrlcnr(hba)) {
-		set_bit(task_tag, &hba->outstanding_reqs);
+		__set_bit(task_tag, &hba->outstanding_reqs);
 		ufshcd_writel(hba, 1 << task_tag,
 			      REG_UTP_TRANSFER_REQ_DOOR_BELL);
 	} else {
 		unsigned long flags;
 
-		spin_lock_irqsave(hba->host->host_lock, flags);
-		set_bit(task_tag, &hba->outstanding_reqs);
+		spin_lock_irqsave(&hba->outstanding_lock, flags);
+		__set_bit(task_tag, &hba->outstanding_reqs);
 		ufshcd_writel(hba, 1 << task_tag,
 			      REG_UTP_TRANSFER_REQ_DOOR_BELL);
-		spin_unlock_irqrestore(hba->host->host_lock, flags);
+		spin_unlock_irqrestore(&hba->outstanding_lock, flags);
 	}
 	/* Make sure that doorbell is committed immediately */
 	wmb();
@@ -2897,7 +2897,9 @@ static int ufshcd_wait_for_dev_cmd(struct ufs_hba *hba,
 		 * we also need to clear the outstanding_request
 		 * field in hba
 		 */
-		clear_bit(lrbp->task_tag, &hba->outstanding_reqs);
+		spin_lock_irqsave(&hba->outstanding_lock, flags);
+		__clear_bit(lrbp->task_tag, &hba->outstanding_reqs);
+		spin_unlock_irqrestore(&hba->outstanding_lock, flags);
 	}
 
 	return err;
@@ -5180,8 +5182,6 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	int index;
 
 	for_each_set_bit(index, &completed_reqs, hba->nutrs) {
-		if (!test_and_clear_bit(index, &hba->outstanding_reqs))
-			continue;
 		lrbp = &hba->lrb[index];
 		lrbp->compl_time_stamp = ktime_get();
 		cmd = lrbp->cmd;
@@ -5244,10 +5244,14 @@ static irqreturn_t ufshcd_trc_handler(struct ufs_hba *hba, bool use_utrlcnr)
 		unsigned long flags;
 		u32 tr_doorbell;
 
-		spin_lock_irqsave(hba->host->host_lock, flags);
+		spin_lock_irqsave(&hba->outstanding_lock, flags);
 		tr_doorbell = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
-		completed_reqs = tr_doorbell ^ hba->outstanding_reqs;
-		spin_unlock_irqrestore(hba->host->host_lock, flags);
+		completed_reqs = ~tr_doorbell & hba->outstanding_reqs;
+		WARN_ONCE(completed_reqs & ~hba->outstanding_reqs,
+			  "completed: %#lx; outstanding: %#lx\n", completed_reqs,
+			  hba->outstanding_reqs);
+		hba->outstanding_reqs &= ~completed_reqs;
+		spin_unlock_irqrestore(&hba->outstanding_lock, flags);
 	}
 
 	if (completed_reqs) {
@@ -9193,11 +9197,12 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 	hba = shost_priv(host);
 	hba->host = host;
 	hba->dev = dev;
-	*hba_handle = hba;
 	hba->dev_ref_clk_freq = REF_CLK_FREQ_INVAL;
 	hba->sg_entry_size = sizeof(struct ufshcd_sg_entry);
-
 	INIT_LIST_HEAD(&hba->clk_list_head);
+	spin_lock_init(&hba->outstanding_lock);
+
+	*hba_handle = hba;
 
 out_error:
 	return err;
