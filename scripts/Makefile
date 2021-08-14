@@ -43,4 +43,4 @@ subdir-$(CONFIG_MODVERSIONS) += genksyms
 subdir-$(CONFIG_SECURITY_SELINUX) += selinux
 
 # Let clean descend into subdirs
-subdir-	+= basic dtc gdb kconfig mod
+subdir-	+= basic gdb kconfig mod
