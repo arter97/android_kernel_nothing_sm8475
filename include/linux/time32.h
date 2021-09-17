@@ -67,6 +67,15 @@ int put_old_timex32(struct old_timex32 __user *, const struct __kernel_timex *);
  *
  * Returns the timeval representation of the nsec parameter.
  */
-extern struct __kernel_old_timeval ns_to_kernel_old_timeval(s64 nsec);
+static inline struct __kernel_old_timeval ns_to_kernel_old_timeval(const s64 nsec)
+{
+	struct timespec64 ts = ns_to_timespec64(nsec);
+	struct __kernel_old_timeval tv;
+
+	tv.tv_sec = ts.tv_sec;
+	tv.tv_usec = (suseconds_t)ts.tv_nsec / 1000;
+
+	return tv;
+}
 
 #endif
