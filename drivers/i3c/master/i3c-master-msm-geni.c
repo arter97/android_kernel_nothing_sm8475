@@ -1392,7 +1392,7 @@ static bool geni_i3c_master_supports_ccc_cmd
 	const struct i3c_ccc_cmd *cmd
 )
 {
-	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	struct geni_i3c_dev __maybe_unused *gi3c = to_geni_i3c_master(m);
 
 	switch (cmd->id) {
 	case I3C_CCC_ENEC(true):
@@ -2219,7 +2219,7 @@ static int geni_i3c_runtime_resume(struct device *dev)
 
 static int geni_i3c_suspend_late(struct device *dev)
 {
-	struct geni_i3c_dev *gi3c = dev_get_drvdata(dev);
+	struct geni_i3c_dev __maybe_unused *gi3c = dev_get_drvdata(dev);
 
 	if (!pm_runtime_status_suspended(dev)) {
 		GENI_SE_DBG(gi3c->ipcl, false, gi3c->se.dev,
