@@ -32,6 +32,7 @@
 #include <linux/psi.h>
 #include "blk.h"
 #include "blk-ioprio.h"
+#include "blk-throttle.h"
 
 #define MAX_KEY_LEN 100
 
