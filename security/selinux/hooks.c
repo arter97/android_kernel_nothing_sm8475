@@ -2843,7 +2843,8 @@ static void selinux_inode_free_security(struct inode *inode)
 }
 
 static int selinux_dentry_init_security(struct dentry *dentry, int mode,
-					const struct qstr *name, void **ctx,
+					const struct qstr *name,
+					const char **xattr_name, void **ctx,
 					u32 *ctxlen)
 {
 	u32 newsid;
@@ -2855,6 +2856,9 @@ static int selinux_dentry_init_security(struct dentry *dentry, int mode,
 					   &newsid);
 	if (rc)
 		return rc;
+
+	if (xattr_name)
+		*xattr_name = XATTR_NAME_SELINUX;
 
 	return security_sid_to_context(newsid, (char **)ctx,
 				       ctxlen);
