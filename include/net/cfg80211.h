@@ -5617,7 +5617,7 @@ struct wireless_dev {
 	ANDROID_KABI_RESERVE(2);
 };
 
-static inline u8 *wdev_address(struct wireless_dev *wdev)
+static inline const u8 *wdev_address(struct wireless_dev *wdev)
 {
 	if (wdev->netdev)
 		return wdev->netdev->dev_addr;
