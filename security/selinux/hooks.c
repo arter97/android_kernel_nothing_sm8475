@@ -5783,9 +5783,9 @@ static unsigned int selinux_ip_postroute_compat(struct sk_buff *skb,
 	struct lsm_network_audit net = {0,};
 	u8 proto = 0;
 
-	if (state->sk == NULL)
-		return NF_ACCEPT;
 	sk = skb_to_full_sk(skb);
+	if (sk == NULL)
+		return NF_ACCEPT;
 	sksec = sk->sk_security;
 
 	ad.type = LSM_AUDIT_DATA_NET;
