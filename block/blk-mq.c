@@ -367,7 +367,10 @@ __blk_mq_alloc_requests_batch(struct blk_mq_alloc_data *data,
 		tags &= ~(1UL << i);
 		rq = blk_mq_rq_ctx_init(data, tag, alloc_time_ns);
 		rq_list_add(data->cached_rq, rq);
+		nr++;
 	}
+	/* caller already holds a reference, add for remainder */
+	percpu_ref_get_many(&data->q->q_usage_counter, nr - 1);
 	data->nr_tags -= nr;
 
 	return rq_list_pop(data->cached_rq);
@@ -583,10 +586,8 @@ void blk_mq_free_plug_rqs(struct blk_plug *plug)
 {
 	struct request *rq;
 
-	while ((rq = rq_list_pop(&plug->cached_rq)) != NULL) {
-		percpu_ref_get(&rq->q->q_usage_counter);
+	while ((rq = rq_list_pop(&plug->cached_rq)) != NULL)
 		blk_mq_free_request(rq);
-	}
 }
 
 inline void __blk_mq_end_request(struct request *rq, blk_status_t error)
