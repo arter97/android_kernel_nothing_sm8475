@@ -2272,7 +2272,7 @@ blk_qc_t blk_mq_submit_bio(struct bio *bio)
 	rq_qos_throttle(q, bio);
 
 	plug = blk_mq_plug(q, bio);
-	if (plug && plug->cached_rq) {
+	if (plug && plug->cached_rq && plug->cached_rq->q == q) {
 		rq = rq_list_pop(&plug->cached_rq);
 		INIT_LIST_HEAD(&rq->queuelist);
 		data.hctx = rq->mq_hctx;
