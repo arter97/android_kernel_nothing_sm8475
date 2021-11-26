@@ -25,6 +25,7 @@
 #include <net/regulatory.h>
 
 #define CFG80211_CHANGE_NETDEV_REGISTRATION_SEMANTICS 1
+#define CFG80211_SA_QUERY_OFFLOAD_SUPPORT 1
 
 /**
  * DOC: Introduction
