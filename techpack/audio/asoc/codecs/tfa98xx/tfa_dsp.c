@@ -2777,7 +2777,7 @@ enum Tfa98xx_Error tfaGetFwApiVersion(struct tfa_device *tfa, unsigned char *pFi
 		   Firmware cannot return the 4th field (mono/stereo) of ITF version correctly, as it requires 
 		   certain set of messages to be sent before it can detect itself as a mono/stereo configuration.
 		   Hence, HostSDK need to handle this at system level */
-		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 31)) {
+		if ((pFirmwareVersion[0] == 8) && (pFirmwareVersion[1] >= 31)) {
 			pFirmwareVersion[3] = 1;
 		}
 	}
@@ -3259,11 +3259,15 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 		if (err != Tfa98xx_Error_Ok)
 			goto error_exit;
 
-		/* Make sure internal oscillator is running for DSP devices (non-dsp and max1 this is no-op) */
-		tfa98xx_set_osc_powerdown(tfa, 0);
+		if (strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, next_profile), ".standby") != NULL) {
+			pr_info("Skip powering on device, in standby profile!\n");
+		} else {
+			/* Make sure internal oscillator is running for DSP devices (non-dsp and max1 this is no-op) */
+			tfa98xx_set_osc_powerdown(tfa, 0);
 
-		/* Go to the Operating state */
-		tfa_dev_set_state(tfa, TFA_STATE_OPERATING, 0);
+			/* Go to the Operating state */
+			tfa_dev_set_state(tfa, TFA_STATE_OPERATING | TFA_STATE_MUTE, 0);
+		}
 	}
 	active_profile = tfa_dev_get_swprof(tfa);
 
@@ -3280,7 +3284,9 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 	if (strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, next_profile), ".standby") != NULL) {
 		tfa_dev_set_swprof(tfa, (unsigned short)next_profile);
 		tfa_dev_set_swvstep(tfa, (unsigned short)vstep);
-		tfa_dev_stop(tfa);
+
+		pr_info("Power down device, by force, in standby profile!\n");
+		err = tfa_dev_stop(tfa);
 		goto error_exit;
 	}
 
