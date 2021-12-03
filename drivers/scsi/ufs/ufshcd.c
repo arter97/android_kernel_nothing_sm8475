@@ -7002,7 +7002,6 @@ static int ufshcd_abort(struct scsi_cmnd *cmd)
 	 * has been aborted successfully.
 	 */
 	spin_lock_irqsave(host->host_lock, flags);
-	lrbp->cmd = NULL;
 	outstanding = __test_and_clear_bit(tag, &hba->outstanding_reqs);
 	spin_unlock_irqrestore(host->host_lock, flags);
 
