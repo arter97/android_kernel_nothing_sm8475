@@ -2235,8 +2235,15 @@ static struct ctl_table kern_table[] = {
 	},
 #if defined CONFIG_PRINTK
 	{
-		.procname	= "printk",
+		.procname	= "printk_real",
 		.data		= &console_loglevel,
+		.maxlen		= 4*sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "printk",
+		.data		= (&console_loglevel) + 4,
 		.maxlen		= 4*sizeof(int),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
