@@ -31,6 +31,7 @@ struct audio_prm {
 	bool resp_received;
 	atomic_t state;
 	atomic_t status;
+	int lpi_pcm_logging_enable;
 	bool is_adsp_up;
 };
 
@@ -138,6 +139,12 @@ static int prm_gpr_send_pkt(struct gpr_pkt *pkt, wait_queue_head_t *wait)
 	return ret;
 }
 
+void audio_prm_set_lpi_logging_status(int lpi_pcm_logging_enable)
+{
+	g_prm.lpi_pcm_logging_enable = lpi_pcm_logging_enable;
+}
+EXPORT_SYMBOL(audio_prm_set_lpi_logging_status);
+
 /**
  */
 int audio_prm_set_lpass_hw_core_req(struct clk_cfg *cfg, uint32_t hw_core_id, uint8_t enable)
@@ -239,7 +246,18 @@ static int audio_prm_set_lpass_clk_cfg_req(struct clk_cfg *cfg)
 	prm_rsc_request.clock_ids_t[0].clock_id = cfg->clk_id;
 	prm_rsc_request.clock_ids_t[0].clock_freq = cfg->clk_freq_in_hz;
 	prm_rsc_request.clock_ids_t[0].clock_attri = cfg->clk_attri;
-	prm_rsc_request.clock_ids_t[0].clock_root = cfg->clk_root;
+	/*
+	 * Set TX RCG to RCO if lpi pcm logging is enabled and any one of the
+	 * tx core clocks are enabled
+	 */
+	if (g_prm.lpi_pcm_logging_enable &&
+		((cfg->clk_id == CLOCK_ID_TX_CORE_MCLK) ||
+		 (cfg->clk_id == CLOCK_ID_WSA_CORE_TX_MCLK) ||
+		 (cfg->clk_id == CLOCK_ID_WSA2_CORE_TX_MCLK) ||
+		 (cfg->clk_id == CLOCK_ID_RX_CORE_TX_MCLK)))
+		prm_rsc_request.clock_ids_t[0].clock_root = CLOCK_ROOT_SRC_RCO;
+	else
+		prm_rsc_request.clock_ids_t[0].clock_root = cfg->clk_root;
 
 	memcpy(&pkt->payload, &prm_rsc_request, sizeof(prm_cmd_request_rsc_t));
 
