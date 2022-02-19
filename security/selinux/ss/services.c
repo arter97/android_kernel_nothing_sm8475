@@ -1356,7 +1356,7 @@ static int security_sid_to_context_core(u32 sid, char **scontext,
 					return -ENOMEM;
 				*scontext = scontextp;
 			} else {
-				strncpy(*scontext, s, *scontext_len);
+				memcpy(*scontext, s, *scontext_len);
 			}
 			return 0;
 		}
