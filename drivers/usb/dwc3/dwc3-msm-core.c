@@ -3505,6 +3505,98 @@ static int dwc3_msm_update_bus_bw(struct dwc3_msm *mdwc, enum bus_vote bv)
 	return ret;
 }
 
+/**
+ * dwc3_clk_enable_disable - helper function for enabling or disabling clocks
+ * in dwc3_msm_resume() or dwc3_msm_suspend respectively.
+ *
+ * @mdwc: Pointer to the mdwc structure.
+ * @enable: enable/disable clocks
+ *
+ * Returns 0 on success otherwise negative errno.
+ */
+static int dwc3_clk_enable_disable(struct dwc3_msm *mdwc, bool enable, bool toggle_sleep)
+{
+	int ret = 0;
+	long core_clk_rate;
+
+	if (!enable)
+		goto disable_bus_aggr_clk;
+
+	if (toggle_sleep) {
+		ret = clk_prepare_enable(mdwc->sleep_clk);
+		if (ret < 0) {
+			dev_err(mdwc->dev, "%s: sleep_clk enable failed\n",
+						__func__);
+			return ret;
+		}
+	}
+
+	/*
+	 * Enable clocks
+	 * Turned ON iface_clk before core_clk due to FSM depedency.
+	 */
+	ret = clk_prepare_enable(mdwc->iface_clk);
+	if (ret < 0) {
+		dev_err(mdwc->dev, "%s: iface_clk enable failed\n", __func__);
+		goto disable_sleep_clk;
+	}
+	ret = clk_prepare_enable(mdwc->noc_aggr_clk);
+	if (ret < 0) {
+		dev_err(mdwc->dev, "%s: noc_aggr_clk enable failed\n", __func__);
+		goto disable_iface_clk;
+	}
+
+	core_clk_rate = mdwc->core_clk_rate_disconnected;
+	if (mdwc->in_host_mode && mdwc->max_rh_port_speed == USB_SPEED_HIGH)
+		core_clk_rate = mdwc->core_clk_rate_hs;
+	else if (!(mdwc->lpm_flags & MDWC3_POWER_COLLAPSE))
+		core_clk_rate = mdwc->core_clk_rate;
+
+	dev_dbg(mdwc->dev, "%s: set core clk rate %ld\n", __func__,
+		core_clk_rate);
+	clk_set_rate(mdwc->core_clk, core_clk_rate);
+	ret = clk_prepare_enable(mdwc->core_clk);
+	if (ret < 0) {
+		dev_err(mdwc->dev, "%s: core_clk enable failed\n", __func__);
+		goto disable_noc_aggr_clk;
+	}
+	ret = clk_prepare_enable(mdwc->utmi_clk);
+	if (ret < 0) {
+		dev_err(mdwc->dev, "%s: utmi_clk enable failed\n", __func__);
+		goto disable_core_clk;
+	}
+	ret = clk_prepare_enable(mdwc->bus_aggr_clk);
+	if (ret < 0) {
+		dev_err(mdwc->dev, "%s: bus_aggr_clk enable failed\n", __func__);
+		goto disable_utmi_clk;
+	}
+
+	return 0;
+
+	/* Disable clocks */
+disable_bus_aggr_clk:
+	clk_disable_unprepare(mdwc->bus_aggr_clk);
+disable_utmi_clk:
+	clk_disable_unprepare(mdwc->utmi_clk);
+disable_core_clk:
+	clk_set_rate(mdwc->core_clk, 19200000);
+	clk_disable_unprepare(mdwc->core_clk);
+disable_noc_aggr_clk:
+	clk_disable_unprepare(mdwc->noc_aggr_clk);
+disable_iface_clk:
+	/*
+	 * Disable iface_clk only after core_clk as core_clk has FSM
+	 * depedency on iface_clk. Hence iface_clk should be turned off
+	 * after core_clk is turned off.
+	 */
+	clk_disable_unprepare(mdwc->iface_clk);
+disable_sleep_clk:
+	if (toggle_sleep)
+		clk_disable_unprepare(mdwc->sleep_clk);
+
+	return ret;
+}
+
 static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool force_power_collapse)
 {
 	int ret;
@@ -3623,27 +3715,17 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool force_power_collapse)
 	/* make sure above writes are completed before turning off clocks */
 	wmb();
 
-	/* Disable clocks */
-	clk_disable_unprepare(mdwc->bus_aggr_clk);
-	clk_disable_unprepare(mdwc->utmi_clk);
+	if (!(mdwc->in_host_mode || mdwc->in_device_mode) ||
+	      mdwc->in_restart || force_power_collapse)
+		mdwc->lpm_flags |= MDWC3_POWER_COLLAPSE;
 
-	clk_set_rate(mdwc->core_clk, 19200000);
-	clk_disable_unprepare(mdwc->core_clk);
-	clk_disable_unprepare(mdwc->noc_aggr_clk);
-	/*
-	 * Disable iface_clk only after core_clk as core_clk has FSM
-	 * depedency on iface_clk. Hence iface_clk should be turned off
-	 * after core_clk is turned off.
-	 */
-	clk_disable_unprepare(mdwc->iface_clk);
+	/* Disable clocks */
+	dwc3_clk_enable_disable(mdwc, false, mdwc->lpm_flags & MDWC3_POWER_COLLAPSE);
 
 	/* Perform controller power collapse */
-	if (!(mdwc->in_host_mode || mdwc->in_device_mode) ||
-	      mdwc->in_restart || force_power_collapse) {
-		mdwc->lpm_flags |= MDWC3_POWER_COLLAPSE;
+	if (mdwc->lpm_flags & MDWC3_POWER_COLLAPSE) {
 		dev_dbg(mdwc->dev, "%s: power collapse\n", __func__);
 		dwc3_msm_config_gdsc(mdwc, 0);
-		clk_disable_unprepare(mdwc->sleep_clk);
 	}
 
 	dwc3_msm_update_bus_bw(mdwc, BUS_VOTE_NONE);
@@ -3695,7 +3777,6 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool force_power_collapse)
 static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 {
 	int ret;
-	long core_clk_rate;
 	struct dwc3 *dwc = NULL;
 	struct usb_irq *uirq;
 
@@ -3728,7 +3809,9 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	/* Restore controller power collapse */
 	if (mdwc->lpm_flags & MDWC3_POWER_COLLAPSE) {
 		dev_dbg(mdwc->dev, "%s: exit power collapse\n", __func__);
-		dwc3_msm_config_gdsc(mdwc, 1);
+		ret = dwc3_msm_config_gdsc(mdwc, 1);
+		if (ret < 0)
+			goto error;
 		ret = reset_control_assert(mdwc->core_reset);
 		if (ret)
 			dev_err(mdwc->dev, "%s:core_reset assert failed\n",
@@ -3739,29 +3822,15 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 		if (ret)
 			dev_err(mdwc->dev, "%s:core_reset deassert failed\n",
 					__func__);
-		clk_prepare_enable(mdwc->sleep_clk);
 	}
 
-	/*
-	 * Enable clocks
-	 * Turned ON iface_clk before core_clk due to FSM depedency.
-	 */
-	clk_prepare_enable(mdwc->iface_clk);
-	clk_prepare_enable(mdwc->noc_aggr_clk);
-
-	core_clk_rate = mdwc->core_clk_rate_disconnected;
-	if (mdwc->in_host_mode && mdwc->max_rh_port_speed == USB_SPEED_HIGH)
-		core_clk_rate = mdwc->core_clk_rate_hs;
-	else if (!(mdwc->lpm_flags & MDWC3_POWER_COLLAPSE))
-		core_clk_rate = mdwc->core_clk_rate;
-
-	dev_dbg(mdwc->dev, "%s: set core clk rate %ld\n", __func__,
-		core_clk_rate);
-	clk_set_rate(mdwc->core_clk, core_clk_rate);
-	clk_prepare_enable(mdwc->core_clk);
-
-	clk_prepare_enable(mdwc->utmi_clk);
-	clk_prepare_enable(mdwc->bus_aggr_clk);
+	ret = dwc3_clk_enable_disable(mdwc, true, mdwc->lpm_flags & MDWC3_POWER_COLLAPSE);
+	if (ret < 0) {
+		/* Perform controller power collapse */
+		if (mdwc->lpm_flags & MDWC3_POWER_COLLAPSE)
+			dwc3_msm_config_gdsc(mdwc, 0);
+		goto error;
+	}
 
 	/*
 	 * Disable any wakeup events that were enabled if pwr_event_irq
@@ -3848,6 +3917,13 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	mutex_unlock(&mdwc->suspend_resume_mutex);
 
 	return 0;
+
+error:
+	dwc3_msm_update_bus_bw(mdwc, BUS_VOTE_NONE);
+	pm_relax(mdwc->dev);
+	clear_bit(WAIT_FOR_LPM, &mdwc->inputs);
+	mutex_unlock(&mdwc->suspend_resume_mutex);
+	return ret;
 }
 
 /**
@@ -5968,12 +6044,19 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 {
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 	u32 reg;
+	int ret;
 
 	if (on) {
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
 		mdwc->hs_phy->flags |= PHY_HOST_MODE;
-		dbg_event(0xFF, "hs_phy_flag:", mdwc->hs_phy->flags);
-		pm_runtime_get_sync(mdwc->dev);
+		dbg_event(0xFF, "hs_phy_flag:%x", mdwc->hs_phy->flags);
+		ret = pm_runtime_resume_and_get(mdwc->dev);
+		if (ret < 0) {
+			dev_err(mdwc->dev, "%s: pm_runtime_resume_and_get failed\n", __func__);
+			mdwc->hs_phy->flags &= ~PHY_HOST_MODE;
+			pm_runtime_set_suspended(mdwc->dev);
+			return ret;
+		}
 		dbg_event(0xFF, "StrtHost gync",
 			atomic_read(&mdwc->dev->power.usage_count));
 		clk_set_rate(mdwc->core_clk, mdwc->core_clk_rate);
@@ -6070,7 +6153,12 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		msm_dwc3_perf_vote_enable(mdwc, false);
 		cpu_latency_qos_remove_request(&mdwc->pm_qos_req_dma);
 
-		pm_runtime_get_sync(&mdwc->dwc3->dev);
+		ret = pm_runtime_resume_and_get(mdwc->dev);
+		if (ret < 0) {
+			dev_err(mdwc->dev, "%s: pm_runtime_resume_and_get failed\n", __func__);
+			pm_runtime_set_suspended(mdwc->dev);
+			return ret;
+		}
 		dbg_event(0xFF, "StopHost gsync",
 			atomic_read(&mdwc->dev->power.usage_count));
 
@@ -6149,7 +6237,12 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 	int timeout = 1000;
 	int ret;
 
-	pm_runtime_get_sync(mdwc->dev);
+	ret = pm_runtime_resume_and_get(mdwc->dev);
+	if (ret < 0) {
+		dev_err(mdwc->dev, "%s: pm_runtime_resume_and_get failed\n", __func__);
+		pm_runtime_set_suspended(mdwc->dev);
+		return ret;
+	}
 	dbg_event(0xFF, "StrtGdgt gsync",
 		atomic_read(&mdwc->dev->power.usage_count));
 
@@ -6312,7 +6405,12 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 		}
 
 		pm_runtime_enable(mdwc->dev);
-		pm_runtime_get_sync(mdwc->dev);
+		ret = pm_runtime_resume_and_get(mdwc->dev);
+		if (ret < 0) {
+			dev_err(mdwc->dev, "%s: pm_runtime_resume_and_get failed\n", __func__);
+			pm_runtime_set_suspended(mdwc->dev);
+			break;
+		}
 		ret = dwc3_msm_core_init(mdwc);
 		if (ret) {
 			dbg_event(0xFF, "core_init failed", ret);
@@ -6377,7 +6475,13 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			 * is decremented in DRD_STATE_PERIPHERAL state on
 			 * cable disconnect or in bus suspend.
 			 */
-			pm_runtime_get_sync(mdwc->dev);
+			ret = pm_runtime_resume_and_get(mdwc->dev);
+			if (ret < 0) {
+				dev_err(mdwc->dev, "%s: pm_runtime_resume_and_get failed\n",
+						__func__);
+				pm_runtime_set_suspended(mdwc->dev);
+				break;
+			}
 			dbg_event(0xFF, "BIDLE gsync",
 				atomic_read(&mdwc->dev->power.usage_count));
 			dwc3_otg_start_peripheral(mdwc, 1);
@@ -6433,7 +6537,13 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			 * upon bus suspend in
 			 * DRD_STATE_PERIPHERAL state.
 			 */
-			pm_runtime_get_sync(mdwc->dev);
+			ret = pm_runtime_resume_and_get(mdwc->dev);
+			if (ret < 0) {
+				dev_err(mdwc->dev, "%s: pm_runtime_resume_and_get failed\n"
+						, __func__);
+				pm_runtime_set_suspended(mdwc->dev);
+				break;
+			}
 			dbg_event(0xFF, "!SUSP gsync",
 				atomic_read(&mdwc->dev->power.usage_count));
 		}
@@ -6520,6 +6630,7 @@ static int dwc3_msm_pm_suspend(struct device *dev)
 
 static int dwc3_msm_pm_resume(struct device *dev)
 {
+	int ret;
 	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
 	struct dwc3 *dwc = NULL;
 
@@ -6544,7 +6655,12 @@ static int dwc3_msm_pm_resume(struct device *dev)
 	}
 
 	/* Resume dwc to avoid unclocked access by xhci_plat_resume */
-	dwc3_msm_resume(mdwc);
+	ret = dwc3_msm_resume(mdwc);
+	if (ret) {
+		dev_err(mdwc->dev, "%s: dwc3_msm_resume failed\n", __func__);
+		atomic_set(&mdwc->pm_suspended, 1);
+		return ret;
+	}
 	pm_runtime_disable(dev);
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
