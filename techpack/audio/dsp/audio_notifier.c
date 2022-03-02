@@ -26,6 +26,7 @@
 #define NO_SERVICE -2
 #define UNINIT_SERVICE -1
 
+static bool service_early_down = false;
 static struct platform_device *adsp_private;
 
 struct adsp_notify_private {
@@ -428,12 +429,25 @@ static int audio_notifier_convert_opcode(unsigned long opcode,
 
 	switch (opcode) {
 	case QCOM_SSR_BEFORE_SHUTDOWN:
-	case SERVREG_SERVICE_STATE_DOWN:
+	case SERVREG_SERVICE_STATE_EARLY_DOWN:
 		*notifier_opcode = AUDIO_NOTIFIER_SERVICE_DOWN;
+		if (opcode == SERVREG_SERVICE_STATE_EARLY_DOWN)
+			service_early_down = true;
 		break;
 	case QCOM_SSR_AFTER_POWERUP:
 	case SERVREG_SERVICE_STATE_UP:
 		*notifier_opcode = AUDIO_NOTIFIER_SERVICE_UP;
+		break;
+	case SERVREG_SERVICE_STATE_DOWN:
+		if (!service_early_down)
+			*notifier_opcode = AUDIO_NOTIFIER_SERVICE_DOWN;
+		else {
+			/* Reset service_early_down and nothing to do*/
+			service_early_down = false;
+			ret = -EINVAL;
+			pr_info("%s: Early down aleady handled %d\n", __func__,
+						service_early_down);
+		}
 		break;
 	default:
 		pr_debug("%s: Unused opcode 0x%lx\n", __func__, opcode);
