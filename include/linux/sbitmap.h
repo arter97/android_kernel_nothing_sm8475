@@ -17,6 +17,7 @@
 #include <linux/minmax.h>
 #include <linux/percpu.h>
 #include <linux/slab.h>
+#include <linux/mm.h>
 #include <linux/smp.h>
 #include <linux/types.h>
 #include <linux/wait.h>
@@ -174,7 +175,7 @@ static inline unsigned int __map_depth(const struct sbitmap *sb, int index)
 static inline void sbitmap_free(struct sbitmap *sb)
 {
 	free_percpu(sb->alloc_hint);
-	kfree(sb->map);
+	kvfree(sb->map);
 	sb->map = NULL;
 }
 
