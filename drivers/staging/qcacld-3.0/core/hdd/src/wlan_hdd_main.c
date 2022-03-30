@@ -7457,7 +7457,7 @@ int hdd_set_fw_params(struct hdd_adapter *adapter)
 	uint8_t enable_tx_sch_delay, dfs_chan_ageout_time;
 	uint32_t dtim_sel_diversity, enable_secondary_rate;
 	bool sap_xlna_bypass;
-	bool enable_ofdm_scrambler_seed;
+	bool enable_ofdm_scrambler_seed = false;
 
 	hdd_enter_dev(adapter->dev);
 
