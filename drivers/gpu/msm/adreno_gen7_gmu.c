@@ -601,18 +601,22 @@ static int gen7_gmu_hfi_start_msg(struct adreno_device *adreno_dev)
 	return gen7_hfi_send_generic_req(adreno_dev, &req);
 }
 
-static int gen7_complete_rpmh_votes(struct gen7_gmu_device *gmu)
+static int gen7_complete_rpmh_votes(struct gen7_gmu_device *gmu,
+		u32 timeout)
 {
 	int ret = 0;
 
 	ret |= gen7_timed_poll_check_rscc(gmu, GEN7_RSCC_TCS0_DRV0_STATUS,
-			BIT(0), 1, BIT(0));
+			BIT(0), timeout, BIT(0));
 	ret |= gen7_timed_poll_check_rscc(gmu, GEN7_RSCC_TCS1_DRV0_STATUS,
-			BIT(0), 1, BIT(0));
+			BIT(0), timeout, BIT(0));
 	ret |= gen7_timed_poll_check_rscc(gmu, GEN7_RSCC_TCS2_DRV0_STATUS,
-			BIT(0), 1, BIT(0));
+			BIT(0), timeout, BIT(0));
 	ret |= gen7_timed_poll_check_rscc(gmu, GEN7_RSCC_TCS3_DRV0_STATUS,
-			BIT(0), 1, BIT(0));
+			BIT(0), timeout, BIT(0));
+
+	if (ret)
+		dev_err(&gmu->pdev->dev, "RPMH votes timedout: %d\n", ret);
 
 	return ret;
 }
@@ -1107,7 +1111,7 @@ static void gen7_gmu_pwrctrl_suspend(struct adreno_device *adreno_dev)
 	/* Disconnect GPU from BUS is not needed if CX GDSC goes off later */
 
 	/* Check no outstanding RPMh voting */
-	gen7_complete_rpmh_votes(gmu);
+	gen7_complete_rpmh_votes(gmu, 1);
 
 	/* Clear the WRITEDROPPED fields and set fence to allow mode */
 	gmu_core_regwrite(device, GEN7_GMU_AHB_FENCE_STATUS_CLR, 0x7);
@@ -1667,6 +1671,13 @@ static int gen7_gmu_boot(struct adreno_device *adreno_dev)
 	if (ret)
 		goto gdsc_off;
 
+	/*
+	 * TLB operations are skipped during slumber. Incase CX doesn't
+	 * go down, it can result in incorrect translations due to stale
+	 * TLB entries. Flush TLB before boot up to ensure fresh start.
+	 */
+	kgsl_mmu_flush_tlb(&device->mmu);
+
 	ret = gen7_rscc_wakeup_sequence(adreno_dev);
 	if (ret)
 		goto clks_gdsc_off;
@@ -2160,6 +2171,10 @@ static int gen7_gmu_power_off(struct adreno_device *adreno_dev)
 	if (ret)
 		goto error;
 
+	ret = gen7_complete_rpmh_votes(gmu, 2);
+	if (ret)
+		goto error;
+
 	ret = gen7_gmu_notify_slumber(adreno_dev);
 	if (ret)
 		goto error;
@@ -2388,6 +2403,18 @@ static int gen7_first_boot(struct adreno_device *adreno_dev)
 	return 0;
 }
 
+static bool gen7_irq_pending(struct adreno_device *adreno_dev)
+{
+	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+	u32 status;
+
+	kgsl_regread(device, GEN7_RBBM_INT_0_STATUS, &status);
+
+	/* Return busy if a interrupt is pending */
+	return ((status & adreno_dev->irq_mask) ||
+		atomic_read(&adreno_dev->pending_irq_refcnt));
+}
+
 static int gen7_power_off(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
@@ -2409,15 +2436,22 @@ static int gen7_power_off(struct adreno_device *adreno_dev)
 	trace_kgsl_pwr_request_state(device, KGSL_STATE_SLUMBER);
 
 	ret = gen7_gmu_oob_set(device, oob_gpu);
-	if (!ret) {
-		kgsl_pwrscale_update_stats(device);
+	if (ret)
+		goto no_gx_power;
 
-		/* Save active coresight registers if applicable */
-		adreno_coresight_stop(adreno_dev);
-
-		adreno_irqctrl(adreno_dev, 0);
+	if (gen7_irq_pending(adreno_dev)) {
+		gen7_gmu_oob_clear(device, oob_gpu);
+		return -EBUSY;
 	}
 
+	kgsl_pwrscale_update_stats(device);
+
+	/* Save active coresight registers if applicable */
+	adreno_coresight_stop(adreno_dev);
+
+	adreno_irqctrl(adreno_dev, 0);
+
+no_gx_power:
 	gen7_gmu_oob_clear(device, oob_gpu);
 
 	kgsl_pwrctrl_irq(device, false);
@@ -2462,29 +2496,36 @@ static void gmu_idle_check(struct work_struct *work)
 					struct kgsl_device, idle_check_ws);
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
+	int ret;
 
 	mutex_lock(&device->mutex);
 
 	if (test_bit(GMU_DISABLE_SLUMBER, &device->gmu_core.flags))
 		goto done;
 
-	if (!atomic_read(&device->active_cnt)) {
-		if (test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags)) {
-			spin_lock(&device->submit_lock);
+	if (atomic_read(&device->active_cnt)) {
+		kgsl_pwrscale_update(device);
+		kgsl_start_idle_timer(device);
+		goto done;
+	}
 
-			if (device->submit_now) {
-				spin_unlock(&device->submit_lock);
-				kgsl_pwrscale_update(device);
-				kgsl_start_idle_timer(device);
-				goto done;
-			}
+	if (!test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags))
+		goto done;
 
-			device->slumber = true;
-			spin_unlock(&device->submit_lock);
+	spin_lock(&device->submit_lock);
 
-			gen7_power_off(adreno_dev);
-		}
-	} else {
+	if (device->submit_now) {
+		spin_unlock(&device->submit_lock);
+		kgsl_pwrscale_update(device);
+		kgsl_start_idle_timer(device);
+		goto done;
+	}
+
+	device->slumber = true;
+	spin_unlock(&device->submit_lock);
+
+	ret = gen7_power_off(adreno_dev);
+	if (ret == -EBUSY) {
 		kgsl_pwrscale_update(device);
 		kgsl_start_idle_timer(device);
 	}
