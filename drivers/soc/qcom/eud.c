@@ -258,40 +258,15 @@ static const struct kernel_param_ops eud_param_ops = {
 
 module_param_cb(enable, &eud_param_ops, &enable, 0644);
 
-static bool is_usb_psy_available(struct eud_chip *chip)
-{
-	if (!chip->usb_psy)
-		chip->usb_psy = power_supply_get_by_name("usb");
-
-	if (!chip->usb_psy)
-		return false;
-
-	return true;
-}
-
 static void eud_event_notifier(struct work_struct *eud_work)
 {
 	struct eud_chip *chip = container_of(eud_work, struct eud_chip,
 					eud_work);
-	union power_supply_propval pval;
 
 	if (chip->int_status == EUD_INT_VBUS) {
 		extcon_set_state(chip->extcon, EXTCON_JIG, true);
 		extcon_set_state_sync(chip->extcon, chip->extcon_id,
 					chip->usb_attach);
-	} else if (chip->int_status == EUD_INT_CHGR) {
-		if (is_usb_psy_available(chip)) {
-			int ret;
-
-			pval.intval = chip->chgr_enable ? -EINVAL :
-				chip->chgr_enable;
-			ret = power_supply_set_property(chip->usb_psy,
-				POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT, &pval);
-			if (ret < 0)
-				dev_err(chip->dev,
-				"Failed to set the powersupply property: %d\n",
-				ret);
-		}
 	}
 }
 
