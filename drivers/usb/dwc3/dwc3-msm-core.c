@@ -6243,9 +6243,10 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 	} else {
 		dev_dbg(mdwc->dev, "%s: turn off host\n", __func__);
 
-		ret = pm_runtime_resume_and_get(mdwc->dev);
+		ret = pm_runtime_resume_and_get(&mdwc->dwc3->dev);
 		if (ret < 0) {
 			dev_err(mdwc->dev, "%s: pm_runtime_resume_and_get failed\n", __func__);
+			pm_runtime_set_suspended(&mdwc->dwc3->dev);
 			pm_runtime_set_suspended(mdwc->dev);
 			return ret;
 		}
