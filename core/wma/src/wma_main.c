@@ -9653,20 +9653,6 @@ QDF_STATUS wma_get_rx_chainmask(uint8_t pdev_id, uint32_t *chainmask_2g,
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef MPC_UT_FRAMEWORK
-void wma_enable_dbs_service_ut(void)
-{
-	tp_wma_handle wma;
-
-	wma = cds_get_context(QDF_MODULE_ID_WMA);
-	if (!wma)
-		return;
-
-	WMI_SERVICE_ENABLE(wma->wmi_service_bitmap,
-			   WMI_SERVICE_DUAL_BAND_SIMULTANEOUS_SUPPORT);
-}
-#endif
-
 #ifdef FEATURE_ANI_LEVEL_REQUEST
 QDF_STATUS wma_send_ani_level_request(tp_wma_handle wma_handle,
 				      uint32_t *freqs, uint8_t num_freqs)
