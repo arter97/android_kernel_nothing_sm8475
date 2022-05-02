@@ -777,22 +777,7 @@ __setup("driver_async_probe=", save_async_options);
 
 bool driver_allows_async_probing(struct device_driver *drv)
 {
-	switch (drv->probe_type) {
-	case PROBE_PREFER_ASYNCHRONOUS:
-		return true;
-
-	case PROBE_FORCE_SYNCHRONOUS:
-		return false;
-
-	default:
-		if (cmdline_requested_async_probing(drv->name))
-			return true;
-
-		if (module_requested_async_probing(drv->owner))
-			return true;
-
-		return false;
-	}
+	return false;
 }
 
 struct device_attach_data {
