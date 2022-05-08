@@ -45,6 +45,7 @@ static struct record_priv_struct {
 	struct psy_state *pst;
 	int current_now_prop_id;
 	int voltage_now_prop_id;
+	bool recording;
 } record_priv;
 
 static struct read_priv_struct {
@@ -66,6 +67,8 @@ static void stop_worker(void)
 	destroy_workqueue(record_wq);
 	kfree(buf);
 	mutex_unlock(&record_mutex);
+	record_priv.recording = false;
+	barrier();
 	pr_info("record worker stopped\n");
 }
 
@@ -257,6 +260,7 @@ static int start_record(void)
 	record_priv.max_idx = buffer_size / sizeof(unsigned short);
 	record_priv.start_time_ms = ktime_to_ms(ktime_get_real());
 	record_priv.expected_queue_ms = 1000 / samples_per_second;
+	record_priv.recording = true;
 
 	// Disable charging
 	disable_charging();
@@ -265,6 +269,7 @@ static int start_record(void)
 	record_wq = create_singlethread_workqueue("record_wq");
 
 	// Finally, queue the worker thread
+	barrier();
 	queue_delayed_work(record_wq, &record_work, 0);
 
 	return 0;
@@ -300,6 +305,8 @@ static ssize_t qtipm_read(struct file *filp, char __user *ubuf, size_t count, lo
 	static char kbuf[4096];
 
 	while (i == (local_idx = record_priv.idx)) {
+		if (!record_priv.recording)
+			return 0;
 		wait_for_completion(&read_priv.comp);
 	}
 
