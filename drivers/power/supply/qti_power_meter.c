@@ -105,8 +105,8 @@ static unsigned short get_power(void)
 
 	ret = (curr * volt) / 1000;
 
-	pr_info("idx: %d, current: %d, voltage: %d, watt = %u.%03u\n",
-		record_priv.idx, curr, volt, ret / 1000, ret % 1000);
+	//pr_info("idx: %d, current: %d, voltage: %d, watt = %u.%03u\n",
+	//	record_priv.idx, curr, volt, ret / 1000, ret % 1000);
 
 	return ret;
 }
@@ -312,7 +312,7 @@ static ssize_t qtipm_read(struct file *filp, char __user *ubuf, size_t count, lo
 
 	for (; i < local_idx; i++) {
 		sret = sprintf(kbuf + off, "%d.%03d\n", buf[i] / 1000, buf[i] % 1000);
-		pr_info("wrote \"%s\" to buf[%d]\n", kbuf + off, off);
+		//pr_info("wrote \"%s\" to buf[%d]\n", kbuf + off, off);
 		off += sret;
 
 		if (off + sizeof(str) - 1 >= count)
