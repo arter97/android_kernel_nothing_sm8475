@@ -105,13 +105,16 @@ static void clear_fence_array_tracker(bool force_clear)
 
 static struct sync_device *spec_fence_init_locked(struct sync_device *obj, const char *name)
 {
-	if (atomic_read(&obj->device_available))
+	if (atomic_read(&obj->device_available) > 1) {
+		pr_err("number of device fds are limited by 2, device opened:%d\n",
+			atomic_read(&obj->device_available));
 		return NULL;
+	} else if (!atomic_read(&obj->device_available)) {
+		memset(obj->name, 0, NAME_LEN);
+		strscpy(obj->name, name, sizeof(obj->name));
+	}
 
 	atomic_inc(&obj->device_available);
-
-	memset(obj->name, 0, NAME_LEN);
-	strlcpy(obj->name, name, sizeof(obj->name));
 
 	return obj;
 }
@@ -153,13 +156,15 @@ static int spec_sync_release(struct inode *inode, struct file *file)
 	mutex_lock(&sync_dev.lock);
 
 	if (!atomic_read(&obj->device_available)) {
-		pr_err("sync release failed !!\n");
+		pr_err("no device to release!!\n");
 		ret = -ENODEV;
 		goto end;
 	}
 
-	clear_fence_array_tracker(true);
 	atomic_dec(&obj->device_available);
+
+	if (!atomic_read(&obj->device_available))
+		clear_fence_array_tracker(true);
 
 end:
 	mutex_unlock(&sync_dev.lock);
