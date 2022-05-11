@@ -1137,9 +1137,10 @@ static const struct adreno_a6xx_core adreno_gpu_core_a621 = {
 		DEFINE_ADRENO_REV(ADRENO_REV_A621, 6, 2, 1, ANY_ID),
 		.compatible = "qcom,adreno-gpu-a621",
 		.features = ADRENO_CONTENT_PROTECTION | ADRENO_IOCOHERENT |
-			ADRENO_APRIV | ADRENO_LSR,
+			ADRENO_APRIV | ADRENO_LSR | ADRENO_PREEMPTION |
+			ADRENO_IFPC,
 		.gpudev = &adreno_a6xx_hwsched_gpudev.base,
-		.perfcounters = &adreno_a6xx_perfcounters,
+		.perfcounters = &adreno_a6xx_hwsched_perfcounters,
 		.gmem_base = 0,
 		.gmem_size = SZ_512K,
 		.bus_width = 32,
@@ -1161,6 +1162,7 @@ static const struct adreno_a6xx_core adreno_gpu_core_a621 = {
 	.protected_regs = a620_protected_regs,
 	.disable_tseskip = true,
 	.highest_bank_bit = 13,
+	.gmu_hub_clk_freq = 200000000,
 };
 
 static const struct kgsl_regmap_list a640_hwcg_regs[] = {
@@ -1749,7 +1751,7 @@ static const struct adreno_a6xx_core adreno_gpu_core_a662 = {
 		DEFINE_ADRENO_REV(ADRENO_REV_A662, 6, 6, 2, ANY_ID),
 		.features = ADRENO_APRIV | ADRENO_IOCOHERENT |
 			ADRENO_CONTENT_PROTECTION | ADRENO_PREEMPTION |
-			ADRENO_IFPC | ADRENO_BCL,
+			ADRENO_IFPC | ADRENO_BCL | ADRENO_ACD,
 		.gpudev = &adreno_a6xx_gmu_gpudev.base,
 		.perfcounters = &adreno_a6xx_perfcounters,
 		.gmem_base = 0,

@@ -26,12 +26,15 @@ mem_buf.ko
 mem-hooks.ko
 mem-offline.ko
 memory_dump_v2.ko
+minidump.ko
 msm_dma_iommu_mapping.ko
 msm_geni_serial.ko
+msm_rtb.ko
 ns.ko
 phy-generic.ko
 pinctrl-msm.ko
 qcom_cpu_vendor_hooks.ko
+qcom-dload-mode.ko
 qcom_dma_heaps.ko
 qcom_hwspinlock.ko
 qcom_iommu_util.ko
@@ -52,6 +55,7 @@ sdhci-msm.ko
 phy-qcom-ufs.ko
 phy-qcom-ufs-qrbtc-sdm845.ko
 ufs_qcom.ko
+phy-qcom-ufs-qmp-v4-parrot.ko
 debug-regulator.ko
 gh_arm_drv.ko
 gh_ctrl.ko
@@ -62,6 +66,13 @@ nvmem_qcom-spmi-sdam.ko
 proxy-consumer.ko
 qcom-spmi-pmic.ko
 spmi-pmic-arb.ko
+qcom-reboot-reason.ko
 qti-regmap-debugfs.ko
 regmap-spmi.ko
 rtc-pm8xxx.ko
+crypto-qti-common.ko
+crypto-qti-hwkm.ko
+hwkm.ko
+ufshcd-crypto-qti.ko
+tmecom-intf.ko
+cqhci-crypto-qti.ko

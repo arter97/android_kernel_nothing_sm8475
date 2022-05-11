@@ -100,6 +100,7 @@ struct ssusb_redriver {
 	u8	gen_dev_val;
 	bool	lane_channel_swap;
 
+	struct workqueue_struct *pullup_wq;
 	struct work_struct	pullup_work;
 	int			pullup_req;
 	bool			work_ongoing;
@@ -625,7 +626,10 @@ static void redriver_gadget_pullup_work(struct work_struct *w)
 int redriver_gadget_pullup_enter(struct device_node *node, int is_on)
 {
 	struct ssusb_redriver *redriver;
-	int timeout = 0;
+	u64 time = 0;
+
+	if (!is_on)
+		return 0;
 
 	redriver = check_devnode(node);
 	if (IS_ERR_OR_NULL(redriver))
@@ -635,15 +639,15 @@ int redriver_gadget_pullup_enter(struct device_node *node, int is_on)
 	    redriver->op_mode != OP_MODE_DEFAULT)
 		return 0;
 
-	if (is_on) {
-		while (redriver->work_ongoing) {
-			usleep_range(1000, 1500);
-			if (++timeout > 10) {
-				dev_warn(redriver->dev, "pullup timeout\n");
-				break;
-			}
+	while (redriver->work_ongoing) {
+		udelay(1);
+		if (time++ > 500000) {
+			dev_warn(redriver->dev, "pullup timeout\n");
+			break;
 		}
 	}
+
+	dev_dbg(redriver->dev, "pull-up disable work took %llu us\n", time);
 
 	return 0;
 }
@@ -652,6 +656,9 @@ EXPORT_SYMBOL(redriver_gadget_pullup_enter);
 int redriver_gadget_pullup_exit(struct device_node *node, int is_on)
 {
 	struct ssusb_redriver *redriver;
+
+	if (is_on)
+		return 0;
 
 	redriver = check_devnode(node);
 	if (IS_ERR_OR_NULL(redriver))
@@ -663,10 +670,8 @@ int redriver_gadget_pullup_exit(struct device_node *node, int is_on)
 	    redriver->op_mode != OP_MODE_DEFAULT)
 		return 0;
 
-	if (!is_on) {
-		redriver->work_ongoing = true;
-		schedule_work(&redriver->pullup_work);
-	}
+	redriver->work_ongoing = true;
+	queue_work(redriver->pullup_wq, &redriver->pullup_work);
 
 	return 0;
 }
@@ -737,6 +742,14 @@ static int redriver_i2c_probe(struct i2c_client *client,
 	if (!redriver)
 		return -ENOMEM;
 
+	redriver->pullup_wq = alloc_workqueue("%s:pullup",
+				WQ_UNBOUND | WQ_HIGHPRI, 0,
+				dev_name(&client->dev));
+	if (!redriver->pullup_wq) {
+		dev_err(&client->dev, "Failed to create pullup workqueue\n");
+		return -ENOMEM;
+	}
+
 	redriver->regmap = devm_regmap_init_i2c(client, &redriver_regmap);
 	if (IS_ERR(redriver->regmap)) {
 		ret = PTR_ERR(redriver->regmap);
@@ -780,6 +793,8 @@ static int redriver_i2c_remove(struct i2c_client *client)
 
 	debugfs_remove(redriver->debug_root);
 	unregister_ucsi_glink_notifier(&redriver->ucsi_nb);
+	redriver->work_ongoing = false;
+	destroy_workqueue(redriver->pullup_wq);
 
 	return 0;
 }

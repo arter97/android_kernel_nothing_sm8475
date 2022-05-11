@@ -969,11 +969,14 @@ static int qcom_slim_ngd_xfer_msg(struct slim_controller *sctrl,
 		return ret;
 	}
 
+	mutex_lock(&ctrl->tx_lock);
 	pbuf = qcom_slim_ngd_tx_msg_get(ctrl, txn->rl, &tx_sent);
 	if (!pbuf) {
 		SLIM_ERR(ctrl, "Message buffer unavailable\n");
+		mutex_unlock(&ctrl->tx_lock);
 		return -ENOMEM;
 	}
+	mutex_unlock(&ctrl->tx_lock);
 
 	if (txn->mt == SLIM_MSG_MT_CORE &&
 		(txn->mc == SLIM_MSG_MC_CONNECT_SOURCE ||
@@ -2062,13 +2065,13 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 		goto pdr_release;
 	}
 
-	platform_driver_register(&qcom_slim_ngd_driver);
 	ret = of_qcom_slim_ngd_register(dev, ctrl);
 	if (ret) {
 		SLIM_ERR(ctrl, "qcom_slim_ngd_register failed ret:%d\n", ret);
 		goto pdr_release;
 	}
 
+	platform_driver_register(&qcom_slim_ngd_driver);
 	SLIM_INFO(ctrl, "NGD SB controller is up!\n");
 	return 0;
 

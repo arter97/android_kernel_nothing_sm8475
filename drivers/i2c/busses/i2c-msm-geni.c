@@ -370,7 +370,8 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 	if ((m_stat & M_CMD_FAILURE_EN) ||
 		    (dm_rx_st & (DM_I2C_CB_ERR)) ||
 		    (m_stat & M_CMD_CANCEL_EN) ||
-		    (m_stat & M_CMD_ABORT_EN)) {
+		    (m_stat & M_CMD_ABORT_EN) ||
+		    (m_stat & M_GP_IRQ_1_EN)) {
 
 		if (m_stat & M_GP_IRQ_1_EN)
 			geni_i2c_err(gi2c, I2C_NACK);
@@ -1282,8 +1283,8 @@ geni_i2c_txn_ret:
 	}
 
 	gi2c->cur = NULL;
-	I2C_LOG_ERR(gi2c->ipcl, true, gi2c->dev,
-		"i2c txn ret:%d, num:%d, err%:%d\n", ret, num, gi2c->err);
+	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
+		"i2c txn ret:%d, num:%d, err:%d\n", ret, num, gi2c->err);
 	if (gi2c->err)
 		return gi2c->err;
 	else

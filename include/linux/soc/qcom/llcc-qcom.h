@@ -28,6 +28,7 @@
 #define LLCC_MDMHPFX     20
 #define LLCC_MDMPNG      21
 #define LLCC_AUDHW       22
+#define LLCC_ECC         26
 #define LLCC_CVP         28
 #define LLCC_MDMVPE      29
 #define LLCC_APTCM       30
@@ -40,13 +41,13 @@
 #define LLCC_MDMCLAD2    37
 #define LLCC_CAMEXP1     38
 #define LLCC_AENPU       45
-#define LLCC_VIEYE       46
-#define LLCC_VIDPTH      47
-#define LLCC_GPUMV       48
-#define LLCC_EVALFT      49
-#define LLCC_EVARGHT     50
-#define LLCC_EVAGAIN     51
-#define LLCC_VIPTH       55
+#define LLCC_VIEYE       57
+#define LLCC_VIDPTH      58
+#define LLCC_GPUMV       59
+#define LLCC_EVALFT      60
+#define LLCC_EVARGHT     61
+#define LLCC_EVAGAIN     62
+#define LLCC_VIPTH       63
 
 /**
  * llcc_slice_desc - Cache slice descriptor
@@ -89,6 +90,7 @@ struct llcc_edac_reg_data {
  * @bcast_regmap: regmap associated with llcc broadcast offset
  * @cfg: pointer to the data structure for slice configuration
  * @lock: mutex associated with each slice
+ * @cfg_index: index of config table if multiple configs present for a target
  * @cfg_size: size of the config data table
  * @max_slices: max slices as read from device tree
  * @num_banks: Number of llcc banks
@@ -103,6 +105,7 @@ struct llcc_drv_data {
 	struct regmap *bcast_regmap;
 	const struct llcc_slice_config *cfg;
 	struct mutex lock;
+	u32 cfg_index;
 	u32 cfg_size;
 	u32 max_slices;
 	u32 num_banks;

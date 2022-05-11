@@ -40,11 +40,11 @@ static const struct pll_vco lucid_evo_vco[] = {
 	{ 249600000, 2000000000, 0 },
 };
 
-/* 594MHz Configuration */
+/* 590MHz Configuration */
 static const struct alpha_pll_config gpu_cc_pll0_config = {
 	.l = 0x1E,
 	.cal_l = 0x44,
-	.alpha = 0xF000,
+	.alpha = 0xBAAA,
 	.config_ctl_val = 0x20485699,
 	.config_ctl_hi_val = 0x00182261,
 	.config_ctl_hi1_val = 0x32AA299C,
@@ -171,7 +171,7 @@ static const struct clk_parent_data gpu_cc_parent_data_3[] = {
 };
 
 static const struct freq_tbl ftbl_gpu_cc_ff_clk_src[] = {
-	F(200000000, P_GPLL0_OUT_MAIN, 3, 0, 0),
+	F(200000000, P_GPLL0_OUT_MAIN_DIV, 1.5, 0, 0),
 	{ }
 };
 
@@ -476,7 +476,7 @@ static struct clk_branch gpu_cc_demet_clk = {
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
+			.ops = &clk_branch2_aon_ops,
 		},
 	},
 };

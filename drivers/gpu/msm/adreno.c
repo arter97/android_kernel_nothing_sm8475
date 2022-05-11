@@ -49,23 +49,6 @@ int adreno_wake_nice = -7;
 /* Number of milliseconds to stay active active after a wake on touch */
 unsigned int adreno_wake_timeout = 100;
 
-bool adreno_regulator_disable_poll(struct kgsl_device *device,
-		struct regulator *reg, u32 offset, u32 timeout)
-{
-	u32 val;
-	int ret;
-
-	if (IS_ERR_OR_NULL(reg))
-		return true;
-
-	regulator_disable(reg);
-
-	ret = kgsl_regmap_read_poll_timeout(&device->regmap, offset,
-		val, !(val & BIT(31)), 100, timeout * 1000);
-
-	return ret ? false : true;
-}
-
 static u32 get_ucode_version(const u32 *data)
 {
 	u32 version;
@@ -664,13 +647,13 @@ static int adreno_of_parse_pwrlevels(struct adreno_device *adreno_dev,
 		level->gpu_freq = freq;
 		level->bus_freq = bus;
 		level->voltage_level = voltage;
-		level->cx_min = 0xffffffff;
+		level->cx_level = 0xffffffff;
 
 		of_property_read_u32(child, "qcom,acd-level",
 			&level->acd_level);
 
-		of_property_read_u32(child, "qcom,min-cx-level",
-			&level->cx_min);
+		of_property_read_u32(child, "qcom,cx-level",
+			&level->cx_level);
 
 		level->bus_min = level->bus_freq;
 		kgsl_of_property_read_ddrtype(child,
@@ -1088,6 +1071,24 @@ static int adreno_probe_llcc(struct adreno_device *adreno_dev,
 	} else
 		adreno_dev->gpuhtw_llc_slice_enable = true;
 
+	if (adreno_is_a621(adreno_dev)) {
+		/* Get the system cache slice descriptor for GPU MV grid buffer */
+		adreno_dev->gpumv_llc_slice = llcc_slice_getd(LLCC_GPUMV);
+		ret = PTR_ERR_OR_ZERO(adreno_dev->gpumv_llc_slice);
+		if (ret) {
+			if (ret == -EPROBE_DEFER) {
+				llcc_slice_putd(adreno_dev->gpu_llc_slice);
+				llcc_slice_putd(adreno_dev->gpuhtw_llc_slice);
+				return ret;
+			}
+
+			if (ret != -ENOENT)
+				dev_warn(&pdev->dev,
+					"Unable to get GPUMV buffer slice: %d\n", ret);
+		} else
+			adreno_dev->gpumv_llc_slice_enable = true;
+	}
+
 	return 0;
 }
 #else
@@ -1394,6 +1395,9 @@ static void adreno_unbind(struct device *dev)
 	if (!IS_ERR_OR_NULL(adreno_dev->gpuhtw_llc_slice))
 		llcc_slice_putd(adreno_dev->gpuhtw_llc_slice);
 
+	if (!IS_ERR_OR_NULL(adreno_dev->gpumv_llc_slice))
+		llcc_slice_putd(adreno_dev->gpumv_llc_slice);
+
 	kgsl_pwrscale_close(device);
 
 	if (adreno_dev->dispatch_ops && adreno_dev->dispatch_ops->close)
@@ -1403,6 +1407,8 @@ static void adreno_unbind(struct device *dev)
 
 	if (of_find_matching_node(dev->of_node, adreno_gmu_match))
 		component_unbind_all(dev, NULL);
+
+	kgsl_bus_close(device);
 
 	if (device->num_l3_pwrlevels != 0)
 		qcom_dcvs_unregister_voter(KGSL_L3_DEVICE, DCVS_L3,
@@ -1896,6 +1902,9 @@ static int adreno_stop(struct kgsl_device *device)
 
 	if (!IS_ERR_OR_NULL(adreno_dev->gpuhtw_llc_slice))
 		llcc_slice_deactivate(adreno_dev->gpuhtw_llc_slice);
+
+	if (!IS_ERR_OR_NULL(adreno_dev->gpumv_llc_slice))
+		llcc_slice_deactivate(adreno_dev->gpumv_llc_slice);
 
 	adreno_set_active_ctxs_null(adreno_dev);
 
