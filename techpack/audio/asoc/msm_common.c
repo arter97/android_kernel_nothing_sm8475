@@ -80,6 +80,7 @@ struct chmap_pdata {
 
 static int qos_vote_status;
 static bool lpi_pcm_logging_enable;
+static bool vote_against_sleep_enable;
 
 static struct dev_pm_qos_request latency_pm_qos_req; /* pm_qos request */
 static unsigned int qos_client_active_cnt;
@@ -989,15 +990,38 @@ static int msm_lpi_logging_enable_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int msm_vote_against_sleep_ctl_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	vote_against_sleep_enable = ucontrol->value.integer.value[0];
+	pr_debug("%s: vote against sleep enable: %d", __func__,
+			vote_against_sleep_enable);
+
+	audio_prm_set_vote_against_sleep((uint8_t)vote_against_sleep_enable);
+
+	return 0;
+}
+
+static int msm_vote_against_sleep_ctl_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = vote_against_sleep_enable;
+	return 0;
+}
+
 static const char *const qos_text[] = {"Disable", "Enable"};
+static const char *const against_sleep_text[] = {"Disable", "Enable"};
 
 static SOC_ENUM_SINGLE_EXT_DECL(qos_vote, qos_text);
+static SOC_ENUM_SINGLE_EXT_DECL(sleep_against, against_sleep_text);
 
 static const struct snd_kcontrol_new card_mixer_controls[] = {
 	SOC_ENUM_EXT("PM_QOS Vote", qos_vote,
 			msm_qos_ctl_get, msm_qos_ctl_put),
 	SOC_SINGLE_EXT("LPI PCM Logging Enable", 0, 0, 1, 0,
 			msm_lpi_logging_enable_get, msm_lpi_logging_enable_put),
+	SOC_ENUM_EXT("VOTE Against Sleep", sleep_against,
+			msm_vote_against_sleep_ctl_get, msm_vote_against_sleep_ctl_put),
 };
 
 static int register_pm_qos_latency_controls(struct snd_soc_pcm_runtime *rtd) {
