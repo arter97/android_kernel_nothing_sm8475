@@ -1,4 +1,5 @@
 /* Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -205,6 +206,9 @@ typedef struct prm_cmd_request_hw_core_t
 
 #define PARAM_ID_RSC_LPASS_CORE 0x0800102B
 #define PARAM_ID_RSC_HW_CORE 0x08001032
+
+/* Param ID for island vote */
+#define PARAM_ID_RSC_VOTE_AGAINST_ISLAND 0x0800131D
 
 #define HW_RSC_ID_AUDIO_HW_CLK 0x0800102C
 
@@ -603,4 +607,5 @@ int audio_prm_set_lpass_hw_core_req(struct clk_cfg *cfg, uint32_t hw_core_id, ui
 int audio_prm_set_cdc_earpa_duty_cycling_req(struct prm_earpa_hw_intf_config *earpa_config,
 									uint32_t enable);
 void audio_prm_set_lpi_logging_status(int lpi_pcm_logging_enable);
+int audio_prm_set_vote_against_sleep(uint8_t enable);
 #endif
