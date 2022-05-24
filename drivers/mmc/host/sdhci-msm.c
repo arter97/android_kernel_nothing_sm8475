@@ -25,6 +25,7 @@
 #include <linux/of.h>
 #include <linux/reset.h>
 #include <linux/ipc_logging.h>
+#include <linux/clk/qcom.h>
 
 #include "sdhci-pltfm.h"
 #include "cqhci.h"
@@ -2798,6 +2799,7 @@ static int sdhci_msm_ice_init(struct sdhci_msm_host *msm_host,
 		dev_err(dev, "Failed to map ICE registers; err=%d\n", err);
 		return err;
 	}
+	cq_host->ice_mmio = msm_host->ice_mem;
 
 #if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
 	ice_hwkm_res = platform_get_resource_byname(msm_host->pdev,
@@ -2813,6 +2815,7 @@ static int sdhci_msm_ice_init(struct sdhci_msm_host *msm_host,
 		dev_err(dev, "Failed to map ICE HWKM registers; err=%d\n", err);
 		return err;
 	}
+	cq_host->ice_hwkm_mmio = msm_host->ice_hwkm_mem;
 #endif
 
 	if (!sdhci_msm_ice_supported(msm_host))
@@ -4865,7 +4868,16 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 				      msm_host->bulk_clks);
 	if (ret)
 		goto opp_cleanup;
-
+	ret = qcom_clk_set_flags(msm_host->bulk_clks[0].clk,
+			CLKFLAG_NORETAIN_MEM);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to set core clk NORETAIN_MEM: %d\n",
+				ret);
+	ret = qcom_clk_set_flags(msm_host->bulk_clks[2].clk,
+			CLKFLAG_RETAIN_MEM);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to set ice clk RETAIN_MEM: %d\n",
+				ret);
 	/*
 	 * xo clock is needed for FLL feature of cm_dll.
 	 * In case if xo clock is not mentioned in DT, warn and proceed.

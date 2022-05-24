@@ -96,9 +96,14 @@ module_param(con_enabled, bool, 0644);
 #define UART_START_TX		(0x1)
 #define UART_START_BREAK	(0x4)
 #define UART_STOP_BREAK		(0x5)
+
 /* UART S_CMD OP codes */
-#define UART_START_READ		(0x1)
-#define UART_PARAM		(0x1)
+#define UART_START_READ			(0x1)
+#define UART_PARAM			(0x1)
+/* When set character with framing error is not written in RX fifo */
+#define UART_PARAM_SKIP_FRAME_ERR_CHAR	(BIT(5))
+/* When set break character is not written in RX fifo */
+#define UART_PARAM_SKIP_BREAK_CHAR	(BIT(6))
 #define UART_PARAM_RFR_OPEN		(BIT(7))
 
 /* UART DMA Rx GP_IRQ_BITS */
@@ -1129,15 +1134,21 @@ static void msm_geni_serial_console_write(struct console *co, const char *s,
 				"%s: tx_cancel failed 0x%x\n",
 				__func__, geni_read_reg_nolog(uport->membase,
 							SE_GENI_STATUS));
-
+			geni_se_dump_dbg_regs(&port->serial_rsc, uport->membase,
+					      port->ipc_log_misc);
 			reinit_completion(&port->m_cmd_timeout);
 			geni_abort_m_cmd(uport->membase);
 			timeout = geni_wait_for_cmd_done(uport, true);
-			if (timeout)
+			if (timeout) {
 				IPC_LOG_MSG(port->console_log,
 				"%s: tx abort failed 0x%x\n", __func__,
 				geni_read_reg_nolog(uport->membase,
 				SE_GENI_STATUS));
+				geni_se_dump_dbg_regs(&port->serial_rsc,
+						      uport->membase,
+						      port->ipc_log_misc);
+			}
+
 			msm_geni_serial_allow_rx(port);
 			geni_write_reg(FORCE_DEFAULT, uport->membase,
 					GENI_FORCE_DEFAULT_REG);
@@ -1276,6 +1287,8 @@ static int msm_geni_serial_prep_dma_tx(struct uart_port *uport)
 			"%s: tx_cancel failed 0x%x\n", __func__,
 			geni_read_reg_nolog(uport->membase, SE_GENI_STATUS));
 			msm_geni_update_uart_error_code(msm_port, UART_ERROR_TX_CANCEL_FAIL);
+			geni_se_dump_dbg_regs(&msm_port->serial_rsc, uport->membase,
+					      msm_port->ipc_log_misc);
 
 			msm_port->m_cmd_done = false;
 			reinit_completion(&msm_port->m_cmd_timeout);
@@ -1294,6 +1307,8 @@ static int msm_geni_serial_prep_dma_tx(struct uart_port *uport)
 				geni_read_reg_nolog(uport->membase,
 							SE_GENI_STATUS));
 				msm_geni_update_uart_error_code(msm_port, UART_ERROR_TX_ABORT_FAIL);
+				geni_se_dump_dbg_regs(&msm_port->serial_rsc, uport->membase,
+						      msm_port->ipc_log_misc);
 			} else {
 				/* Reset the CANCEL error code if abort is success */
 				msm_geni_update_uart_error_code(msm_port, UART_ERROR_DEFAULT);
@@ -1320,7 +1335,8 @@ static int msm_geni_serial_prep_dma_tx(struct uart_port *uport)
 					"%s: tx fsm reset failed\n", __func__);
 					msm_geni_update_uart_error_code(msm_port,
 						UART_ERROR_TX_FSM_RESET_FAIL);
-
+					geni_se_dump_dbg_regs(&msm_port->serial_rsc, uport->membase,
+							      msm_port->ipc_log_misc);
 				} else {
 					/* Reset Cancel/Abort error code if FSM reset is success */
 					msm_geni_update_uart_error_code(msm_port,
@@ -1452,7 +1468,8 @@ static void stop_tx_sequencer(struct uart_port *uport)
 		UART_LOG_DBG(port->ipc_log_misc, uport->dev, "%s: tx_cancel failed 0x%x\n",
 		__func__, geni_read_reg_nolog(uport->membase, SE_GENI_STATUS));
 		msm_geni_update_uart_error_code(port, UART_ERROR_TX_CANCEL_FAIL);
-
+		geni_se_dump_dbg_regs(&port->serial_rsc, uport->membase,
+				      port->ipc_log_misc);
 		port->m_cmd_done = false;
 		reinit_completion(&port->m_cmd_timeout);
 		geni_abort_m_cmd(uport->membase);
@@ -1466,6 +1483,8 @@ static void stop_tx_sequencer(struct uart_port *uport)
 				"%s: tx abort failed 0x%x\n", __func__,
 					geni_read_reg_nolog(uport->membase, SE_GENI_STATUS));
 			msm_geni_update_uart_error_code(port, UART_ERROR_TX_ABORT_FAIL);
+			geni_se_dump_dbg_regs(&port->serial_rsc, uport->membase,
+					      port->ipc_log_misc);
 		}
 		msm_geni_serial_allow_rx(port);
 		geni_write_reg(FORCE_DEFAULT, uport->membase,
@@ -1534,7 +1553,8 @@ static void start_rx_sequencer(struct uart_port *uport)
 {
 	unsigned int geni_status;
 	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
-	u32 geni_se_param = UART_PARAM_RFR_OPEN;
+	u32 geni_se_param = (UART_PARAM_SKIP_FRAME_ERR_CHAR |
+			     UART_PARAM_SKIP_BREAK_CHAR | UART_PARAM_RFR_OPEN);
 
 	if (port->startup_in_progress)
 		return;
@@ -1561,7 +1581,10 @@ static void start_rx_sequencer(struct uart_port *uport)
 							&port->rx_dma);
 	}
 
-	/* Start RX with the RFR_OPEN to keep RFR in always ready state */
+	/* Start RX with the RFR_OPEN to keep RFR in always ready state.
+	 * Configure for character with Framing error & Break character
+	 * is not written in RX fifo.
+	 */
 	geni_setup_s_cmd(uport->membase, UART_START_READ, geni_se_param);
 	msm_geni_serial_enable_interrupts(uport);
 
@@ -3492,9 +3515,9 @@ static int msm_geni_serial_probe(struct platform_device *pdev)
 		} else {
 			line = of_alias_get_id(pdev->dev.of_node, "hsuart");
 			if (line < 0)
-				line = uart_line_id++;
-			else
-				uart_line_id++;
+				line = uart_line_id;
+			else /* for non alias hsuart use uart_line_id in get_port_from_line */
+				line = uart_line_id;
 		}
 	} else {
 		line = pdev->id;
@@ -3502,14 +3525,13 @@ static int msm_geni_serial_probe(struct platform_device *pdev)
 
 	is_console = (drv->cons ? true : false);
 	dev_port = get_port_from_line(line, is_console);
-	dev_port->is_console = is_console;
 	if (IS_ERR_OR_NULL(dev_port)) {
 		ret = PTR_ERR(dev_port);
-		dev_err(&pdev->dev, "Invalid line %d(%d)\n",
-					line, ret);
+		dev_err(&pdev->dev, "Invalid line ret:%d\n", ret);
 		goto exit_geni_serial_probe;
 	}
 
+	dev_port->is_console = is_console;
 	if (drv->cons && !con_enabled) {
 		dev_err(&pdev->dev, "%s, Console Disabled\n", __func__);
 		platform_set_drvdata(pdev, dev_port);
@@ -3529,6 +3551,9 @@ static int msm_geni_serial_probe(struct platform_device *pdev)
 	ret = msm_geni_serial_read_dtsi(pdev, dev_port);
 	if (ret)
 		goto exit_geni_serial_probe;
+
+	if (!drv->cons)
+		uart_line_id++;
 
 	dev_port->tx_fifo_depth = DEF_FIFO_DEPTH_WORDS;
 	dev_port->rx_fifo_depth = DEF_FIFO_DEPTH_WORDS;
