@@ -85,6 +85,9 @@ module_param(qmi_timeout, ulong, 0600);
 #define WLFW_TIMEOUT                    msecs_to_jiffies(3000)
 #endif
 
+#define ICNSS_RECOVERY_TIMEOUT		60000
+#define ICNSS_CAL_TIMEOUT		15000
+
 static struct icnss_priv *penv;
 static struct work_struct wpss_loader;
 uint64_t dynamic_feature_mask = ICNSS_DEFAULT_FEATURE_MASK;
@@ -128,7 +131,7 @@ static void icnss_set_plat_priv(struct icnss_priv *priv)
 	penv = priv;
 }
 
-static struct icnss_priv *icnss_get_plat_priv()
+struct icnss_priv *icnss_get_plat_priv(void)
 {
 	return penv;
 }
@@ -910,10 +913,12 @@ static int icnss_driver_event_server_arrive(struct icnss_priv *priv,
 		if (!priv->fw_soc_wake_ack_irq)
 			register_soc_wake_notif(&priv->pdev->dev);
 
-		icnss_get_smp2p_info(priv, ICNSS_SMP2P_OUT_POWER_SAVE);
 		icnss_get_smp2p_info(priv, ICNSS_SMP2P_OUT_SOC_WAKE);
 		icnss_get_smp2p_info(priv, ICNSS_SMP2P_OUT_EP_POWER_SAVE);
 	}
+
+	if (priv->wpss_supported)
+		icnss_get_smp2p_info(priv, ICNSS_SMP2P_OUT_POWER_SAVE);
 
 	if (priv->device_id == ADRASTEA_DEVICE_ID) {
 		if (priv->bdf_download_support) {
@@ -1084,6 +1089,7 @@ static int icnss_driver_event_fw_ready_ind(struct icnss_priv *priv, void *data)
 	if (!priv)
 		return -ENODEV;
 
+	del_timer(&priv->recovery_timer);
 	set_bit(ICNSS_FW_READY, &priv->state);
 	clear_bit(ICNSS_MODE_ON, &priv->state);
 	atomic_set(&priv->soc_wake_ref_count, 0);
@@ -1093,8 +1099,20 @@ static int icnss_driver_event_fw_ready_ind(struct icnss_priv *priv, void *data)
 
 	icnss_pr_info("WLAN FW is ready: 0x%lx\n", priv->state);
 
-	if (!priv->pon_gpio_control)
+	if (!priv->pon_gpio_control) {
 		icnss_hw_power_off(priv);
+	} else {
+		/* 1. During normal boot when cold cal is not enabled,
+		 *    fw expects the power to be on at the chip.
+		 * 2. During recovery, fw expects the power to be
+		 *    on at the chip.
+		 * So, turn off only when cold cal is enabled and not in SSR
+		 */
+		if (!test_bit(ICNSS_PD_RESTART, &priv->state) &&
+		    priv->cal_done) {
+			icnss_hw_power_off(priv);
+		}
+	}
 
 	if (!priv->pdev) {
 		icnss_pr_err("Device is not ready\n");
@@ -1128,11 +1146,14 @@ static int icnss_driver_event_fw_init_done(struct icnss_priv *priv, void *data)
 	if (icnss_wlfw_qdss_dnld_send_sync(priv))
 		icnss_pr_info("Failed to download qdss configuration file");
 
-	if (test_bit(ICNSS_COLD_BOOT_CAL, &priv->state))
+	if (test_bit(ICNSS_COLD_BOOT_CAL, &priv->state)) {
+		mod_timer(&priv->recovery_timer,
+			  jiffies + msecs_to_jiffies(ICNSS_CAL_TIMEOUT));
 		ret = wlfw_wlan_mode_send_sync_msg(priv,
 			(enum wlfw_driver_mode_enum_v01)ICNSS_CALIBRATION);
-	else
+	} else {
 		icnss_driver_event_fw_ready_ind(priv, NULL);
+	}
 
 	return ret;
 }
@@ -1518,12 +1539,14 @@ static int icnss_driver_event_pd_service_down(struct icnss_priv *priv,
 
 	if (priv->device_id == WCN6750_DEVICE_ID) {
 		icnss_send_smp2p(priv, ICNSS_RESET_MSG,
-				 ICNSS_SMP2P_OUT_POWER_SAVE);
-		icnss_send_smp2p(priv, ICNSS_RESET_MSG,
 				 ICNSS_SMP2P_OUT_SOC_WAKE);
 		icnss_send_smp2p(priv, ICNSS_RESET_MSG,
 				 ICNSS_SMP2P_OUT_EP_POWER_SAVE);
 	}
+
+	if (priv->wpss_supported)
+		icnss_send_smp2p(priv, ICNSS_RESET_MSG,
+				 ICNSS_SMP2P_OUT_POWER_SAVE);
 
 	icnss_send_hang_event_data(priv);
 
@@ -2048,6 +2071,10 @@ static int icnss_wpss_notifier_nb(struct notifier_block *nb,
 	}
 	icnss_driver_event_post(priv, ICNSS_DRIVER_EVENT_PD_SERVICE_DOWN,
 				ICNSS_EVENT_SYNC, event_data);
+
+	if (notif->crashed)
+		mod_timer(&priv->recovery_timer,
+			  jiffies + msecs_to_jiffies(ICNSS_RECOVERY_TIMEOUT));
 out:
 	icnss_pr_vdbg("Exit %s,state: 0x%lx\n", __func__, priv->state);
 	return NOTIFY_OK;
@@ -2125,6 +2152,10 @@ static int icnss_modem_notifier_nb(struct notifier_block *nb,
 	}
 	icnss_driver_event_post(priv, ICNSS_DRIVER_EVENT_PD_SERVICE_DOWN,
 				ICNSS_EVENT_SYNC, event_data);
+
+	if (notif->crashed)
+		mod_timer(&priv->recovery_timer,
+			  jiffies + msecs_to_jiffies(ICNSS_RECOVERY_TIMEOUT));
 out:
 	icnss_pr_vdbg("Exit %s,state: 0x%lx\n", __func__, priv->state);
 	return NOTIFY_OK;
@@ -2281,6 +2312,11 @@ static void icnss_pdr_notifier_cb(int state, char *service_path, void *priv_cb)
 		clear_bit(ICNSS_HOST_TRIGGERED_PDR, &priv->state);
 		icnss_driver_event_post(priv, ICNSS_DRIVER_EVENT_PD_SERVICE_DOWN,
 					ICNSS_EVENT_SYNC, event_data);
+
+		if (event_data->crashed)
+			mod_timer(&priv->recovery_timer,
+				  jiffies +
+				  msecs_to_jiffies(ICNSS_RECOVERY_TIMEOUT));
 		break;
 	case SERVREG_SERVICE_STATE_UP:
 		clear_bit(ICNSS_FW_DOWN, &priv->state);
@@ -2554,6 +2590,14 @@ static int icnss_tcdev_set_cur_state(struct thermal_cooling_device *tcdev,
 
 	icnss_pr_vdbg("Cooling device set current state: %ld,for cdev id %d",
 		      thermal_state, icnss_tcdev->tcdev_id);
+
+	/* If wlan is not on, do not report therm state */
+	if (penv->pon_gpio_control) {
+		if ((penv->pon_pinctrl_owners &
+		    BIT(ICNSS_PINCTRL_OWNER_WLAN)) == 0) {
+			return 0;
+		}
+	}
 
 	mutex_lock(&penv->tcdev_lock);
 	ret = penv->ops->set_therm_cdev_state(dev, thermal_state,
@@ -3432,7 +3476,7 @@ int icnss_trigger_recovery(struct device *dev)
 		goto out;
 	}
 
-	if (priv->device_id == WCN6750_DEVICE_ID) {
+	if (priv->wpss_supported) {
 		icnss_pr_vdbg("Initiate Root PD restart");
 		ret = icnss_send_smp2p(priv, ICNSS_TRIGGER_SSR,
 				       ICNSS_SMP2P_OUT_POWER_SAVE);
@@ -4303,6 +4347,7 @@ static int icnss_probe(struct platform_device *pdev)
 				  "qcom,pon-gpio-control")) {
 		priv->pon_gpio_control = true;
 	}
+
 	spin_lock_init(&priv->event_lock);
 	spin_lock_init(&priv->on_off_lock);
 	spin_lock_init(&priv->soc_wake_msg_lock);
@@ -4359,8 +4404,7 @@ static int icnss_probe(struct platform_device *pdev)
 		init_completion(&priv->smp2p_soc_wake_wait);
 		icnss_runtime_pm_init(priv);
 		icnss_aop_mbox_init(priv);
-		if (!priv->pon_gpio_control)
-			set_bit(ICNSS_COLD_BOOT_CAL, &priv->state);
+		set_bit(ICNSS_COLD_BOOT_CAL, &priv->state);
 		priv->bdf_download_support = true;
 		register_trace_android_vh_rproc_recovery_set(rproc_restart_level_notifier, NULL);
 	}
@@ -4375,12 +4419,15 @@ static int icnss_probe(struct platform_device *pdev)
 		INIT_WORK(&wpss_loader, icnss_wpss_load);
 	}
 
+	timer_setup(&priv->recovery_timer,
+		    icnss_recovery_timeout_hdlr, 0);
+
 	INIT_LIST_HEAD(&priv->icnss_tcdev_list);
 
 	if (priv->pon_gpio_control) {
 		ret = icnss_get_pinctrl(priv);
 		if (ret < 0) {
-			icnss_pr_err("Fail to get pmic pinctrl config from dt\n");
+			icnss_pr_err("Fail to get pinctrl config from dt\n");
 			goto out_unregister_fw_service;
 		}
 	}
@@ -4420,6 +4467,8 @@ static int icnss_remove(struct platform_device *pdev)
 	struct icnss_priv *priv = dev_get_drvdata(&pdev->dev);
 
 	icnss_pr_info("Removing driver: state: 0x%lx\n", priv->state);
+
+	del_timer(&priv->recovery_timer);
 
 	device_init_wakeup(&priv->pdev->dev, false);
 
@@ -4472,6 +4521,14 @@ static int icnss_remove(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, NULL);
 
 	return 0;
+}
+
+void icnss_recovery_timeout_hdlr(struct timer_list *t)
+{
+	struct icnss_priv *priv = from_timer(priv, t, recovery_timer);
+
+	icnss_pr_err("Timeout waiting for FW Ready 0x%lx\n", priv->state);
+	ICNSS_ASSERT(0);
 }
 
 #ifdef CONFIG_PM_SLEEP
