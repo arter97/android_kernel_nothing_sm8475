@@ -3772,7 +3772,7 @@ static void ieee80211_rx_mgmt_assoc_resp(struct ieee80211_sub_if_data *sdata,
 				resp.uapsd_queues |= ieee80211_ac_to_qos_mask[ac];
 	}
 
-	resp.bss = cbss;
+	resp.links[0].bss = cbss;
 	resp.buf = (u8 *)mgmt;
 	resp.len = len;
 	resp.req_ies = ifmgd->assoc_req_ies;
