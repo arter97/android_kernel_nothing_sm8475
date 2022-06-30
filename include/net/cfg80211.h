@@ -28,6 +28,7 @@
 #define CFG80211_SA_QUERY_OFFLOAD_SUPPORT 1
 #define CFG80211_11BE_BASIC 1
 #define CFG80211_SINGLE_NETDEV_MULTI_LINK_SUPPORT 1
+#define CFG80211_TX_CONTROL_PORT_LINK_SUPPORT 1
 
 /**
  * DOC: Introduction
@@ -4628,7 +4629,7 @@ struct cfg80211_ops {
 				   struct net_device *dev,
 				   const u8 *buf, size_t len,
 				   const u8 *dest, const __be16 proto,
-				   const bool noencrypt,
+				   const bool noencrypt, int link_id,
 				   u64 *cookie);
 
 	int	(*get_ftm_responder_stats)(struct wiphy *wiphy,
