@@ -205,7 +205,7 @@ static inline unsigned int cpumask_local_spread(unsigned int i, int node)
 	return 0;
 }
 
-static inline int cpumask_any_and_distribute(const struct cpumask *src1p,
+static inline unsigned int cpumask_any_and_distribute(const struct cpumask *src1p,
 					     const struct cpumask *src2p) {
 	return cpumask_first_and(src1p, src2p);
 }
@@ -282,10 +282,10 @@ static inline unsigned int cpumask_next_zero(int n, const struct cpumask *srcp)
 	return find_next_zero_bit(cpumask_bits(srcp), nr_cpumask_bits, n+1);
 }
 
-int __pure cpumask_next_and(int n, const struct cpumask *, const struct cpumask *);
-int __pure cpumask_any_but(const struct cpumask *mask, unsigned int cpu);
+unsigned int __pure cpumask_next_and(int n, const struct cpumask *, const struct cpumask *);
+unsigned int __pure cpumask_any_but(const struct cpumask *mask, unsigned int cpu);
 unsigned int cpumask_local_spread(unsigned int i, int node);
-int cpumask_any_and_distribute(const struct cpumask *src1p,
+unsigned int cpumask_any_and_distribute(const struct cpumask *src1p,
 			       const struct cpumask *src2p);
 
 /**
@@ -312,7 +312,7 @@ int cpumask_any_and_distribute(const struct cpumask *src1p,
 		(cpu) = cpumask_next_zero((cpu), (mask)),	\
 		(cpu) < nr_cpu_ids;)
 
-extern int cpumask_next_wrap(int n, const struct cpumask *mask, int start, bool wrap);
+unsigned int cpumask_next_wrap(int n, const struct cpumask *mask, int start, bool wrap);
 
 /**
  * for_each_cpu_wrap - iterate over every cpu in a mask, starting at a specified location
