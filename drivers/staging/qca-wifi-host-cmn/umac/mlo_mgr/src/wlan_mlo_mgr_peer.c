@@ -135,6 +135,9 @@ wlan_mlo_peer_is_disconnect_progress(struct wlan_mlo_peer_context *ml_peer)
 {
 	QDF_STATUS status;
 
+	if (!ml_peer)
+		return QDF_STATUS_E_FAILURE;
+
 	mlo_peer_lock_acquire(ml_peer);
 
 	if (ml_peer->mlpeer_state == ML_PEER_DISCONN_INITIATED)
@@ -150,6 +153,9 @@ wlan_mlo_peer_is_disconnect_progress(struct wlan_mlo_peer_context *ml_peer)
 QDF_STATUS wlan_mlo_peer_is_assoc_done(struct wlan_mlo_peer_context *ml_peer)
 {
 	QDF_STATUS status;
+
+	if (!ml_peer)
+		return QDF_STATUS_E_FAILURE;
 
 	mlo_peer_lock_acquire(ml_peer);
 
@@ -168,6 +174,9 @@ struct wlan_objmgr_peer *wlan_mlo_peer_get_assoc_peer(
 {
 	struct wlan_mlo_link_peer_entry *peer_entry;
 	struct wlan_objmgr_peer *assoc_peer = NULL;
+
+	if (!ml_peer)
+		return NULL;
 
 	mlo_peer_lock_acquire(ml_peer);
 
@@ -225,6 +234,9 @@ void wlan_mlo_partner_peer_assoc_post(struct wlan_objmgr_peer *assoc_peer)
 	uint16_t i;
 
 	ml_peer = assoc_peer->mlo_peer_ctx;
+	if (!ml_peer)
+		return;
+
 	mlo_peer_lock_acquire(ml_peer);
 
 	if (ml_peer->mlpeer_state != ML_PEER_CREATED) {
@@ -272,6 +284,9 @@ wlan_mlo_peer_deauth_init(struct wlan_mlo_peer_context *ml_peer)
 	struct wlan_objmgr_peer *link_peers[MAX_MLO_LINK_PEERS];
 	struct wlan_mlo_link_peer_entry *peer_entry;
 	uint16_t i;
+
+	if (!ml_peer)
+		return;
 
 	mlo_peer_lock_acquire(ml_peer);
 
@@ -326,6 +341,9 @@ wlan_mlo_partner_peer_create_failed_notify(
 	struct wlan_objmgr_peer *link_peers[MAX_MLO_LINK_PEERS];
 	struct wlan_mlo_link_peer_entry *peer_entry;
 	uint16_t i;
+
+	if (!ml_peer)
+		return;
 
 	mlo_peer_lock_acquire(ml_peer);
 
@@ -439,6 +457,7 @@ static void mlo_reset_link_peer(
 {
 	mlo_peer_lock_acquire(ml_peer);
 	link_peer->mlo_peer_ctx = NULL;
+	wlan_peer_clear_mlo(link_peer);
 	mlo_peer_lock_release(ml_peer);
 }
 
@@ -463,6 +482,10 @@ void mlo_peer_cleanup(struct wlan_mlo_peer_context *ml_peer)
 {
 	struct wlan_mlo_dev_context *ml_dev;
 
+	if (!ml_peer) {
+		mlo_err("ML PEER is NULL");
+		return;
+	}
 	ml_dev = ml_peer->ml_dev;
 	if (!ml_dev) {
 		mlo_err("ML DEV is NULL");
@@ -881,6 +904,9 @@ QDF_STATUS wlan_mlo_link_peer_attach(struct wlan_mlo_peer_context *ml_peer,
 	struct wlan_objmgr_peer *assoc_peer;
 	struct wlan_objmgr_vdev *vdev = NULL;
 
+	if (!ml_peer)
+		return QDF_STATUS_E_FAILURE;
+
 	vdev = wlan_peer_get_vdev(peer);
 	if (!vdev)
 		return QDF_STATUS_E_FAILURE;
@@ -930,6 +956,9 @@ qdf_nbuf_t mlo_peer_get_link_peer_assoc_req_buf(
 {
 	struct wlan_objmgr_peer *peer = NULL;
 	qdf_nbuf_t assocbuf = NULL;
+
+	if (!ml_peer)
+		return NULL;
 
 	peer = wlan_mlo_peer_get_assoc_peer(ml_peer);
 	if (!peer)
