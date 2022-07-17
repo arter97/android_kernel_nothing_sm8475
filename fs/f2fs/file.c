@@ -1312,7 +1312,7 @@ static int __clone_blkaddrs(struct inode *src_inode, struct inode *dst_inode,
 
 			f2fs_wait_on_page_writeback(pdst, DATA, true, true);
 
-			f2fs_copy_page(psrc, pdst);
+			memcpy_page(pdst, 0, psrc, 0, PAGE_SIZE);
 			set_page_dirty(pdst);
 			set_page_private_gcing(pdst);
 			f2fs_put_page(pdst, 1);
