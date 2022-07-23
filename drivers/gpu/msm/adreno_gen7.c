@@ -33,6 +33,7 @@ static const u32 gen7_pwrup_reglist[] = {
 	GEN7_UCHE_MODE_CNTL,
 	GEN7_RB_NC_MODE_CNTL,
 	GEN7_RB_CMP_DBG_ECO_CNTL,
+	GEN7_SP_NC_MODE_CNTL,
 	GEN7_GRAS_NC_MODE_CNTL,
 	GEN7_RB_CONTEXT_SWITCH_GMEM_SAVE_RESTORE,
 	GEN7_UCHE_GBIF_GX_CONFIG,
@@ -42,7 +43,6 @@ static const u32 gen7_pwrup_reglist[] = {
 /* IFPC only static powerup restore list */
 static const u32 gen7_ifpc_pwrup_reglist[] = {
 	GEN7_TPL1_NC_MODE_CNTL,
-	GEN7_SP_NC_MODE_CNTL,
 	GEN7_CP_DBG_ECO_CNTL,
 	GEN7_CP_PROTECT_CNTL,
 	GEN7_CP_PROTECT_REG,
@@ -248,6 +248,7 @@ static void gen7_protect_init(struct adreno_device *adreno_dev)
 
 #define RBBM_CLOCK_CNTL_ON 0x8aa8aa82
 #define GMU_AO_CGC_MODE_CNTL 0x00020000
+#define GEN7_6_0_GMU_AO_CGC_MODE_CNTL 0x00020222
 #define GMU_AO_CGC_DELAY_CNTL 0x00010111
 #define GMU_AO_CGC_HYST_CNTL 0x00005555
 
@@ -255,14 +256,17 @@ static void gen7_hwcg_set(struct adreno_device *adreno_dev, bool on)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	const struct adreno_gen7_core *gen7_core = to_gen7_core(adreno_dev);
-	unsigned int value;
+	unsigned int value, cgc_mode_cntl;
 	int i;
 
 	if (!adreno_dev->hwcg_enabled)
 		on = false;
 
+	cgc_mode_cntl = adreno_is_gen7_6_0(adreno_dev) ?
+			GEN7_6_0_GMU_AO_CGC_MODE_CNTL :
+			GMU_AO_CGC_MODE_CNTL;
 	gmu_core_regwrite(device, GEN7_GPU_GMU_AO_GMU_CGC_MODE_CNTL,
-			on ? GMU_AO_CGC_MODE_CNTL : 0);
+			on ? cgc_mode_cntl : 0);
 	gmu_core_regwrite(device, GEN7_GPU_GMU_AO_GMU_CGC_DELAY_CNTL,
 			on ? GMU_AO_CGC_DELAY_CNTL : 0);
 	gmu_core_regwrite(device, GEN7_GPU_GMU_AO_GMU_CGC_HYST_CNTL,
@@ -429,12 +433,16 @@ int gen7_start(struct adreno_device *adreno_dev)
 	kgsl_regwrite(device, GEN7_UCHE_WRITE_THRU_BASE_LO, 0xfffff000);
 	kgsl_regwrite(device, GEN7_UCHE_WRITE_THRU_BASE_HI, 0x0001ffff);
 
-	if (adreno_dev->gpucore->gmem_base) {
+	/*
+	 * Some gen7 targets don't use a programmed UCHE GMEM base address,
+	 * so skip programming the register for such targets.
+	 */
+	if (adreno_dev->uche_gmem_base) {
 		kgsl_regwrite(device, GEN7_UCHE_GMEM_RANGE_MIN_LO,
-				adreno_dev->gpucore->gmem_base);
+				adreno_dev->uche_gmem_base);
 		kgsl_regwrite(device, GEN7_UCHE_GMEM_RANGE_MIN_HI, 0x0);
 		kgsl_regwrite(device, GEN7_UCHE_GMEM_RANGE_MAX_LO,
-				adreno_dev->gpucore->gmem_base +
+				adreno_dev->uche_gmem_base +
 				adreno_dev->gpucore->gmem_size - 1);
 		kgsl_regwrite(device, GEN7_UCHE_GMEM_RANGE_MAX_HI, 0x0);
 	}
@@ -1159,6 +1167,7 @@ int gen7_probe_common(struct platform_device *pdev,
 	const struct adreno_gpu_core *gpucore)
 {
 	const struct adreno_gpudev *gpudev = gpucore->gpudev;
+	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 
 	adreno_dev->gpucore = gpucore;
 	adreno_dev->chipid = chipid;
@@ -1171,6 +1180,8 @@ int gen7_probe_common(struct platform_device *pdev,
 	adreno_dev->preempt.preempt_level = 1;
 	adreno_dev->preempt.skipsaverestore = true;
 	adreno_dev->preempt.usesgmem = true;
+
+	device->pwrscale.avoid_ddr_stall = true;
 
 	return adreno_device_probe(pdev, adreno_dev);
 }

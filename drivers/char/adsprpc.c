@@ -60,6 +60,8 @@
 #include <linux/dma-iommu.h>
 #include <asm/arch_timer.h>
 
+#include <trace/events/rproc_qcom.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/fastrpc.h>
 
@@ -2130,7 +2132,11 @@ static int context_alloc(struct fastrpc_file *fl, uint32_t kernel,
 		if (err)
 			goto bail;
 	}
-
+	VERIFY(err, VALID_FASTRPC_CID(cid));
+	if (err) {
+		err = -ECHRNG;
+		goto bail;
+	}
 	chan = &me->channel[cid];
 
 	spin_lock_irqsave(&chan->ctxlock, irq_flags);
@@ -7030,6 +7036,8 @@ static int fastrpc_restart_notifier_cb(struct notifier_block *nb,
 	cid = ctx - &me->channel[0];
 	switch (code) {
 	case QCOM_SSR_BEFORE_SHUTDOWN:
+		trace_rproc_qcom_event(gcinfo[cid].subsys,
+			"QCOM_SSR_BEFORE_SHUTDOWN", "fastrpc_restart_notifier-enter");
 		pr_info("adsprpc: %s: %s subsystem is restarting\n",
 			__func__, gcinfo[cid].subsys);
 		mutex_lock(&me->channel[cid].smd_mutex);
@@ -7040,6 +7048,8 @@ static int fastrpc_restart_notifier_cb(struct notifier_block *nb,
 			me->staticpd_flags = 0;
 		break;
 	case QCOM_SSR_AFTER_SHUTDOWN:
+		trace_rproc_qcom_event(gcinfo[cid].subsys,
+			"QCOM_SSR_AFTER_SHUTDOWN", "fastrpc_restart_notifier-enter");
 		if (cid == RH_CID) {
 			if (me->ramdump_handle)
 				me->channel[RH_CID].ramdumpenabled = 1;
@@ -7048,6 +7058,8 @@ static int fastrpc_restart_notifier_cb(struct notifier_block *nb,
 			__func__, gcinfo[cid].subsys);
 		break;
 	case QCOM_SSR_BEFORE_POWERUP:
+		trace_rproc_qcom_event(gcinfo[cid].subsys,
+			"QCOM_SSR_BEFORE_POWERUP", "fastrpc_restart_notifier-enter");
 		if (cid == RH_CID && dump_enabled()) {
 			if (me->ramdump_handle && me->channel[RH_CID]
 					.ramdumpenabled) {
@@ -7066,6 +7078,8 @@ static int fastrpc_restart_notifier_cb(struct notifier_block *nb,
 		fastrpc_notify_drivers(me, cid);
 		break;
 	case QCOM_SSR_AFTER_POWERUP:
+		trace_rproc_qcom_event(gcinfo[cid].subsys,
+			"QCOM_SSR_AFTER_POWERUP", "fastrpc_restart_notifier-enter");
 		pr_info("adsprpc: %s: %s subsystem is up\n",
 			__func__, gcinfo[cid].subsys);
 		ctx->issubsystemup = 1;
@@ -7073,6 +7087,8 @@ static int fastrpc_restart_notifier_cb(struct notifier_block *nb,
 	default:
 		break;
 	}
+
+	trace_rproc_qcom_event(dev_name(me->dev), "fastrpc_restart_notifier", "exit");
 	return NOTIFY_DONE;
 }
 
@@ -7621,7 +7637,9 @@ long fastrpc_driver_invoke(struct fastrpc_device *dev, unsigned int invoke_num,
 				mutex_unlock(&fl->internal_map_mutex);
 				break;
 			}
+			mutex_lock(&fl->map_mutex);
 			fastrpc_mmap_free(map, 0);
+			mutex_unlock(&fl->map_mutex);
 		}
 		mutex_unlock(&fl->internal_map_mutex);
 		break;

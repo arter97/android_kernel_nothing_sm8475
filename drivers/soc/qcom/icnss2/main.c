@@ -86,7 +86,7 @@ module_param(qmi_timeout, ulong, 0600);
 #endif
 
 #define ICNSS_RECOVERY_TIMEOUT		60000
-#define ICNSS_CAL_TIMEOUT		15000
+#define ICNSS_CAL_TIMEOUT		40000
 
 static struct icnss_priv *penv;
 static struct work_struct wpss_loader;
@@ -782,6 +782,16 @@ retry:
 	icnss_pr_dbg("smem state, Entry: %s", icnss_smp2p_str[smp2p_entry]);
 }
 
+static inline
+void icnss_set_wlan_en_delay(struct icnss_priv *priv)
+{
+	if (priv->wlan_en_delay_ms_user > WLAN_EN_DELAY) {
+		priv->wlan_en_delay_ms = priv->wlan_en_delay_ms_user;
+	} else {
+		priv->wlan_en_delay_ms = WLAN_EN_DELAY;
+	}
+}
+
 static int icnss_driver_event_server_arrive(struct icnss_priv *priv,
 						 void *data)
 {
@@ -823,7 +833,7 @@ static int icnss_driver_event_server_arrive(struct icnss_priv *priv,
 		if (!icnss_get_temperature(priv, &temp)) {
 			icnss_pr_dbg("Temperature: %d\n", temp);
 			if (temp < WLAN_EN_TEMP_THRESHOLD)
-				priv->wlan_en_delay_ms = WLAN_EN_DELAY;
+				icnss_set_wlan_en_delay(priv);
 		}
 
 		ret = wlfw_host_cap_send_sync(priv);
@@ -2310,13 +2320,13 @@ static void icnss_pdr_notifier_cb(int state, char *service_path, void *priv_cb)
 			}
 		}
 		clear_bit(ICNSS_HOST_TRIGGERED_PDR, &priv->state);
-		icnss_driver_event_post(priv, ICNSS_DRIVER_EVENT_PD_SERVICE_DOWN,
-					ICNSS_EVENT_SYNC, event_data);
-
 		if (event_data->crashed)
 			mod_timer(&priv->recovery_timer,
 				  jiffies +
 				  msecs_to_jiffies(ICNSS_RECOVERY_TIMEOUT));
+
+		icnss_driver_event_post(priv, ICNSS_DRIVER_EVENT_PD_SERVICE_DOWN,
+					ICNSS_EVENT_SYNC, event_data);
 		break;
 	case SERVREG_SERVICE_STATE_UP:
 		clear_bit(ICNSS_FW_DOWN, &priv->state);
@@ -3764,7 +3774,7 @@ static ssize_t wlan_en_delay_store(struct device *dev,
 	}
 
 	icnss_pr_dbg("WLAN_EN delay: %dms", wlan_en_delay);
-	priv->wlan_en_delay_ms = wlan_en_delay;
+	priv->wlan_en_delay_ms_user = wlan_en_delay;
 
 	return count;
 }
