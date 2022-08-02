@@ -72,6 +72,7 @@
 #define FASTRPC_ENOSUCH 39
 #define DEBUGFS_SIZE 3072
 #define PID_SIZE 10
+#define BUS_HANDLE_SIZE 12
 
 #define AUDIO_PDR_ADSP_DTSI_PROPERTY_NAME        "qcom,fastrpc-adsp-audio-pdr"
 #define AUDIO_PDR_SERVICE_LOCATION_CLIENT_NAME   "audio_pdr_adsprpc"
@@ -7712,17 +7713,22 @@ static void fastrpc_dev_release(struct device *dev)
 
 static int fastrpc_device_create(struct fastrpc_file *fl)
 {
-	int err = 0;
+	int err = 0, serr = 0;
 	struct fastrpc_device *frpc_dev;
 	struct fastrpc_apps *me = &gfa;
 	unsigned long irq_flags = 0;
+	char strhandle[BUS_HANDLE_SIZE];
 
 	frpc_dev = kzalloc(sizeof(*frpc_dev), GFP_KERNEL);
 	if (!frpc_dev) {
 		err = -ENOMEM;
 		goto bail;
 	}
-
+	VERIFY(err, VALID_FASTRPC_CID(fl->cid));
+	if (err) {
+		err = -ECHRNG;
+		goto bail;
+	}
 	frpc_dev->dev.parent = &fastrpc_bus;
 	frpc_dev->dev.bus = &fastrpc_bus_type;
 
@@ -7730,7 +7736,9 @@ static int fastrpc_device_create(struct fastrpc_file *fl)
 			dev_name(frpc_dev->dev.parent), fl->tgid, fl->cid);
 	frpc_dev->dev.release = fastrpc_dev_release;
 	frpc_dev->fl = fl;
-	frpc_dev->handle = fl->tgid;
+	snprintf(strhandle, BUS_HANDLE_SIZE, "%d%d", fl->tgid, fl->cid);
+	//serr = sscanf(strhandle, "%lld", &frpc_dev->handle);
+	serr = kstrtou64(strhandle, 0, &frpc_dev->handle);
 
 	err = device_register(&frpc_dev->dev);
 	if (err) {
