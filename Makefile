@@ -381,7 +381,13 @@ include scripts/subarch.include
 # Alternatively CROSS_COMPILE can be set in the environment.
 # Default value for CROSS_COMPILE is not to prefix executables
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
-ARCH		?= $(SUBARCH)
+override ARCH		:= arm64
+override CROSS_COMPILE	:= /home/arter97/arm64-gcc/bin/aarch64-elf-
+override CROSS_COMPILE_ARM32	:= /home/arter97/arm32-gcc/bin/arm-eabi-
+override LLVM := 1
+override LLVM_IAS := 1
+override CLANG_TRIPLE := aarch64-linux-gnu
+override LLVM_PATH := /home/arter97/android/clang/clang-r416183b/bin/
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -422,8 +428,8 @@ HOST_LFS_LDFLAGS := $(shell getconf LFS_LDFLAGS 2>/dev/null)
 HOST_LFS_LIBS := $(shell getconf LFS_LIBS 2>/dev/null)
 
 ifneq ($(LLVM),)
-HOSTCC	= clang
-HOSTCXX	= clang++
+HOSTCC	= ccache $(LLVM_PATH)clang
+HOSTCXX	= ccache $(LLVM_PATH)clang++
 else
 HOSTCC	= gcc
 HOSTCXX	= g++
@@ -441,14 +447,14 @@ KBUILD_HOSTLDLIBS   := $(HOST_LFS_LIBS) $(HOSTLDLIBS)
 # Make variables (CC, etc...)
 CPP		= $(CC) -E
 ifneq ($(LLVM),)
-CC		= clang
-LD		= ld.lld
-AR		= llvm-ar
-NM		= llvm-nm
-OBJCOPY		= llvm-objcopy
-OBJDUMP		= llvm-objdump
-READELF		= llvm-readelf
-STRIP		= llvm-strip
+CC	= ccache $(LLVM_PATH)clang
+LD		= $(LLVM_PATH)ld.lld
+AR		= $(LLVM_PATH)llvm-ar
+NM		= $(LLVM_PATH)llvm-nm
+OBJCOPY		= $(LLVM_PATH)llvm-objcopy
+OBJDUMP		= $(LLVM_PATH)llvm-objdump
+READELF		= $(LLVM_PATH)llvm-readelf
+STRIP		= $(LLVM_PATH)llvm-strip
 else
 CC		= $(CROSS_COMPILE)gcc
 LD		= $(CROSS_COMPILE)ld
@@ -471,7 +477,7 @@ PYTHON		= python
 PYTHON3		= python3
 CHECK		= sparse
 BASH		= bash
-KGZIP		= gzip
+KGZIP		= pigz
 KBZIP2		= bzip2
 KLZOP		= lzop
 LZMA		= lzma
@@ -520,8 +526,6 @@ KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE :=
 KBUILD_LDFLAGS :=
 CLANG_FLAGS :=
-
-CC := scripts/basic/cc-wrapper $(CC)
 
 export ARCH SRCARCH CONFIG_SHELL BASH HOSTCC KBUILD_HOSTCFLAGS CROSS_COMPILE LD CC
 export CPP AR NM STRIP OBJCOPY OBJDUMP READELF PAHOLE RESOLVE_BTFIDS LEX YACC AWK INSTALLKERNEL
@@ -578,7 +582,7 @@ endif
 
 ifneq ($(shell $(CC) --version 2>&1 | head -n 1 | grep clang),)
 ifneq ($(CROSS_COMPILE),)
-CLANG_FLAGS	+= --target=$(notdir $(CROSS_COMPILE:%-=%))
+CLANG_FLAGS	+= --target=aarch64-linux-android-elf
 GCC_TOOLCHAIN_DIR := $(dir $(shell which $(CROSS_COMPILE)elfedit))
 CLANG_FLAGS	+= --prefix=$(GCC_TOOLCHAIN_DIR)$(notdir $(CROSS_COMPILE))
 GCC_TOOLCHAIN	:= $(realpath $(GCC_TOOLCHAIN_DIR)/..)
