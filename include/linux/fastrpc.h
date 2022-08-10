@@ -56,7 +56,7 @@ struct fastrpc_dev_unmap_dma {
 struct fastrpc_device {
 	struct hlist_node hn;
 	struct device dev;
-	int handle;
+	uint64_t handle;
 	struct fastrpc_file *fl;
 	bool dev_close;
 	unsigned int refs;
@@ -78,7 +78,7 @@ struct fastrpc_driver {
 	struct hlist_node hn;
 	struct device_driver driver;
 	struct device *device;
-	int handle;
+	uint64_t handle;
 	int create;
 	int (*probe)(struct fastrpc_device *dev);
 	int (*callback)(struct fastrpc_device *dev,
