@@ -78,7 +78,7 @@ CDEFINES += -DMULTI_IF_NAME=\"$(CHIP_NAME)\"
 endif
 
 ######### CONFIG_DRM_MSM ########
-obj-m += msm_drm.o
+obj-y += msm_drm.o
 
 msm_drm-$(CONFIG_HDCP_QSEECOM) := ../hdcp/msm_hdcp.o
 
