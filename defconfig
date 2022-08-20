@@ -5416,7 +5416,7 @@ CONFIG_STAGING=y
 # Android
 #
 CONFIG_ASHMEM=y
-CONFIG_DEBUG_KINFO=y
+# CONFIG_DEBUG_KINFO is not set
 # CONFIG_ION is not set
 # end of Android
 
