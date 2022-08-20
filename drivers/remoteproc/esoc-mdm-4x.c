@@ -155,14 +155,6 @@ static void mdm_update_gpio_configs(struct mdm_ctrl *mdm, enum gpio_update_confi
 
 static void mdm_trigger_dbg(struct mdm_ctrl *mdm)
 {
-	int ret;
-
-	if (mdm->dbg_mode && !mdm->trig_cnt) {
-		ret = coresight_cti_pulse_trig(mdm->cti, MDM_CTI_CH);
-		mdm->trig_cnt++;
-		if (ret)
-			dev_err(mdm->dev, "unable to trigger cti pulse on\n");
-	}
 }
 
 static int mdm_cmd_exe(enum esoc_cmd cmd, struct esoc_clink *esoc)
