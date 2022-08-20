@@ -53,7 +53,11 @@
 #ifdef MODULE
 #define WLAN_MODULE_NAME  module_name(THIS_MODULE)
 #else
+#ifdef MULTI_IF_NAME
+#define WLAN_MODULE_NAME  MULTI_IF_NAME
+#else
 #define WLAN_MODULE_NAME  "wlan"
+#endif
 #endif
 
 // Hack qcacld-3.0 to work properly when built-in
