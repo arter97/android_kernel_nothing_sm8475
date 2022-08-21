@@ -231,40 +231,6 @@ static bool __init obsolete_checksetup(char *line)
 unsigned long loops_per_jiffy = (1<<12);
 EXPORT_SYMBOL(loops_per_jiffy);
 
-static int __init debug_kernel(char *str)
-{
-	console_loglevel = CONSOLE_LOGLEVEL_DEBUG;
-	return 0;
-}
-
-static int __init quiet_kernel(char *str)
-{
-	console_loglevel = CONSOLE_LOGLEVEL_QUIET;
-	return 0;
-}
-
-early_param("debug", debug_kernel);
-early_param("quiet", quiet_kernel);
-
-static int __init loglevel(char *str)
-{
-	int newlevel;
-
-	/*
-	 * Only update loglevel value when a correct setting was passed,
-	 * to prevent blind crashes (when loglevel being set to 0) that
-	 * are quite hard to debug
-	 */
-	if (get_option(&str, &newlevel)) {
-		console_loglevel = newlevel;
-		return 0;
-	}
-
-	return -EINVAL;
-}
-
-early_param("loglevel", loglevel);
-
 #ifdef CONFIG_BLK_DEV_INITRD
 static void * __init get_boot_config_from_initrd(u32 *_size, u32 *_csum)
 {
