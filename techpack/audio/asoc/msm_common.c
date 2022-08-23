@@ -993,19 +993,24 @@ static int msm_lpi_logging_enable_get(struct snd_kcontrol *kcontrol,
 static int msm_vote_against_sleep_ctl_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
+	int ret = 0;
+
 	vote_against_sleep_enable = ucontrol->value.integer.value[0];
 	pr_debug("%s: vote against sleep enable: %d", __func__,
 			vote_against_sleep_enable);
 
-	audio_prm_set_vote_against_sleep((uint8_t)vote_against_sleep_enable);
+	ret = audio_prm_set_vote_against_sleep((uint8_t)vote_against_sleep_enable);
 
-	return 0;
+	pr_debug("%s: vote against sleep vote ret: %d\n", __func__, ret);
+	return ret;
 }
 
 static int msm_vote_against_sleep_ctl_get(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	ucontrol->value.integer.value[0] = vote_against_sleep_enable;
+	pr_debug("%s: vote against sleep enable: %d", __func__,
+			vote_against_sleep_enable);
 	return 0;
 }
 
