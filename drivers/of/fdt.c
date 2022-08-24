@@ -1053,9 +1053,9 @@ static const int concat_cmdline;
 #endif
 
 #ifdef CONFIG_CMDLINE
-static const char *config_cmdline = CONFIG_CMDLINE;
+static char *config_cmdline = CONFIG_CMDLINE;
 #else
-static const char *config_cmdline = "";
+static char *config_cmdline = "";
 #endif
 
 int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
@@ -1064,7 +1064,8 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 	int l = 0;
 	const char *p = NULL;
 	const void *rng_seed;
-	char *cmdline = data;
+	char *cmdline = data, *t;
+	volatile char eof[12]; // Mark this volatile so that this won't be patched during hex-edit as well
 
 	pr_debug("search \"chosen\", depth: %d, uname: %s\n", depth, uname);
 
@@ -1073,6 +1074,14 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 		return 0;
 
 	early_init_dt_check_for_initrd(node);
+
+	/* Check if CMDLINE_EOF exists */
+	strcpy((char *)eof, "CMDLINE");
+	strcat((char *)eof, "_");
+	strcat((char *)eof, "EOF");
+	t = strstr(config_cmdline, (char *)eof);
+	if (t)
+		WRITE_ONCE(*t, '\0');
 
 	/* Put CONFIG_CMDLINE in if forced or if data had nothing in it to start */
 	if (overwrite_incoming_cmdline || !cmdline[0])
