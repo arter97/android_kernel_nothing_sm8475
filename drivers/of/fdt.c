@@ -9,6 +9,7 @@
 #define pr_fmt(fmt)	"OF: fdt: " fmt
 
 #include <linux/crc32.h>
+#include <linux/ctype.h>
 #include <linux/kernel.h>
 #include <linux/initrd.h>
 #include <linux/memblock.h>
@@ -1064,7 +1065,7 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 	int l = 0;
 	const char *p = NULL;
 	const void *rng_seed;
-	char *cmdline = data, *t;
+	char *cmdline = data, *t, *mem;
 	volatile char eof[12]; // Mark this volatile so that this won't be patched during hex-edit as well
 
 	pr_debug("search \"chosen\", depth: %d, uname: %s\n", depth, uname);
@@ -1103,6 +1104,21 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 			cmdline[cmdline_len + copy_len] = '\0';
 		} else {
 			strlcpy(cmdline, p, min(l, COMMAND_LINE_SIZE));
+		}
+	}
+
+	/* Patch mem= from edk2 and disable memhp */
+	mem = strstr(cmdline, "mem=");
+	if (mem) {
+		t = mem;
+		while (*(t + 1) != '\0' && !isspace(*(t + 1)))
+			t++;
+		// t is pointing to the last character of "mem="
+		if (*t == 'B') {
+			*(t + 1) = '\0';
+			pr_info("\"%s\" is used for memhp parameter, ignoring...\n", mem);
+			t += 2;
+			memmove(mem, t, strlen(t) + 1);
 		}
 	}
 
