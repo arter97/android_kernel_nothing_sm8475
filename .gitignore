@@ -18,6 +18,7 @@
 *.c.[012]*.*
 *.dt.yaml
 *.dtb
+*.dtbo
 *.dtb.S
 *.dwo
 *.elf
@@ -66,6 +67,15 @@ modules.order
 /Module.markers
 /modules.builtin.modinfo
 /modules.nsdeps
+
+/dtb
+/*.img
+/*.zip
+/kernelzip
+
+# ramfs
+!/ramdisk/**
+!/vendor_boot/**
 
 #
 # RPM spec file (make rpm-pkg)
