@@ -2987,19 +2987,19 @@ static void dwc3_gadget_set_ssp_rate(struct usb_gadget *g,
 	spin_unlock_irqrestore(&dwc->lock, flags);
 }
 
-static int dwc3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA)
+static int dwc3_gadget_vbus_draw(struct usb_gadget *g, unsigned int __maybe_unused mA)
 {
 	struct dwc3		*dwc = gadget_to_dwc(g);
 	union power_supply_propval	val = {0};
 	int				ret;
 
 	if (dwc->usb2_phy)
-		return usb_phy_set_power(dwc->usb2_phy, mA);
+		return usb_phy_set_power(dwc->usb2_phy, 0);
 
 	if (!dwc->usb_psy)
 		return -EOPNOTSUPP;
 
-	val.intval = 1000 * mA;
+	val.intval = 0;
 	ret = power_supply_set_property(dwc->usb_psy, POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT, &val);
 
 	return ret;

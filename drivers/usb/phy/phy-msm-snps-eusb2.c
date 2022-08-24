@@ -906,7 +906,7 @@ static void msm_eusb2_phy_vbus_draw_work(struct work_struct *w)
 
 	dev_info(phy->phy.dev, "Avail curr from USB = %u\n", phy->vbus_draw);
 	/* Set max current limit in uA */
-	val.intval = 1000 * phy->vbus_draw;
+	val.intval = 0;
 	ret = power_supply_set_property(phy->usb_psy,
 			POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT, &val);
 	if (ret) {
