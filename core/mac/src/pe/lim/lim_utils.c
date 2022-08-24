@@ -1104,10 +1104,8 @@ lim_decide_ap_protection(struct mac_context *mac, tSirMacAddr peerMacAddr,
 	sta =
 		dph_lookup_hash_entry(mac, peerMacAddr, &tmpAid,
 				      &pe_session->dph.dphHashTable);
-	if (!sta) {
-		pe_err("sta is NULL");
+	if (!sta)
 		return;
-	}
 	lim_get_rf_band_new(mac, &rfBand, pe_session);
 	/* if we are in 5 GHZ band */
 	if (REG_BAND_5G == rfBand) {
@@ -8138,11 +8136,11 @@ QDF_STATUS lim_send_mlo_caps_ie(struct mac_context *mac_ctx,
 
 	status_2g = lim_send_ie(mac_ctx, vdev_id, DOT11F_EID_MLO_IE,
 				CDS_BAND_2GHZ, &mlo_caps[2],
-				mlo_cap_total_len);
+				EHT_CAP_OUI_LEN + QDF_MAC_ADDR_SIZE);
 
 	status_5g = lim_send_ie(mac_ctx, vdev_id, DOT11F_EID_MLO_IE,
 				CDS_BAND_5GHZ, &mlo_caps[2],
-				mlo_cap_total_len);
+				EHT_CAP_OUI_LEN + QDF_MAC_ADDR_SIZE);
 
 	if (QDF_IS_STATUS_SUCCESS(status_2g) &&
 	    QDF_IS_STATUS_SUCCESS(status_5g)) {

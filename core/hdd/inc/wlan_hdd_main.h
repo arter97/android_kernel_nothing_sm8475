@@ -2053,6 +2053,7 @@ struct hdd_context {
 	bool is_ol_rx_thread_suspended;
 #endif
 
+	bool hdd_wlan_suspend_in_progress;
 	bool hdd_wlan_suspended;
 	bool suspended;
 	/* flag to start pktlog after SSR/PDR if previously enabled */
@@ -5027,8 +5028,6 @@ static inline bool hdd_nbuf_dst_addr_is_self_addr(struct hdd_adapter *adapter,
 				    QDF_NBUF_DEST_MAC_OFFSET);
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)) && \
-     defined(WLAN_FEATURE_11AX)
 /**
  * hdd_cleanup_conn_info() - Cleanup connectin info
  * @adapter: Adapter upon which the command was received
@@ -5039,23 +5038,6 @@ static inline bool hdd_nbuf_dst_addr_is_self_addr(struct hdd_adapter *adapter,
  * Return: none
  */
 void hdd_cleanup_conn_info(struct hdd_adapter *adapter);
-/**
- * hdd_sta_destroy_ctx_all() - cleanup all station contexts
- * @hdd_ctx: Global HDD context
- *
- * This function destroys all the station contexts
- *
- * Return: none
- */
-void hdd_sta_destroy_ctx_all(struct hdd_context *hdd_ctx);
-#else
-static inline void hdd_cleanup_conn_info(struct hdd_adapter *adapter)
-{
-}
-static inline void hdd_sta_destroy_ctx_all(struct hdd_context *hdd_ctx)
-{
-}
-#endif
 
 #ifdef FEATURE_WLAN_RESIDENT_DRIVER
 extern char *country_code;
