@@ -1,0 +1,22 @@
+####################################
+# from generate-common-build-props
+# These properties identify this partition image.
+####################################
+ro.product.bootimage.brand=qti
+ro.product.bootimage.device=taro
+ro.product.bootimage.manufacturer=QUALCOMM
+ro.product.bootimage.model=Taro for arm64
+ro.product.bootimage.name=taro
+ro.bootimage.build.date=Tue Jun 14 00:10:55 PDT 2022
+ro.bootimage.build.date.utc=1655190655
+ro.bootimage.build.fingerprint=qti/taro/taro:12/SKQ1.220519.001/lnxbuild06140010:userdebug/test-keys
+ro.bootimage.build.id=SKQ1.220519.001
+ro.bootimage.build.tags=test-keys
+ro.bootimage.build.type=userdebug
+ro.bootimage.build.version.incremental=eng.lnxbui.20220614.001314
+ro.bootimage.build.version.release=12
+ro.bootimage.build.version.release_or_codename=12
+ro.bootimage.build.version.sdk=32
+# Auto-added by post_process_props.py
+persist.sys.usb.config=none
+# end of file
