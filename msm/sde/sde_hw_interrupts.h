@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
+ * Copyright (c) 2021-2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2016-2019, 2021, The Linux Foundation. All rights reserved.
  */
 
@@ -164,14 +165,6 @@ struct sde_hw_intr_ops {
 			struct sde_hw_intr *intr,
 			void (*cbfunc)(void *arg, int irq_idx),
 			void *arg);
-
-	/**
-	 * get_interrupt_statuses - Gets and store value from all interrupt
-	 *                          status registers that are currently fired.
-	 * @intr:	HW interrupt handle
-	 */
-	void (*get_interrupt_statuses)(
-			struct sde_hw_intr *intr);
 
 	/**
 	 * clear_interrupt_status - Clears HW interrupt status based on given
