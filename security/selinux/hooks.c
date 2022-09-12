@@ -5947,7 +5947,6 @@ static int selinux_msg_queue_alloc_security(struct kern_ipc_perm *msq)
 	struct ipc_security_struct *isec;
 	struct common_audit_data ad;
 	u32 sid = current_sid();
-	int rc;
 
 	isec = selinux_ipc(msq);
 	ipc_init_security(isec, SECCLASS_MSGQ);
@@ -5955,10 +5954,9 @@ static int selinux_msg_queue_alloc_security(struct kern_ipc_perm *msq)
 	ad.type = LSM_AUDIT_DATA_IPC;
 	ad.u.ipc_id = msq->key;
 
-	rc = avc_has_perm(&selinux_state,
-			  sid, isec->sid, SECCLASS_MSGQ,
-			  MSGQ__CREATE, &ad);
-	return rc;
+	return avc_has_perm(&selinux_state,
+			    sid, isec->sid, SECCLASS_MSGQ,
+			    MSGQ__CREATE, &ad);
 }
 
 static int selinux_msg_queue_associate(struct kern_ipc_perm *msq, int msqflg)
@@ -6086,7 +6084,6 @@ static int selinux_shm_alloc_security(struct kern_ipc_perm *shp)
 	struct ipc_security_struct *isec;
 	struct common_audit_data ad;
 	u32 sid = current_sid();
-	int rc;
 
 	isec = selinux_ipc(shp);
 	ipc_init_security(isec, SECCLASS_SHM);
@@ -6094,10 +6091,9 @@ static int selinux_shm_alloc_security(struct kern_ipc_perm *shp)
 	ad.type = LSM_AUDIT_DATA_IPC;
 	ad.u.ipc_id = shp->key;
 
-	rc = avc_has_perm(&selinux_state,
-			  sid, isec->sid, SECCLASS_SHM,
-			  SHM__CREATE, &ad);
-	return rc;
+	return avc_has_perm(&selinux_state,
+			    sid, isec->sid, SECCLASS_SHM,
+			    SHM__CREATE, &ad);
 }
 
 static int selinux_shm_associate(struct kern_ipc_perm *shp, int shmflg)
@@ -6171,7 +6167,6 @@ static int selinux_sem_alloc_security(struct kern_ipc_perm *sma)
 	struct ipc_security_struct *isec;
 	struct common_audit_data ad;
 	u32 sid = current_sid();
-	int rc;
 
 	isec = selinux_ipc(sma);
 	ipc_init_security(isec, SECCLASS_SEM);
@@ -6179,10 +6174,9 @@ static int selinux_sem_alloc_security(struct kern_ipc_perm *sma)
 	ad.type = LSM_AUDIT_DATA_IPC;
 	ad.u.ipc_id = sma->key;
 
-	rc = avc_has_perm(&selinux_state,
-			  sid, isec->sid, SECCLASS_SEM,
-			  SEM__CREATE, &ad);
-	return rc;
+	return avc_has_perm(&selinux_state,
+			    sid, isec->sid, SECCLASS_SEM,
+			    SEM__CREATE, &ad);
 }
 
 static int selinux_sem_associate(struct kern_ipc_perm *sma, int semflg)
