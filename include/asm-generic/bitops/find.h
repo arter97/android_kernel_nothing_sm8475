@@ -11,6 +11,10 @@ extern unsigned long _find_first_and_bit(const unsigned long *addr1,
 extern unsigned long _find_first_zero_bit(const unsigned long *addr, unsigned long size);
 extern unsigned long _find_last_bit(const unsigned long *addr, unsigned long size);
 
+#ifdef __BIG_ENDIAN
+unsigned long _find_first_zero_bit_le(const unsigned long *addr, unsigned long size);
+#endif
+
 #ifndef find_next_bit
 /**
  * find_next_bit - find the next set bit in a memory region
@@ -258,6 +262,20 @@ unsigned long find_next_zero_bit_le(const void *addr, unsigned
 }
 #endif
 
+#ifndef find_first_zero_bit_le
+static inline
+unsigned long find_first_zero_bit_le(const void *addr, unsigned long size)
+{
+	if (small_const_nbits(size)) {
+		unsigned long val = swab(*(const unsigned long *)addr) | ~GENMASK(size - 1, 0);
+
+		return val == ~0UL ? size : ffz(val);
+	}
+
+	return _find_first_zero_bit_le(addr, size);
+}
+#endif
+
 #ifndef find_next_bit_le
 static inline
 unsigned long find_next_bit_le(const void *addr, unsigned
@@ -275,11 +293,6 @@ unsigned long find_next_bit_le(const void *addr, unsigned
 
 	return _find_next_bit(addr, NULL, size, offset, 0UL, 1);
 }
-#endif
-
-#ifndef find_first_zero_bit_le
-#define find_first_zero_bit_le(addr, size) \
-	find_next_zero_bit_le((addr), (size), 0)
 #endif
 
 #else
