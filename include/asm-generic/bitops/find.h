@@ -9,6 +9,11 @@ unsigned long _find_next_and_bit(const unsigned long *addr1, const unsigned long
 unsigned long _find_next_zero_bit(const unsigned long *addr, unsigned long nbits,
 					 unsigned long start);
 extern unsigned long _find_first_bit(const unsigned long *addr, unsigned long size);
+unsigned long __find_nth_bit(const unsigned long *addr, unsigned long size, unsigned long n);
+unsigned long __find_nth_and_bit(const unsigned long *addr1, const unsigned long *addr2,
+				unsigned long size, unsigned long n);
+unsigned long __find_nth_andnot_bit(const unsigned long *addr1, const unsigned long *addr2,
+					unsigned long size, unsigned long n);
 extern unsigned long _find_first_and_bit(const unsigned long *addr1,
 					 const unsigned long *addr2, unsigned long size);
 extern unsigned long _find_first_zero_bit(const unsigned long *addr, unsigned long size);
@@ -131,6 +136,89 @@ unsigned long find_first_bit(const unsigned long *addr, unsigned long size)
 	return _find_first_bit(addr, size);
 }
 #endif
+
+static inline unsigned long fns(unsigned long word, unsigned int n);
+
+/**
+ * find_nth_bit - find N'th set bit in a memory region
+ * @addr: The address to start the search at
+ * @size: The maximum number of bits to search
+ * @n: The number of set bit, which position is needed, counting from 0
+ *
+ * The following is semantically equivalent:
+ *	 idx = find_nth_bit(addr, size, 0);
+ *	 idx = find_first_bit(addr, size);
+ *
+ * Returns the bit number of the N'th set bit.
+ * If no such, returns @size.
+ */
+static inline
+unsigned long find_nth_bit(const unsigned long *addr, unsigned long size, unsigned long n)
+{
+	if (n >= size)
+		return size;
+
+	if (small_const_nbits(size)) {
+		unsigned long val =  *addr & GENMASK(size - 1, 0);
+
+		return val ? fns(val, n) : size;
+	}
+
+	return __find_nth_bit(addr, size, n);
+}
+
+/**
+ * find_nth_and_bit - find N'th set bit in 2 memory regions
+ * @addr1: The 1st address to start the search at
+ * @addr2: The 2nd address to start the search at
+ * @size: The maximum number of bits to search
+ * @n: The number of set bit, which position is needed, counting from 0
+ *
+ * Returns the bit number of the N'th set bit.
+ * If no such, returns @size.
+ */
+static inline
+unsigned long find_nth_and_bit(const unsigned long *addr1, const unsigned long *addr2,
+				unsigned long size, unsigned long n)
+{
+	if (n >= size)
+		return size;
+
+	if (small_const_nbits(size)) {
+		unsigned long val =  *addr1 & *addr2 & GENMASK(size - 1, 0);
+
+		return val ? fns(val, n) : size;
+	}
+
+	return __find_nth_and_bit(addr1, addr2, size, n);
+}
+
+/**
+ * find_nth_andnot_bit - find N'th set bit in 2 memory regions,
+ *			 flipping bits in 2nd region
+ * @addr1: The 1st address to start the search at
+ * @addr2: The 2nd address to start the search at
+ * @size: The maximum number of bits to search
+ * @n: The number of set bit, which position is needed, counting from 0
+ *
+ * Returns the bit number of the N'th set bit.
+ * If no such, returns @size.
+ */
+static inline
+unsigned long find_nth_andnot_bit(const unsigned long *addr1, const unsigned long *addr2,
+				unsigned long size, unsigned long n)
+{
+	if (n >= size)
+		return size;
+
+	if (small_const_nbits(size)) {
+		unsigned long val =  *addr1 & (~*addr2) & GENMASK(size - 1, 0);
+
+		return val ? fns(val, n) : size;
+	}
+
+	return __find_nth_andnot_bit(addr1, addr2, size, n);
+}
 
 #ifndef find_first_and_bit
 /**
