@@ -2125,13 +2125,13 @@ static const struct adreno_gen7_core adreno_gpu_core_gen7_3_0 = {
 		.chipid = 0x07010000,
 		.features = ADRENO_APRIV | ADRENO_IOCOHERENT |
 				ADRENO_CONTENT_PROTECTION | ADRENO_IFPC |
-				ADRENO_PREEMPTION | ADRENO_BCL,
+				ADRENO_PREEMPTION | ADRENO_BCL | ADRENO_ACD,
 		.gpudev = &adreno_gen7_gmu_gpudev.base,
 		.perfcounters = &adreno_gen7_perfcounters,
 		.uche_gmem_alignment = 0,
 		.gmem_size = SZ_512K,
 		.bus_width = 32,
-		.snapshot_size = SZ_4M,
+		.snapshot_size = SZ_2M,
 	},
 	.gmu_fw_version = GMU_VERSION(4, 0, 0),
 	.sqefw_name = "a710_sqe.fw",
@@ -2153,7 +2153,8 @@ static const struct adreno_gen7_core adreno_gpu_core_gen7_6_0 = {
 				UINT_MAX, UINT_MAX, UINT_MAX, ANY_ID),
 		.compatible = "qcom,adreno-gpu-gen7-6-0",
 		.features = ADRENO_APRIV | ADRENO_IOCOHERENT |
-				ADRENO_CONTENT_PROTECTION | ADRENO_L3_VOTE,
+				ADRENO_CONTENT_PROTECTION | ADRENO_L3_VOTE |
+				ADRENO_IFPC,
 		.gpudev = &adreno_gen7_gmu_gpudev.base,
 		.perfcounters = &adreno_gen7_6_0_perfcounters,
 		.uche_gmem_alignment = SZ_16M,
