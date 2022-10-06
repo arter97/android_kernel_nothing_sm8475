@@ -13378,6 +13378,26 @@ static void hdd_sar_cfg_update(struct hdd_config *config,
 }
 #endif
 
+#ifdef FEATURE_RUNTIME_PM
+/**
+ * hdd_init_cpu_cxpc_threshold_cfg() - Initialize cpu cxpc threshold cfg
+ * @config: Pointer to HDD config
+ * @psoc: psoc pointer
+ *
+ * Return: None
+ */
+static void hdd_init_cpu_cxpc_threshold_cfg(struct hdd_config *config,
+					    struct wlan_objmgr_psoc *psoc)
+{
+	config->cpu_cxpc_threshold = cfg_get(psoc, CFG_CPU_CXPC_THRESHOLD);
+}
+#else
+static void hdd_init_cpu_cxpc_threshold_cfg(struct hdd_config *config,
+					    struct wlan_objmgr_psoc *psoc)
+{
+}
+#endif
+
 /**
  * hdd_cfg_params_init() - Initialize hdd params in hdd_config strucuture
  * @hdd_ctx - Pointer to HDD context
@@ -13461,10 +13481,6 @@ static void hdd_cfg_params_init(struct hdd_context *hdd_ctx)
 					  [ACTION_OUI_DISABLE_AGGRESSIVE_EDCA],
 		      cfg_get(psoc,
 			      CFG_ACTION_OUI_DISABLE_AGGRESSIVE_EDCA),
-			      ACTION_OUI_MAX_STR_LEN);
-	qdf_str_lcopy(config->action_oui_str[ACTION_OUI_DISABLE_MU_EDCA],
-		      cfg_get(psoc,
-			      CFG_ACTION_OUI_DISABLE_MU_EDCA),
 		      ACTION_OUI_MAX_STR_LEN);
 	qdf_str_lcopy(config->action_oui_str[ACTION_OUI_EXTEND_WOW_ITO],
 		      cfg_get(psoc, CFG_ACTION_OUI_EXTEND_WOW_ITO),
@@ -13497,6 +13513,7 @@ static void hdd_cfg_params_init(struct hdd_context *hdd_ctx)
 	hdd_club_ll_stats_in_get_sta_cfg_update(config, psoc);
 	config->read_mac_addr_from_mac_file =
 			cfg_get(psoc, CFG_READ_MAC_ADDR_FROM_MAC_FILE);
+	hdd_init_cpu_cxpc_threshold_cfg(config, psoc);
 }
 
 #ifdef CONNECTION_ROAMING_CFG
