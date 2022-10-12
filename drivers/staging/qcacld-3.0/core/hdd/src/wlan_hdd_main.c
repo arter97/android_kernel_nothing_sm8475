@@ -3996,6 +3996,8 @@ static void hdd_check_for_objmgr_leaks(struct hdd_context *hdd_ctx)
 	if (!psoc)
 		return;
 
+	wlan_psoc_obj_lock(psoc);
+
 	hdd_check_for_objmgr_peer_leaks(psoc);
 
 	wlan_objmgr_for_each_psoc_vdev(psoc, vdev_id, vdev) {
@@ -4018,6 +4020,7 @@ static void hdd_check_for_objmgr_leaks(struct hdd_context *hdd_ctx)
 		wlan_objmgr_for_each_refs(ref_id_dbg, ref_id, refs)
 			wlan_objmgr_pdev_release_ref(pdev, ref_id);
 	}
+	wlan_psoc_obj_unlock(psoc);
 }
 
 static void hdd_check_for_leaks(struct hdd_context *hdd_ctx, bool is_ssr)
