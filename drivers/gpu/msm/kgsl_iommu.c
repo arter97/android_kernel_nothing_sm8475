@@ -98,8 +98,22 @@ static struct kgsl_iommu_pt *to_iommu_pt(struct kgsl_pagetable *pagetable)
 	return container_of(pagetable, struct kgsl_iommu_pt, base);
 }
 
-static u32 get_llcc_flags(struct iommu_domain *domain)
+static u32 get_llcc_flags(struct iommu_domain *domain,
+		struct kgsl_memdesc *memdesc)
 {
+	struct adreno_device *adreno_dev =
+		ADRENO_DEVICE(KGSL_MMU_DEVICE(memdesc->pagetable->mmu));
+
+	/*
+	 * A621 GPU is only used to generate MV grid during LSR. There is a dedicated
+	 * slice LLCC_GPUMV for MV grid buffer. This slice will not be utilized if
+	 * IOMMU_USE_LLC_NWA flag is used as this implies no write-allocate policy.
+	 * Hence use IOMMU_USE_UPSTREAM_HINT to use read-allocate and write-allocate
+	 * cache policy.
+	 */
+	if (adreno_is_a621(adreno_dev))
+		return IOMMU_USE_UPSTREAM_HINT;
+
 	if (_iommu_domain_check_bool(domain, DOMAIN_ATTR_USE_LLC_NWA))
 		return IOMMU_USE_LLC_NWA;
 
@@ -115,7 +129,7 @@ static int _iommu_get_protection_flags(struct iommu_domain *domain,
 {
 	int flags = IOMMU_READ | IOMMU_WRITE | IOMMU_NOEXEC;
 
-	flags |= get_llcc_flags(domain);
+	flags |= get_llcc_flags(domain, memdesc);
 
 	if (memdesc->flags & KGSL_MEMFLAGS_GPUREADONLY)
 		flags &= ~IOMMU_WRITE;
@@ -438,7 +452,7 @@ static int kgsl_iopgtbl_map_zero_page_to_range(struct kgsl_pagetable *pt,
 	 * of this zero page is programmed in PRR register, MMU will intercept any accesses to
 	 * the page before they go to DDR and will terminate the transaction.
 	 */
-	u32 flags = IOMMU_READ | IOMMU_WRITE | IOMMU_NOEXEC | get_llcc_flags(domain);
+	u32 flags = IOMMU_READ | IOMMU_WRITE | IOMMU_NOEXEC | get_llcc_flags(domain, memdesc);
 	struct kgsl_iommu_pt *iommu_pt = to_iommu_pt(pt);
 	struct page *page = kgsl_vbo_zero_page;
 
@@ -852,6 +866,7 @@ static void kgsl_iommu_map_global(struct kgsl_mmu *mmu,
 			return;
 
 		memdesc->gpuaddr = mmu->defaultpagetable->global_base + offset;
+		memdesc->pagetable = mmu->defaultpagetable;
 	}
 
 	kgsl_iommu_default_map(mmu->defaultpagetable, memdesc);
@@ -2232,6 +2247,20 @@ static int iommu_probe_user_context(struct kgsl_device *device,
 		"gfx3d_user", kgsl_iommu_default_fault_handler);
 	if (ret)
 		return ret;
+
+	/*
+	 * It is problematic if smmu driver does system suspend before consumer
+	 * device (gpu). So smmu driver creates a device_link to act as a
+	 * supplier which in turn will ensure correct order during system
+	 * suspend. In kgsl, since we don't initialize iommu on the gpu device,
+	 * we should create a device_link between kgsl iommu device and gpu
+	 * device to maintain a correct suspend order between smmu device and
+	 * gpu device.
+	 */
+	if (!device_link_add(&device->pdev->dev, &iommu->user_context.pdev->dev,
+			DL_FLAG_AUTOREMOVE_CONSUMER))
+		dev_err(&iommu->user_context.pdev->dev,
+				"Unable to create device link to gpu device\n");
 
 	/* LPAC is optional so don't worry if it returns error */
 	kgsl_iommu_setup_context(mmu, node, &iommu->lpac_context,

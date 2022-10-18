@@ -1569,7 +1569,7 @@ static int cnss_pci_check_mhi_state_bit(struct cnss_pci_data *pci_priv,
 	return -EINVAL;
 }
 
-static cnss_rddm_trigger_debug(struct cnss_pci_data *pci_priv)
+static int cnss_rddm_trigger_debug(struct cnss_pci_data *pci_priv)
 {
 	int read_val, ret;
 
@@ -1592,7 +1592,7 @@ static cnss_rddm_trigger_debug(struct cnss_pci_data *pci_priv)
 	return ret;
 }
 
-static cnss_rddm_trigger_check(struct cnss_pci_data *pci_priv)
+static int cnss_rddm_trigger_check(struct cnss_pci_data *pci_priv)
 {
 	int read_val, ret;
 
@@ -4272,6 +4272,8 @@ int cnss_get_soc_info(struct device *dev, struct cnss_soc_info *info)
 	       sizeof(info->device_version));
 	memcpy(&info->dev_mem_info, &plat_priv->dev_mem_info,
 	       sizeof(info->dev_mem_info));
+	memcpy(&info->fw_build_id, &plat_priv->fw_build_id,
+	       sizeof(info->fw_build_id));
 
 	return 0;
 }
