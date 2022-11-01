@@ -193,7 +193,7 @@ static void qcedev_ce_high_bw_req(struct qcedev_control *podev,
 				goto exit_unlock_mutex;
 			ret = qce_set_irqs(podev->qce, true);
 			if (ret) {
-				pr_err("%s: could not enable bam irqs, ret = %d",
+				pr_err("%s: could not enable bam irqs, ret = %d\n",
 						__func__, ret);
 				qcedev_control_clocks(podev, false);
 				goto exit_unlock_mutex;
@@ -204,7 +204,7 @@ static void qcedev_ce_high_bw_req(struct qcedev_control *podev,
 		if (podev->high_bw_req_count == 1) {
 			ret = qce_set_irqs(podev->qce, false);
 			if (ret) {
-				pr_err("%s: could not disable bam irqs, ret = %d",
+				pr_err("%s: could not disable bam irqs, ret = %d\n",
 						__func__, ret);
 				goto exit_unlock_mutex;
 			}
@@ -2591,7 +2591,7 @@ static int qcedev_probe_device(struct platform_device *pdev)
 
 	rc = qce_set_irqs(podev->qce, false);
 	if (rc) {
-		pr_err("%s: could not disable bam irqs, ret = %d",
+		pr_err("%s: could not disable bam irqs, ret = %d\n",
 				__func__, rc);
 		goto exit_scale_busbandwidth;
 	}
@@ -2718,7 +2718,7 @@ static int qcedev_suspend(struct platform_device *pdev, pm_message_t state)
 	if (podev->high_bw_req_count) {
 		ret = qce_set_irqs(podev->qce, false);
 		if (ret) {
-			pr_err("%s: could not disable bam irqs, ret = %d",
+			pr_err("%s: could not disable bam irqs, ret = %d\n",
 					__func__, ret);
 			goto suspend_exit;
 		}
@@ -2749,7 +2749,7 @@ static int qcedev_resume(struct platform_device *pdev)
 			goto resume_exit;
 		ret = qce_set_irqs(podev->qce, true);
 		if (ret) {
-			pr_err("%s: could not enable bam irqs, ret = %d",
+			pr_err("%s: could not enable bam irqs, ret = %d\n",
 					__func__, ret);
 			qcedev_control_clocks(podev, false);
 		}
