@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -104,6 +104,9 @@
 
 /* TODO: change IDs for Hamilton */
 #define KIWI_DEVICE_ID (0x1107)
+
+/*TODO: change IDs for Evros */
+#define WCN6450_DEVICE_ID (0x1108)
 
 #define ADRASTEA_DEVICE_ID_P2_E12 (0x7021)
 #define AR9887_DEVICE_ID    (0x0050)
@@ -566,8 +569,14 @@ static inline void hif_usb_ramdump_handler(struct hif_opaque_softc *scn) {}
  */
 irqreturn_t hif_wake_interrupt_handler(int irq, void *context);
 
-#ifdef HIF_SNOC
+#if defined(HIF_SNOC)
 bool hif_is_target_register_access_allowed(struct hif_softc *hif_sc);
+#elif defined(HIF_IPCI)
+static inline bool
+hif_is_target_register_access_allowed(struct hif_softc *hif_sc)
+{
+	return !(hif_sc->recovery);
+}
 #else
 static inline
 bool hif_is_target_register_access_allowed(struct hif_softc *hif_sc)
@@ -583,4 +592,11 @@ static inline
 void hif_uninit_rri_on_ddr(struct hif_softc *scn) {}
 #endif
 void hif_cleanup_static_buf_to_target(struct hif_softc *scn);
+
+#ifdef HIF_HAL_REG_ACCESS_SUPPORT
+void hif_reg_window_write(struct hif_softc *scn,
+			  uint32_t offset, uint32_t value);
+uint32_t hif_reg_window_read(struct hif_softc *scn, uint32_t offset);
+#endif
+
 #endif /* __HIF_MAIN_H__ */

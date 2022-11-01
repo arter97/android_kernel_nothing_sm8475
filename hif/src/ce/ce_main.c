@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,8 +55,9 @@
 
 #if (defined(QCA_WIFI_QCA8074) || defined(QCA_WIFI_QCA6290) || \
 	defined(QCA_WIFI_QCA6018) || defined(QCA_WIFI_QCA5018) || \
-	defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_QCA9574)) && \
-	!defined(QCA_WIFI_SUPPORT_SRNG)
+	defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_QCA5332) || \
+	defined(QCA_WIFI_QCA9574)) && !defined(QCA_WIFI_SUPPORT_SRNG) && \
+	!defined(QCA_WIFI_WCN6450)
 #define QCA_WIFI_SUPPORT_SRNG
 #endif
 
@@ -1119,6 +1120,36 @@ static struct service_to_pipe target_service_to_ce_map_kiwi[] = {
 };
 #endif
 
+#ifdef QCA_WIFI_WCN6450
+static struct service_to_pipe target_service_to_ce_map_wcn6450[] = {
+	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
+	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
+	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
+	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
+	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
+	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
+	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 2, },
+	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
+	{ HTT_DATA2_MSG_SVC, PIPEDIR_OUT, 5, },
+	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
+	{ HTT_DATA2_MSG_SVC, PIPEDIR_IN, 10, },
+	{ HTT_DATA3_MSG_SVC, PIPEDIR_IN, 11, },
+#ifdef WLAN_FEATURE_WMI_DIAG_OVER_CE7
+	{ WMI_CONTROL_DIAG_SVC, PIPEDIR_IN, 7, },
+#endif
+	/* (Additions here) */
+	{ 0, 0, 0, },
+};
+#else
+static struct service_to_pipe target_service_to_ce_map_wcn6450[] = {
+};
+#endif
+
 static struct service_to_pipe target_service_to_ce_map_ar900b[] = {
 	{
 		WMI_DATA_VO_SVC,
@@ -1362,6 +1393,11 @@ static void hif_select_service_to_pipe_map(struct hif_softc *scn,
 			*sz_tgt_svc_map_to_use =
 				sizeof(target_service_to_ce_map_kiwi);
 			break;
+		case TARGET_TYPE_WCN6450:
+			*tgt_svc_map_to_use = target_service_to_ce_map_wcn6450;
+			*sz_tgt_svc_map_to_use =
+				 sizeof(target_service_to_ce_map_wcn6450);
+			break;
 		case TARGET_TYPE_QCA8074:
 			*tgt_svc_map_to_use = target_service_to_ce_map_qca8074;
 			*sz_tgt_svc_map_to_use =
@@ -1409,6 +1445,7 @@ static void hif_select_service_to_pipe_map(struct hif_softc *scn,
 					sizeof(struct service_to_pipe);
 }
 
+#ifndef QCA_WIFI_WCN6450
 /**
  * ce_mark_datapath() - marks the ce_state->htt_rx_data accordingly
  * @ce_state : pointer to the state context of the CE
@@ -1449,6 +1486,35 @@ static bool ce_mark_datapath(struct CE_state *ce_state)
 	}
 	return rc;
 }
+#else
+static bool ce_mark_datapath(struct CE_state *ce_state)
+{
+	struct service_to_pipe *svc_map;
+	uint32_t map_sz, map_len;
+	int i;
+
+	if (ce_state) {
+		hif_select_service_to_pipe_map(ce_state->scn, &svc_map,
+					       &map_sz);
+
+		map_len = map_sz / sizeof(struct service_to_pipe);
+		for (i = 0; i < map_len; i++) {
+			if ((svc_map[i].pipenum == ce_state->id) &&
+			    ((svc_map[i].service_id == HTT_DATA_MSG_SVC)  ||
+			     (svc_map[i].service_id == HTT_DATA2_MSG_SVC) ||
+			     (svc_map[i].service_id == HTT_DATA3_MSG_SVC)) &&
+			    (svc_map[i].pipedir == PIPEDIR_IN))
+				ce_state->htt_rx_data = true;
+			else if ((svc_map[i].pipenum == ce_state->id) &&
+				 (svc_map[i].service_id == HTT_DATA2_MSG_SVC) &&
+				 (svc_map[i].pipedir == PIPEDIR_OUT))
+				ce_state->htt_tx_data = true;
+		}
+	}
+
+	return (ce_state->htt_rx_data || ce_state->htt_tx_data);
+}
+#endif
 
 /**
  * ce_ring_test_initial_indexes() - tests the initial ce ring indexes
@@ -4014,7 +4080,12 @@ void hif_ce_prepare_config(struct hif_softc *scn)
 					sizeof(target_ce_config_wlan_adrastea);
 		}
 		break;
-
+	case TARGET_TYPE_WCN6450:
+		hif_state->host_ce_config = host_ce_config_wlan_wcn6450;
+		hif_state->target_ce_config = target_ce_config_wlan_wcn6450;
+		hif_state->target_ce_config_sz =
+				sizeof(target_ce_config_wlan_wcn6450);
+		break;
 	}
 	QDF_BUG(scn->ce_count <= CE_COUNT_MAX);
 }
