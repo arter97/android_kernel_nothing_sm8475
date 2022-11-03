@@ -113,8 +113,6 @@ static ssize_t aud_dev_sysfs_store(struct kobject *kobj,
 	pr_debug("%s: pcm_id %d state %d \n", __func__, pcm_id, state);
 
 	pdata->aud_dev_state[pcm_id] = state;
-	if ( state == DEVICE_ENABLE && (pdata->dsp_sessions_closed != 0))
-		pdata->dsp_sessions_closed = 0;
 
 	ret = count;
 done:
@@ -225,22 +223,29 @@ done:
 static void check_userspace_service_state(struct snd_soc_pcm_runtime *rtd,
 						struct msm_common_pdata *pdata)
 {
-	dev_info(rtd->card->dev,"%s: pcm_id %d state %d\n", __func__,
-				rtd->num, pdata->aud_dev_state[rtd->num]);
+	uint32_t i;
 
+	dev_info(rtd->card->dev,"%s: pcm_id %d state %d\n", __func__,
+			rtd->num, pdata->aud_dev_state[rtd->num]);
+
+	mutex_lock(&pdata->aud_dev_lock);
 	if (pdata->aud_dev_state[rtd->num] == DEVICE_ENABLE) {
 		dev_info(rtd->card->dev, "%s userspace service crashed\n",
-					__func__);
-		if (pdata->dsp_sessions_closed == 0) {
-			/*Issue close all graph cmd to DSP*/
-			spf_core_apm_close_all();
-			/*unmap all dma mapped buffers*/
-			msm_audio_ion_crash_handler();
-			pdata->dsp_sessions_closed = 1;
-		}
+				__func__);
 		/*Reset the state as sysfs node wont be triggred*/
-		pdata->aud_dev_state[rtd->num] = 0;
+		pdata->aud_dev_state[rtd->num] = DEVICE_DISABLE;
+		for (i = 0; i < pdata->num_aud_devs; i++) {
+			if (pdata->aud_dev_state[i] == DEVICE_ENABLE)
+				goto exit;
+		}
+		/*Issue close all graph cmd to DSP*/
+		spf_core_apm_close_all();
+		/*unmap all dma mapped buffers*/
+		msm_audio_ion_crash_handler();
 	}
+exit:
+	mutex_unlock(&pdata->aud_dev_lock);
+	return;
 }
 
 static int get_mi2s_tdm_auxpcm_intf_index(const char *stream_name)
@@ -764,6 +769,7 @@ int msm_common_snd_init(struct platform_device *pdev, struct snd_soc_card *card)
 						sizeof(uint8_t), GFP_KERNEL);
 	dev_info(&pdev->dev, "num_links %d \n", card->num_links);
 	common_pdata->num_aud_devs = card->num_links;
+	mutex_init(&common_pdata->aud_dev_lock);
 
 	aud_dev_sysfs_init(common_pdata);
 
@@ -784,6 +790,7 @@ void msm_common_snd_deinit(struct msm_common_pdata *common_pdata)
 
 	msm_audio_remove_qos_request();
 
+	mutex_destroy(&common_pdata->aud_dev_lock);
 	for (count = 0; count < MI2S_TDM_AUXPCM_MAX; count++) {
 		mutex_destroy(&common_pdata->lock[count]);
 	}
