@@ -509,8 +509,11 @@ int kgsl_busmon_target(struct device *dev, unsigned long *freq, u32 flags)
 		 * When gpu is thermally throttled to its lowest power level,
 		 * drop GPU's AB vote as a last resort to lower CX voltage and
 		 * to prevent thermal reset.
+		 * Ignore this check when only single power level in use to
+		 * avoid setting default AB vote in normal situations too.
 		 */
-		if (pwr->thermal_pwrlevel != pwr->num_pwrlevels - 1)
+		if (pwr->thermal_pwrlevel != pwr->num_pwrlevels - 1 ||
+			pwr->num_pwrlevels == 1)
 			pwr->bus_ab_mbytes = ab_mbytes;
 		else
 			pwr->bus_ab_mbytes = 0;
@@ -712,10 +715,6 @@ int kgsl_pwrscale_init(struct kgsl_device *device, struct platform_device *pdev,
 	gpu_profile->profile.max_state = pwr->num_pwrlevels;
 	/* link storage array to the devfreq profile pointer */
 	gpu_profile->profile.freq_table = pwrscale->freq_table;
-
-	/* if there is only 1 freq, no point in running a governor */
-	if (gpu_profile->profile.max_state == 1)
-		governor = "performance";
 
 	/* initialize msm-adreno-tz governor specific data here */
 	adreno_tz_data.disable_busy_time_burst =

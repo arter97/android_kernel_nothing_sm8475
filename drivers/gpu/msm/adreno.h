@@ -123,8 +123,14 @@
 #define ADRENO_BCL BIT(12)
 /* L3 voting is supported with L3 constraints */
 #define ADRENO_L3_VOTE BIT(13)
+/* LPAC is supported  */
+#define ADRENO_LPAC BIT(14)
 /* Late Stage Reprojection (LSR) enablment for GMU */
 #define ADRENO_LSR BIT(15)
+/* GMU and kernel supports hardware fences */
+#define ADRENO_HW_FENCE BIT(16)
+/* Dynamic Mode Switching supported on this target */
+#define ADRENO_DMS BIT(17)
 
 
 /*
@@ -211,11 +217,12 @@ enum adreno_gpurev {
 	ADRENO_REV_A662 = 662,
 	ADRENO_REV_A680 = 680,
 	/*
-	 * Gen7 and higher version numbers may exceed 1 digit
+	 * Version numbers may exceed 1 digit
 	 * Bits 16-23: Major
 	 * Bits 8-15: Minor
 	 * Bits 0-7: Patch id
 	 */
+	ADRENO_REV_GEN6_3_26_0 = 0x032600,
 	ADRENO_REV_GEN7_0_0 = 0x070000,
 	ADRENO_REV_GEN7_0_1 = 0x070001,
 	ADRENO_REV_GEN7_4_0 = 0x070400,
@@ -318,6 +325,7 @@ struct adreno_busy_data {
 	unsigned int bif_starved_ram_ch1;
 	unsigned int num_ifpc;
 	unsigned int throttle_cycles[ADRENO_GPMU_THROTTLE_COUNTERS];
+	u32 bcl_throttle;
 };
 
 /**
@@ -459,6 +467,8 @@ struct adreno_dispatch_ops {
 	void (*fault)(struct adreno_device *adreno_dev, u32 fault);
 	/* @idle: Wait for dipatcher to become idle */
 	int (*idle)(struct adreno_device *adreno_dev);
+	/* @create_hw_fence: Create a hardware fence */
+	void (*create_hw_fence)(struct adreno_device *adreno_dev, struct kgsl_sync_fence *kfence);
 };
 
 /**
@@ -589,6 +599,10 @@ struct adreno_device {
 	bool sptp_pc_enabled;
 	/** @bcl_enabled: True if BCL is enabled */
 	bool bcl_enabled;
+	/** @lpac_enabled: True if LPAC is enabled */
+	bool lpac_enabled;
+	/** @dms_enabled: True if DMS is enabled */
+	bool dms_enabled;
 	struct kgsl_memdesc *profile_buffer;
 	unsigned int profile_index;
 	struct kgsl_memdesc *pwrup_reglist;
@@ -665,6 +679,17 @@ struct adreno_device {
 	 * for pf debugging
 	 */
 	u32 uche_client_pf;
+	/**
+	 * @bcl_data: bit 0 contains response type for bcl alarms and bits 1:21 controls
+	 * throttle level for bcl alarm levels 0-2. If not set, gmu fw sets default throttle levels.
+	 */
+	u32 bcl_data;
+	/*
+	 * @bcl_debugfs_dir: Debugfs directory node for bcl related nodes
+	 */
+	struct dentry *bcl_debugfs_dir;
+	/** @bcl_throttle_time_us: Total time in us spent in BCL throttling */
+	u32 bcl_throttle_time_us;
 };
 
 /**
@@ -702,6 +727,8 @@ enum adreno_device_flags {
 	ADRENO_DEVICE_ISDB_ENABLED = 12,
 	ADRENO_DEVICE_CACHE_FLUSH_TS_SUSPENDED = 13,
 	ADRENO_DEVICE_CORESIGHT_CX = 14,
+	/** @ADRENO_DEVICE_DMS: Set if DMS is enabled */
+	ADRENO_DEVICE_DMS = 15,
 };
 
 /**
@@ -879,6 +906,10 @@ struct adreno_gpudev {
 	 */
 	int (*send_recurring_cmdobj)(struct adreno_device *adreno_dev,
 		struct kgsl_drawobj_cmd *cmdobj);
+	/**
+	 * @context_destroy: Target specific function called during context destruction
+	 */
+	void (*context_destroy)(struct adreno_device *adreno_dev, struct adreno_context *drawctxt);
 };
 
 /**
@@ -954,7 +985,7 @@ int adreno_set_constraint(struct kgsl_device *device,
 
 void adreno_snapshot(struct kgsl_device *device,
 		struct kgsl_snapshot *snapshot,
-		struct kgsl_context *context);
+		struct kgsl_context *context, struct kgsl_context *context_lpac);
 
 int adreno_reset(struct kgsl_device *device, int fault);
 
@@ -1089,6 +1120,7 @@ ADRENO_TARGET(a662, ADRENO_REV_A662)
 ADRENO_TARGET(a640, ADRENO_REV_A640)
 ADRENO_TARGET(a650, ADRENO_REV_A650)
 ADRENO_TARGET(a680, ADRENO_REV_A680)
+ADRENO_TARGET(gen6_3_26_0, ADRENO_REV_GEN6_3_26_0)
 
 /* A635 is derived from A660 and shares same logic */
 static inline int adreno_is_a660(struct adreno_device *adreno_dev)
@@ -1149,6 +1181,13 @@ static inline int adreno_is_a620(struct adreno_device *adreno_dev)
 	unsigned int rev = ADRENO_GPUREV(adreno_dev);
 
 	return (rev == ADRENO_REV_A620 || rev == ADRENO_REV_A621);
+}
+
+static inline int adreno_is_a612_family(struct adreno_device *adreno_dev)
+{
+	unsigned int rev = ADRENO_GPUREV(adreno_dev);
+
+	return (rev == ADRENO_REV_A612 || rev == ADRENO_REV_GEN6_3_26_0);
 }
 
 static inline int adreno_is_a640v2(struct adreno_device *adreno_dev)
@@ -1621,9 +1660,14 @@ static inline void adreno_reg_offset_init(u32 *reg_offsets)
 	}
 }
 
-static inline u32 adreno_get_level(u32 priority)
+static inline u32 adreno_get_level(struct kgsl_context *context)
 {
-	u32 level = priority / KGSL_PRIORITY_MAX_RB_LEVELS;
+	u32 level;
+
+	if (kgsl_context_is_lpac(context))
+		return KGSL_LPAC_RB_ID;
+
+	level = context->priority / KGSL_PRIORITY_MAX_RB_LEVELS;
 
 	return min_t(u32, level, KGSL_PRIORITY_MAX_RB_LEVELS - 1);
 }

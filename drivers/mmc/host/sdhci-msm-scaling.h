@@ -32,8 +32,6 @@ extern int mmc_hs200_tuning(struct mmc_card *card);
 extern void mmc_set_bus_speed(struct mmc_card *card);
 extern int mmc_select_hs200(struct mmc_card *card);
 
-//void sdhci_msm_mmc_resume_clk_scaling(struct mmc_host *mhost);
-//void sdhci_msm_mmc_init_clk_scaling(struct mmc_host *mhost);
 void sdhci_msm_scale_parse_dt(struct device *dev, struct sdhci_msm_host *msm_host);
 void sdhci_msm_mmc_deferred_scaling(struct sdhci_msm_host *host);
 void _sdhci_msm_mmc_cqe_clk_scaling_start_busy(struct mmc_queue *mq,

@@ -223,11 +223,17 @@ int synx_util_init_group_coredata(struct synx_coredata *synx_obj,
 
 static void synx_util_destroy_coredata(struct kref *kref)
 {
+	int rc;
 	struct synx_coredata *synx_obj =
 		container_of(kref, struct synx_coredata, refcount);
 
-	if (synx_util_is_global_object(synx_obj))
+	if (synx_util_is_global_object(synx_obj)) {
+		rc = synx_global_clear_subscribed_core(synx_obj->global_idx, SYNX_CORE_APSS);
+		if (rc)
+			dprintk(SYNX_ERR, "Failed to clear subscribers");
+
 		synx_global_put_ref(synx_obj->global_idx);
+	}
 	synx_util_object_destroy(synx_obj);
 }
 
@@ -1185,7 +1191,7 @@ void synx_util_cb_dispatch(struct work_struct *cb_dispatch)
 				client->id);
 	}
 
-	dprintk(SYNX_INFO,
+	dprintk(SYNX_DBG,
 		"callback dispatched for handle %u, status %u, data %pK\n",
 		payload.h_synx, payload.status, payload.data);
 

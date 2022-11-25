@@ -567,7 +567,6 @@ config MMC_SDHCI_MSM_SCALING
 
 	  If unsure, say N.
 
-
 config MMC_MXC
 	tristate "Freescale i.MX21/27/31 or MPC512x Multimedia Card support"
 	depends on ARCH_MXC || PPC_MPC512x

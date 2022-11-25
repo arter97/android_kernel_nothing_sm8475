@@ -1481,13 +1481,15 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 			pm_op, hba->rpm_lvl, hba->spm_lvl, hba->uic_link_state,
 			hba->curr_dev_pwr_mode, err);
 
-	/* Refer ufs_qcom_cpufreq_dwork() */
-	mutex_lock(&host->cpufreq_lock);
-	host->active = true;
-	/* Reschedule the work if it exited when the clocks were scaled up */
-	if (!!atomic_read(&host->scale_up))
-		queue_delayed_work(host->fworkq, &host->fwork, 0);
-	mutex_unlock(&host->cpufreq_lock);
+	if (!host->cpufreq_dis) {
+		/* Refer ufs_qcom_cpufreq_dwork() */
+		mutex_lock(&host->cpufreq_lock);
+		host->active = true;
+		/* Reschedule the work if it exited when the clocks were scaled up */
+		if (!!atomic_read(&host->scale_up))
+			queue_delayed_work(host->fworkq, &host->fwork, 0);
+		mutex_unlock(&host->cpufreq_lock);
+	}
 
 	return 0;
 }
@@ -4868,8 +4870,9 @@ static int ufs_cpufreq_status(void)
 
 static int ufs_qcom_read_boot_config(struct platform_device *pdev)
 {
-	u32 *buf;
-	size_t len, data;
+	u8 *buf;
+	size_t len;
+	u32 data;
 	struct nvmem_cell *cell;
 
 	cell = nvmem_cell_get(&pdev->dev, "boot_conf");
@@ -4878,7 +4881,7 @@ static int ufs_qcom_read_boot_config(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	buf = nvmem_cell_read(cell, &len);
+	buf = (u8 *)nvmem_cell_read(cell, &len);
 	if (IS_ERR(buf)) {
 		dev_err(&pdev->dev, "nvmem read err\n");
 		return -EINVAL;
