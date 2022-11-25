@@ -5,6 +5,9 @@
  * Copyright (c) 2022 Juhyung Park (arter97)
  */
 
+#undef KBUILD_MODNAME
+#define KBUILD_MODNAME "qtipm"
+
 //#define pr_fmt(fmt) "qti_power_meter: " fmt
 
 #include <linux/cdev.h>
