@@ -12192,7 +12192,7 @@ void dp_flush_ring_hptp(struct dp_soc *soc, hal_ring_handle_t hal_srng)
 
 #ifdef DP_TX_TRACKING
 
-#define DP_TX_COMP_MAX_LATENCY_MS 30000
+#define DP_TX_COMP_MAX_LATENCY_MS 60000
 /**
  * dp_tx_comp_delay_check() - calculate time latency for tx completion per pkt
  * @timestamp - tx descriptor timestamp
@@ -12232,7 +12232,6 @@ static bool dp_tx_comp_delay_check(uint64_t timestamp)
 	return false;
 }
 
-#if defined(CONFIG_SLUB_DEBUG_ON)
 /**
  * dp_find_missing_tx_comp() - check for leaked descriptor in tx path
  * @soc - DP SOC context
@@ -12242,70 +12241,6 @@ static bool dp_tx_comp_delay_check(uint64_t timestamp)
  *
  * Return: None.
  */
-static void dp_find_missing_tx_comp(struct dp_soc *soc)
-{
-	uint8_t i;
-	uint32_t j;
-	uint32_t num_desc, page_id, offset;
-	uint16_t num_desc_per_page;
-	struct dp_tx_desc_s *tx_desc = NULL;
-	struct dp_tx_desc_pool_s *tx_desc_pool = NULL;
-	bool send_fw_stats_cmd = false;
-	uint8_t vdev_id;
-
-	for (i = 0; i < MAX_TXDESC_POOLS; i++) {
-		tx_desc_pool = &soc->tx_desc[i];
-		if (!(tx_desc_pool->pool_size) ||
-		    IS_TX_DESC_POOL_STATUS_INACTIVE(tx_desc_pool) ||
-		    !(tx_desc_pool->desc_pages.cacheable_pages))
-			continue;
-
-		num_desc = tx_desc_pool->pool_size;
-		num_desc_per_page =
-			tx_desc_pool->desc_pages.num_element_per_page;
-		for (j = 0; j < num_desc; j++) {
-			page_id = j / num_desc_per_page;
-			offset = j % num_desc_per_page;
-
-			if (qdf_unlikely(!(tx_desc_pool->
-					 desc_pages.cacheable_pages)))
-				break;
-
-			tx_desc = dp_tx_desc_find(soc, i, page_id, offset);
-			if (tx_desc->magic == DP_TX_MAGIC_PATTERN_FREE) {
-				continue;
-			} else if (tx_desc->magic ==
-				   DP_TX_MAGIC_PATTERN_INUSE) {
-				if (dp_tx_comp_delay_check(
-							tx_desc->timestamp)) {
-					dp_err_rl("Tx completion not rcvd for id: %u",
-						  tx_desc->id);
-
-					if (!send_fw_stats_cmd) {
-						send_fw_stats_cmd = true;
-						vdev_id = i;
-					}
-				}
-			} else {
-				dp_err_rl("tx desc %u corrupted, flags: 0x%x",
-				       tx_desc->id, tx_desc->flags);
-			}
-		}
-	}
-
-	/*
-	 * The unit test command to dump FW stats is required only once as the
-	 * stats are dumped at pdev level and not vdev level.
-	 */
-	if (send_fw_stats_cmd && soc->cdp_soc.ol_ops->dp_send_unit_test_cmd) {
-		uint32_t fw_stats_args[2] = {533, 1};
-
-		soc->cdp_soc.ol_ops->dp_send_unit_test_cmd(vdev_id,
-							   WLAN_MODULE_TX, 2,
-							   fw_stats_args);
-	}
-}
-#else
 static void dp_find_missing_tx_comp(struct dp_soc *soc)
 {
 	uint8_t i;
@@ -12344,11 +12279,13 @@ static void dp_find_missing_tx_comp(struct dp_soc *soc)
 						  tx_desc->id);
 					if (tx_desc->vdev_id == DP_INVALID_VDEV_ID) {
 						tx_desc->flags |= DP_TX_DESC_FLAG_FLUSH;
-						dp_tx_comp_free_buf(soc, tx_desc);
+						dp_err_rl("Freed tx_desc %u",
+							  tx_desc->id);
+						dp_tx_comp_free_buf(soc,
+								    tx_desc);
 						dp_tx_desc_release(tx_desc, i);
 						DP_STATS_INC(soc,
 							     tx.tx_comp_force_freed, 1);
-						dp_err_rl("Tx completion force freed");
 					}
 				}
 			} else {
@@ -12358,7 +12295,6 @@ static void dp_find_missing_tx_comp(struct dp_soc *soc)
 		}
 	}
 }
-#endif /* CONFIG_SLUB_DEBUG_ON */
 #else
 static inline void dp_find_missing_tx_comp(struct dp_soc *soc)
 {
