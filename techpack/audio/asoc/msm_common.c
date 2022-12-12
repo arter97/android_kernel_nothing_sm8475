@@ -1102,8 +1102,8 @@ int msm_common_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 			pdata->id = SLIM;
 		} else {
 			pdata->id = CODEC_DMA;
-			if (rtd->num_codecs <= MAX_CODEC_DAI) {
-				pdata->num_codec_dai = rtd->num_codecs;
+			if (rtd->dai_link->num_codecs <= MAX_CODEC_DAI) {
+				pdata->num_codec_dai = rtd->dai_link->num_codecs;
 				for_each_rtd_codec_dais(rtd, index, codec_dai) {
 					pdata->dai[index] = codec_dai;
 				}
