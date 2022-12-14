@@ -134,7 +134,7 @@ int fsverity_ioctl_measure(struct file *filp, void __user *arg);
 
 /* open.c */
 
-int fsverity_file_open(struct inode *inode, struct file *filp);
+int __fsverity_file_open(struct inode *inode, struct file *filp);
 int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
 void fsverity_cleanup_inode(struct inode *inode);
 
@@ -172,9 +172,9 @@ static inline int fsverity_ioctl_measure(struct file *filp, void __user *arg)
 
 /* open.c */
 
-static inline int fsverity_file_open(struct inode *inode, struct file *filp)
+static inline int __fsverity_file_open(struct inode *inode, struct file *filp)
 {
-	return IS_VERITY(inode) ? -EOPNOTSUPP : 0;
+	return -EOPNOTSUPP;
 }
 
 static inline int fsverity_prepare_setattr(struct dentry *dentry,
@@ -231,6 +231,26 @@ static inline void fsverity_enqueue_verify_work(struct work_struct *work)
 static inline bool fsverity_active(const struct inode *inode)
 {
 	return fsverity_get_info(inode) != NULL;
+}
+
+/**
+ * fsverity_file_open() - prepare to open a verity file
+ * @inode: the inode being opened
+ * @filp: the struct file being set up
+ *
+ * When opening a verity file, deny the open if it is for writing.  Otherwise,
+ * set up the inode's ->i_verity_info if not already done.
+ *
+ * When combined with fscrypt, this must be called after fscrypt_file_open().
+ * Otherwise, we won't have the key set up to decrypt the verity metadata.
+ *
+ * Return: 0 on success, -errno on failure
+ */
+static inline int fsverity_file_open(struct inode *inode, struct file *filp)
+{
+	if (IS_VERITY(inode))
+		return __fsverity_file_open(inode, filp);
+	return 0;
 }
 
 #ifdef CONFIG_FS_VERITY_BUILTIN_SIGNATURES
