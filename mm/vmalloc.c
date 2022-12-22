@@ -1798,17 +1798,16 @@ static void drain_vmap_area_work(struct work_struct *work)
 }
 
 /*
- * Free a vmap area, caller ensuring that the area has been unmapped
- * and flush_cache_vunmap had been called for the correct range
- * previously.
+ * Free a vmap area, caller ensuring that the area has been unmapped,
+ * unlinked and flush_cache_vunmap had been called for the correct
+ * range previously.
  */
 static void free_vmap_area_noflush(struct vmap_area *va)
 {
 	unsigned long nr_lazy;
 
-	spin_lock(&vmap_area_lock);
-	unlink_va(va, &vmap_area_root);
-	spin_unlock(&vmap_area_lock);
+	if (WARN_ON_ONCE(!list_empty(&va->list)))
+		return;
 
 	nr_lazy = atomic_long_add_return((va->va_end - va->va_start) >>
 				PAGE_SHIFT, &vmap_lazy_nr);
@@ -1845,6 +1844,19 @@ static struct vmap_area *find_vmap_area(unsigned long addr)
 
 	spin_lock(&vmap_area_lock);
 	va = __find_vmap_area(addr, &vmap_area_root);
+	spin_unlock(&vmap_area_lock);
+
+	return va;
+}
+
+static struct vmap_area *find_unlink_vmap_area(unsigned long addr)
+{
+	struct vmap_area *va;
+
+	spin_lock(&vmap_area_lock);
+	va = __find_vmap_area(addr, &vmap_area_root);
+	if (va)
+		unlink_va(va, &vmap_area_root);
 	spin_unlock(&vmap_area_lock);
 
 	return va;
@@ -1993,6 +2005,10 @@ static void free_vmap_block(struct vmap_block *vb)
 
 	tmp = xa_erase(&vmap_blocks, addr_to_vb_idx(vb->va->va_start));
 	BUG_ON(tmp != vb);
+
+	spin_lock(&vmap_area_lock);
+	unlink_va(vb->va, &vmap_area_root);
+	spin_unlock(&vmap_area_lock);
 
 	free_vmap_area_noflush(vb->va);
 	kfree_rcu(vb, rcu_head);
@@ -2215,7 +2231,7 @@ void vm_unmap_ram(const void *mem, unsigned int count)
 		return;
 	}
 
-	va = find_vmap_area(addr);
+	va = find_unlink_vmap_area(addr);
 	BUG_ON(!va);
 	debug_check_no_locks_freed((void *)va->va_start,
 				    (va->va_end - va->va_start));
@@ -2573,6 +2589,20 @@ struct vm_struct *find_vm_area(const void *addr)
 }
 EXPORT_SYMBOL_GPL(find_vm_area);
 
+static struct vm_struct *__remove_vm_area(struct vmap_area *va)
+{
+	struct vm_struct *vm;
+
+	if (!va || !va->vm)
+		return NULL;
+
+	vm = va->vm;
+	kasan_free_module_shadow(vm);
+	free_unmap_vmap_area(va);
+
+	return vm;
+}
+
 /**
  * remove_vm_area - find and remove a continuous kernel virtual area
  * @addr:	    base address
@@ -2585,27 +2615,10 @@ EXPORT_SYMBOL_GPL(find_vm_area);
  */
 struct vm_struct *remove_vm_area(const void *addr)
 {
-	struct vmap_area *va;
-
 	might_sleep();
 
-	spin_lock(&vmap_area_lock);
-	va = __find_vmap_area((unsigned long)addr, &vmap_area_root);
-	if (va && va->vm) {
-		struct vm_struct *vm = va->vm;
-
-		trace_android_vh_remove_vmalloc_stack(vm);
-		va->vm = NULL;
-		spin_unlock(&vmap_area_lock);
-
-		kasan_free_module_shadow(vm);
-		free_unmap_vmap_area(va);
-
-		return vm;
-	}
-
-	spin_unlock(&vmap_area_lock);
-	return NULL;
+	return __remove_vm_area(
+		find_unlink_vmap_area((unsigned long) addr));
 }
 
 static inline void set_area_direct_map(const struct vm_struct *area,
@@ -2619,16 +2632,17 @@ static inline void set_area_direct_map(const struct vm_struct *area,
 			set_direct_map(area->pages[i]);
 }
 
-/* Handle removing and resetting vm mappings related to the vm_struct. */
-static void vm_remove_mappings(struct vm_struct *area, int deallocate_pages)
+/* Handle removing and resetting vm mappings related to the VA's vm_struct. */
+static void va_remove_mappings(struct vmap_area *va, int deallocate_pages)
 {
+	struct vm_struct *area = va->vm;
 	unsigned long start = ULONG_MAX, end = 0;
 	unsigned int page_order = vm_area_page_order(area);
 	int flush_reset = area->flags & VM_FLUSH_RESET_PERMS;
 	int flush_dmap = 0;
 	int i;
 
-	remove_vm_area(area->addr);
+	__remove_vm_area(va);
 
 	/* If this is not VM_FLUSH_RESET_PERMS memory, no need for the below. */
 	if (!flush_reset)
@@ -2673,6 +2687,7 @@ static void vm_remove_mappings(struct vm_struct *area, int deallocate_pages)
 static void __vunmap(const void *addr, int deallocate_pages)
 {
 	struct vm_struct *area;
+	struct vmap_area *va;
 
 	if (!addr)
 		return;
@@ -2681,13 +2696,14 @@ static void __vunmap(const void *addr, int deallocate_pages)
 			addr))
 		return;
 
-	area = find_vm_area(addr);
-	if (unlikely(!area)) {
+	va = find_unlink_vmap_area((unsigned long)addr);
+	if (unlikely(!va)) {
 		WARN(1, KERN_ERR "Trying to vfree() nonexistent vm area (%p)\n",
 				addr);
 		return;
 	}
 
+	area = va->vm;
 	debug_check_no_locks_freed(area->addr, get_vm_area_size(area));
 	debug_check_no_obj_freed(area->addr, get_vm_area_size(area));
 
@@ -2697,7 +2713,7 @@ static void __vunmap(const void *addr, int deallocate_pages)
 	    area->flags & VM_IOREMAP)
 		iounmap_phys_range_hook(area->phys_addr, get_vm_area_size(area));
 
-	vm_remove_mappings(area, deallocate_pages);
+	va_remove_mappings(va, deallocate_pages);
 
 	if (deallocate_pages) {
 		int i;
