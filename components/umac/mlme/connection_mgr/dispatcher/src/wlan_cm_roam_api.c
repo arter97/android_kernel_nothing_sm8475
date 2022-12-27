@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -181,18 +181,6 @@ QDF_STATUS wlan_cm_disable_rso(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 {
 	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
 	QDF_STATUS status;
-	struct wlan_objmgr_vdev *vdev;
-
-	vdev = wlan_objmgr_get_vdev_by_id_from_pdev(pdev, vdev_id,
-						    WLAN_MLME_CM_ID);
-	if (!vdev) {
-		mlme_err("vdev object is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	status = cm_roam_acquire_lock(vdev);
-	if (QDF_IS_STATUS_ERROR(status))
-		goto release_ref;
 
 	if (reason == REASON_DRIVER_DISABLED && requestor)
 		mlme_set_operations_bitmap(psoc, vdev_id, requestor, false);
@@ -202,10 +190,6 @@ QDF_STATUS wlan_cm_disable_rso(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 
 	status = cm_roam_state_change(pdev, vdev_id, WLAN_ROAM_RSO_STOPPED,
 				      REASON_DRIVER_DISABLED, NULL, false);
-	cm_roam_release_lock(vdev);
-
-release_ref:
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_CM_ID);
 
 	return status;
 }
@@ -216,31 +200,15 @@ QDF_STATUS wlan_cm_enable_rso(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 {
 	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
 	QDF_STATUS status;
-	struct wlan_objmgr_vdev *vdev;
-
-	vdev = wlan_objmgr_get_vdev_by_id_from_pdev(pdev, vdev_id,
-						    WLAN_MLME_CM_ID);
-	if (!vdev) {
-		mlme_err("vdev object is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
 
 	if (reason == REASON_DRIVER_ENABLED && requestor)
 		mlme_set_operations_bitmap(psoc, vdev_id, requestor, true);
-
-	status = cm_roam_acquire_lock(vdev);
-	if (QDF_IS_STATUS_ERROR(status))
-		goto release_ref;
 
 	mlme_debug("ROAM_CONFIG: vdev[%d] Enable roaming - requestor:%s",
 		   vdev_id, cm_roam_get_requestor_string(requestor));
 
 	status = cm_roam_state_change(pdev, vdev_id, WLAN_ROAM_RSO_ENABLED,
 				      REASON_DRIVER_ENABLED, NULL, false);
-	cm_roam_release_lock(vdev);
-
-release_ref:
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_CM_ID);
 
 	return status;
 }
