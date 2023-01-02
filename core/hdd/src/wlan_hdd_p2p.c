@@ -797,7 +797,7 @@ struct wireless_dev *__wlan_hdd_add_virtual_intf(struct wiphy *wiphy,
 	}
 
 	if (!adapter) {
-		hdd_err("hdd_open_adapter failed");
+		hdd_err("hdd_open_adapter failed with iftype %d", type);
 		return ERR_PTR(-ENOSPC);
 	}
 
