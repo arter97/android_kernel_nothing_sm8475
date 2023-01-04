@@ -334,7 +334,7 @@ CONFIG_ARCH_WAIPIO=y
 # CONFIG_ARCH_NEO is not set
 # CONFIG_ARCH_DIWALI is not set
 # CONFIG_ARCH_PALM is not set
-# CONFIG_ARCH_CAPE is not set
+CONFIG_ARCH_CAPE=y
 # CONFIG_ARCH_PARROT is not set
 # CONFIG_ARCH_RAVELIN is not set
 # CONFIG_ARCH_HOLI is not set
