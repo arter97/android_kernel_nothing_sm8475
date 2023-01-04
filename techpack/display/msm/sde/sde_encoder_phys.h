@@ -125,6 +125,7 @@ struct sde_encoder_virt_ops {
  * @update_split_role:		Update the split role of the phys enc
  * @control_te:			Interface to control the vsync_enable status
  * @restore:			Restore all the encoder configs.
+ * @reset_tearcheck_rd_ptr:	Reset the tearcheck rd_ptr_line_count from 0 to init_val
  * @is_autorefresh_enabled:	provides the autorefresh current
  *                              enable/disable state.
  * @get_line_count:		Obtain current internal vertical line count
@@ -135,6 +136,7 @@ struct sde_encoder_virt_ops {
  * @get_underrun_line_count:	Obtain and log current internal vertical line
  *                              count and underrun line count
  * @add_to_minidump:		Add this phys_enc data to minidumps
+ * @disable_autorefresh:	Disable autorefresh
  */
 
 struct sde_encoder_phys_ops {
@@ -180,6 +182,7 @@ struct sde_encoder_phys_ops {
 			enum sde_enc_split_role role);
 	void (*control_te)(struct sde_encoder_phys *phys_enc, bool enable);
 	void (*restore)(struct sde_encoder_phys *phys);
+	void (*reset_tearcheck_rd_ptr)(struct sde_encoder_phys *phys);
 	bool (*is_autorefresh_enabled)(struct sde_encoder_phys *phys);
 	int (*get_line_count)(struct sde_encoder_phys *phys);
 	bool (*wait_dma_trigger)(struct sde_encoder_phys *phys);
@@ -188,6 +191,7 @@ struct sde_encoder_phys_ops {
 			struct msm_display_info *disp_info);
 	u32 (*get_underrun_line_count)(struct sde_encoder_phys *phys);
 	void (*add_to_minidump)(struct sde_encoder_phys *phys);
+	void (*disable_autorefresh)(struct sde_encoder_phys *phys);
 };
 
 /**
@@ -398,7 +402,7 @@ struct sde_encoder_phys_cmd_te_timestamp {
  * @wr_ptr_wait_success: log wr_ptr_wait success for release fence trigger
  * @te_timestamp_list: List head for the TE timestamp list
  * @te_timestamp: Array of size MAX_TE_PROFILE_COUNT te_timestamp_list elements
- * @frame_trigger_count: atomic counter tracking number of frame triggers per TE interval
+ * @qsync_threshold_lines: tearcheck threshold lines calculated based on qsync_min_fps
  */
 struct sde_encoder_phys_cmd {
 	struct sde_encoder_phys base;
@@ -411,7 +415,7 @@ struct sde_encoder_phys_cmd {
 	struct list_head te_timestamp_list;
 	struct sde_encoder_phys_cmd_te_timestamp
 			te_timestamp[MAX_TE_PROFILE_COUNT];
-	atomic_t frame_trigger_count;
+	u32 qsync_threshold_lines;
 };
 
 /**

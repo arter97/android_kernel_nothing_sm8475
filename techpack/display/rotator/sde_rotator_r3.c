@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -50,6 +51,7 @@
 #define DEFAULT_SBUF_HEADROOM	20
 #define DEFAULT_UBWC_MALSIZE	0
 #define DEFAULT_UBWC_SWIZZLE	0
+#define DEFAULT_HIGHEST_BANK_BIT	0x2
 
 #define DEFAULT_MAXLINEWIDTH	4096
 
@@ -1235,7 +1237,7 @@ static void sde_hw_rotator_map_vaddr(struct sde_dbg_buf *dbgbuf,
 static void sde_hw_rotator_unmap_vaddr(struct sde_dbg_buf *dbgbuf)
 {
 	if (dbgbuf->vaddr) {
-		dma_buf_kunmap(dbgbuf->dmabuf, 0, dbgbuf->vaddr);
+		dma_buf_vunmap(dbgbuf->dmabuf, dbgbuf->vaddr);
 		dma_buf_end_cpu_access(dbgbuf->dmabuf, DMA_FROM_DEVICE);
 	}
 
@@ -3516,6 +3518,22 @@ static int sde_rotator_hw_rev_init(struct sde_hw_rotator *rot)
 				ARRAY_SIZE(sde_hw_rotator_v4_outpixfmts);
 		rot->downscale_caps =
 			"LINEAR/1.5/2/4/8/16/32/64 TILE/1.5/2/4 TP10/1.5/2";
+	} else if (IS_SDE_MAJOR_MINOR_SAME(mdata->mdss_version,
+				SDE_MDP_HW_REV_860)) {
+		SDEROT_DBG("Sys cache inline rotation not supported\n");
+		set_bit(SDE_CAPS_UBWC_2,  mdata->sde_caps_map);
+		set_bit(SDE_CAPS_PARTIALWR,  mdata->sde_caps_map);
+		set_bit(SDE_CAPS_HW_TIMESTAMP, mdata->sde_caps_map);
+		rot->inpixfmts[SDE_ROTATOR_MODE_OFFLINE] =
+				sde_hw_rotator_v4_inpixfmts;
+		rot->num_inpixfmt[SDE_ROTATOR_MODE_OFFLINE] =
+				ARRAY_SIZE(sde_hw_rotator_v4_inpixfmts);
+		rot->outpixfmts[SDE_ROTATOR_MODE_OFFLINE] =
+				sde_hw_rotator_v4_outpixfmts;
+		rot->num_outpixfmt[SDE_ROTATOR_MODE_OFFLINE] =
+				ARRAY_SIZE(sde_hw_rotator_v4_outpixfmts);
+		rot->downscale_caps =
+			"LINEAR/1.5/2/4/8/16/32/64 TILE/1.5/2/4 TP10/1.5/2";
 	} else {
 		rot->inpixfmts[SDE_ROTATOR_MODE_OFFLINE] =
 				sde_hw_rotator_v3_inpixfmts;
@@ -3918,8 +3936,9 @@ static void sde_hw_rotator_dump_status(struct sde_rot_mgr *mgr)
 static int sde_hw_rotator_parse_dt(struct sde_hw_rotator *hw_data,
 		struct platform_device *dev)
 {
-	int ret = 0;
+	int i, len = 0, ret = 0;
 	u32 data;
+	u32 ddr_type;
 
 	if (!hw_data || !dev)
 		return -EINVAL;
@@ -3938,15 +3957,20 @@ static int sde_hw_rotator_parse_dt(struct sde_hw_rotator *hw_data,
 		hw_data->mode = ROT_REGDMA_OFF;
 	}
 
-	ret = of_property_read_u32(dev->dev.of_node,
-			"qcom,mdss-highest-bank-bit", &data);
-	if (ret) {
-		SDEROT_DBG("default to A5X bank\n");
-		ret = 0;
-		hw_data->highest_bank = 2;
-	} else {
-		SDEROT_DBG("set highest bank bit to %d\n", data);
-		hw_data->highest_bank = data;
+	hw_data->highest_bank = DEFAULT_HIGHEST_BANK_BIT;
+
+	len = sde_mdp_parse_dt_prop_len(dev, "qcom,mdss-highest-bank-bit");
+	if (len > 0) {
+		for (i = 0; i < len; i = i + 2) {
+			of_property_read_u32_index(dev->dev.of_node,
+					"qcom,mdss-highest-bank-bit", i, &ddr_type);
+			if (!ddr_type || (of_fdt_get_ddrtype() == ddr_type)) {
+				of_property_read_u32_index(dev->dev.of_node,
+						"qcom,mdss-highest-bank-bit", i+1, &data);
+				SDEROT_DBG("set highest bank bit to %d\n", data);
+				hw_data->highest_bank = data;
+			}
+		}
 	}
 
 	ret = of_property_read_u32(dev->dev.of_node,

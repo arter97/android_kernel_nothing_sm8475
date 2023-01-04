@@ -1046,6 +1046,24 @@ u32 dsi_ctrl_hw_cmn_get_cmd_read_data(struct dsi_ctrl_hw *ctrl,
 		return 0;
 	}
 
+	/*
+	 * Large read_cnt value can lead to negative repeated_bytes value
+	 * and array out of bounds access of read buffer.
+	 * Avoid this by resetting read_cnt to expected value when panel
+	 * sends more bytes than expected.
+	 */
+	if (rx_byte == 4 && read_cnt > 4) {
+		DSI_CTRL_HW_INFO(ctrl,
+			"Expected %u bytes for short read but received %u bytes\n",
+			rx_byte, read_cnt);
+		read_cnt = rx_byte;
+	} else if (rx_byte == 16 && read_cnt > (pkt_size + 6)) {
+		DSI_CTRL_HW_INFO(ctrl,
+			"Expected %u bytes for long read but received %u bytes\n",
+			pkt_size + 6, read_cnt);
+		read_cnt = pkt_size + 6;
+	}
+
 	if (read_cnt > 16) {
 		int bytes_shifted, data_lost = 0, rem_header = 0;
 
@@ -1177,11 +1195,12 @@ void dsi_ctrl_hw_cmn_clear_interrupt_status(struct dsi_ctrl_hw *ctrl, u32 ints)
 		reg |= BIT(30);
 
 	/*
-	 * Do not clear error status.
-	 * It will be cleared as part of
-	 * error handler function.
+	 * Do not clear error status. It will be cleared as part of error handler function.
+	 * Do not clear dynamic refresh done status. It will be cleared as part of
+	 * wait4dynamic_refresh_done() function.
 	 */
-	reg &= ~BIT(24);
+	reg &= ~(BIT(24) | BIT(28));
+
 	DSI_W32(ctrl, DSI_INT_CTRL, reg);
 
 	DSI_CTRL_HW_DBG(ctrl, "Clear interrupts, ints = 0x%x, INT_CTRL=0x%x\n",

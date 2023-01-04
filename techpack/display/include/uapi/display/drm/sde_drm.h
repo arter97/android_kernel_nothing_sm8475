@@ -115,8 +115,16 @@ extern "C" {
  * @SDE_SYSCACHE_LLCC_EVA_RIGHT:Syscache type is eva right, LLCC_EVARGHT.
  */
 #define SDE_SYSCACHE_LLCC_DISP		0
-#define SDE_SYSCACHE_LLCC_EVA_LEFT	1
-#define SDE_SYSCACHE_LLCC_EVA_RIGHT	2
+#define SDE_SYSCACHE_LLCC_DISP_LEFT	1
+#define SDE_SYSCACHE_LLCC_DISP_RIGHT	2
+
+/**
+ * buffer modes for "buffer_mode" plane property
+ * @SDE_INDEPENDENT_BUFFER_MODE:Plane buffers are independent.
+ * @SDE_SINGLE_BUFFER_MODE:	All planes are on same buffer, same input fence.
+ */
+#define SDE_INDEPENDENT_BUFFER_MODE	0
+#define SDE_SINGLE_BUFFER_MODE		1
 
 /**
  * Bit masks for "src_config" property

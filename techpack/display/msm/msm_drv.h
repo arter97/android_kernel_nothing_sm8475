@@ -145,6 +145,7 @@ enum msm_mdp_plane_property {
 	PLANE_PROP_FB_TRANSLATION_MODE,
 	PLANE_PROP_MULTIRECT_MODE,
 	PLANE_PROP_SYS_CACHE_TYPE,
+	PLANE_PROP_BUFFER_MODE,
 
 	/* total # of properties */
 	PLANE_PROP_COUNT
@@ -773,7 +774,7 @@ struct msm_mode_info {
 	bool wide_bus_en;
 	u32 panel_mode_caps;
 	u32 mdp_transfer_time_us;
-	u32 allowed_mode_switches;
+	u64 allowed_mode_switches;
 	bool disable_rsc_solver;
 	struct msm_dyn_clk_list dyn_clk_list;
 	u32 qsync_min_fps;

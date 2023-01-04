@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -198,7 +199,7 @@ static void dsi_pll_config_slave(struct dsi_pll_resource *rsc)
 	rsc->slave = NULL;
 
 	if (!orsc) {
-		DSI_PLL_WARN(rsc,
+		DSI_PLL_DBG(rsc,
 			"slave PLL unavilable, assuming standalone config\n");
 		return;
 	}
@@ -1147,7 +1148,7 @@ static int dsi_pll_calc_cphy_pclk_div(struct dsi_pll_resource *pll)
 	return pclk_div;
 }
 
-static int dsi_pll_5nm_set_pclk_div(struct dsi_pll_resource *pll, bool commit)
+static int dsi_pll_5nm_set_pclk_div(struct dsi_pll_resource *pll)
 {
 
 	int dsi_clk = 0, pclk_div = 0;
@@ -1175,10 +1176,8 @@ static int dsi_pll_5nm_set_pclk_div(struct dsi_pll_resource *pll, bool commit)
 	DSI_PLL_DBG(pll, "pclk rate: %llu, dsi_clk: %d, pclk_div: %d\n",
 			pll->pclk_rate, dsi_clk, pclk_div);
 
-	if (commit) {
-		dsi_pll_set_dsi_clk(pll, dsi_clk);
-		dsi_pll_set_pclk_div(pll, pclk_div);
-	}
+	dsi_pll_set_dsi_clk(pll, dsi_clk);
+	dsi_pll_set_pclk_div(pll, pclk_div);
 
 	return 0;
 
@@ -1556,12 +1555,13 @@ int dsi_pll_5nm_configure(void *pll, bool commit)
 	if (rsc->slave)
 		dsi_pll_enable_pll_bias(rsc->slave);
 
-	dsi_pll_init_val(rsc);
+	if (commit)
+		dsi_pll_init_val(rsc);
 
 	rc = dsi_pll_5nm_set_byteclk_div(rsc, commit);
 
 	if (commit) {
-		rc = dsi_pll_5nm_set_pclk_div(rsc, commit);
+		rc = dsi_pll_5nm_set_pclk_div(rsc);
 		rc = dsi_pll_5nm_vco_set_rate(rsc);
 	} else {
 		rc = dsi_pll_5nm_dynamic_clk_vco_set_rate(rsc);

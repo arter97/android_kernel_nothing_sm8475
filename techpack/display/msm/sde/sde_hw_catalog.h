@@ -51,7 +51,9 @@
 #define SDE_HW_VER_720	SDE_HW_VER(7, 2, 0) /* yupik */
 #define SDE_HW_VER_810	SDE_HW_VER(8, 1, 0) /* waipio */
 #define SDE_HW_VER_820	SDE_HW_VER(8, 2, 0) /* diwali */
+#define SDE_HW_VER_830	SDE_HW_VER(8, 3, 0) /* parrot */
 #define SDE_HW_VER_850	SDE_HW_VER(8, 5, 0) /* cape */
+#define SDE_HW_VER_860	SDE_HW_VER(8, 6, 0) /* ravelin */
 #define SDE_HW_VER_910	SDE_HW_VER(9, 1, 0) /* neo */
 
 /* Avoid using below IS_XXX macros outside catalog, use feature bit instead */
@@ -80,7 +82,9 @@
 #define IS_YUPIK_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_720)
 #define IS_WAIPIO_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_810)
 #define IS_DIWALI_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_820)
+#define IS_PARROT_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_830)
 #define IS_CAPE_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_850)
+#define IS_RAVELIN_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_860)
 #define IS_NEO_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_910)
 
 #define SDE_HW_BLK_NAME_LEN	16
@@ -160,6 +164,7 @@ enum {
 	SDE_HW_UBWC_VER_20 = SDE_HW_UBWC_VER(0x200),
 	SDE_HW_UBWC_VER_30 = SDE_HW_UBWC_VER(0x300),
 	SDE_HW_UBWC_VER_40 = SDE_HW_UBWC_VER(0x400),
+	SDE_HW_UBWC_VER_43 = SDE_HW_UBWC_VER(0x431),
 };
 #define IS_UBWC_10_SUPPORTED(rev) \
 		IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_UBWC_VER_10)
@@ -169,6 +174,8 @@ enum {
 		IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_UBWC_VER_30)
 #define IS_UBWC_40_SUPPORTED(rev) \
 		IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_UBWC_VER_40)
+#define IS_UBWC_43_SUPPORTED(rev) \
+		IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_UBWC_VER_43)
 
 /**
  * Supported SSPP system cache settings
@@ -193,8 +200,8 @@ enum sde_sys_cache_op_type {
  */
 enum sde_sys_cache_type {
 	SDE_SYS_CACHE_DISP,
-	SDE_SYS_CACHE_EVA_LEFT,
-	SDE_SYS_CACHE_EVA_RIGHT,
+	SDE_SYS_CACHE_DISP_LEFT,
+	SDE_SYS_CACHE_DISP_RIGHT,
 	SDE_SYS_CACHE_MAX,
 	SDE_SYS_CACHE_NONE = SDE_SYS_CACHE_MAX
 };
@@ -238,6 +245,7 @@ struct sde_intr_irq_offsets {
  * @SDE_MDP_WD_TIMER      WD timer support
  * @SDE_MDP_DHDR_MEMPOOL   Dynamic HDR Metadata mempool present
  * @SDE_MDP_DHDR_MEMPOOL_4K Dynamic HDR mempool is 4k aligned
+ * @SDE_MDP_LLCC_DISP_LR   Separate SCID for left and right display
  * @SDE_MDP_PERIPH_TOP_REMOVED Indicates if periph top0 block is removed
  * @SDE_MDP_MAX            Maximum value
 
@@ -253,6 +261,7 @@ enum {
 	SDE_MDP_DHDR_MEMPOOL,
 	SDE_MDP_DHDR_MEMPOOL_4K,
 	SDE_MDP_PERIPH_TOP_0_REMOVED,
+	SDE_MDP_LLCC_DISP_LR,
 	SDE_MDP_MAX
 };
 
@@ -366,6 +375,8 @@ enum {
  * @SDE_DISP_SECONDARY_PREF   Layer mixer preferred for secondary display
  * @SDE_MIXER_COMBINED_ALPHA  Layer mixer bg and fg alpha in single register
  * @SDE_MIXER_NOISE_LAYER     Layer mixer supports noise layer
+ * @SDE_MIXER_IS_VIRTUAL      Layer mixer which is removed but used for proper
+ *                            Dedicated CWB allocation
  * @SDE_MIXER_MAX             maximum value
  */
 enum {
@@ -379,6 +390,7 @@ enum {
 	SDE_DISP_DCWB_PREF,
 	SDE_MIXER_COMBINED_ALPHA,
 	SDE_MIXER_NOISE_LAYER,
+	SDE_MIXER_IS_VIRTUAL,
 	SDE_MIXER_MAX
 };
 
@@ -508,6 +520,7 @@ enum {
  *                              blocks
  * @SDE_CTL_UIDLE               CTL supports uidle
  * @SDE_CTL_UNIFIED_DSPP_FLUSH  CTL supports only one flush bit for DSPP
+ * @SDE_CTL_DMA4_DMA5		CTL supports DMA4 & DMA5 pipes
  * @SDE_CTL_MAX
  */
 enum {
@@ -517,6 +530,7 @@ enum {
 	SDE_CTL_ACTIVE_CFG,
 	SDE_CTL_UIDLE,
 	SDE_CTL_UNIFIED_DSPP_FLUSH,
+	SDE_CTL_DMA4_DMA5,
 	SDE_CTL_MAX
 };
 
@@ -1609,7 +1623,6 @@ struct sde_perf_cfg {
  * @qseed_hw_version   qseed hw version of the target
  * @sc_cfg: system cache configuration
  * @syscache_supported  Flag to indicate if sys cache support is enabled
- * @eva_syscache_supported  Flag to indicate if eva sys cache support is enabled
  * @uidle_cfg		Settings for uidle feature
  * @sui_misr_supported  indicate if secure-ui-misr is supported
  * @sui_block_xin_mask  mask of all the xin-clients to be blocked during
@@ -1621,6 +1634,8 @@ struct sde_perf_cfg {
  *                         during secure-ui session
  * @sui_supported_blendstage  secure-ui supported blendstage
  * @has_sui_blendstage  flag to indicate secure-ui has a blendstage restriction
+ * @ddr_count           number of ddr types supported
+ * @ddr_list_index      Index of supported ddr type
  * @has_cursor    indicates if hardware cursor is supported
  * @has_vig_p010  indicates if vig pipe supports p010 format
  * @has_fp16      indicates if FP16 format is supported on SSPP pipes
@@ -1700,7 +1715,6 @@ struct sde_mdss_cfg {
 
 	struct sde_sc_cfg sc_cfg[SDE_SYS_CACHE_MAX];
 	bool syscache_supported;
-	bool eva_syscache_supported;
 
 	bool sui_misr_supported;
 	u32 sui_block_xin_mask;
@@ -1710,6 +1724,9 @@ struct sde_mdss_cfg {
 	u32 sui_ns_allowed;
 	u32 sui_supported_blendstage;
 	bool has_sui_blendstage;
+
+	u32 ddr_count;
+	u32 ddr_list_index;
 
 	bool has_hdr;
 	bool has_hdr_plus;
@@ -1739,6 +1756,7 @@ struct sde_mdss_cfg {
 
 	u32 mixer_count;
 	struct sde_lm_cfg mixer[MAX_BLOCKS];
+	u32 virtual_mixers_mask;
 
 	struct sde_dspp_top_cfg dspp_top;
 

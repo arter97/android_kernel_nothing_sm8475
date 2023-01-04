@@ -204,7 +204,8 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 		return;
 	}
 
-	atomic_set(&c_bridge->display->panel->esd_recovery_pending, 0);
+	if (bridge->encoder->crtc->state->active_changed)
+		atomic_set(&c_bridge->display->panel->esd_recovery_pending, 0);
 
 	/* By this point mode should have been validated through mode_fixup */
 	rc = dsi_display_set_mode(c_bridge->display,
@@ -880,9 +881,12 @@ int dsi_conn_set_info_blob(struct drm_connector *connector,
 				mode_info->roi_caps.merge_rois);
 	}
 
-	if (DSI_IS_FSC_PANEL(panel->fsc_rgb_order))
+	if (DSI_IS_FSC_PANEL(panel->fsc_rgb_order)) {
 		sde_kms_info_add_keystr(info, "fsc rgb color order",
 			panel->fsc_rgb_order);
+		sde_kms_info_add_keystr(info, "is fsc panel", "true");
+		sde_kms_info_add_keyint(info, "num fsc fields", 3);
+	}
 
 	fmt = dsi_display->config.common_config.dst_format;
 	bpp = dsi_ctrl_pixel_format_to_bpp(fmt);

@@ -1120,6 +1120,12 @@ static bool _sde_rm_check_lm_and_get_connected_blks(
 	*ds = NULL;
 	*pp = NULL;
 
+	if (lm_cfg->features & BIT(SDE_MIXER_IS_VIRTUAL)) {
+		SDE_DEBUG("lm %d hw block is removed and it is a virtual mixer",
+				lm_cfg->id);
+		return false;
+	}
+
 	lm_primary_pref = lm_cfg->features & BIT(SDE_DISP_PRIMARY_PREF);
 	lm_secondary_pref = lm_cfg->features & BIT(SDE_DISP_SECONDARY_PREF);
 	cwb_pref = lm_cfg->features & BIT(SDE_DISP_CWB_PREF);
@@ -2159,7 +2165,7 @@ int sde_rm_cont_splash_res_init(struct msm_drm_private *priv,
 				struct sde_mdss_cfg *cat)
 {
 	struct sde_rm_hw_iter iter_c;
-	int index = 0, ctl_top_cnt;
+	int index = 0, ctl_top_cnt, splash_disp_count = 0;
 	struct sde_kms *sde_kms = NULL;
 	struct sde_hw_mdp *hw_mdp;
 	struct sde_splash_display *splash_display;
@@ -2187,7 +2193,7 @@ int sde_rm_cont_splash_res_init(struct msm_drm_private *priv,
 
 	sde_rm_init_hw_iter(&iter_c, 0, SDE_HW_BLK_CTL);
 	while (_sde_rm_get_hw_locked(rm, &iter_c)
-			&& (index < splash_data->num_splash_displays)) {
+			&& (splash_disp_count < splash_data->num_splash_displays)) {
 		struct sde_hw_ctl *ctl = to_sde_hw_ctl(iter_c.blk->hw);
 
 		if (!ctl->ops.get_ctl_intf) {
@@ -2197,7 +2203,8 @@ int sde_rm_cont_splash_res_init(struct msm_drm_private *priv,
 
 		intf_sel = ctl->ops.get_ctl_intf(ctl);
 		if (intf_sel) {
-			splash_display =  &splash_data->splash_display[index];
+			splash_display =
+				&splash_data->splash_display[index ? 1 : 0];
 			SDE_DEBUG("finding resources for display=%d ctl=%d\n",
 					index, iter_c.blk->id - CTL_0);
 
@@ -2206,6 +2213,7 @@ int sde_rm_cont_splash_res_init(struct msm_drm_private *priv,
 			splash_display->cont_splash_enabled = true;
 			splash_display->ctl_ids[splash_display->ctl_cnt++] =
 				iter_c.blk->id;
+			splash_disp_count++;
 		}
 		index++;
 	}

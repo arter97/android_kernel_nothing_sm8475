@@ -1060,10 +1060,8 @@ static void msm_lastclose(struct drm_device *dev)
 				priv->pending_crtcs);
 
 		rc = kms->funcs->trigger_null_flush(kms);
-		if (rc) {
-			DRM_ERROR("null flush commit failure during lastclose\n");
+		if (rc)
 			return;
-		}
 	}
 
 	/*
@@ -2139,17 +2137,24 @@ static int msm_drm_component_dependency_check(struct device *dev)
 		if (!node)
 			break;
 
-		if (of_node_name_eq(node,"qcom,sde_rscc") &&
-				of_device_is_available(node) &&
-				of_node_check_flag(node, OF_POPULATED)) {
-			struct platform_device *pdev =
-					of_find_device_by_node(node);
-			if (!platform_get_drvdata(pdev)) {
-				dev_err(dev,
-					"qcom,sde_rscc not probed yet\n");
-				return -EPROBE_DEFER;
+		if (of_node_name_eq(node, "qcom,sde_rscc")) {
+			if (of_device_is_available(node) &&
+					of_node_check_flag(node, OF_POPULATED)) {
+				struct platform_device *pdev =
+						of_find_device_by_node(node);
+				if (!platform_get_drvdata(pdev)) {
+					dev_err(dev,
+						"qcom,sde_rscc not probed yet\n");
+					return -EPROBE_DEFER;
+				} else {
+					return 0;
+				}
 			} else {
-				return 0;
+				dev_err(dev,
+					"of_device_is_available: %d of_node_check_flag: %d\n",
+						of_device_is_available(node),
+						of_node_check_flag(node, OF_POPULATED));
+				return -EPROBE_DEFER;
 			}
 		}
 	}
@@ -2202,8 +2207,8 @@ static void msm_pdev_shutdown(struct platform_device *pdev)
 	}
 
 	priv = ddev->dev_private;
-	if (!priv) {
-		DRM_ERROR("invalid msm drm private node\n");
+	if (!priv || !priv->registered) {
+		DRM_ERROR("invalid msm drm private node or drm dev not registered\n");
 		return;
 	}
 

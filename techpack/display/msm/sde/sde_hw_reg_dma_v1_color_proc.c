@@ -210,6 +210,8 @@ static u32 sspp_mapping[SSPP_MAX] = {
 	[SSPP_DMA1] = DMA1,
 	[SSPP_DMA2] = DMA2,
 	[SSPP_DMA3] = DMA3,
+	[SSPP_DMA4] = DMA4,
+	[SSPP_DMA5] = DMA5,
 };
 
 static u32 ltm_mapping[LTM_MAX] = {
@@ -2184,8 +2186,7 @@ static int reg_dma_sspp_check(struct sde_hw_pipe *ctx, void *cfg,
 	if (IS_ERR_OR_NULL(dma_ops))
 		return -EINVAL;
 
-	if (!hw_cfg->ctl || ctx->idx > SSPP_DMA3 || ctx->idx <= SSPP_NONE ||
-		feature >= REG_DMA_FEATURES_MAX) {
+	if (!hw_cfg->ctl || !SDE_SSPP_VALID(ctx->idx) || feature >= REG_DMA_FEATURES_MAX) {
 		DRM_ERROR("invalid ctl %pK sspp idx %d feature %d\n",
 			hw_cfg->ctl, ctx->idx, feature);
 		return -EINVAL;
@@ -4124,9 +4125,9 @@ void reg_dmav2_setup_dspp_igcv4(struct sde_hw_dspp *ctx, void *cfg)
 		data[j++] = (u16)(lut_cfg->c0[i] << 4);
 		data[j++] = (u16)(lut_cfg->c1[i] << 4);
 	}
+	data[j++] = lut_cfg->c2_last ? (u16)(lut_cfg->c2_last << 4) : (u16)(4095 << 4);
 	data[j++] = lut_cfg->c0_last ? (u16)(lut_cfg->c0_last << 4) : (u16)(4095 << 4);
 	data[j++] = lut_cfg->c1_last ? (u16)(lut_cfg->c1_last << 4) : (u16)(4095 << 4);
-	data[j++] = lut_cfg->c2_last ? (u16)(lut_cfg->c2_last << 4) : (u16)(4095 << 4);
 	REG_DMA_SETUP_OPS(dma_write_cfg, 0, (u32 *)data, len,
 			REG_BLK_LUT_WRITE, 0, 0, 0);
 	/* table select is only relevant to SSPP Gamut */
@@ -5114,10 +5115,6 @@ static int __reg_dmav1_setup_demurav1_cfg1(struct sde_hw_dspp *ctx,
 	u32 width = 0;
 	u32 demura_base = ctx->cap->sblk->demura.base + ctx->hw.blk_off;
 
-	if (!dcfg->cfg1_en) {
-		DRM_DEBUG_DRIVER("dcfg->cfg1_en is disabled\n");
-		return 0;
-	}
 	len = ARRAY_SIZE(dcfg->cfg1_param0_c0);
 	cfg1_data = kvzalloc((len * sizeof(u32)), GFP_KERNEL);
 	if (!cfg1_data)
@@ -5176,24 +5173,26 @@ static int __reg_dmav1_setup_demurav1_cfg1(struct sde_hw_dspp *ctx,
 		goto quit;
 	}
 
-	cfg1_data[0] = (dcfg->cfg1_param0_c0[0] & REG_MASK(10)) |
-		((dcfg->cfg1_param0_c1[0] & REG_MASK(10)) << 10) |
-		((dcfg->cfg1_param0_c2[0] & REG_MASK(10)) << 20) | BIT(31);
-	DRM_DEBUG_DRIVER("0x64: value %x\n", cfg1_data[0]);
-	for (i = 1; i < len; i++) {
-		cfg1_data[i] = (dcfg->cfg1_param0_c0[i] & REG_MASK(10)) |
-			((dcfg->cfg1_param0_c1[i] & REG_MASK(10)) << 10) |
-			((dcfg->cfg1_param0_c2[i] & REG_MASK(10)) << 20);
-			DRM_DEBUG_DRIVER("0x64 index %d value %x\n", i,
-					cfg1_data[i]);
-	}
-	REG_DMA_SETUP_OPS(*dma_write_cfg, demura_base + 0x64,
-		cfg1_data, len * sizeof(u32), REG_BLK_WRITE_INC, 0,
-		0, 0);
-	rc = dma_ops->setup_payload(dma_write_cfg);
-	if (rc) {
-		DRM_ERROR("lut write failed ret %d\n", rc);
-		goto quit;
+	if (dcfg->cfg1_en) {
+		cfg1_data[0] = (dcfg->cfg1_param0_c0[0] & REG_MASK(10)) |
+			((dcfg->cfg1_param0_c1[0] & REG_MASK(10)) << 10) |
+			((dcfg->cfg1_param0_c2[0] & REG_MASK(10)) << 20) | BIT(31);
+		DRM_DEBUG_DRIVER("0x64: value %x\n", cfg1_data[0]);
+		for (i = 1; i < len; i++) {
+			cfg1_data[i] = (dcfg->cfg1_param0_c0[i] & REG_MASK(10)) |
+				((dcfg->cfg1_param0_c1[i] & REG_MASK(10)) << 10) |
+				((dcfg->cfg1_param0_c2[i] & REG_MASK(10)) << 20);
+				DRM_DEBUG_DRIVER("0x64 index %d value %x\n", i,
+						cfg1_data[i]);
+		}
+		REG_DMA_SETUP_OPS(*dma_write_cfg, demura_base + 0x64,
+			cfg1_data, len * sizeof(u32), REG_BLK_WRITE_INC, 0,
+			0, 0);
+		rc = dma_ops->setup_payload(dma_write_cfg);
+		if (rc) {
+			DRM_ERROR("lut write failed ret %d\n", rc);
+			goto quit;
+		}
 	}
 
 quit:
