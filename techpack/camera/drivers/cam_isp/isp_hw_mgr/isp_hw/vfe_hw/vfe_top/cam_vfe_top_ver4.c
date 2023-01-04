@@ -495,18 +495,20 @@ static int cam_vfe_top_ver4_print_overflow_debug_info(
 	violation_status = cam_io_r(soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base +
 		    common_data->common_reg->bus_violation_status);
 
-	CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] sof_cnt:%d src_clk:%luMHz overflow:%s violation:%s",
+	CAM_ERR(CAM_ISP, "VFE[%d] sof_cnt:%d src_clk:%luMHz overflow:%s violation:%s",
 		top_priv->sof_cnt, soc_info->index, soc_info->applied_src_clk_rate / 1000000,
 		CAM_BOOL_TO_YESNO(bus_overflow_status), CAM_BOOL_TO_YESNO(violation_status));
 
 	if (bus_overflow_status)
-		CAM_INFO_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus overflow status: 0x%x",
+		CAM_INFO(CAM_ISP, "VFE[%d] Bus overflow status: 0x%x",
 			soc_info->index, bus_overflow_status);
-	while (bus_overflow_status) {
-		if (bus_overflow_status & 0x1)
-			CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus Overflow %s",
+
+	tmp = bus_overflow_status;
+	while (tmp) {
+		if (tmp & 0x1)
+			CAM_ERR(CAM_ISP, "VFE[%d] Bus Overflow %s",
 				soc_info->index, common_data->hw_info->wr_client_desc[i].desc);
-		bus_overflow_status = bus_overflow_status >> 1;
+		tmp = tmp >> 1;
 		i++;
 	}
 
@@ -516,14 +518,14 @@ static int cam_vfe_top_ver4_print_overflow_debug_info(
 		cam_cpas_log_votes();
 
 	if (violation_status)
-		CAM_INFO_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus violation status: 0x%x",
+		CAM_INFO(CAM_ISP, "VFE[%d] Bus violation status: 0x%x",
 			soc_info->index, violation_status);
 
 	i = 0;
 	tmp = violation_status;
 	while (tmp) {
 		if (tmp & 0x1)
-			CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus Violation %s",
+			CAM_ERR(CAM_ISP, "VFE[%d] Bus Violation %s",
 				soc_info->index, common_data->hw_info->wr_client_desc[i].desc);
 		tmp = tmp >> 1;
 		i++;

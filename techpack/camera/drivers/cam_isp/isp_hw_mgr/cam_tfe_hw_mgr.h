@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_TFE_HW_MGR_H_
@@ -44,6 +45,17 @@ struct cam_tfe_hw_mgr_debug {
 };
 
 /**
+ * struct cam_tfe_cdm_user_data - TFE HW user data with CDM
+ *
+ * @prepare:                   hw_update_data
+ * @request_id:                Request id
+ */
+struct cam_tfe_cdm_user_data {
+	struct cam_isp_prepare_hw_update_data    *hw_update_data;
+	uint64_t                                  request_id;
+};
+
+/**
  * struct cam_tfe_hw_mgr_ctx - TFE HW manager Context object
  *
  * @list:                     used by the ctx list.
@@ -84,6 +96,7 @@ struct cam_tfe_hw_mgr_debug {
  *                              dual TFE
  * @packet                     CSL packet from user mode driver
  * @bw_config_version          BW Config version
+ * @cdm_userdata               CDM user data
  */
 struct cam_tfe_hw_mgr_ctx {
 	struct list_head                list;
@@ -126,6 +139,7 @@ struct cam_tfe_hw_mgr_ctx {
 	uint32_t                        dual_tfe_irq_mismatch_cnt;
 	struct cam_packet              *packet;
 	uint32_t                        bw_config_version;
+	struct cam_tfe_cdm_user_data    cdm_userdata;
 };
 
 /**

@@ -23,6 +23,7 @@
 #include "cam_req_mgr_debug.h"
 #include "cam_cpas_api.h"
 #include "cam_ife_hw_mgr.h"
+#include "cam_subdev.h"
 
 static const char isp_dev_name[] = "cam-isp";
 
@@ -36,6 +37,8 @@ static int cam_isp_context_dump_requests(void *data,
 	struct cam_smmu_pf_info *pf_info);
 
 static int cam_isp_context_hw_recovery(void *priv, void *data);
+static int cam_isp_context_handle_message(void *context,
+	uint32_t msg_type, void *data);
 
 static int __cam_isp_ctx_start_dev_in_ready(struct cam_context *ctx,
 	struct cam_start_stop_dev_cmd *cmd);
@@ -48,6 +51,11 @@ static const char *__cam_isp_hw_evt_val_to_type(
 
 static const char *__cam_isp_ctx_substate_val_to_type(
 	enum cam_isp_ctx_activated_substate type);
+
+static int __cam_isp_ctx_check_deferred_buf_done(
+	struct cam_isp_context *ctx_isp,
+	struct cam_isp_hw_done_event_data *done,
+	uint32_t bubble_state);
 
 static const char *__cam_isp_evt_val_to_type(
 	uint32_t evt_id)
@@ -1173,7 +1181,7 @@ static int __cam_isp_ctx_recover_sof_timestamp(struct cam_context *ctx)
 
 	rc = __cam_isp_ctx_get_hw_timestamp(ctx, &prev_ts, &curr_ts, &boot_ts);
 	if (rc) {
-		CAM_ERR(CAM_ISP, "ctx:%u Failed to get timestamp from HW", ctx->ctx_id);
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "ctx:%u Failed to get timestamp from HW", ctx->ctx_id);
 		return rc;
 	}
 
@@ -1677,8 +1685,11 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 			 */
 			req_isp->num_acked++;
 			CAM_DBG(CAM_ISP,
-				"buf done with bubble state %d recovery %d",
-				bubble_state, req_isp->bubble_report);
+				"buf done with bubble state %d recovery %d for req %lld, ctx %u",
+				bubble_state,
+				req_isp->bubble_report,
+				req->request_id,
+				ctx->ctx_id);
 			continue;
 		}
 
@@ -1828,6 +1839,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 	struct cam_context *ctx = ctx_isp->base;
 	const char *handle_type;
 	uint32_t cmp_addr = 0;
+	struct cam_isp_hw_done_event_data unhandled_done = {0};
 
 	trace_cam_buf_done("ISP", ctx, req);
 
@@ -1842,6 +1854,8 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 			done->num_handles, CAM_NUM_OUT_PER_COMP_IRQ_MAX);
 		return -EINVAL;
 	}
+
+	unhandled_done.timestamp = done->timestamp;
 
 	for (i = 0; i < done->num_handles; i++) {
 		for (j = 0; j < req_isp->num_fence_map_out; j++) {
@@ -1868,6 +1882,11 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 				__cam_isp_resource_handle_id_to_type(
 				ctx_isp->isp_device_type, done->resource_handle[i]),
 				req->request_id);
+			unhandled_done.resource_handle[unhandled_done.num_handles] =
+				done->resource_handle[i];
+			unhandled_done.last_consumed_addr[unhandled_done.num_handles] =
+				done->last_consumed_addr[i];
+			unhandled_done.num_handles++;
 			continue;
 		}
 
@@ -1984,16 +2003,27 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 			 */
 			req_isp->num_acked++;
 			CAM_DBG(CAM_ISP,
-				"buf done with bubble state %d recovery %d",
-				bubble_state, req_isp->bubble_report);
-				/* Process deferred buf_done acks */
+				"buf done with bubble state %d recovery %d for req %lld, ctx %u",
+				bubble_state,
+				req_isp->bubble_report,
+				req->request_id,
+				ctx->ctx_id);
 
+			/* Process deferred buf_done acks */
 			if (req_isp->num_deferred_acks)
 				__cam_isp_handle_deferred_buf_done(ctx_isp, req,
 					true,
 					CAM_SYNC_STATE_SIGNALED_ERROR,
 					CAM_SYNC_ISP_EVENT_BUBBLE);
 
+			if (req_isp->num_acked == req_isp->num_fence_map_out) {
+				rc = __cam_isp_ctx_handle_buf_done_for_req_list(ctx_isp, req);
+				if (rc)
+					CAM_ERR(CAM_ISP,
+						"Error in buf done for req = %llu with rc = %d",
+						req->request_id, rc);
+				return rc;
+			}
 			continue;
 		}
 
@@ -2012,6 +2042,10 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 				req_isp->hw_update_data.frame_header_cpu_addr,
 				req->request_id, CAM_REQ_MGR_SOF_EVENT_SUCCESS);
 	}
+
+	if ((unhandled_done.num_handles > 0) && (!defer_buf_done))
+		__cam_isp_ctx_check_deferred_buf_done(
+			ctx_isp, &unhandled_done, bubble_state);
 
 	if (req_isp->num_acked > req_isp->num_fence_map_out) {
 		/* Should not happen */
@@ -2130,6 +2164,92 @@ static void __cam_isp_ctx_buf_done_match_req(
 		"irq_delay_detected %d", *irq_delay_detected);
 }
 
+static int __cam_isp_ctx_check_deferred_buf_done(
+	struct cam_isp_context *ctx_isp,
+	struct cam_isp_hw_done_event_data *done,
+	uint32_t bubble_state)
+{
+	int rc = 0;
+	struct cam_ctx_request *req;
+	struct cam_context *ctx = ctx_isp->base;
+	struct cam_isp_ctx_req *req_isp;
+	bool  req_in_pending_wait_list = false;
+
+	if (!list_empty(&ctx->wait_req_list)) {
+		req = list_first_entry(&ctx->wait_req_list,
+			struct cam_ctx_request, list);
+
+		req_in_pending_wait_list = true;
+		if (ctx_isp->last_applied_req_id !=
+			ctx_isp->last_bufdone_err_apply_req_id) {
+			CAM_INFO(CAM_ISP,
+				"Buf done with no active request but with req in wait list, req %llu last apply id:%lld last err id:%lld",
+				req->request_id,
+				ctx_isp->last_applied_req_id,
+				ctx_isp->last_bufdone_err_apply_req_id);
+			ctx_isp->last_bufdone_err_apply_req_id =
+				ctx_isp->last_applied_req_id;
+		}
+
+		req_isp = (struct cam_isp_ctx_req *) req->req_priv;
+
+		/*
+		 * Verify consumed address for this request to make sure
+		 * we are handling the buf_done for the correct
+		 * buffer. Also defer actual buf_done handling, i.e
+		 * do not signal the fence as this request may go into
+		 * Bubble state eventully.
+		 */
+		rc =
+			__cam_isp_ctx_handle_buf_done_for_request_verify_addr(
+				ctx_isp, req, done, bubble_state, true, true);
+	} else if (!list_empty(&ctx->pending_req_list)) {
+		/*
+		 * We saw the case that the hw config is blocked due to
+		 * some reason, the we get the reg upd and buf done before
+		 * the req is added to wait req list.
+		 */
+		req = list_first_entry(&ctx->pending_req_list,
+			struct cam_ctx_request, list);
+
+		req_in_pending_wait_list = true;
+		if (ctx_isp->last_applied_req_id !=
+			ctx_isp->last_bufdone_err_apply_req_id) {
+			CAM_INFO(CAM_ISP,
+				"Buf done with no active request but with req in pending list, req %llu last apply id:%lld last err id:%lld",
+				req->request_id,
+				ctx_isp->last_applied_req_id,
+				ctx_isp->last_bufdone_err_apply_req_id);
+			ctx_isp->last_bufdone_err_apply_req_id =
+				ctx_isp->last_applied_req_id;
+		}
+
+		req_isp = (struct cam_isp_ctx_req *) req->req_priv;
+
+		/*
+		 * Verify consumed address for this request to make sure
+		 * we are handling the buf_done for the correct
+		 * buffer. Also defer actual buf_done handling, i.e
+		 * do not signal the fence as this request may go into
+		 * Bubble state eventully.
+		 */
+		rc =
+			__cam_isp_ctx_handle_buf_done_for_request_verify_addr(
+				ctx_isp, req, done, bubble_state, true, true);
+	}
+
+	if (!req_in_pending_wait_list  && (ctx_isp->last_applied_req_id !=
+		ctx_isp->last_bufdone_err_apply_req_id)) {
+		CAM_WARN(CAM_ISP,
+			"Buf done with no active request bubble_state=%d last_applied_req_id:%lld ",
+			bubble_state, ctx_isp->last_applied_req_id);
+		ctx_isp->last_bufdone_err_apply_req_id =
+				ctx_isp->last_applied_req_id;
+	}
+
+	return rc;
+}
+
 static int __cam_isp_ctx_handle_buf_done_verify_addr(
 	struct cam_isp_context *ctx_isp,
 	struct cam_isp_hw_done_event_data *done,
@@ -2140,83 +2260,10 @@ static int __cam_isp_ctx_handle_buf_done_verify_addr(
 	struct cam_ctx_request *req;
 	struct cam_ctx_request *next_req = NULL;
 	struct cam_context *ctx = ctx_isp->base;
-	struct cam_isp_ctx_req *req_isp;
-	bool  req_in_pending_wait_list = false;
 
 	if (list_empty(&ctx->active_req_list)) {
-
-		if (!list_empty(&ctx->wait_req_list)) {
-			req = list_first_entry(&ctx->wait_req_list,
-				struct cam_ctx_request, list);
-
-			req_in_pending_wait_list = true;
-			if (ctx_isp->last_applied_req_id !=
-				ctx_isp->last_bufdone_err_apply_req_id) {
-				CAM_WARN(CAM_ISP,
-					"Buf done with no active request but with req in wait list, req %llu last apply id:%lld last err id:%lld",
-					req->request_id,
-					ctx_isp->last_applied_req_id,
-					ctx_isp->last_bufdone_err_apply_req_id);
-				ctx_isp->last_bufdone_err_apply_req_id =
-					ctx_isp->last_applied_req_id;
-			}
-
-			req_isp = (struct cam_isp_ctx_req *) req->req_priv;
-
-			/*
-			 * Verify consumed address for this request to make sure
-			 * we are handling the buf_done for the correct
-			 * buffer. Also defer actual buf_done handling, i.e
-			 * do not signal the fence as this request may go into
-			 * Bubble state eventully.
-			 */
-			rc =
-			__cam_isp_ctx_handle_buf_done_for_request_verify_addr(
-				ctx_isp, req, done, bubble_state, true, true);
-		} else if (!list_empty(&ctx->pending_req_list)) {
-			/*
-			 * We saw the case that the hw config is blocked due to
-			 * some reason, the we get the reg upd and buf done before
-			 * the req is added to wait req list.
-			 */
-			req = list_first_entry(&ctx->pending_req_list,
-				struct cam_ctx_request, list);
-
-			req_in_pending_wait_list = true;
-			if (ctx_isp->last_applied_req_id !=
-				ctx_isp->last_bufdone_err_apply_req_id) {
-				CAM_WARN(CAM_ISP,
-					"Buf done with no active request but with req in pending list, req %llu last apply id:%lld last err id:%lld",
-					req->request_id,
-					ctx_isp->last_applied_req_id,
-					ctx_isp->last_bufdone_err_apply_req_id);
-				ctx_isp->last_bufdone_err_apply_req_id =
-					ctx_isp->last_applied_req_id;
-			}
-
-			req_isp = (struct cam_isp_ctx_req *) req->req_priv;
-
-			/*
-			 * Verify consumed address for this request to make sure
-			 * we are handling the buf_done for the correct
-			 * buffer. Also defer actual buf_done handling, i.e
-			 * do not signal the fence as this request may go into
-			 * Bubble state eventully.
-			 */
-			rc =
-			__cam_isp_ctx_handle_buf_done_for_request_verify_addr(
-				ctx_isp, req, done, bubble_state, true, true);
-		}
-
-		if (!req_in_pending_wait_list  && (ctx_isp->last_applied_req_id !=
-			ctx_isp->last_bufdone_err_apply_req_id)) {
-			CAM_WARN(CAM_ISP,
-				"Buf done with no active request bubble_state=%d last_applied_req_id:%lld ",
-				bubble_state, ctx_isp->last_applied_req_id);
-			ctx_isp->last_bufdone_err_apply_req_id =
-					ctx_isp->last_applied_req_id;
-		}
-		return 0;
+		return __cam_isp_ctx_check_deferred_buf_done(
+			ctx_isp, done, bubble_state);
 	}
 
 	req = list_first_entry(&ctx->active_req_list,
@@ -4300,7 +4347,7 @@ static int __cam_isp_ctx_dump_req_info(
 					"ISP_OUT_FENCE_REQUEST_ACTIVE.%s.%u.%d:",
 					__cam_isp_ife_sfe_resource_handle_id_to_type(
 						req_isp->fence_map_out[i].resource_handle),
-					&(req_isp->fence_map_out[i].image_buf_addr),
+					req_isp->fence_map_out[i].image_buf_addr[0],
 					req_isp->fence_map_out[i].sync_id);
 
 				if (rc) {
@@ -4344,47 +4391,15 @@ static void *cam_isp_ctx_user_dump_stream_info(
 	void *dump_struct, uint8_t *addr_ptr)
 {
 	struct cam_context           *ctx = NULL;
-	struct cam_ife_hw_mgr_ctx    *hw_mgr_ctx = NULL;
-	struct cam_isp_hw_mgr_res    *hw_mgr_res = NULL;
-	struct cam_isp_resource_node *hw_res = NULL;
-	int hw_idx[CAM_ISP_HW_SPLIT_MAX] = { -1, -1 };
-	int sfe_hw_idx[CAM_ISP_HW_SPLIT_MAX] = { -1, -1 };
 	int32_t                      *addr;
-	int                           i;
 
 	ctx = (struct cam_context *)dump_struct;
-	hw_mgr_ctx = (struct cam_ife_hw_mgr_ctx *)ctx->ctxt_to_hw_map;
-
-	if (!list_empty(&hw_mgr_ctx->res_list_ife_src)) {
-		hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_ife_src,
-			struct cam_isp_hw_mgr_res, list);
-
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			hw_res = hw_mgr_res->hw_res[i];
-			if (hw_res && hw_res->hw_intf)
-				hw_idx[i] = hw_res->hw_intf->hw_idx;
-		}
-	}
-
-	if (!list_empty(&hw_mgr_ctx->res_list_sfe_src)) {
-		hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_sfe_src,
-			struct cam_isp_hw_mgr_res, list);
-
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			hw_res = hw_mgr_res->hw_res[i];
-			if (hw_res && hw_res->hw_intf)
-				sfe_hw_idx[i] = hw_res->hw_intf->hw_idx;
-		}
-	}
 
 	addr = (int32_t *)addr_ptr;
 
 	*addr++ = ctx->ctx_id;
 	*addr++ = ctx->dev_hdl;
 	*addr++ = ctx->link_hdl;
-	*addr++ = hw_idx[CAM_ISP_HW_SPLIT_LEFT];
-	*addr++ = sfe_hw_idx[CAM_ISP_HW_SPLIT_LEFT];
-	*addr++ = hw_mgr_ctx->flags.is_sfe_shdr;
 
 	return addr;
 }
@@ -4407,6 +4422,8 @@ static int __cam_isp_ctx_dump_in_top_state(
 	struct cam_ctx_request             *req_temp;
 	struct cam_hw_dump_args             ife_dump_args;
 	struct cam_common_hw_dump_args      dump_args;
+	struct cam_hw_cmd_args              hw_cmd_args;
+	struct cam_isp_hw_cmd_args          isp_hw_cmd_args;
 
 	spin_lock_bh(&ctx->lock);
 	list_for_each_entry_safe(req, req_temp,
@@ -4482,14 +4499,34 @@ hw_dump:
 
 	/* Dump stream info */
 	ctx->ctxt_to_hw_map = ctx_isp->hw_ctx;
-	rc = cam_common_user_dump_helper(&dump_args, cam_isp_ctx_user_dump_stream_info,
-		ctx, sizeof(int32_t), "ISP_STREAM_INFO:");
-	if (rc) {
-		CAM_ERR(CAM_ISP, "Stream info dump fail %lld, rc: %d",
-			req->request_id, rc);
-		goto end;
+	if (ctx->hw_mgr_intf->hw_dump) {
+		/* Dump first part of stream info from isp context */
+		rc = cam_common_user_dump_helper(&dump_args,
+			cam_isp_ctx_user_dump_stream_info, ctx,
+			sizeof(int32_t), "ISP_STREAM_INFO_FROM_CTX:");
+
+		if (rc) {
+			CAM_ERR(CAM_ISP, "ISP CTX stream info dump fail %lld, rc: %d",
+				req->request_id, rc);
+			goto end;
+		}
+
+		/* Dump second part of stream info from ife hw manager */
+		hw_cmd_args.ctxt_to_hw_map = ctx->ctxt_to_hw_map;
+		hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
+		isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_DUMP_STREAM_INFO;
+		isp_hw_cmd_args.cmd_data = &dump_args;
+		hw_cmd_args.u.internal_args = (void *)&isp_hw_cmd_args;
+
+		rc = ctx->hw_mgr_intf->hw_cmd(ctx->hw_mgr_intf->hw_mgr_priv, &hw_cmd_args);
+		if (rc) {
+			CAM_ERR(CAM_ISP, "IFE HW MGR stream info dump fail %lld, rc: %d",
+				req->request_id, rc);
+			goto end;
+		}
+
+		dump_info->offset = dump_args.offset;
 	}
-	dump_info->offset = dump_args.offset;
 
 	/* Dump event record */
 	rc = __cam_isp_ctx_dump_event_record(ctx_isp, &dump_args);
@@ -6157,7 +6194,7 @@ static int __cam_isp_ctx_acquire_hw_v1(struct cam_context *ctx,
 	}
 
 	ctx_isp->support_consumed_addr =
-		(param.op_flags & CAM_IFE_CTX_FRAME_HEADER_EN);
+		(param.op_flags & CAM_IFE_CTX_CONSUME_ADDR_EN);
 
 	/* Query the context has rdi only resource */
 	hw_cmd_args.ctxt_to_hw_map = param.ctxt_to_hw_map;
@@ -7325,6 +7362,7 @@ static struct cam_ctx_ops
 		.irq_ops = NULL,
 		.pagefault_ops = cam_isp_context_dump_requests,
 		.dumpinfo_ops = cam_isp_context_info_dump,
+		.msg_cb_ops = cam_isp_context_handle_message,
 	},
 	/* Activated */
 	{
@@ -7348,6 +7386,7 @@ static struct cam_ctx_ops
 		.pagefault_ops = cam_isp_context_dump_requests,
 		.dumpinfo_ops = cam_isp_context_info_dump,
 		.recovery_ops = cam_isp_context_hw_recovery,
+		.msg_cb_ops = cam_isp_context_handle_message,
 	},
 };
 
@@ -7489,6 +7528,34 @@ static int cam_isp_context_dump_requests(void *data,
 				"could not send page fault notification ctx %u session_hdl:%d device_hdl:%d link_hdl:%d",
 				ctx->ctx_id, ctx->session_hdl,
 				ctx->dev_hdl, ctx->link_hdl);
+	}
+	return rc;
+}
+
+static int cam_isp_context_handle_message(void *context,
+	uint32_t msg_type, void *data)
+{
+	int                            rc = -EINVAL;
+	struct cam_hw_cmd_args         hw_cmd_args = {0};
+	struct cam_isp_hw_cmd_args     isp_hw_cmd_args = {0};
+	struct cam_context            *ctx = (struct cam_context *)context;
+
+	hw_cmd_args.ctxt_to_hw_map = ctx->ctxt_to_hw_map;
+
+	switch (msg_type) {
+	case CAM_SUBDEV_MESSAGE_CLOCK_UPDATE:
+		hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
+		isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_CMD_UPDATE_CLOCK;
+		isp_hw_cmd_args.cmd_data = data;
+		hw_cmd_args.u.internal_args = (void *)&isp_hw_cmd_args;
+		rc = ctx->hw_mgr_intf->hw_cmd(ctx->hw_mgr_intf->hw_mgr_priv,
+			&hw_cmd_args);
+
+		if (rc)
+			CAM_ERR(CAM_ISP, "Update clock rate failed rc: %d", rc);
+		break;
+	default:
+		CAM_ERR(CAM_ISP, "Invalid message type %d", msg_type);
 	}
 	return rc;
 }

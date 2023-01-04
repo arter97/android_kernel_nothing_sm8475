@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 
@@ -183,6 +184,7 @@ static struct cam_vfe_camif_lite_ver3_reg_data vfe480_camif_rdi_reg_data[3] = {
 		.error_irq_mask2                 = 0x20000,
 		.subscribe_irq_mask1             = 0x30,
 		.enable_diagnostic_hw            = 0x1,
+		.top_debug_cfg_en                = 1,
 	},
 	{
 		.extern_reg_update_shift         = 0,
@@ -196,6 +198,7 @@ static struct cam_vfe_camif_lite_ver3_reg_data vfe480_camif_rdi_reg_data[3] = {
 		.error_irq_mask2                 = 0x40000,
 		.subscribe_irq_mask1             = 0x300,
 		.enable_diagnostic_hw            = 0x1,
+		.top_debug_cfg_en                = 1,
 	},
 	{
 		.extern_reg_update_shift         = 0,
@@ -209,6 +212,7 @@ static struct cam_vfe_camif_lite_ver3_reg_data vfe480_camif_rdi_reg_data[3] = {
 		.error_irq_mask2                 = 0x80000,
 		.subscribe_irq_mask1             = 0x3000,
 		.enable_diagnostic_hw            = 0x1,
+		.top_debug_cfg_en                = 1,
 	},
 };
 

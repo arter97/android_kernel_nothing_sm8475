@@ -266,6 +266,9 @@ static struct cam_tfe_csid_common_reg_offset
 	.format_measure_height_shift_val              = 16,
 	.format_measure_height_mask_val               = 0xe,
 	.format_measure_width_mask_val                = 0x10,
+	.sync_clk                                     = true,
+	.tfe_pix_fuse_en                              = true,
+	.disable_pix_tfe_idx                          = 2,
 };
 
 static struct cam_tfe_csid_reg_offset cam_tfe_csid_640_reg_offset = {

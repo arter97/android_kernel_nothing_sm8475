@@ -214,10 +214,14 @@ struct data_rate_reg_info_t {
  *                           present in the data rate settings array
  * @data_rate_settings    : Array of regsettings which are specific to
  *                           data rate
+ * @min_supported_datarate: Minimum Supported Data Rate on PHY
+ * @max_supported_datarate: Maximum Supported Data Rate on PHY
  */
 struct data_rate_settings_t {
 	ssize_t num_data_rate_settings;
 	struct data_rate_reg_info_t data_rate_settings[MAX_DATA_RATES];
+	uint64_t min_supported_datarate;
+	uint64_t max_supported_datarate;
 };
 
 struct bist_reg_settings_t {

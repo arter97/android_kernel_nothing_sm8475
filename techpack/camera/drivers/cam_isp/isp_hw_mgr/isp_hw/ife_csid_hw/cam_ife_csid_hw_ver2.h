@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_IFE_CSID_HW_VER2_H_
@@ -508,6 +509,9 @@ struct cam_ife_csid_ver2_reg_info {
 	const struct cam_ife_csid_irq_desc               *path_irq_desc;
 	const struct cam_ife_csid_top_irq_desc           *top_irq_desc;
 	const uint32_t                                    num_top_err_irqs;
+	const uint32_t                                    fused_max_width[
+		CAM_IFE_CSID_WIDTH_FUSE_VAL_MAX];
+	const uint32_t                                    width_fuse_max_val;
 };
 
 /*
@@ -545,6 +549,7 @@ struct cam_ife_csid_ver2_reg_info {
  * @sync_mode:                Master/Slave modes
  * @mup:                      MUP for incoming VC of next frame
  * @discard_frame_per_path:   Count of paths dropping initial frames
+ * @secure_mode:              Holds secure mode state of the CSID
  *
  */
 struct cam_ife_csid_ver2_hw {
@@ -585,6 +590,7 @@ struct cam_ife_csid_ver2_hw {
 	enum cam_isp_hw_sync_mode              sync_mode;
 	uint32_t                               mup;
 	atomic_t                               discard_frame_per_path;
+	bool                                   secure_mode;
 };
 
 /*

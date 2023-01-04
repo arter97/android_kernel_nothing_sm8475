@@ -620,11 +620,13 @@ static int cam_ife_csid_ver2_stop_csi2_in_err(
 	CAM_DBG(CAM_ISP, "CSID:%d Stop csi2 rx",
 		csid_hw->hw_intf->hw_idx);
 
-	/* Reset the Rx CFG registers */
-	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
-		csid_reg->csi2_reg->cfg0_addr);
-	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
-		csid_reg->csi2_reg->cfg1_addr);
+	if (!csid_hw->secure_mode) {
+		/* Reset the Rx CFG registers */
+		cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
+			csid_reg->csi2_reg->cfg0_addr);
+		cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
+			csid_reg->csi2_reg->cfg1_addr);
+	}
 
 	if (csid_hw->rx_cfg.irq_handle)
 		cam_irq_controller_disable_irq(
@@ -934,13 +936,13 @@ static int cam_ife_csid_ver2_handle_event_err(
 			cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
 			path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 			evt.res_id   = res->res_id;
-			CAM_ERR_RATE_LIMIT(CAM_ISP,
+			CAM_ERR(CAM_ISP,
 				"csid[%u] Res:%s Err 0x%x status 0x%x time_stamp: %lld:%lld",
 				csid_hw->hw_intf->hw_idx, res->res_name, err_type,
 				irq_status, path_cfg->error_ts.tv_sec,
 				path_cfg->error_ts.tv_nsec);
 		} else {
-			CAM_ERR_RATE_LIMIT(CAM_ISP,
+			CAM_ERR(CAM_ISP,
 				"csid[%u] Rx Err: 0x%x status 0x%x",
 				csid_hw->hw_intf->hw_idx, err_type, irq_status);
 		}
@@ -1376,7 +1378,7 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 	}
 
 	if (len)
-		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%d] %s status: 0x%x Errors:%s",
+		CAM_ERR(CAM_ISP, "CSID[%d] %s status: 0x%x Errors:%s",
 			csid_hw->hw_intf->hw_idx, irq_reg_tag[index],
 			irq_status, log_buf);
 
@@ -1385,7 +1387,7 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 	while (status) {
 
 		if (status & 0x1)
-			CAM_INFO_RATE_LIMIT(CAM_ISP, "CSID[%d] IRQ %s %s ",
+			CAM_INFO(CAM_ISP, "CSID[%d] IRQ %s %s ",
 				csid_hw->hw_intf->hw_idx, irq_reg_tag[index],
 				csid_reg->path_irq_desc[bit_pos].desc);
 
@@ -1481,7 +1483,7 @@ void cam_ife_csid_ver2_print_format_measure_info(
 	CAM_INFO(CAM_ISP, "CSID[%u] res [id :%d name : %s]",
 		csid_hw->hw_intf->hw_idx,
 		res->res_id, res->res_name);
-	CAM_ERR_RATE_LIMIT(CAM_ISP, "Frame Size Error Expected[h: %u w: %u] Actual[h: %u w: %u]",
+	CAM_ERR(CAM_ISP, "Frame Size Error Expected[h: %u w: %u] Actual[h: %u w: %u]",
 		((expected_frame >>
 		csid_reg->cmn_reg->format_measure_height_shift_val) &
 		csid_reg->cmn_reg->format_measure_height_mask_val),
@@ -1654,8 +1656,6 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
-
-	res = &csid_hw->path_res[CAM_IFE_CSID_IRQ_REG_PPP];
 
 	path_reg = csid_reg->path_reg[res->res_id];
 	err_mask = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
@@ -2474,6 +2474,106 @@ int cam_ife_csid_hw_ver2_hw_cfg(
 	return rc;
 }
 
+static bool cam_ife_csid_ver2_is_width_valid_by_fuse(
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	uint32_t width)
+{
+	struct cam_ife_csid_ver2_reg_info *csid_reg;
+	uint32_t fuse_val                 = UINT_MAX;
+
+	cam_cpas_is_feature_supported(CAM_CPAS_MP_LIMIT_FUSE,
+		CAM_CPAS_HW_IDX_ANY, &fuse_val);
+
+	if (fuse_val == UINT_MAX) {
+		CAM_DBG(CAM_ISP, "CSID[%u] Fuse not present",
+			csid_hw->hw_intf->hw_idx);
+		return true;
+	}
+
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+			csid_hw->core_info->csid_reg;
+
+	if (fuse_val > csid_reg->width_fuse_max_val) {
+		CAM_ERR(CAM_ISP, "Invalid fuse value %u", fuse_val);
+		return false;
+	}
+
+	if (width > csid_reg->fused_max_width[fuse_val]) {
+		CAM_ERR(CAM_ISP,
+			"CSID[%u] Resolution not supported required_width: %d max_supported_width: %d",
+			csid_hw->hw_intf->hw_idx,
+			width, csid_reg->fused_max_width[fuse_val]);
+		return false;
+	}
+
+	return true;
+}
+
+static bool cam_ife_csid_ver2_is_width_valid_by_dt(
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	uint32_t  width)
+{
+	struct cam_csid_soc_private *soc_private = NULL;
+
+	soc_private = (struct cam_csid_soc_private *)
+			csid_hw->hw_info->soc_info.soc_private;
+
+	if (!soc_private->max_width_enabled)
+		return true;
+
+	if (width > soc_private->max_width) {
+		CAM_ERR(CAM_ISP,
+			"CSID[%u] Resolution not supported required_width: %d max_supported_width: %d",
+			csid_hw->hw_intf->hw_idx,
+			width, soc_private->max_width);
+		return false;
+	}
+
+	return true;
+}
+
+bool cam_ife_csid_ver2_is_width_valid(
+	struct cam_csid_hw_reserve_resource_args  *reserve,
+	struct cam_ife_csid_ver2_hw *csid_hw)
+{
+	uint32_t width = 0;
+
+	if (reserve->res_id != CAM_IFE_PIX_PATH_RES_IPP)
+		return true;
+
+	if (reserve->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
+		reserve->sync_mode == CAM_ISP_HW_SYNC_NONE)
+		width = reserve->in_port->left_stop -
+			reserve->in_port->left_start + 1;
+	else if (reserve->sync_mode == CAM_ISP_HW_SYNC_SLAVE)
+		width = reserve->in_port->right_stop -
+			reserve->in_port->right_start + 1;
+
+	/**
+	 * qcfa_bin flag is not enabled for SFE only use case.
+	 * Added the sfe_en and sfe_inline_shdr flags to ensure
+	 * QCFA SFE only use case also does width correction.
+	 */
+	if (reserve->in_port->horizontal_bin || reserve->in_port->qcfa_bin ||
+		(reserve->sfe_en && !reserve->sfe_inline_shdr))
+		width /= 2;
+
+	if (!cam_ife_csid_ver2_is_width_valid_by_fuse(csid_hw, width)) {
+		CAM_ERR(CAM_ISP, "CSID[%u] width limited by fuse",
+			csid_hw->hw_intf->hw_idx);
+		return false;
+	}
+
+	if (!cam_ife_csid_ver2_is_width_valid_by_dt(csid_hw, width)) {
+		CAM_ERR(CAM_ISP, "CSID[%u] width limited by dt",
+			csid_hw->hw_intf->hw_idx);
+		return false;
+	}
+
+	return true;
+}
+
+
 static int cam_ife_csid_ver2_in_port_validate(
 	struct cam_csid_hw_reserve_resource_args  *reserve,
 	struct cam_ife_csid_ver2_hw     *csid_hw)
@@ -2490,6 +2590,11 @@ static int cam_ife_csid_ver2_in_port_validate(
 			csid_hw->hw_intf->hw_idx);
 		if (rc)
 			goto err;
+	}
+
+	if (!cam_ife_csid_ver2_is_width_valid(reserve, csid_hw)) {
+		rc = -EINVAL;
+		goto err;
 	}
 
 	if (csid_hw->counters.csi2_reserve_cnt) {
@@ -2621,9 +2726,11 @@ int cam_ife_csid_ver2_reserve(void *hw_priv,
 	path_cfg->sfe_shdr = reserve->sfe_inline_shdr;
 	csid_hw->flags.offline_mode = reserve->is_offline;
 	reserve->need_top_cfg = csid_reg->need_top_cfg;
+	csid_hw->secure_mode = reserve->secure_mode;
 
-	CAM_DBG(CAM_ISP, "CSID[%u] Resource[id: %d name:%s] state %d cid %d",
-		csid_hw->hw_intf->hw_idx, reserve->res_id, res->res_name,
+	CAM_DBG(CAM_ISP, "CSID[%u] Secure_mode %d Resource[id: %d name:%s] state %d cid %d",
+		csid_hw->hw_intf->hw_idx, csid_hw->secure_mode,
+		reserve->res_id, res->res_name,
 		res->res_state, cid);
 
 	return rc;
@@ -2709,6 +2816,7 @@ int cam_ife_csid_ver2_release(void *hw_priv,
 		csid_hw->token = NULL;
 	}
 
+	csid_hw->secure_mode = 0;
 	res->res_state = CAM_ISP_RESOURCE_STATE_AVAILABLE;
 end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
@@ -2860,7 +2968,10 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 	 * Plain format
 	 * Packing format
 	 */
-	cfg1 = (path_cfg->crop_enable << path_reg->crop_h_en_shift_val) |
+
+	cfg1 = cam_io_r_mb(mem_base + path_reg->cfg1_addr);
+
+	cfg1 |= (path_cfg->crop_enable << path_reg->crop_h_en_shift_val) |
 		(path_cfg->crop_enable <<
 		 path_reg->crop_v_en_shift_val);
 
@@ -3028,6 +3139,8 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 	 * Timestamp enable and strobe selection
 	 * Pix store enable
 	 */
+
+	cfg1 = cam_io_r_mb(mem_base + path_reg->cfg1_addr);
 
 	if (csid_hw->flags.binning_enabled) {
 

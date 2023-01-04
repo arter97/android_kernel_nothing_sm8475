@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -332,6 +333,31 @@ int cam_context_dump_pf_info(struct cam_context *ctx,
 		}
 	}
 	mutex_unlock(&ctx->ctx_mutex);
+
+	return rc;
+}
+
+int cam_context_handle_message(struct cam_context *ctx,
+	uint32_t msg_type, void *data)
+{
+	int rc = 0;
+
+	if (!ctx->state_machine) {
+		CAM_ERR(CAM_CORE, "Context is not ready");
+		return -EINVAL;
+	}
+
+	if ((ctx->state > CAM_CTX_AVAILABLE) &&
+		(ctx->state < CAM_CTX_STATE_MAX)) {
+		if (ctx->state_machine[ctx->state].msg_cb_ops) {
+			rc = ctx->state_machine[ctx->state].msg_cb_ops(
+				ctx, msg_type, data);
+		} else {
+			CAM_WARN(CAM_CORE,
+				"No message handler for ctx %d, state %d msg_type :%d",
+				ctx->dev_hdl, ctx->state, msg_type);
+		}
+	}
 
 	return rc;
 }

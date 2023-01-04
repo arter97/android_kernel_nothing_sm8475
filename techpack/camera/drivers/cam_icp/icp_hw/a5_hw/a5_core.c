@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -744,6 +745,10 @@ int cam_a5_process_cmd(void *device_priv, uint32_t cmd_type,
 		struct cam_icp_hw_dump_args *dump_args = cmd_args;
 
 		rc = cam_a5_fw_mini_dump(dump_args, core_info);
+		break;
+	}
+	case CAM_ICP_CMD_HW_REG_DUMP: {
+		/* reg dump not supported */
 		break;
 	}
 	default:

@@ -763,7 +763,7 @@ static int cam_sfe_top_handle_overflow(
 {
 	struct cam_sfe_top_common_data      *common_data;
 	struct cam_hw_soc_info              *soc_info;
-	uint32_t                             overflow_status, violation_status;
+	uint32_t                             overflow_status, violation_status, tmp;
 	uint32_t                             i = 0;
 
 	common_data = &top_priv->common_data;
@@ -774,21 +774,26 @@ static int cam_sfe_top_handle_overflow(
 	violation_status = cam_io_r(soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base +
 		top_priv->common_data.common_reg->ipp_violation_status);
 
-	CAM_ERR_RATE_LIMIT(CAM_ISP,
+	CAM_ERR(CAM_ISP,
 		"SFE%d src_clk_rate:%luHz overflow:%s violation: %s",
 		soc_info->index, soc_info->applied_src_clk_rate,
 		CAM_BOOL_TO_YESNO(overflow_status), CAM_BOOL_TO_YESNO(violation_status));
 
-	while (overflow_status) {
-		if (overflow_status & 0x1)
+	tmp = overflow_status;
+	while (tmp) {
+		if (tmp & 0x1)
 			CAM_ERR(CAM_ISP, "SFE Overflow %s ",
 				top_priv->wr_client_desc[i].desc);
-		overflow_status = overflow_status >> 1;
+		tmp = tmp >> 1;
 		i++;
 	}
 
-	cam_sfe_top_print_ipp_violation_info(top_priv, violation_status);
+	if (violation_status)
+		cam_sfe_top_print_ipp_violation_info(top_priv, violation_status);
 	cam_sfe_top_print_debug_reg_info(top_priv);
+
+	if (overflow_status)
+		cam_cpas_log_votes();
 
 	return 0;
 }

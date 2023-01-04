@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_SFE_TOP_H_
@@ -143,6 +144,8 @@ struct cam_sfe_top_hw_info {
 	struct   cam_sfe_top_debug_info         (*clc_dbg_mod_info)[CAM_SFE_TOP_DBG_REG_MAX][8];
 	uint32_t                                  num_of_testbus;
 	struct cam_sfe_testbus_info               test_bus_info[CAM_SFE_TOP_TESTBUS_MAX];
+	uint32_t                                  num_bus_wr_errors;
+	struct cam_sfe_bus_wr_err_irq_desc       *bus_wr_err_desc;
 };
 
 int cam_sfe_top_init(

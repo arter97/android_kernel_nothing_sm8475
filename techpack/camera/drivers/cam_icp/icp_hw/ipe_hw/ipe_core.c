@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -468,6 +469,10 @@ int cam_ipe_process_cmd(void *device_priv, uint32_t cmd_type,
 	case CAM_ICP_IPE_CMD_RESET:
 		rc = cam_ipe_cmd_reset(soc_info, core_info);
 		break;
+	case CAM_ICP_IPE_CMD_DUMP_CLK: {
+		rc = cam_soc_util_dump_clk(soc_info);
+		break;
+	}
 	default:
 		CAM_ERR(CAM_ICP, "Invalid Cmd Type:%u", cmd_type);
 		rc = -EINVAL;

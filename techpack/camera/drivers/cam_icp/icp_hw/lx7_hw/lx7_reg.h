@@ -1,10 +1,16 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_LX7_REG_H_
 #define _CAM_LX7_REG_H_
+
+/* ICP CSR info */
+#define LX7_GEN_PURPOSE_REG_OFFSET     0x20
+#define LX7_CSR_DBG_STATUS_REG_OFFSET  0xC0
+#define LX7_CSR_DBG_CTRL_REG_OFFSET    0xC4
 
 /* ICP_SYS - Protected reg space defined in AC policy */
 #define ICP_LX7_SYS_RESET      0x0

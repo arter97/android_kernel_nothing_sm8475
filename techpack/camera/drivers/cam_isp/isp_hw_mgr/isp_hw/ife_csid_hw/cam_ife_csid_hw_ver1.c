@@ -2227,10 +2227,12 @@ static int cam_ife_csid_ver1_init_config_rdi_path(
 		cam_io_w_mb(val, mem_base + path_reg->multi_vcdt_cfg0_addr);
 	}
 
-	val = 0;
 	/*configure cfg1 addr
 	 * Timestamp strobe selection
 	 */
+
+	val = cam_io_r_mb(mem_base + path_reg->cfg1_addr);
+
 	val |= cmn_reg->timestamp_strobe_val <<
 			cmn_reg->timestamp_stb_sel_shift_val;
 
@@ -2550,7 +2552,9 @@ static int cam_ife_csid_ver1_init_config_pxl_path(
 	 * timestamp strobe selection
 	 */
 
-	val = cmn_reg->timestamp_strobe_val <<
+	val = cam_io_r_mb(mem_base + path_reg->cfg1_addr);
+
+	val |= cmn_reg->timestamp_strobe_val <<
 		cmn_reg->timestamp_stb_sel_shift_val;
 
 	cam_io_w_mb(val, mem_base + path_reg->cfg1_addr);

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_SFE780_H_
@@ -393,6 +394,27 @@ static struct cam_sfe_top_err_irq_desc sfe_780_top_irq_err_desc[] = {
 		.bitmask = BIT(18),
 		.err_name = "CONTEXT_CONTROLLER_SWITCH_VIOLATION",
 		.desc = "The old context is not completed processing inside SFE.",
+	},
+};
+
+static struct cam_sfe_bus_wr_err_irq_desc sfe_780_bus_wr_irq_err_desc[] = {
+	{
+		.bitmask = BIT(28),
+		.err_name = "CONS_VIOLATION",
+		.desc = "Programmed registers violated the constraints",
+		.err_handler = cam_sfe_bus_wr_get_constraint_errors,
+	},
+	{
+		.bitmask = BIT(30),
+		.err_name = "CCIF_VIOLATION",
+		.desc = "Clients has a violation in ccif protocol at input",
+		.err_handler = cam_sfe_bus_wr_print_ccif_violation_status,
+	},
+	{
+		.bitmask = BIT(31),
+		.err_name = "IMAGE_SIZE_VIOLATION",
+		.desc = "Programmed image size is not same as image size from the CCIF",
+		.err_handler = cam_sfe_bus_wr_print_violation_info,
 	},
 };
 
@@ -1577,6 +1599,8 @@ static struct cam_sfe_bus_wr_hw_info sfe780_bus_wr_hw_info = {
 	.line_done_cfg        = 0x11,
 	.top_irq_shift        = 0x0,
 	.max_bw_counter_limit = 0xFF,
+	.num_bus_wr_errors    = ARRAY_SIZE(sfe_780_bus_wr_irq_err_desc),
+	.bus_wr_err_desc      = sfe_780_bus_wr_irq_err_desc,
 };
 
 static struct cam_irq_register_set sfe780_top_irq_reg_set[1] = {

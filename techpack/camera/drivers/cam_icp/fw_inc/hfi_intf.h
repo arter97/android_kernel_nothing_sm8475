@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _HFI_INTF_H_
@@ -182,8 +183,10 @@ int cam_hfi_resume(struct hfi_mem_info *hfi_mem);
 
 /**
  * cam_hfi_queue_dump() - utility function to dump hfi queues
+ * @dump_queue_data: if set dumps queue contents
+ *
  */
-void cam_hfi_queue_dump(void);
+void cam_hfi_queue_dump(bool dump_queue_data);
 
 /**
  * cam_hfi_mini_dump() - utility function for mini dump

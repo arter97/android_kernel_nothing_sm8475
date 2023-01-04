@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -325,9 +326,9 @@ skip_core_cfg:
 	memset(err_irq_mask, 0, sizeof(err_irq_mask));
 	memset(irq_mask, 0, sizeof(irq_mask));
 
-	/* config debug status registers */
-	cam_io_w_mb(rsrc_data->reg_data->top_debug_cfg_en, rsrc_data->mem_base +
-		rsrc_data->common_reg->top_debug_cfg);
+	val = cam_io_r(rsrc_data->mem_base + rsrc_data->common_reg->top_debug_cfg);
+	val |= rsrc_data->reg_data->top_debug_cfg_en;
+	cam_io_w_mb(val, rsrc_data->mem_base + rsrc_data->common_reg->top_debug_cfg);
 
 	if (!camif_lite_res->rdi_only_ctx)
 		goto subscribe_err;

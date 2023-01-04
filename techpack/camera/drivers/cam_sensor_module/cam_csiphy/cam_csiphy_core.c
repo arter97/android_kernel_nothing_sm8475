@@ -17,6 +17,7 @@
 #include "cam_mem_mgr.h"
 #include "cam_cpas_api.h"
 #include "cam_compat.h"
+#include "cam_subdev.h"
 
 #define SCM_SVC_CAMERASS 0x18
 #define SECURE_SYSCALL_ID 0x6
@@ -461,12 +462,12 @@ static int32_t cam_csiphy_update_secure_info(
 
 	switch (csiphy_dev->hw_version) {
 	case CSIPHY_VERSION_V201:
+	case CSIPHY_VERSION_V123:
 	case CSIPHY_VERSION_V125:
 		phy_mask_len =
 		CAM_CSIPHY_MAX_DPHY_LANES + CAM_CSIPHY_MAX_CPHY_LANES + 1;
 		break;
 	case CSIPHY_VERSION_V121:
-	case CSIPHY_VERSION_V123:
 	case CSIPHY_VERSION_V124:
 	case CSIPHY_VERSION_V210:
 	case CSIPHY_VERSION_V211:
@@ -608,6 +609,41 @@ static int cam_csiphy_sanitize_lane_cnt(
 	return 0;
 }
 
+static int cam_csiphy_sanitize_datarate(
+	struct csiphy_device *csiphy_dev,
+	uint64_t required_phy_data_rate)
+{
+	struct data_rate_settings_t *settings_table = NULL;
+
+	if (csiphy_dev->ctrl_reg->data_rates_settings_table == NULL) {
+		CAM_DBG(CAM_CSIPHY,
+			"Data rate specific register table not available");
+		return 0;
+	}
+
+	settings_table = csiphy_dev->ctrl_reg->data_rates_settings_table;
+
+	if ((settings_table->min_supported_datarate != 0) &&
+		(required_phy_data_rate < settings_table->min_supported_datarate)) {
+		CAM_ERR(CAM_CSIPHY,
+			"Required datarate less than min supported value, required:%llu supported min:%llu",
+			required_phy_data_rate,
+			settings_table->min_supported_datarate);
+		return -EINVAL;
+	}
+
+	if ((settings_table->max_supported_datarate != 0) &&
+		(required_phy_data_rate > settings_table->max_supported_datarate)) {
+		CAM_ERR(CAM_CSIPHY,
+			"Required datarate more than max supported value, required:%llu supported max:%llu",
+			required_phy_data_rate,
+			settings_table->max_supported_datarate);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	struct cam_config_dev_cmd *cfg_dev)
 {
@@ -659,9 +695,21 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 		return rc;
 	}
 
-	cmd_desc = (struct cam_cmd_buf_desc *)
-		((uint32_t *)&csl_packet->payload +
-		csl_packet->cmd_buf_offset / 4);
+	if (csl_packet->num_cmd_buf)
+		cmd_desc = (struct cam_cmd_buf_desc *)
+			((uint32_t *)&csl_packet->payload +
+			csl_packet->cmd_buf_offset / 4);
+	else {
+		CAM_ERR(CAM_CSIPHY, "num_cmd_buffers = %d", csl_packet->num_cmd_buf);
+		rc = -EINVAL;
+		return rc;
+	}
+
+	rc = cam_packet_util_validate_cmd_desc(cmd_desc);
+	if (rc) {
+		CAM_ERR(CAM_CSIPHY, "Invalid cmd desc ret: %d", rc);
+		return rc;
+	}
 
 	rc = cam_mem_get_cpu_buf(cmd_desc->mem_handle,
 		&generic_ptr, &len);
@@ -698,6 +746,16 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 		return rc;
 	}
 
+	if (csiphy_dev->csiphy_info[index].csiphy_3phase) {
+		rc = cam_csiphy_sanitize_datarate(csiphy_dev,
+			cam_cmd_csiphy_info->data_rate);
+		if (rc) {
+			CAM_ERR(CAM_CSIPHY,
+				"Wrong Datarate Configuration: %llu",
+				cam_cmd_csiphy_info->data_rate);
+			return rc;
+		}
+	}
 
 	preamble_en = (cam_cmd_csiphy_info->mipi_flags &
 		PREAMBLE_PATTEN_CAL_MASK);
@@ -1819,7 +1877,6 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	uint32_t      cphy_trio_status;
 	void __iomem *csiphybase;
 	int32_t              rc = 0;
-	uint32_t             i;
 
 	if (!csiphy_dev || !cmd) {
 		CAM_ERR(CAM_CSIPHY, "Invalid input args");
@@ -2190,8 +2247,9 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	}
 	case CAM_START_DEV: {
 		struct cam_start_stop_dev_cmd config;
-		int32_t offset;
+		int32_t i, offset;
 		int clk_vote_level = -1;
+		unsigned long clk_rate = 0;
 
 		CAM_DBG(CAM_CSIPHY, "START_DEV Called");
 		rc = copy_from_user(&config, (void __user *)cmd->handle,
@@ -2231,6 +2289,21 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 					"Failed to set the clk_rate level: %d",
 					clk_vote_level);
 				rc = 0;
+			}
+
+			for (i = 0; i < csiphy_dev->soc_info.num_clk; i++) {
+				if (i == csiphy_dev->soc_info.src_clk_idx) {
+					CAM_DBG(CAM_CSIPHY, "Skipping call back for src clk %s",
+						csiphy_dev->soc_info.clk_name[i]);
+					continue;
+				}
+				clk_rate = cam_soc_util_get_clk_rate_applied(
+					&csiphy_dev->soc_info, i, false, clk_vote_level);
+				if (clk_rate > 0) {
+					cam_subdev_notify_message(CAM_TFE_DEVICE_TYPE,
+						CAM_SUBDEV_MESSAGE_CLOCK_UPDATE,
+						(void *)(&clk_rate));
+				}
 			}
 
 			if (csiphy_dev->csiphy_info[offset].secure_mode == 1) {

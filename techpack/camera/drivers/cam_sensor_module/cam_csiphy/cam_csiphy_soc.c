@@ -16,6 +16,7 @@
 #include "include/cam_csiphy_2_1_0_hwreg.h"
 #include "include/cam_csiphy_2_1_1_hwreg.h"
 #include "include/cam_csiphy_2_1_3_hwreg.h"
+#include "cam_subdev.h"
 
 /* Clock divide factor for CPHY spec v1.0 */
 #define CSIPHY_DIVISOR_16                    16
@@ -193,6 +194,8 @@ int32_t cam_csiphy_enable_hw(struct csiphy_device *csiphy_dev, int32_t index)
 	int32_t rc = 0;
 	struct cam_hw_soc_info   *soc_info;
 	enum cam_vote_level vote_level = CAM_SVS_VOTE;
+	unsigned long clk_rate = 0;
+	int i;
 
 	soc_info = &csiphy_dev->soc_info;
 
@@ -213,6 +216,21 @@ int32_t cam_csiphy_enable_hw(struct csiphy_device *csiphy_dev, int32_t index)
 
 	rc = cam_soc_util_set_src_clk_rate(soc_info,
 		soc_info->clk_rate[0][soc_info->src_clk_idx]);
+
+	for (i = 0; i < csiphy_dev->soc_info.num_clk; i++) {
+		if (i == csiphy_dev->soc_info.src_clk_idx) {
+			CAM_DBG(CAM_CSIPHY, "Skipping call back for src clk %s",
+					csiphy_dev->soc_info.clk_name[i]);
+			continue;
+		}
+		clk_rate = cam_soc_util_get_clk_rate_applied(
+				&csiphy_dev->soc_info, i, false, vote_level);
+		if (clk_rate > 0) {
+			cam_subdev_notify_message(CAM_TFE_DEVICE_TYPE,
+					CAM_SUBDEV_MESSAGE_CLOCK_UPDATE,
+					(void *)(&clk_rate));
+		}
+	}
 
 	if (rc < 0) {
 		CAM_ERR(CAM_CSIPHY, "csiphy_clk_set_rate failed rc: %d", rc);

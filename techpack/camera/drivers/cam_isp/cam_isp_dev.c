@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -36,6 +37,22 @@ static void cam_isp_dev_iommu_fault_handler(struct cam_smmu_pf_info *pf_info)
 
 	for (i = 0; i < node->ctx_size; i++)
 		cam_context_dump_pf_info(&(node->ctx_list[i]), pf_info);
+}
+
+static void cam_isp_subdev_handle_message(
+		struct v4l2_subdev *sd,
+		enum cam_subdev_message_type_t message_type,
+		void *data)
+{
+	int i, rc = 0;
+	struct cam_node  *node = v4l2_get_subdevdata(sd);
+
+	CAM_DBG(CAM_ISP, "node name %s", node->name);
+	for (i = 0; i < node->ctx_size; i++) {
+		rc = cam_context_handle_message(&(node->ctx_list[i]), message_type, data);
+		if (rc)
+			CAM_ERR(CAM_ISP, "Failed to handle message for %s", node->name);
+	}
 }
 
 static const struct of_device_id cam_isp_dt_match[] = {
@@ -130,6 +147,7 @@ static int cam_isp_dev_component_bind(struct device *dev,
 	} else if (strnstr(compat_str, "tfe", strlen(compat_str))) {
 		rc = cam_subdev_probe(&g_isp_dev.sd, pdev, CAM_ISP_DEV_NAME,
 		CAM_TFE_DEVICE_TYPE);
+		g_isp_dev.sd.msg_cb = cam_isp_subdev_handle_message;
 		g_isp_dev.isp_device_type = CAM_TFE_DEVICE_TYPE;
 		g_isp_dev.max_context = CAM_TFE_CTX_MAX;
 	} else  {

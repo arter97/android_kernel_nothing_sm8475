@@ -798,6 +798,12 @@ static int cam_cre_mgr_process_cmd(void *priv, void *data)
 	hw_mgr = task_data->data;
 	num_batch = cre_req->num_batch;
 
+	if (num_batch > CRE_MAX_BATCH_SIZE) {
+		CAM_WARN(CAM_CRE, "num_batch = %u is greater than max",
+				num_batch);
+		num_batch = CRE_MAX_BATCH_SIZE;
+	}
+
 	CAM_DBG(CAM_CRE,
 		"Going to configure cre for req %d, req_idx %d num_batch %d",
 		cre_req->request_id, cre_req->req_idx, num_batch);
@@ -886,8 +892,10 @@ static int32_t cam_cre_mgr_process_msg(void *priv, void *data)
 		active_req_idx, ctx->last_done_req_idx);
 
 	active_req = ctx->req_list[active_req_idx];
-	if (!active_req)
+	if (!active_req) {
 		CAM_ERR(CAM_CRE, "Active req cannot be null");
+		return -EINVAL;
+	}
 
 	if (irq_data.error) {
 		evt_id = CAM_CTX_EVT_ID_ERROR;
@@ -1489,7 +1497,8 @@ static int cam_cre_mgr_pkt_validation(struct cam_packet *packet)
 		return -EINVAL;
 	}
 
-	if (packet->num_io_configs > CRE_MAX_IO_BUFS) {
+	if (!packet->num_io_configs ||
+		packet->num_io_configs > CRE_MAX_IO_BUFS) {
 		CAM_ERR(CAM_CRE, "Invalid number of io configs: %d %d",
 			CRE_MAX_IO_BUFS, packet->num_io_configs);
 		return -EINVAL;
@@ -2139,13 +2148,13 @@ static int cam_cre_process_generic_cmd_buffer(
 		if (!cmd_desc[i].length)
 			continue;
 
-	if (cmd_desc[i].meta_data != CAM_CRE_CMD_META_GENERIC_BLOB)
-		continue;
+		if (cmd_desc[i].meta_data != CAM_CRE_CMD_META_GENERIC_BLOB)
+			continue;
 
-	rc = cam_packet_util_process_generic_cmd_buffer(&cmd_desc[i],
-		cam_cre_packet_generic_blob_handler, &cmd_generic_blob);
-	if (rc)
-		CAM_ERR(CAM_CRE, "Failed in processing blobs %d", rc);
+		rc = cam_packet_util_process_generic_cmd_buffer(&cmd_desc[i],
+				cam_cre_packet_generic_blob_handler, &cmd_generic_blob);
+		if (rc)
+			CAM_ERR(CAM_CRE, "Failed in processing blobs %d", rc);
 	}
 
 	return rc;

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_TFE_SOC_H_
@@ -72,10 +73,13 @@ int cam_tfe_deinit_soc_resources(struct cam_hw_soc_info *soc_info);
  *
  * @soc_info:                Device soc information
  *
+ * @max_clk_rate:            Max clock rate value
+ *
  * @Return:                  0: Success
  *                           Non-zero: Failure
  */
-int cam_tfe_enable_soc_resources(struct cam_hw_soc_info *soc_info);
+int cam_tfe_enable_soc_resources(struct cam_hw_soc_info *soc_info,
+	unsigned long max_clk_rate);
 
 /*
  * cam_tfe_disable_soc_resources()

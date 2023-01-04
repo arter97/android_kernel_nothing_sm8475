@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_CONTEXT_H_
@@ -163,6 +164,8 @@ struct cam_ctx_crm_ops {
  *                         context info
  * @recovery_ops:          Function to be invoked to try hardware recovery
  * @mini_dump_ops:         Function for mini dump
+ * @msg_cb_ops:            Function to be called on any message from
+ *                         other subdev notifications
  *
  */
 struct cam_ctx_ops {
@@ -173,6 +176,7 @@ struct cam_ctx_ops {
 	cam_ctx_info_dump_cb_func    dumpinfo_ops;
 	cam_ctx_recovery_cb_func     recovery_ops;
 	cam_ctx_mini_dump_cb_func    mini_dump_ops;
+	cam_ctx_message_cb_func      msg_cb_ops;
 };
 
 /**
@@ -406,6 +410,19 @@ int cam_context_mini_dump_from_hw(struct cam_context *ctx,
  */
 int cam_context_dump_pf_info(struct cam_context *ctx,
 	struct cam_smmu_pf_info *pf_info);
+
+/**
+ * cam_context_handle_message()
+ *
+ * @brief:        Handle message callback command
+ *
+ * @ctx:          Object pointer for cam_context
+ * @msg_type:     message type sent from other subdev
+ * @data:         data from other subdev
+ *
+ */
+int cam_context_handle_message(struct cam_context *ctx,
+	uint32_t msg_type, void *data);
 
 /**
  * cam_context_handle_acquire_dev()

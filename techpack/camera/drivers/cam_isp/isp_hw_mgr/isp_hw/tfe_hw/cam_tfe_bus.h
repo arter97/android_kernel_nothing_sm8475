@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 
@@ -18,7 +19,7 @@
 #define CAM_TFE_BUS_CLIENT_NAME_MAX_LENGTH 32
 
 #define CAM_TFE_BUS_1_0             0x1000
-#define CAM_TFE_BUS_MAX_MID_PER_PORT        1
+#define CAM_TFE_BUS_MAX_MID_PER_PORT        2
 
 
 #define CAM_TFE_ADD_REG_VAL_PAIR(buf_array, index, offset, val)    \
@@ -173,7 +174,7 @@ struct cam_tfe_bus_tfe_out_hw_info {
 	uint32_t                            max_height;
 	uint32_t                            composite_group;
 	uint32_t                            rup_group_id;
-	uint32_t                            mid;
+	uint32_t                            mid[CAM_TFE_BUS_MAX_MID_PER_PORT];
 };
 
 /*

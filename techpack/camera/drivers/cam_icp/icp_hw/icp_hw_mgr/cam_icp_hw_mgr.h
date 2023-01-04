@@ -2,7 +2,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
- *
  */
 
 #ifndef CAM_ICP_HW_MGR_H
@@ -256,6 +255,7 @@ struct cam_ctx_clk_info {
  * @watch_dog_reset_counter: Counter for watch dog reset
  * @icp_dev_io_info: io config resource
  * @last_flush_req: last flush req for this ctx
+ * @abort_timed_out: Indicates if abort timed out
  */
 struct cam_icp_hw_ctx_data {
 	void *context_priv;
@@ -279,6 +279,7 @@ struct cam_icp_hw_ctx_data {
 	struct cam_icp_acquire_dev_info icp_dev_io_info;
 	uint64_t last_flush_req;
 	char ctx_id_string[128];
+	bool abort_timed_out;
 };
 
 /**

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_HW_MGR_INTF_H_
@@ -63,6 +64,10 @@ typedef int (*cam_ctx_recovery_cb_func)(void *context,
 /* ctx mini dump callback function type */
 typedef int (*cam_ctx_mini_dump_cb_func)(void *context,
 	void *args);
+
+/* message callback function type */
+typedef int (*cam_ctx_message_cb_func)(void *context,
+	uint32_t message_type, void *data);
 
 /**
  * struct cam_hw_update_entry - Entry for hardware config
@@ -326,9 +331,9 @@ struct cam_hw_config_args {
 struct cam_hw_flush_args {
 	void                           *ctxt_to_hw_map;
 	uint32_t                        num_req_pending;
-	void                           *flush_req_pending[20];
+	void                          **flush_req_pending;
 	uint32_t                        num_req_active;
-	void                           *flush_req_active[20];
+	void                          **flush_req_active;
 	enum flush_type_t               flush_type;
 	uint32_t                        last_flush_req;
 };

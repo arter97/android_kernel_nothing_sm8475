@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_IFE_HW_MGR_H_
@@ -108,44 +109,52 @@ struct cam_ife_sfe_scratch_buf_info {
 /**
  * struct cam_sfe_scratch_buf_cfg - Scratch buf info
  *
- * @num_configs     : Total Number of scratch buffers provided
- * @updated_num_exp : Current num of exposures
- * @buf_info        : Info on each of the buffers
+ * @num_configs: Total Number of scratch buffers provided
+ * @streamon_buf_mask: Mask to indicate which ports have received buffer
+ *                     from userspace, apply scratch for other ports
+ * @updated_num_exp: Current num of exposures
+ * @buf_info: Info on each of the buffers
+ * @skip_scratch_cfg_streamon: Determine if scratch cfg needs to be programmed at stream on
  *
  */
 struct cam_sfe_scratch_buf_cfg {
 	uint32_t                            num_config;
+	uint32_t                            streamon_buf_mask;
 	uint32_t                            updated_num_exp;
 	struct cam_ife_sfe_scratch_buf_info buf_info[
 		CAM_SFE_FE_RDI_NUM_MAX];
+	bool                                skip_scratch_cfg_streamon;
 };
 
 /**
- * struct cam_sfe_scratch_buf_cfg - Scratch buf info
+ * struct cam_ife_scratch_buf_cfg - Scratch buf info
  *
- * @num_ports: Total Number of scratch buffers provided
- * @buf_info : Info on each of the buffers
+ * @num_config: Total Number of scratch buffers provided
+ * @streamon_buf_mask: Mask to indicate which ports have received buffer
+ *                     from userspace, apply scratch for other ports
+ * @buf_info: Info on each of the buffers
+ * @skip_scratch_cfg_streamon: Determine if scratch cfg needs to be programmed at stream on
  *
  */
 struct cam_ife_scratch_buf_cfg {
 	uint32_t                            num_config;
+	uint32_t                            streamon_buf_mask;
 	struct cam_ife_sfe_scratch_buf_info buf_info[
 		CAM_IFE_SCRATCH_NUM_MAX];
+	bool                                skip_scratch_cfg_streamon;
 };
 
 
 /**
- * struct cam_ife_hw_mgr_sfe_info - SFE info
+ * struct cam_ife_hw_mgr_ctx_scratch_buf_info - Scratch buffer info
  *
- * @skip_scratch_cfg_streamon: Determine if scratch cfg needs to be programmed at stream on
  * @num_fetches:               Indicate number of SFE fetches for this stream
- * @scratch_config:            Scratch buffer config if any for SFE ports
+ * @sfe_scratch_config:        Scratch buffer config if any for SFE ports
  * @ife_scratch_config:        Scratch buffer config if any for IFE ports
  */
-struct cam_ife_hw_mgr_sfe_info {
-	bool                            skip_scratch_cfg_streamon;
+struct cam_ife_hw_mgr_ctx_scratch_buf_info {
 	uint32_t                        num_fetches;
-	struct cam_sfe_scratch_buf_cfg *scratch_config;
+	struct cam_sfe_scratch_buf_cfg *sfe_scratch_config;
 	struct cam_ife_scratch_buf_cfg *ife_scratch_config;
 };
 
@@ -253,7 +262,7 @@ struct cam_ife_cdm_user_data {
  * @ts                      captured timestamp when the ctx is acquired
  * @hw_enabled              Array to indicate active HW
  * @buf_done_controller     Buf done controller.
- * @sfe_info                SFE info pertaining to this stream
+ * @scratch_buf_info        Scratch buf [SFE/IFE] info pertaining to this stream
  * @flags                   Flags pertainting to this ctx
  * @bw_config_version       BW Config version
  * @recovery_id:            Unique ID of the current valid scheduled recovery
@@ -263,60 +272,60 @@ struct cam_ife_cdm_user_data {
  *
  */
 struct cam_ife_hw_mgr_ctx {
-	struct list_head                   list;
-	struct cam_isp_hw_mgr_ctx          common;
+	struct list_head                          list;
+	struct cam_isp_hw_mgr_ctx                 common;
 
-	uint32_t                          ctx_index;
-	uint32_t                          left_hw_idx;
-	uint32_t                          right_hw_idx;
-	struct cam_ife_hw_mgr            *hw_mgr;
+	uint32_t                                  ctx_index;
+	uint32_t                                  left_hw_idx;
+	uint32_t                                  right_hw_idx;
+	struct cam_ife_hw_mgr                    *hw_mgr;
 
-	struct cam_isp_hw_mgr_res         res_list_ife_in;
-	struct list_head                  res_list_ife_csid;
-	struct list_head                  res_list_ife_src;
-	struct list_head                  res_list_sfe_src;
-	struct list_head                  res_list_ife_in_rd;
-	struct cam_isp_hw_mgr_res        *res_list_ife_out;
-	struct cam_isp_hw_mgr_res         res_list_sfe_out[
-						CAM_SFE_HW_OUT_RES_MAX];
-	struct list_head                  free_res_list;
-	struct cam_isp_hw_mgr_res         res_pool[CAM_IFE_HW_RES_POOL_MAX];
-	uint32_t                          num_acq_vfe_out;
-	uint32_t                          num_acq_sfe_out;
+	struct cam_isp_hw_mgr_res                  res_list_ife_in;
+	struct list_head                           res_list_ife_csid;
+	struct list_head                           res_list_ife_src;
+	struct list_head                           res_list_sfe_src;
+	struct list_head                           res_list_ife_in_rd;
+	struct cam_isp_hw_mgr_res                 *res_list_ife_out;
+	struct cam_isp_hw_mgr_res                  res_list_sfe_out[
+							CAM_SFE_HW_OUT_RES_MAX];
+	struct list_head                           free_res_list;
+	struct cam_isp_hw_mgr_res                  res_pool[CAM_IFE_HW_RES_POOL_MAX];
+	uint32_t                                   num_acq_vfe_out;
+	uint32_t                                   num_acq_sfe_out;
 
-	uint32_t                          irq_status0_mask[CAM_IFE_HW_NUM_MAX];
-	uint32_t                          irq_status1_mask[CAM_IFE_HW_NUM_MAX];
-	struct cam_isp_ctx_base_info      base[CAM_IFE_HW_NUM_MAX +
-						CAM_SFE_HW_NUM_MAX];
-	uint32_t                          num_base;
-	uint32_t                          cdm_handle;
-	struct cam_cdm_utils_ops         *cdm_ops;
-	struct cam_cdm_bl_request        *cdm_cmd;
-	enum cam_cdm_id                   cdm_id;
-	uint32_t                          sof_cnt[CAM_IFE_HW_NUM_MAX];
-	uint32_t                          epoch_cnt[CAM_IFE_HW_NUM_MAX];
-	uint32_t                          eof_cnt[CAM_IFE_HW_NUM_MAX];
-	atomic_t                          overflow_pending;
-	atomic_t                          cdm_done;
-	uint64_t                          last_cdm_done_req;
-	struct completion                 config_done_complete;
-	uint32_t                          hw_version;
-	struct cam_cmd_buf_desc           reg_dump_buf_desc[
+	uint32_t                                   irq_status0_mask[CAM_IFE_HW_NUM_MAX];
+	uint32_t                                   irq_status1_mask[CAM_IFE_HW_NUM_MAX];
+	struct cam_isp_ctx_base_info               base[CAM_IFE_HW_NUM_MAX +
+								CAM_SFE_HW_NUM_MAX];
+	uint32_t                                   num_base;
+	uint32_t                                   cdm_handle;
+	struct cam_cdm_utils_ops                  *cdm_ops;
+	struct cam_cdm_bl_request                 *cdm_cmd;
+	enum cam_cdm_id                            cdm_id;
+	uint32_t                                   sof_cnt[CAM_IFE_HW_NUM_MAX];
+	uint32_t                                   epoch_cnt[CAM_IFE_HW_NUM_MAX];
+	uint32_t                                   eof_cnt[CAM_IFE_HW_NUM_MAX];
+	atomic_t                                   overflow_pending;
+	atomic_t                                   cdm_done;
+	uint64_t                                   last_cdm_done_req;
+	struct completion                          config_done_complete;
+	uint32_t                                   hw_version;
+	struct cam_cmd_buf_desc                    reg_dump_buf_desc[
 						CAM_REG_DUMP_MAX_BUF_ENTRIES];
-	uint32_t                          num_reg_dump_buf;
-	uint64_t                          applied_req_id;
-	enum cam_ife_ctx_master_type      ctx_type;
-	uint32_t                          ctx_config;
-	struct timespec64                 ts;
-	void                             *buf_done_controller;
-	struct cam_ife_hw_mgr_sfe_info    sfe_info;
-	struct cam_ife_hw_mgr_ctx_flags   flags;
-	struct cam_ife_hw_mgr_ctx_pf_info pf_info;
-	struct cam_ife_cdm_user_data      cdm_userdata;
-	uint32_t                          bw_config_version;
-	atomic_t                          recovery_id;
-	uint32_t                          current_mup;
-	uint32_t                          curr_num_exp;
+	uint32_t                                   num_reg_dump_buf;
+	uint64_t                                   applied_req_id;
+	enum cam_ife_ctx_master_type               ctx_type;
+	uint32_t                                   ctx_config;
+	struct timespec64                          ts;
+	void                                      *buf_done_controller;
+	struct cam_ife_hw_mgr_ctx_scratch_buf_info scratch_buf_info;
+	struct cam_ife_hw_mgr_ctx_flags            flags;
+	struct cam_ife_hw_mgr_ctx_pf_info          pf_info;
+	struct cam_ife_cdm_user_data               cdm_userdata;
+	uint32_t                                   bw_config_version;
+	atomic_t                                   recovery_id;
+	uint32_t                                   current_mup;
+	uint32_t                                   curr_num_exp;
 };
 
 /**

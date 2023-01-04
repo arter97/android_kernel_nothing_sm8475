@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 
@@ -56,6 +57,18 @@ enum cam_sfe_bus_sfe_out_type {
 	CAM_SFE_BUS_SFE_OUT_BAYER_RS_2,
 	CAM_SFE_BUS_SFE_OUT_IR,
 	CAM_SFE_BUS_SFE_OUT_MAX,
+};
+
+/*
+ * struct cam_sfe_bus_wr_err_irq_desc:
+ *
+ * @Brief:        Bus wr error info
+ */
+struct cam_sfe_bus_wr_err_irq_desc {
+	uint32_t  bitmask;
+	char     *err_name;
+	char     *desc;
+	void     (*err_handler)(void *bus_priv, void *args);
 };
 
 /*
@@ -159,6 +172,8 @@ struct cam_sfe_bus_sfe_out_hw_info {
  * @top_irq_shift:         Mask shift for top level BUS WR irq
  * @pack_align_shift:      Packer format alignment bit shift
  * @max_bw_counter_limit:  Max BW counter limit
+ * @num_num_bus_wr_errors: Number of bus wr errors
+ * @bus_wr_err_desc:       bus wr errors info
  */
 struct cam_sfe_bus_wr_hw_info {
 	struct cam_sfe_bus_reg_offset_common common_reg;
@@ -177,6 +192,8 @@ struct cam_sfe_bus_wr_hw_info {
 	uint32_t top_irq_shift;
 	uint32_t pack_align_shift;
 	uint32_t max_bw_counter_limit;
+	uint32_t num_bus_wr_errors;
+	struct cam_sfe_bus_wr_err_irq_desc *bus_wr_err_desc;
 };
 
 /*
@@ -213,4 +230,7 @@ int cam_sfe_bus_wr_init(
  */
 int cam_sfe_bus_wr_deinit(struct cam_sfe_bus     **sfe_bus);
 
+void cam_sfe_bus_wr_get_constraint_errors(void *bus_priv, void *args);
+void cam_sfe_bus_wr_print_ccif_violation_status(void *bus_priv, void *args);
+void cam_sfe_bus_wr_print_violation_info(void *bus_priv, void *args);
 #endif /* _CAM_SFE_BUS_WR_H_ */

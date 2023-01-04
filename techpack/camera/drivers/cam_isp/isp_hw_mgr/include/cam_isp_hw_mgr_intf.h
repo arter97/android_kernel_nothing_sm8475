@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_ISP_HW_MGR_INTF_H_
@@ -362,6 +363,8 @@ enum cam_isp_hw_mgr_command {
 	CAM_ISP_HW_MGR_GET_LAST_CDM_DONE,
 	CAM_ISP_HW_MGR_CMD_PROG_DEFAULT_CFG,
 	CAM_ISP_HW_MGR_GET_SOF_TS,
+	CAM_ISP_HW_MGR_DUMP_STREAM_INFO,
+	CAM_ISP_HW_MGR_CMD_UPDATE_CLOCK,
 	CAM_ISP_HW_MGR_CMD_MAX,
 };
 

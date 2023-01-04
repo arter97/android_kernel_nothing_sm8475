@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef CAM_BPS_HW_INTF_H
@@ -22,6 +23,7 @@ enum cam_icp_bps_cmd_type {
 	CAM_ICP_BPS_CMD_UPDATE_CLK,
 	CAM_ICP_BPS_CMD_DISABLE_CLK,
 	CAM_ICP_BPS_CMD_RESET,
+	CAM_ICP_BPS_CMD_DUMP_CLK,
 	CAM_ICP_BPS_CMD_MAX,
 };
 

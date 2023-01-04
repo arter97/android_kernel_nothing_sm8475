@@ -676,7 +676,7 @@ static void cam_vfe_bus_ver3_print_constraint_errors(
 {
 	uint32_t i;
 
-	CAM_INFO_RATE_LIMIT(CAM_ISP, "Constraint violation bitflags: 0x%X",
+	CAM_INFO(CAM_ISP, "Constraint violation bitflags: 0x%X",
 		constraint_errors);
 
 	for (i = 0; i < bus_priv->num_cons_err; i++) {
@@ -2921,10 +2921,10 @@ static int cam_vfe_bus_ver3_err_irq_top_half(uint32_t evt_id,
 		th_payload->handler_priv;
 	struct cam_vfe_bus_irq_evt_payload *evt_payload;
 
-	CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE:%d BUS Err IRQ",
+	CAM_ERR(CAM_ISP, "VFE:%d BUS Err IRQ",
 		bus_priv->common_data.core_index);
 	for (i = 0; i < th_payload->num_registers; i++) {
-		CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE:%d BUS IRQ status_%d: 0x%X",
+		CAM_ERR(CAM_ISP, "VFE:%d BUS IRQ status_%d: 0x%X",
 		bus_priv->common_data.core_index, i,
 			th_payload->evt_status_arr[i]);
 	}

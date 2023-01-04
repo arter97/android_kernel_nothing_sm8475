@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/ratelimit.h>
@@ -36,6 +37,7 @@ static const char drv_name[] = "tfe_bus";
 	(sizeof(struct cam_tfe_bus_reg_offset_bus_client) / 4)
 #define MAX_REG_VAL_PAIR_SIZE    \
 	(MAX_BUF_UPDATE_REG_NUM * 2 * CAM_PACKET_MAX_PLANES)
+
 
 enum cam_tfe_bus_packer_format {
 	PACKER_FMT_PLAIN_128,
@@ -145,7 +147,7 @@ struct cam_tfe_bus_tfe_out_data {
 	uint32_t                         secure_mode;
 	void                            *priv;
 	cam_hw_mgr_event_cb_func         event_cb;
-	uint32_t                         mid;
+	uint32_t                         mid[CAM_TFE_BUS_MAX_MID_PER_PORT];
 };
 
 struct cam_tfe_bus_priv {
@@ -781,7 +783,7 @@ static int cam_tfe_bus_acquire_wm(
 			break;
 		case CAM_FORMAT_PD10:
 			rsrc_data->pack_fmt = 0x0;
-			rsrc_data->width /= 4;
+			rsrc_data->width = DIV_ROUND_UP(rsrc_data->width, 4);
 			rsrc_data->height /= 2;
 			break;
 		case CAM_FORMAT_NV21:
@@ -812,6 +814,10 @@ static int cam_tfe_bus_acquire_wm(
 		rsrc_data->height = 0;
 		rsrc_data->stride = 1;
 		rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+
+		/*RS state packet format*/
+		if (rsrc_data->index == 15)
+			rsrc_data->pack_fmt = 0x9;
 	} else {
 		CAM_ERR(CAM_ISP, "Invalid WM:%d requested", rsrc_data->index);
 		return -EINVAL;
@@ -1636,6 +1642,7 @@ static int cam_tfe_bus_init_tfe_out_resource(uint32_t  index,
 	struct cam_tfe_bus_tfe_out_data *rsrc_data = NULL;
 	int rc = 0;
 	int32_t tfe_out_id = hw_info->tfe_out_hw_info[index].tfe_out_id;
+	int i;
 
 	if (tfe_out_id < 0 ||
 		tfe_out_id >= CAM_TFE_BUS_TFE_OUT_MAX) {
@@ -1677,7 +1684,9 @@ static int cam_tfe_bus_init_tfe_out_resource(uint32_t  index,
 	rsrc_data->max_height      =
 		hw_info->tfe_out_hw_info[index].max_height;
 	rsrc_data->secure_mode  = CAM_SECURE_MODE_NON_SECURE;
-	rsrc_data->mid = hw_info->tfe_out_hw_info[index].mid;
+
+	for (i = 0; i < CAM_TFE_BUS_MAX_MID_PER_PORT; i++)
+		rsrc_data->mid[i] = hw_info->tfe_out_hw_info[index].mid[i];
 
 	tfe_out->hw_intf = bus_priv->common_data.hw_intf;
 
@@ -2013,7 +2022,7 @@ static int cam_tfe_bus_update_wm(void *priv, void *cmd_args,
 	struct cam_buf_io_cfg                *io_cfg;
 	struct cam_tfe_bus_tfe_out_data      *tfe_out_data = NULL;
 	struct cam_tfe_bus_wm_resource_data  *wm_data = NULL;
-	struct cam_cdm_utils_ops             *cdm_util_ops;
+	struct cam_cdm_utils_ops             *cdm_util_ops = NULL;
 	uint32_t *reg_val_pair;
 	uint32_t num_regval_pairs = 0;
 	uint32_t i, j, size = 0;
@@ -2025,12 +2034,12 @@ static int cam_tfe_bus_update_wm(void *priv, void *cmd_args,
 	tfe_out_data = (struct cam_tfe_bus_tfe_out_data *)
 		update_buf->res->res_priv;
 
-	cdm_util_ops = tfe_out_data->cdm_util_ops;
-
-	if (!tfe_out_data || !cdm_util_ops) {
-		CAM_ERR(CAM_ISP, "Failed! Invalid data");
+	if (!tfe_out_data || !(tfe_out_data->cdm_util_ops)) {
+		CAM_ERR(CAM_ISP, "Failed! invalid data");
 		return -EINVAL;
 	}
+
+	cdm_util_ops = tfe_out_data->cdm_util_ops;
 
 	if (update_buf->wm_update->num_buf != tfe_out_data->num_wm) {
 		CAM_ERR(CAM_ISP,
@@ -2134,7 +2143,7 @@ static int cam_tfe_bus_update_hfr(void *priv, void *cmd_args,
 	struct cam_isp_hw_get_cmd_update         *update_hfr;
 	struct cam_tfe_bus_tfe_out_data          *tfe_out_data = NULL;
 	struct cam_tfe_bus_wm_resource_data      *wm_data = NULL;
-	struct cam_cdm_utils_ops                 *cdm_util_ops;
+	struct cam_cdm_utils_ops                 *cdm_util_ops = NULL;
 	struct cam_isp_tfe_port_hfr_config       *hfr_cfg = NULL;
 	uint32_t *reg_val_pair;
 	uint32_t num_regval_pairs = 0;
@@ -2146,13 +2155,12 @@ static int cam_tfe_bus_update_hfr(void *priv, void *cmd_args,
 	tfe_out_data = (struct cam_tfe_bus_tfe_out_data *)
 		update_hfr->res->res_priv;
 
-	cdm_util_ops = tfe_out_data->cdm_util_ops;
-
-	if (!tfe_out_data || !cdm_util_ops) {
-		CAM_ERR(CAM_ISP, "Failed! Invalid data");
+	if (!tfe_out_data || !(tfe_out_data->cdm_util_ops)) {
+		CAM_ERR(CAM_ISP, "Failed! invalid data");
 		return -EINVAL;
 	}
 
+	cdm_util_ops = tfe_out_data->cdm_util_ops;
 	reg_val_pair = &tfe_out_data->common_data->io_buf_update[0];
 	hfr_cfg = (struct cam_isp_tfe_port_hfr_config *)update_hfr->data;
 
@@ -2273,7 +2281,7 @@ static int cam_tfe_bus_get_res_id_for_mid(
 	struct cam_isp_hw_get_cmd_update   *cmd_update =
 		(struct cam_isp_hw_get_cmd_update   *)cmd_args;
 	struct cam_isp_hw_get_res_for_mid       *get_res = NULL;
-	int i;
+	int i, j;
 
 	get_res = (struct cam_isp_hw_get_res_for_mid *)cmd_update->data;
 	if (!get_res) {
@@ -2289,8 +2297,10 @@ static int cam_tfe_bus_get_res_id_for_mid(
 		if (!tfe_out_data)
 			continue;
 
-		if (tfe_out_data->mid == get_res->mid)
-			goto end;
+		for (j = 0; j < CAM_TFE_BUS_MAX_MID_PER_PORT; j++) {
+			if (tfe_out_data->mid[j] == get_res->mid)
+				goto end;
+		}
 	}
 
 	if (i == bus_priv->num_out) {

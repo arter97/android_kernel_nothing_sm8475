@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -266,12 +267,12 @@ int cam_ife_csid_get_format_rdi(
 	case CAM_FORMAT_MIPI_RAW_6:
 	case CAM_FORMAT_MIPI_RAW_8:
 	case CAM_FORMAT_YUV422:
+	case CAM_FORMAT_PLAIN128:
 		if (mipi_unpacked)
 			path_format->plain_fmt = 0x0;
 		else
 			path_format->packing_fmt = 0x1;
 		break;
-	case CAM_FORMAT_PLAIN128:
 	case CAM_FORMAT_PLAIN8:
 		path_format->plain_fmt = 0x0;
 		break;
@@ -475,6 +476,16 @@ int cam_ife_csid_cid_reserve(struct cam_ife_csid_cid_data *cid_data,
 	struct cam_csid_hw_reserve_resource_args  *reserve)
 {
 	int i, j, rc = 0;
+
+	for (i = 0; i < reserve->in_port->num_valid_vc_dt; i++)
+		CAM_DBG(CAM_ISP,
+			"CSID:%d res_:0x%x Lane type:%d lane_num:%d dt:%d vc:%d",
+			hw_idx,
+			reserve->in_port->res_type,
+			reserve->in_port->lane_type,
+			reserve->in_port->lane_num,
+			reserve->in_port->dt[i],
+			reserve->in_port->vc[i]);
 
 	for (i = 0; i < CAM_IFE_CSID_CID_MAX; i++) {
 		rc = cam_ife_csid_get_cid(&cid_data[i], reserve);

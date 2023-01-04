@@ -198,6 +198,7 @@ struct cam_csid_secondary_evt_config {
  *                       acquire lite
  * @sfe_en:              Flag to indicate if SFE is enabled
  * @use_wm_pack:         [OUT]Flag to indicate if WM packing is to be used for packing
+ * @secure_mode:         Holds secure mode state of the CSID
  *
  */
 struct cam_csid_hw_reserve_resource_args {
@@ -224,6 +225,7 @@ struct cam_csid_hw_reserve_resource_args {
 	bool                                      can_use_lite;
 	bool                                      sfe_en;
 	bool                                      use_wm_pack;
+	bool                                      secure_mode;
 };
 
 /**

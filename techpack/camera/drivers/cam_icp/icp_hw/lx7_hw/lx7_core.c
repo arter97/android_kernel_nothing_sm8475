@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of_address.h>
@@ -24,8 +25,6 @@
 
 #define TZ_STATE_SUSPEND 0
 #define TZ_STATE_RESUME  1
-
-#define LX7_GEN_PURPOSE_REG_OFFSET 0x20
 
 #define ICP_FW_NAME_MAX_SIZE    32
 
@@ -684,6 +683,21 @@ static int cam_lx7_shutdown(struct cam_hw_info *lx7_info)
 	return rc;
 }
 
+static inline void __cam_lx7_core_reg_dump(
+	struct cam_hw_info *lx7_info)
+{
+	void __iomem *cirq_base = lx7_info->soc_info.reg_map[LX7_CIRQ_BASE].mem_base;
+	void __iomem *csr_base = lx7_info->soc_info.reg_map[LX7_CSR_BASE].mem_base;
+
+	CAM_INFO(CAM_ICP,
+		"CIRQ IB_status0:0x%x IB_Status1:0x%x PFault:0x%x CSR debug_status:0x%x debug_ctrl:0x%x",
+		cam_io_r_mb(cirq_base + ICP_LX7_CIRQ_IB_STATUS0),
+		cam_io_r_mb(cirq_base + ICP_LX7_CIRQ_IB_STATUS1),
+		cam_io_r_mb(cirq_base + ICP_LX7_CIRQ_PFAULT_INFO),
+		cam_io_r_mb(csr_base + LX7_CSR_DBG_STATUS_REG_OFFSET),
+		cam_io_r_mb(csr_base + LX7_CSR_DBG_CTRL_REG_OFFSET));
+}
+
 /* API controls collapse/resume of ICP */
 static int cam_lx7_core_control(
 	struct cam_hw_info *lx7_info,
@@ -695,16 +709,12 @@ static int cam_lx7_core_control(
 
 	if (core_info->use_sec_pil) {
 		rc = qcom_scm_set_remote_state(state, CAM_FW_PAS_ID);
-		if (rc)
+		if (rc) {
 			CAM_ERR(CAM_ICP,
-				"remote state set to %s failed rc=%d IB_status0=0x%x IB_Status1=0x%x PFault=0x%x",
-				state == TZ_STATE_RESUME ? "resume" : "suspend", rc,
-				cam_io_r_mb(lx7_info->soc_info.reg_map[LX7_CIRQ_BASE].mem_base +
-					ICP_LX7_CIRQ_IB_STATUS0),
-				cam_io_r_mb(lx7_info->soc_info.reg_map[LX7_CIRQ_BASE].mem_base +
-					ICP_LX7_CIRQ_IB_STATUS1),
-				cam_io_r_mb(lx7_info->soc_info.reg_map[LX7_CIRQ_BASE].mem_base +
-					ICP_LX7_CIRQ_PFAULT_INFO));
+				"remote state set to %s failed rc=%d",
+				(state == TZ_STATE_RESUME ? "resume" : "suspend"), rc);
+			__cam_lx7_core_reg_dump(lx7_info);
+		}
 	} else {
 		if (state == TZ_STATE_RESUME) {
 			rc = __cam_lx7_power_resume(lx7_info);
@@ -864,6 +874,11 @@ int cam_lx7_process_cmd(void *priv, uint32_t cmd_type,
 		break;
 	case CAM_ICP_CMD_HW_MINI_DUMP: {
 		rc = __cam_lx7_fw_mini_dump(lx7_info->core_info, args);
+		break;
+	}
+	case CAM_ICP_CMD_HW_REG_DUMP: {
+		__cam_lx7_core_reg_dump(lx7_info);
+		rc = 0;
 		break;
 	}
 	default:

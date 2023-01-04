@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_CSIPHY_1_2_1_HWREG_H_
@@ -397,6 +398,8 @@ csiphy_reg_t csiphy_3ph_v1_2_1_reg[MAX_LANES][MAX_SETTINGS_PER_LANE] = {
 
 struct data_rate_settings_t data_rate_delta_table_1_2_1 = {
 	.num_data_rate_settings = 3,
+	.min_supported_datarate = 0,
+	.max_supported_datarate = 0,
 	.data_rate_settings = {
 		{
 			/* (2.5 * 10**3 * 2.28) rounded value*/

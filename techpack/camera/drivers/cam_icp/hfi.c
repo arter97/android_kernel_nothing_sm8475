@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/io.h>
@@ -114,7 +115,7 @@ void cam_hfi_mini_dump(struct hfi_mini_dump_info *dst)
 	dst->cmd_q_state = g_hfi->cmd_q_state;
 }
 
-void cam_hfi_queue_dump(void)
+void cam_hfi_queue_dump(bool dump_queue_data)
 {
 	struct hfi_mem_info *hfi_mem = &g_hfi->map;
 	struct hfi_qtbl *qtbl;
@@ -128,7 +129,7 @@ void cam_hfi_queue_dump(void)
 	}
 
 	qtbl = (struct hfi_qtbl *)hfi_mem->qtbl.kva;
-	CAM_DBG(CAM_HFI,
+	CAM_INFO(CAM_HFI,
 		"qtbl header: version=0x%08x tbl_size=%u numq=%u qhdr_size=%u",
 		qtbl->q_tbl_hdr.qtbl_version,
 		qtbl->q_tbl_hdr.qtbl_size,
@@ -136,7 +137,7 @@ void cam_hfi_queue_dump(void)
 		qtbl->q_tbl_hdr.qtbl_qhdr_size);
 
 	q_hdr = &qtbl->q_hdr[Q_CMD];
-	CAM_DBG(CAM_HFI,
+	CAM_INFO(CAM_HFI,
 		"cmd_q: addr=0x%08x size=%u read_idx=%u write_idx=%u",
 		hfi_mem->cmd_q.iova,
 		q_hdr->qhdr_q_size,
@@ -146,10 +147,11 @@ void cam_hfi_queue_dump(void)
 	dwords = (uint32_t *)hfi_mem->cmd_q.kva;
 	num_dwords = ICP_CMD_Q_SIZE_IN_BYTES >> BYTE_WORD_SHIFT;
 
-	hfi_queue_dump(dwords, num_dwords);
+	if (dump_queue_data)
+		hfi_queue_dump(dwords, num_dwords);
 
 	q_hdr = &qtbl->q_hdr[Q_MSG];
-	CAM_DBG(CAM_HFI,
+	CAM_INFO(CAM_HFI,
 		"msg_q: addr=0x%08x size=%u read_idx=%u write_idx=%u",
 		hfi_mem->msg_q.iova,
 		q_hdr->qhdr_q_size,
@@ -159,7 +161,8 @@ void cam_hfi_queue_dump(void)
 	dwords = (uint32_t *)hfi_mem->msg_q.kva;
 	num_dwords = ICP_MSG_Q_SIZE_IN_BYTES >> BYTE_WORD_SHIFT;
 
-	hfi_queue_dump(dwords, num_dwords);
+	if (dump_queue_data)
+		hfi_queue_dump(dwords, num_dwords);
 }
 
 int hfi_write_cmd(void *cmd_ptr)

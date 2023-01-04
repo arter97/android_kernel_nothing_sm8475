@@ -394,6 +394,12 @@ static int cam_tfe_csid_cid_get(struct cam_tfe_csid_hw *csid_hw,
 		}
 	}
 
+	if (num_valid_vc_dt == 0 || num_valid_vc_dt > CAM_ISP_TFE_VC_DT_CFG) {
+		CAM_ERR(CAM_ISP, "CSID:%d invalid num_valid_vc_dt: %d",
+			csid_hw->hw_intf->hw_idx, num_valid_vc_dt);
+		return -EINVAL;
+	}
+
 	for (i = 0; i < CAM_TFE_CSID_CID_MAX; i++) {
 		if (!csid_hw->cid_res[i].cnt) {
 			for (j = 0; j < num_valid_vc_dt; j++) {
@@ -685,7 +691,6 @@ static int cam_tfe_csid_cid_reserve(struct cam_tfe_csid_hw *csid_hw,
 		rc = -EINVAL;
 		goto end;
 	}
-
 	/* CSID  CSI2 v1.1 supports 4 vc  */
 	for (i = 0; i < cid_reserv->in_port->num_valid_vc_dt; i++) {
 		if (cid_reserv->in_port->dt[i] > 0x3f ||
@@ -785,6 +790,15 @@ static int cam_tfe_csid_path_reserve(struct cam_tfe_csid_hw *csid_hw,
 	struct cam_tfe_csid_path_cfg    *path_data;
 	struct cam_isp_resource_node    *res;
 	uint32_t          cid_value;
+
+	if (reserve->in_port->num_valid_vc_dt == 0 ||
+		reserve->in_port->num_valid_vc_dt > CAM_ISP_TFE_VC_DT_CFG) {
+		CAM_ERR(CAM_ISP, "CSID:%d invalid num_valid_vc_dt: %d",
+			csid_hw->hw_intf->hw_idx,
+			reserve->in_port->num_valid_vc_dt);
+		rc = -EINVAL;
+		goto end;
+	}
 
 	/* CSID  CSI2 v2.0 supports 4 vc */
 	for (i = 0; i < reserve->in_port->num_valid_vc_dt; i++) {
@@ -2086,7 +2100,7 @@ static int cam_tfe_csid_get_time_stamp(
 	struct cam_hw_soc_info                     *soc_info;
 	const struct cam_tfe_csid_rdi_reg_offset   *rdi_reg;
 	struct timespec64 ts;
-	uint32_t  id, torn;
+	uint32_t  id, torn, prev_torn;
 	uint64_t  time_delta;
 
 	time_stamp = (struct cam_tfe_csid_get_time_stamp_args  *)cmd_args;
@@ -2115,6 +2129,13 @@ static int cam_tfe_csid_get_time_stamp(
 			csid_reg->ipp_reg->csid_pxl_timestamp_curr1_sof_addr,
 			csid_reg->ipp_reg->csid_pxl_timestamp_curr0_sof_addr,
 			&time_stamp->time_stamp_val);
+		if (time_stamp->get_prev_timestamp) {
+			prev_torn = __cam_tfe_csid_read_timestamp(
+				soc_info->reg_map[0].mem_base,
+				csid_reg->ipp_reg->csid_pxl_timestamp_perv1_sof_addr,
+				csid_reg->ipp_reg->csid_pxl_timestamp_perv0_sof_addr,
+				&time_stamp->prev_time_stamp_val);
+		}
 	} else {
 		id = res->res_id;
 		rdi_reg = csid_reg->rdi_reg[id];
@@ -2123,12 +2144,26 @@ static int cam_tfe_csid_get_time_stamp(
 			rdi_reg->csid_rdi_timestamp_curr1_sof_addr,
 			rdi_reg->csid_rdi_timestamp_curr0_sof_addr,
 			&time_stamp->time_stamp_val);
+		if (time_stamp->get_prev_timestamp) {
+			prev_torn = __cam_tfe_csid_read_timestamp(
+				soc_info->reg_map[0].mem_base,
+				rdi_reg->csid_rdi_timestamp_prev1_sof_addr,
+				rdi_reg->csid_rdi_timestamp_prev0_sof_addr,
+				&time_stamp->prev_time_stamp_val);
+		}
 	}
 
 	time_stamp->time_stamp_val = mul_u64_u32_div(
 		time_stamp->time_stamp_val,
 		CAM_TFE_CSID_QTIMER_MUL_FACTOR,
 		CAM_TFE_CSID_QTIMER_DIV_FACTOR);
+
+	if (time_stamp->get_prev_timestamp) {
+		time_stamp->prev_time_stamp_val = mul_u64_u32_div(
+			time_stamp->prev_time_stamp_val,
+			CAM_TFE_CSID_QTIMER_MUL_FACTOR,
+			CAM_TFE_CSID_QTIMER_DIV_FACTOR);
+	}
 
 	if (!csid_hw->prev_boot_timestamp) {
 		ktime_get_boottime_ts64(&ts);
@@ -2165,6 +2200,59 @@ static int cam_tfe_csid_get_time_stamp(
 
 	csid_hw->prev_qtimer_ts = time_stamp->time_stamp_val;
 	csid_hw->prev_boot_timestamp = time_stamp->boot_timestamp;
+
+	return 0;
+}
+
+static int cam_tfe_csid_print_hbi_vbi(
+	struct cam_tfe_csid_hw  *csid_hw,
+	struct cam_isp_resource_node *res)
+{
+	const struct cam_tfe_csid_reg_offset       *csid_reg;
+	struct cam_hw_soc_info                     *soc_info;
+	const struct cam_tfe_csid_rdi_reg_offset   *rdi_reg;
+	uint32_t  hbi = 0, vbi = 0;
+
+	csid_reg = csid_hw->csid_info->csid_reg;
+	soc_info = &csid_hw->hw_info->soc_info;
+
+	if (res->res_type != CAM_ISP_RESOURCE_PIX_PATH ||
+		res->res_id >= CAM_TFE_CSID_PATH_RES_MAX) {
+		CAM_DBG(CAM_ISP, "CSID:%d Invalid res_type:%d res id%d",
+			csid_hw->hw_intf->hw_idx, res->res_type,
+			res->res_id);
+		return -EINVAL;
+	}
+
+	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_ERR(CAM_ISP, "CSID:%d Invalid dev state :%d",
+			csid_hw->hw_intf->hw_idx,
+			csid_hw->hw_info->hw_state);
+		return -EINVAL;
+	}
+
+	if (res->res_id == CAM_TFE_CSID_PATH_RES_IPP) {
+		hbi = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			csid_reg->ipp_reg->csid_pxl_format_measure1_addr);
+		vbi = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			csid_reg->ipp_reg->csid_pxl_format_measure2_addr);
+	} else if ((res->res_id >= CAM_TFE_CSID_PATH_RES_RDI_0) &&
+		(res->res_id <= CAM_TFE_CSID_PATH_RES_RDI_2)) {
+		rdi_reg = csid_reg->rdi_reg[res->res_id];
+
+		hbi = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			rdi_reg->csid_rdi_format_measure1_addr);
+		vbi = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			rdi_reg->csid_rdi_format_measure2_addr);
+	} else {
+		CAM_ERR(CAM_ISP, "CSID:%d Invalid res_type:%d res id%d",
+			csid_hw->hw_intf->hw_idx, res->res_type, res->res_id);
+		return -EINVAL;
+	}
+
+	CAM_INFO(CAM_ISP,
+		"CSID[%u] Resource[id:%d name:%s hbi 0x%x vbi 0x%x]",
+		csid_hw->hw_intf->hw_idx, res->res_id, res->res_name, hbi, vbi);
 
 	return 0;
 }
@@ -2206,6 +2294,7 @@ static int cam_tfe_csid_get_hw_caps(void *hw_priv,
 	hw_caps->major_version = csid_reg->cmn_reg->major_version;
 	hw_caps->minor_version = csid_reg->cmn_reg->minor_version;
 	hw_caps->version_incr = csid_reg->cmn_reg->version_incr;
+	hw_caps->sync_clk = csid_reg->cmn_reg->sync_clk;
 
 	CAM_DBG(CAM_ISP,
 		"CSID:%d No rdis:%d, no pix:%d, major:%d minor:%d ver :%d",
@@ -2811,6 +2900,36 @@ static int cam_tfe_csid_dump_csid_clock(
 	return 0;
 }
 
+static int cam_tfe_csid_set_csid_clock_dynamically(
+	struct cam_tfe_csid_hw *csid_hw, void *cmd_args)
+{
+	struct cam_hw_soc_info   *soc_info;
+	unsigned long            *clk_rate;
+	int rc = 0;
+
+	soc_info = &csid_hw->hw_info->soc_info;
+	clk_rate = (unsigned long *)cmd_args;
+
+	CAM_DBG(CAM_ISP, "CSID[%u] clock rate requested: %llu curr: %llu",
+		csid_hw->hw_intf->hw_idx, *clk_rate, soc_info->applied_src_clk_rate);
+
+	if (*clk_rate <= soc_info->applied_src_clk_rate)
+		goto end;
+
+	rc = cam_soc_util_set_src_clk_rate(soc_info, *clk_rate);
+	if (rc) {
+		CAM_ERR(CAM_ISP,
+			"unable to set clock dynamically rate:%llu", *clk_rate);
+		return rc;
+	}
+end:
+	*clk_rate = soc_info->applied_src_clk_rate;
+	CAM_DBG(CAM_ISP, "CSID[%u] new clock rate %llu",
+		csid_hw->hw_intf->hw_idx, soc_info->applied_src_clk_rate);
+
+	return rc;
+}
+
 static int cam_tfe_csid_get_regdump(struct cam_tfe_csid_hw *csid_hw,
 	void *cmd_args)
 {
@@ -3053,6 +3172,7 @@ static int cam_tfe_csid_process_cmd(void *hw_priv,
 	int rc = 0;
 	struct cam_tfe_csid_hw               *csid_hw;
 	struct cam_hw_info                   *csid_hw_info;
+	struct cam_isp_resource_node         *res = NULL;
 
 	if (!hw_priv || !cmd_args) {
 		CAM_ERR(CAM_ISP, "CSID: Invalid arguments");
@@ -3065,6 +3185,11 @@ static int cam_tfe_csid_process_cmd(void *hw_priv,
 	switch (cmd_type) {
 	case CAM_TFE_CSID_CMD_GET_TIME_STAMP:
 		rc = cam_tfe_csid_get_time_stamp(csid_hw, cmd_args);
+
+		if (csid_hw->csid_debug & TFE_CSID_DEBUG_ENABLE_HBI_VBI_INFO) {
+			res = ((struct cam_tfe_csid_get_time_stamp_args *)cmd_args)->node_res;
+			cam_tfe_csid_print_hbi_vbi(csid_hw, res);
+		}
 		break;
 	case CAM_TFE_CSID_SET_CSID_DEBUG:
 		rc = cam_tfe_csid_set_csid_debug(csid_hw, cmd_args);
@@ -3089,6 +3214,9 @@ static int cam_tfe_csid_process_cmd(void *hw_priv,
 		break;
 	case CAM_TFE_CSID_LOG_ACQUIRE_DATA:
 		rc = cam_tfe_csid_log_acquire_data(csid_hw, cmd_args);
+		break;
+	case CAM_ISP_HW_CMD_DYNAMIC_CLOCK_UPDATE:
+		rc = cam_tfe_csid_set_csid_clock_dynamically(csid_hw, cmd_args);
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "CSID:%d unsupported cmd:%d",
@@ -3762,7 +3890,7 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 	uint32_t csid_idx)
 {
 	int rc = -EINVAL;
-	uint32_t i, j, val, clk_lvl;
+	uint32_t i, j, val = 0, clk_lvl;
 	struct cam_tfe_csid_path_cfg         *path_data;
 	struct cam_hw_info                   *csid_hw_info;
 	struct cam_tfe_csid_hw               *tfe_csid_hw = NULL;
@@ -3837,13 +3965,13 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 		tfe_csid_hw->cid_res[i].cnt = 0;
 	}
 
-	if (tfe_csid_hw->hw_intf->hw_idx == 2) {
+	if (tfe_csid_hw->hw_intf->hw_idx == csid_reg->cmn_reg->disable_pix_tfe_idx &&
+		csid_reg->cmn_reg->tfe_pix_fuse_en) {
 		val = cam_io_r_mb(
 			tfe_csid_hw->hw_info->soc_info.reg_map[1].mem_base +
 			csid_reg->cmn_reg->top_tfe2_fuse_reg);
 		if (val) {
 			CAM_INFO(CAM_ISP, "TFE 2 is not supported by hardware");
-
 			rc = cam_tfe_csid_disable_soc_resources(
 				&tfe_csid_hw->hw_info->soc_info);
 			if (rc)
@@ -3854,14 +3982,15 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 				rc = -EINVAL;
 			goto err;
 		}
+
+		val = cam_io_r_mb(
+			tfe_csid_hw->hw_info->soc_info.reg_map[1].mem_base +
+			csid_reg->cmn_reg->top_tfe2_pix_pipe_fuse_reg);
 	}
 
-	val = cam_io_r_mb(
-		tfe_csid_hw->hw_info->soc_info.reg_map[1].mem_base +
-		csid_reg->cmn_reg->top_tfe2_pix_pipe_fuse_reg);
-
 	/* Initialize the IPP resources */
-	if (!(val && (tfe_csid_hw->hw_intf->hw_idx == 2))) {
+	if (!(val &&
+		(tfe_csid_hw->hw_intf->hw_idx == csid_reg->cmn_reg->disable_pix_tfe_idx))) {
 		CAM_DBG(CAM_ISP, "initializing the pix path");
 
 		tfe_csid_hw->ipp_res.res_type = CAM_ISP_RESOURCE_PIX_PATH;

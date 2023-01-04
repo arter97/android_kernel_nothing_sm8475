@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "cam_tpg_core.h"
@@ -433,6 +434,12 @@ static int cam_tpg_cmd_buf_parse(
 
 	if (!tpg_dev || !packet)
 		return -EINVAL;
+
+	if (!packet->num_cmd_buf) {
+		CAM_ERR(CAM_TPG, "Invalid num_cmd_buffer = %d",
+			packet->num_cmd_buf);
+		return -EINVAL;
+	}
 
 	for (i = 0; i < packet->num_cmd_buf; i++) {
 		uint32_t cmd_type = TPG_CMD_TYPE_INVALID;

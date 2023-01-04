@@ -727,6 +727,13 @@ static int32_t cam_eeprom_parse_write_memory_packet(
 
 	CAM_DBG(CAM_EEPROM, "Number of Command Buffers: %d",
 		csl_packet->num_cmd_buf);
+
+	if (!csl_packet->num_cmd_buf) {
+		CAM_ERR(CAM_EEPROM, "Invalid num_cmd_buffer = %d",
+			csl_packet->num_cmd_buf);
+		return -EINVAL;
+	}
+
 	for (i = 0; i < csl_packet->num_cmd_buf; i++) {
 		struct list_head               *list = NULL;
 		uint16_t                       generic_op_code;
@@ -945,7 +952,17 @@ static int32_t cam_eeprom_init_pkt_parser(struct cam_eeprom_ctrl_t *e_ctrl,
 	offset = (uint32_t *)&csl_packet->payload;
 	offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
 	cmd_desc = (struct cam_cmd_buf_desc *)(offset);
+	rc = cam_packet_util_validate_cmd_desc(cmd_desc);
+	if (rc) {
+		CAM_ERR(CAM_EEPROM, "Invalid cmd desc ret: %d", rc);
+		return rc;
+	}
 
+	if (!csl_packet->num_cmd_buf) {
+		CAM_ERR(CAM_EEPROM, "Invalid num_cmd_buffer = %d",
+			csl_packet->num_cmd_buf);
+		return -EINVAL;
+	}
 	/* Loop through multiple command buffers */
 	for (i = 0; i < csl_packet->num_cmd_buf; i++) {
 		total_cmd_buf_in_bytes = cmd_desc[i].length;
