@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -303,6 +303,9 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	union dp_rx_desc_list_elem_t *next;
 	QDF_STATUS ret;
 	void *rxdma_srng;
+	union dp_rx_desc_list_elem_t *desc_list_append = NULL;
+	union dp_rx_desc_list_elem_t *tail_append = NULL;
+	union dp_rx_desc_list_elem_t *temp_list = NULL;
 
 	rxdma_srng = dp_rxdma_srng->hal_srng;
 
@@ -336,6 +339,28 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	} else if (num_entries_avail < num_req_buffers) {
 		num_desc_to_free = num_req_buffers - num_entries_avail;
 		num_req_buffers = num_entries_avail;
+	} else if ((*desc_list) &&
+		   dp_rxdma_srng->num_entries - num_entries_avail <
+		   CRITICAL_BUFFER_THRESHOLD) {
+		/* Append some free descriptors to tail */
+		num_alloc_desc =
+			dp_rx_get_free_desc_list(dp_soc, mac_id,
+						 rx_desc_pool,
+						 CRITICAL_BUFFER_THRESHOLD,
+						 &desc_list_append,
+						 &tail_append);
+
+		if (num_alloc_desc) {
+			temp_list = *desc_list;
+			*desc_list = desc_list_append;
+			tail_append->next = temp_list;
+			num_req_buffers += num_alloc_desc;
+
+			DP_STATS_DEC(dp_pdev,
+				     replenish.free_list,
+				     num_alloc_desc);
+		} else
+			dp_err_rl("%pK:  no free rx_descs in freelist", dp_soc);
 	}
 
 	if (qdf_unlikely(!num_req_buffers)) {
@@ -439,6 +464,7 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	 * Therefore set replenish.pkts.bytes as 0.
 	 */
 	DP_STATS_INC_PKT(dp_pdev, replenish.pkts, count, 0);
+	DP_STATS_INC(dp_pdev, replenish.free_list, num_req_buffers - count);
 
 free_descs:
 	DP_STATS_INC(dp_pdev, buf_freelist, num_desc_to_free);
@@ -545,14 +571,19 @@ bool dp_rx_intrabss_mcbc_fwd(struct dp_soc *soc, struct dp_peer *ta_peer,
 		return false;
 
 	len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
-	if (dp_tx_send((struct cdp_soc_t *)soc,
-		       ta_peer->vdev->vdev_id, nbuf_copy)) {
+	/* set TX notify flag 0 to avoid unnecessary TX comp callback */
+	qdf_nbuf_tx_notify_comp_set(nbuf_copy, 0);
+
+	/* Don't send packets if tx is paused */
+	if (!soc->is_tx_pause &&
+	    !dp_tx_send((struct cdp_soc_t *)soc,
+			ta_peer->vdev->vdev_id, nbuf_copy)) {
+		DP_STATS_INC_PKT(ta_peer, rx.intra_bss.pkts, 1, len);
+		tid_stats->intrabss_cnt++;
+	} else {
 		DP_STATS_INC_PKT(ta_peer, rx.intra_bss.fail, 1, len);
 		tid_stats->fail_cnt[INTRABSS_DROP]++;
 		qdf_nbuf_free(nbuf_copy);
-	} else {
-		DP_STATS_INC_PKT(ta_peer, rx.intra_bss.pkts, 1, len);
-		tid_stats->intrabss_cnt++;
 	}
 	return false;
 }
@@ -603,8 +634,8 @@ bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_peer *ta_peer,
 		}
 	}
 
-	if (!dp_tx_send((struct cdp_soc_t *)soc,
-			tx_vdev_id, nbuf)) {
+	if (!soc->is_tx_pause && !dp_tx_send((struct cdp_soc_t *)soc,
+					     tx_vdev_id, nbuf)) {
 		DP_STATS_INC_PKT(ta_peer, rx.intra_bss.pkts, 1,
 				 len);
 	} else {
@@ -1262,8 +1293,10 @@ void dp_rx_compute_delay(struct dp_vdev *vdev, qdf_nbuf_t nbuf)
 	uint8_t tid = qdf_nbuf_get_tid_val(nbuf);
 	uint32_t interframe_delay =
 		(uint32_t)(current_ts - vdev->prev_rx_deliver_tstamp);
+	struct cdp_tid_rx_stats *rstats =
+		&vdev->pdev->stats.tid_stats.tid_rx_stats[ring_id][tid];
 
-	dp_update_delay_stats(vdev->pdev, to_stack, tid,
+	dp_update_delay_stats(NULL, rstats, to_stack, tid,
 			      CDP_DELAY_STATS_REAP_STACK, ring_id);
 	/*
 	 * Update interframe delay stats calculated at deliver_data_ol point.
@@ -1272,7 +1305,7 @@ void dp_rx_compute_delay(struct dp_vdev *vdev, qdf_nbuf_t nbuf)
 	 * On the other side, this will help in avoiding extra per packet check
 	 * of vdev->prev_rx_deliver_tstamp.
 	 */
-	dp_update_delay_stats(vdev->pdev, interframe_delay, tid,
+	dp_update_delay_stats(NULL, rstats, interframe_delay, tid,
 			      CDP_DELAY_STATS_RX_INTERFRAME, ring_id);
 	vdev->prev_rx_deliver_tstamp = current_ts;
 }
@@ -2558,6 +2591,11 @@ bool dp_rx_deliver_special_frame(struct dp_soc *soc, struct dp_peer *peer,
 	dp_rx_set_hdr_pad(nbuf, l2_hdr_offset);
 	qdf_nbuf_pull_head(nbuf, skip_len);
 
+	if (peer->vdev) {
+		dp_rx_send_pktlog(soc, peer->vdev->pdev, nbuf,
+				  QDF_TX_RX_STATUS_OK);
+	}
+
 	if (dp_rx_is_special_frame(nbuf, frame_mask)) {
 		dp_info("special frame, mpdu sn 0x%x",
 			hal_rx_get_rx_sequence(soc->hal_soc, rx_tlv_hdr));
@@ -2568,5 +2606,23 @@ bool dp_rx_deliver_special_frame(struct dp_soc *soc, struct dp_peer *peer,
 	}
 
 	return false;
+}
+#endif
+
+#ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
+void dp_rx_mark_first_packet_after_wow_wakeup(struct dp_pdev *pdev,
+					      uint8_t *rx_tlv,
+					      qdf_nbuf_t nbuf)
+{
+	struct dp_soc *soc;
+
+	if (!pdev->is_first_wakeup_packet)
+		return;
+
+	soc = pdev->soc;
+	if (hal_get_first_wow_wakeup_packet(soc->hal_soc, rx_tlv)) {
+		qdf_nbuf_mark_wakeup_frame(nbuf);
+		dp_info("First packet after WOW Wakeup rcvd");
+	}
 }
 #endif

@@ -1261,6 +1261,35 @@ reg_get_max_phymode(struct wlan_objmgr_pdev *pdev,
  *	BAND_5G if 5G is enabled but 2G isn't
  */
 enum band_info reg_band_bitmap_to_band_info(uint32_t band_bitmap);
+
+/**
+ * reg_add_indoor_concurrency() - Add the frequency to the indoor concurrency
+ * list
+ *
+ * @pdev: pointer to pdev
+ * @vdev_id: vdev id
+ * @freq: frequency
+ * @width: channel width
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+reg_add_indoor_concurrency(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
+			   uint32_t freq, enum phy_ch_width width);
+
+/**
+ * reg_remove_indoor_concurrency() - Remove the vdev entry from the indoor
+ * concurrency list
+ *
+ * @pdev: pointer to pdev
+ * @vdev_id: vdev id
+ * @freq: frequency
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+reg_remove_indoor_concurrency(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
+			      uint32_t freq);
 #endif
 
 #if defined(CONFIG_BAND_6GHZ)
@@ -1421,7 +1450,7 @@ QDF_STATUS reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
  *
  * This function is meant to be called to find the channel frequency power
  * information for a client when the device is operating as a client. It will
- * fill in the parameter is_psd, tx_power, and eirp_psd_power. eirp_psd_power
+ * fill in the parameters tx_power and eirp_psd_power. eirp_psd_power
  * will only be filled if the channel is PSD.
  *
  * Return: QDF_STATUS
@@ -1429,7 +1458,7 @@ QDF_STATUS reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 QDF_STATUS reg_get_client_power_for_connecting_ap(struct wlan_objmgr_pdev *pdev,
 						  enum reg_6g_ap_type ap_type,
 						  qdf_freq_t chan_freq,
-						  bool *is_psd,
+						  bool is_psd,
 						  uint16_t *tx_power,
 						  uint16_t *eirp_psd_power);
 
@@ -1559,11 +1588,10 @@ static inline
 QDF_STATUS reg_get_client_power_for_connecting_ap(struct wlan_objmgr_pdev *pdev,
 						  enum reg_6g_ap_type ap_type,
 						  qdf_freq_t chan_freq,
-						  bool *is_psd,
+						  bool is_psd,
 						  uint16_t *tx_power,
 						  uint16_t *eirp_psd_power)
 {
-	*is_psd = false;
 	*tx_power = 0;
 	*eirp_psd_power = 0;
 	return QDF_STATUS_E_NOSUPPORT;

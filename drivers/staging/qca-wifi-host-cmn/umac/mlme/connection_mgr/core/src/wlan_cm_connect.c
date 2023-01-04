@@ -825,9 +825,11 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 	struct wlan_objmgr_psoc *psoc;
 	bool sae_connection;
 	QDF_STATUS status;
+	qdf_freq_t freq;
 
 	psoc = wlan_pdev_get_psoc(wlan_vdev_get_pdev(cm_ctx->vdev));
 	key_mgmt = req->cur_candidate->entry->neg_sec_info.key_mgmt;
+	freq = req->cur_candidate->entry->channel.chan_freq;
 
 	/* Try once again for the invalid PMKID case without PMKID */
 	if (resp->status_code == STATUS_INVALID_PMKID)
@@ -836,7 +838,15 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 	/* Try again for the JOIN timeout if only one candidate */
 	if (resp->reason == CM_JOIN_TIMEOUT &&
 	    qdf_list_size(req->candidate_list) == 1) {
-		/* Get assoc retry count */
+		/*
+		 * If there is a interface connected which can lead to MCC,
+		 * do not retry as it can lead to beacon miss on that interface.
+		 * Coz as part of vdev start mac remain on candidate freq for 3
+		 * sec.
+		 */
+		if (policy_mgr_will_freq_lead_to_mcc(psoc, freq))
+			return false;
+
 		wlan_mlme_get_sae_assoc_retry_count(psoc, &max_retry_count);
 		goto use_same_candidate;
 	}
@@ -1728,11 +1738,22 @@ QDF_STATUS cm_connect_active(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 	QDF_STATUS status;
 	struct wlan_cm_connect_req *req;
 
-	cm_req = cm_get_req_by_cm_id(cm_ctx, *cm_id);
-	if (!cm_req)
-		return QDF_STATUS_E_INVAL;
-
 	cm_ctx->active_cm_id = *cm_id;
+	cm_req = cm_get_req_by_cm_id(cm_ctx, *cm_id);
+	if (!cm_req) {
+		/*
+		 * Remove the command from serialization active queue, if
+		 * connect req was not found, to avoid active cmd timeout.
+		 * This can happen if a thread tried to flush the pending
+		 * connect request and while doing so, it removed the
+		 * CM pending request, but before it tried to remove pending
+		 * command from serialization, the command becomes active in
+		 * another thread.
+		 */
+		cm_remove_cmd_from_serialization(cm_ctx, *cm_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
 	cm_req->connect_req.connect_active_time =
 				qdf_mc_timer_get_system_time();
 	req = &cm_req->connect_req.req;

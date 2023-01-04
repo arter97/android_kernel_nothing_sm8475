@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -362,8 +362,83 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 	},
 	{
 		.id = KIWI_V1,
-		.subid = 0xE,
+		.subid = 0,
 		.name = "KIWI_V1",
+	},
+	{
+		.id = KIWI_V2,
+		.subid = 0,
+		.name = "KIWI_V2",
+	},
+	{
+		.id = WCN6750_V1,
+		.subid = 0,
+		.name = "WCN6750_V1",
+	},
+	{
+		.id = QCA6490_v2_1,
+		.subid = 0,
+		.name = "QCA6490",
+	},
+	{
+		.id = QCA6490_v2,
+		.subid = 0,
+		.name = "QCA6490",
+	},
+	{
+		.id = WCN3990_v2_2,
+		.subid = 0,
+		.name = "WCN3990_v2_2",
+	},
+	{
+		.id = WCN3990_TALOS,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_MOOREA,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_SAIPAN,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_RENNELL,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_BITRA,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_DIVAR,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_ATHERTON,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_STRAIT,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_NETRANI,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_CLARENCE,
+		.subid = 0,
+		.name = "WCN3990",
 	}
 };
 
@@ -376,6 +451,10 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 static const char *hif_get_hw_name(struct hif_target_info *info)
 {
 	int i;
+
+	hif_debug("target version = %d, target revision = %d",
+		  info->target_version,
+		  info->target_revision);
 
 	if (info->hw_name)
 		return info->hw_name;
@@ -839,7 +918,7 @@ void hif_latency_detect_timer_start(struct hif_opaque_softc *hif_ctx)
 	if (QDF_GLOBAL_MISSION_MODE != hif_get_conparam(scn))
 		return;
 
-	hif_info_rl("start timer");
+	hif_debug_rl("start timer");
 	if (scn->latency_detect.is_timer_started) {
 		hif_info("timer has been started");
 		return;
@@ -857,7 +936,7 @@ void hif_latency_detect_timer_stop(struct hif_opaque_softc *hif_ctx)
 	if (QDF_GLOBAL_MISSION_MODE != hif_get_conparam(scn))
 		return;
 
-	hif_info_rl("stop timer");
+	hif_debug_rl("stop timer");
 
 	qdf_timer_sync_cancel(&scn->latency_detect.detect_latency_timer);
 	scn->latency_detect.is_timer_started = false;

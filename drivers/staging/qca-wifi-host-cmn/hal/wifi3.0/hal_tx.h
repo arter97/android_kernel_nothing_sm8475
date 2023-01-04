@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -114,7 +114,11 @@ do {                                            \
  * (Exception frames and TQM bypass frames)
  */
 #define HAL_TX_COMP_HTT_STATUS_OFFSET 8
+#ifdef CONFIG_BERYLLIUM
+#define HAL_TX_COMP_HTT_STATUS_LEN 20
+#else
 #define HAL_TX_COMP_HTT_STATUS_LEN 16
+#endif
 
 #define HAL_TX_BUF_TYPE_BUFFER 0
 #define HAL_TX_BUF_TYPE_EXT_DESC 1
@@ -291,6 +295,11 @@ enum hal_tx_tqm_release_reason {
 	HAL_TX_TQM_RR_FW_REASON2,
 	HAL_TX_TQM_RR_FW_REASON3,
 	HAL_TX_TQM_RR_REM_CMD_DISABLE_QUEUE,
+	HAL_TX_TQM_RR_REM_CMD_TILL_NONMATCHING,
+	HAL_TX_TQM_RR_DROP_THRESHOLD,
+	HAL_TX_TQM_RR_LINK_DESC_UNAVAILABLE,
+	HAL_TX_TQM_RR_DROP_OR_INVALID_MSDU,
+	HAL_TX_TQM_RR_MULTICAST_DROP,
 };
 
 /* enum - Table IDs for 2 DSCP-TID mapping Tables that TCL H/W supports

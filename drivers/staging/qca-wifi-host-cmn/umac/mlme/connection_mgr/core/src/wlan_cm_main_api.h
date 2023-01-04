@@ -33,13 +33,18 @@
 #include <scheduler_api.h>
 #endif
 
-#define CONNECT_REQ_PREFIX          0x00C00000
-#define DISCONNECT_REQ_PREFIX       0x00D00000
-#define ROAM_REQ_PREFIX             0x00F00000
+#define CONNECT_REQ_PREFIX          0x0C000000
+#define DISCONNECT_REQ_PREFIX       0x0D000000
+#define ROAM_REQ_PREFIX             0x0F000000
 
 #define CM_ID_MASK                  0x0000FFFF
 
-#define CM_ID_GET_PREFIX(cm_id)     cm_id & 0xFFFF0000
+#define CM_ID_GET_PREFIX(cm_id)     cm_id & 0xFF000000
+#define CM_VDEV_ID_SHIFT            16
+#define CM_VDEV_ID_MASK             0x00FF0000
+#define CM_ID_GET_VDEV_ID(cm_id) (cm_id & CM_VDEV_ID_MASK) >> CM_VDEV_ID_SHIFT
+#define CM_ID_SET_VDEV_ID(cm_id, vdev_id) ((vdev_id << CM_VDEV_ID_SHIFT) & \
+					   CM_VDEV_ID_MASK) | cm_id
 
 #define CM_PREFIX_FMT "vdev %d cm_id 0x%x: "
 #define CM_PREFIX_REF(vdev_id, cm_id) (vdev_id), (cm_id)
@@ -722,6 +727,18 @@ bool cm_is_cm_id_current_candidate_single_pmk(struct cnx_mgr *cm_ctx,
 	return false;
 }
 #endif
+
+/**
+ * cm_remove_cmd_from_serialization() - Remove requests matching cm id
+ * from serialization.
+ * @cm_ctx: connection manager context
+ * @cm_id: cmd id to remove from serialization
+ *
+ * Context: Can be called from any context.
+ *
+ * Return: void
+ */
+void cm_remove_cmd_from_serialization(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id);
 
 /**
  * cm_flush_pending_request() - Flush all pending requests matching flush prefix

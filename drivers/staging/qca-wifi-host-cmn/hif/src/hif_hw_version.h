@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2018, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -34,12 +34,27 @@
 #define QCA9377_REV1_1_VERSION          0x5020001
 #define QCA6390_V1                      0x50040000
 #define QCA6490_V1                      0x50060000
-#define KIWI_V1                         0xDEADBEEF	// TODO Define this
 #define WCN3990_v1                      0x40000000
 #define WCN3990_v2                      0x40010000
 #define WCN3990_v2_1                    0x40010002
 #define WCN3998                         0x40030001
 #define AR900B_REV_2                    0x1
+#define KIWI_V1                         0x40170100
+#define KIWI_V2                         0x40170200
+#define QCA6490_v2_1                    0x400c1211
+#define QCA6490_v2                      0x400c0200
+#define WCN3990_v2_2                    0x400f0000
+#define WCN6750_V1                      0x40140110
+#define WCN3990_TALOS                   0x40670000
+#define WCN3990_MOOREA                  0x40090000
+#define WCN3990_SAIPAN                  0x400B0000
+#define WCN3990_RENNELL                 0x400C0000
+#define WCN3990_BITRA                   0x400D0000
+#define WCN3990_DIVAR                   0x40690000
+#define WCN3990_ATHERTON                0x40680000
+#define WCN3990_STRAIT                  0x400E0000
+#define WCN3990_NETRANI                 0x400F0000
+#define WCN3990_CLARENCE                0x406A0000
 
 struct qwlan_hw {
 	u32 id;

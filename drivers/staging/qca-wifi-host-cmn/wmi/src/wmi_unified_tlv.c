@@ -537,6 +537,28 @@ static const uint32_t vdev_param_tlv[] = {
 	[wmi_vdev_param_enable_disable_rtt_initiator_role] =
 			WMI_VDEV_PARAM_ENABLE_DISABLE_RTT_INITIATOR_ROLE,
 	[wmi_vdev_param_mcast_steer] = WMI_VDEV_PARAM_MCAST_STEERING,
+#ifdef MULTI_CLIENT_LL_SUPPORT
+	[wmi_vdev_param_set_normal_latency_flags_config] =
+			WMI_VDEV_PARAM_NORMAL_LATENCY_FLAGS_CONFIGURATION,
+	[wmi_vdev_param_set_xr_latency_flags_config] =
+			WMI_VDEV_PARAM_XR_LATENCY_FLAGS_CONFIGURATION,
+	[wmi_vdev_param_set_low_latency_flags_config] =
+			WMI_VDEV_PARAM_LOW_LATENCY_FLAGS_CONFIGURATION,
+	[wmi_vdev_param_set_ultra_low_latency_flags_config] =
+			WMI_VDEV_PARAM_ULTRA_LOW_LATENCY_FLAGS_CONFIGURATION,
+	[wmi_vdev_param_set_normal_latency_ul_dl_config] =
+			WMI_VDEV_PARAM_NORMAL_LATENCY_UL_DL_CONFIGURATION,
+	[wmi_vdev_param_set_xr_latency_ul_dl_config] =
+			WMI_VDEV_PARAM_XR_LATENCY_UL_DL_CONFIGURATION,
+	[wmi_vdev_param_set_low_latency_ul_dl_config] =
+			WMI_VDEV_PARAM_LOW_LATENCY_UL_DL_CONFIGURATION,
+	[wmi_vdev_param_set_ultra_low_latency_ul_dl_config] =
+			WMI_VDEV_PARAM_ULTRA_LOW_LATENCY_UL_DL_CONFIGURATION,
+	[wmi_vdev_param_set_default_ll_config] =
+			WMI_VDEV_PARAM_DEFAULT_LATENCY_LEVEL_CONFIGURATION,
+	[wmi_vdev_param_set_multi_client_ll_feature_config] =
+			WMI_VDEV_PARAM_MULTI_CLIENT_LL_FEATURE_CONFIGURATION,
+#endif
 };
 #endif
 
@@ -1074,9 +1096,10 @@ vdev_start_cmd_fill_11be(wmi_vdev_start_request_cmd_fixed_param *cmd,
 			 struct vdev_start_params *req)
 {
 	cmd->eht_ops = req->eht_ops;
-	cmd->puncture_20mhz_bitmap = req->channel.puncture_pattern;
-	wmi_info("EHT ops: %x puncture_pattern %x",
-		 req->eht_ops, req->channel.puncture_pattern);
+	cmd->puncture_20mhz_bitmap = ~req->channel.puncture_bitmap;
+	wmi_info("EHT ops: %x puncture_bitmap %x wmi cmd puncture bitmap %x",
+		 req->eht_ops, req->channel.puncture_bitmap,
+		 cmd->puncture_20mhz_bitmap);
 }
 #else
 static void
@@ -1960,10 +1983,10 @@ static QDF_STATUS send_wow_enable_cmd_tlv(wmi_unified_t wmi_handle,
 		cmd->pause_iface_config = WOW_IFACE_PAUSE_DISABLED;
 	cmd->flags = param->flags;
 
-	wmi_info("suspend type: %s flag is 0x%x",
-		 cmd->pause_iface_config == WOW_IFACE_PAUSE_ENABLED ?
-		 "WOW_IFACE_PAUSE_ENABLED" : "WOW_IFACE_PAUSE_DISABLED",
-		 cmd->flags);
+	wmi_debug("suspend type: %s flag is 0x%x",
+		  cmd->pause_iface_config == WOW_IFACE_PAUSE_ENABLED ?
+		  "WOW_IFACE_PAUSE_ENABLED" : "WOW_IFACE_PAUSE_DISABLED",
+		  cmd->flags);
 
 	wmi_mtrace(WMI_WOW_ENABLE_CMDID, NO_SESSION, 0);
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
@@ -2751,7 +2774,7 @@ static uint8_t *update_peer_flags_tlv_ehtinfo(
 	int i;
 
 	cmd->peer_eht_ops = param->peer_eht_ops;
-	cmd->puncture_20mhz_bitmap = param->puncture_pattern;
+	cmd->puncture_20mhz_bitmap = ~param->puncture_bitmap;
 
 	qdf_mem_copy(&cmd->peer_eht_cap_mac, &param->peer_eht_cap_macinfo,
 		     sizeof(param->peer_eht_cap_macinfo));
@@ -16003,6 +16026,85 @@ extract_roam_scan_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 }
 
 /**
+ * wlan_roam_fail_reason_code() - Convert FW enum to Host enum
+ * @wmi_roam_fail_reason: roam fail enum
+ *
+ * Return: Roaming failure reason codes
+ */
+static enum wlan_roam_failure_reason_code
+wlan_roam_fail_reason_code(uint16_t wmi_roam_fail_reason)
+{
+	switch (wmi_roam_fail_reason) {
+	case WMI_ROAM_FAIL_REASON_NO_SCAN_START:
+		return ROAM_FAIL_REASON_NO_SCAN_START;
+	case WMI_ROAM_FAIL_REASON_NO_AP_FOUND:
+		return ROAM_FAIL_REASON_NO_AP_FOUND;
+	case WMI_ROAM_FAIL_REASON_NO_CAND_AP_FOUND:
+		return ROAM_FAIL_REASON_NO_CAND_AP_FOUND;
+	case WMI_ROAM_FAIL_REASON_HOST:
+		return ROAM_FAIL_REASON_HOST;
+	case WMI_ROAM_FAIL_REASON_AUTH_SEND:
+		return ROAM_FAIL_REASON_AUTH_SEND;
+	case WMI_ROAM_FAIL_REASON_AUTH_RECV:
+		return ROAM_FAIL_REASON_AUTH_RECV;
+	case WMI_ROAM_FAIL_REASON_NO_AUTH_RESP:
+		return ROAM_FAIL_REASON_NO_AUTH_RESP;
+	case WMI_ROAM_FAIL_REASON_REASSOC_SEND:
+		return ROAM_FAIL_REASON_REASSOC_SEND;
+	case WMI_ROAM_FAIL_REASON_REASSOC_RECV:
+		return ROAM_FAIL_REASON_REASSOC_RECV;
+	case WMI_ROAM_FAIL_REASON_NO_REASSOC_RESP:
+		return ROAM_FAIL_REASON_NO_REASSOC_RESP;
+	case WMI_ROAM_FAIL_REASON_EAPOL_TIMEOUT:
+		return ROAM_FAIL_REASON_EAPOL_TIMEOUT;
+	case WMI_ROAM_FAIL_REASON_MLME:
+		return ROAM_FAIL_REASON_MLME;
+	case WMI_ROAM_FAIL_REASON_INTERNAL_ABORT:
+		return ROAM_FAIL_REASON_INTERNAL_ABORT;
+	case WMI_ROAM_FAIL_REASON_SCAN_START:
+		return ROAM_FAIL_REASON_SCAN_START;
+	case WMI_ROAM_FAIL_REASON_AUTH_NO_ACK:
+		return ROAM_FAIL_REASON_AUTH_NO_ACK;
+	case WMI_ROAM_FAIL_REASON_AUTH_INTERNAL_DROP:
+		return ROAM_FAIL_REASON_AUTH_INTERNAL_DROP;
+	case WMI_ROAM_FAIL_REASON_REASSOC_NO_ACK:
+		return ROAM_FAIL_REASON_REASSOC_NO_ACK;
+	case WMI_ROAM_FAIL_REASON_REASSOC_INTERNAL_DROP:
+		return ROAM_FAIL_REASON_REASSOC_INTERNAL_DROP;
+	case WMI_ROAM_FAIL_REASON_EAPOL_M2_SEND:
+		return ROAM_FAIL_REASON_EAPOL_M2_SEND;
+	case WMI_ROAM_FAIL_REASON_EAPOL_M2_INTERNAL_DROP:
+		return ROAM_FAIL_REASON_EAPOL_M2_INTERNAL_DROP;
+	case WMI_ROAM_FAIL_REASON_EAPOL_M2_NO_ACK:
+		return ROAM_FAIL_REASON_EAPOL_M2_NO_ACK;
+	case WMI_ROAM_FAIL_REASON_EAPOL_M3_TIMEOUT:
+		return ROAM_FAIL_REASON_EAPOL_M3_TIMEOUT;
+	case WMI_ROAM_FAIL_REASON_EAPOL_M4_SEND:
+		return ROAM_FAIL_REASON_EAPOL_M4_SEND;
+	case WMI_ROAM_FAIL_REASON_EAPOL_M4_INTERNAL_DROP:
+		return ROAM_FAIL_REASON_EAPOL_M4_INTERNAL_DROP;
+	case WMI_ROAM_FAIL_REASON_EAPOL_M4_NO_ACK:
+		return ROAM_FAIL_REASON_EAPOL_M4_NO_ACK;
+	case WMI_ROAM_FAIL_REASON_NO_SCAN_FOR_FINAL_BMISS:
+		return ROAM_FAIL_REASON_NO_SCAN_FOR_FINAL_BMISS;
+	case WMI_ROAM_FAIL_REASON_DISCONNECT:
+		return ROAM_FAIL_REASON_DISCONNECT;
+	case WMI_ROAM_FAIL_REASON_SYNC:
+		return ROAM_FAIL_REASON_SYNC;
+	case WMI_ROAM_FAIL_REASON_SAE_INVALID_PMKID:
+		return ROAM_FAIL_REASON_SAE_INVALID_PMKID;
+	case WMI_ROAM_FAIL_REASON_SAE_PREAUTH_TIMEOUT:
+		return ROAM_FAIL_REASON_SAE_PREAUTH_TIMEOUT;
+	case WMI_ROAM_FAIL_REASON_SAE_PREAUTH_FAIL:
+		return ROAM_FAIL_REASON_SAE_PREAUTH_FAIL;
+	case WMI_ROAM_FAIL_REASON_UNABLE_TO_START_ROAM_HO:
+		return ROAM_FAIL_REASON_UNABLE_TO_START_ROAM_HO;
+	default:
+		return ROAM_FAIL_REASON_UNKNOWN;
+	}
+}
+
+/**
  * extract_roam_scan_stats_tlv() - Extract the Roam trigger stats
  * from the WMI_ROAM_STATS_EVENTID
  * @wmi_handle: wmi handle
@@ -16027,7 +16129,8 @@ extract_roam_result_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	dst->present = true;
 	dst->status = src_data->roam_status;
 	dst->timestamp = src_data->timestamp;
-	dst->fail_reason = src_data->roam_fail_reason;
+	dst->fail_reason =
+	wlan_roam_fail_reason_code(src_data->roam_fail_reason);
 	WMI_MAC_ADDR_TO_CHAR_ARRAY(&src_data->bssid, dst->fail_bssid.bytes);
 
 	return QDF_STATUS_SUCCESS;
@@ -17804,6 +17907,9 @@ event_ids[wmi_roam_scan_chan_list_id] =
 	event_ids[wmi_vdev_quiet_offload_eventid] =
 			WMI_QUIET_HANDLING_EVENTID;
 #endif
+#ifdef MULTI_CLIENT_LL_SUPPORT
+	event_ids[wmi_vdev_latency_event_id] = WMI_VDEV_LATENCY_LEVEL_EVENTID;
+#endif
 }
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
@@ -18156,6 +18262,16 @@ static void populate_tlv_service(uint32_t *wmi_service)
 			WMI_SERVICE_SCAN_CONFIG_PER_CHANNEL;
 	wmi_service[wmi_service_csa_beacon_template] =
 			WMI_SERVICE_CSA_BEACON_TEMPLATE;
+#if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+	wmi_service[wmi_service_rtt_11az_ntb_support] =
+			WMI_SERVICE_RTT_11AZ_NTB_SUPPORT;
+	wmi_service[wmi_service_rtt_11az_tb_support] =
+			WMI_SERVICE_RTT_11AZ_TB_SUPPORT;
+	wmi_service[wmi_service_rtt_11az_mac_sec_support] =
+			WMI_SERVICE_RTT_11AZ_MAC_SEC_SUPPORT;
+	wmi_service[wmi_service_rtt_11az_mac_phy_sec_support] =
+			WMI_SERVICE_RTT_11AZ_MAC_PHY_SEC_SUPPORT;
+#endif
 #ifdef WLAN_FEATURE_IGMP_OFFLOAD
 	wmi_service[wmi_service_igmp_offload_support] =
 			WMI_SERVICE_IGMP_OFFLOAD_SUPPORT;
@@ -18252,6 +18368,14 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #ifdef WLAN_FEATURE_11BE_MLO
 	wmi_service[wmi_service_mlo_sta_nan_ndi_support] =
 			WMI_SERVICE_MLO_STA_NAN_NDI_SUPPORT;
+#endif
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+	wmi_service[wmi_service_roam_stats_per_candidate_frame_info] =
+		WMI_SERVICE_ROAM_STAT_PER_CANDIDATE_FRAME_INFO_SUPPORT;
+#endif
+#ifdef MULTI_CLIENT_LL_SUPPORT
+	wmi_service[wmi_service_configure_multi_client_ll_support] =
+				WMI_SERVICE_MULTI_CLIENT_LL_SUPPORT;
 #endif
 }
 

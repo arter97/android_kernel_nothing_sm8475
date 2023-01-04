@@ -763,10 +763,21 @@ static void hal_rx_dump_msdu_end_tlv_kiwi(void *msduend,
 }
 #endif
 
+#ifdef NO_RX_PKT_HDR_TLV
+static inline void hal_rx_dump_pkt_hdr_tlv_kiwi(struct rx_pkt_tlvs *pkt_tlvs,
+						uint8_t dbg_level)
+{
+}
+
+static inline
+void hal_register_rx_pkt_hdr_tlv_api_kiwi(struct hal_soc *hal_soc)
+{
+}
+#else
 /**
  * hal_rx_dump_pkt_hdr_tlv: dump RX pkt header TLV in hex format
- * @ pkt_hdr_tlv: pointer the pkt_hdr_tlv in pkt.
- * @ dbg_level: log level.
+ * @pkt_hdr_tlv: pointer the pkt_hdr_tlv in pkt.
+ * @dbg_level: log level.
  *
  * Return: void
  */
@@ -784,6 +795,20 @@ static inline void hal_rx_dump_pkt_hdr_tlv_kiwi(struct rx_pkt_tlvs *pkt_tlvs,
 	hal_verbose_hex_dump(pkt_hdr_tlv->rx_pkt_hdr,
 			     sizeof(pkt_hdr_tlv->rx_pkt_hdr));
 }
+
+/**
+ * hal_register_rx_pkt_hdr_tlv_api_kiwi: register all rx_pkt_hdr_tlv related api
+ * @hal_soc: HAL soc handler
+ *
+ * Return: none
+ */
+static inline
+void hal_register_rx_pkt_hdr_tlv_api_kiwi(struct hal_soc *hal_soc)
+{
+	hal_soc->ops->hal_rx_pkt_tlv_offset_get =
+				hal_rx_pkt_tlv_offset_get_generic;
+}
+#endif
 
 /**
  * hal_rx_dump_mpdu_start_tlv_generic_be: dump RX mpdu_start TLV in structured
@@ -1621,6 +1646,24 @@ static uint8_t hal_get_idle_link_bm_id_kiwi(uint8_t chip_id)
 	return WBM_IDLE_DESC_LIST;
 }
 
+#ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
+/**
+ * hal_get_first_wow_wakeup_packet_kiwi(): Function to get if the buffer
+ * is the first one that wakes up host from WoW.
+ *
+ * @buf: network buffer
+ *
+ * Dummy function for KIWI
+ *
+ * Returns: 1 to indicate it is first packet received that wakes up host from
+ *	    WoW. Otherwise 0
+ */
+static inline uint8_t hal_get_first_wow_wakeup_packet_kiwi(uint8_t *buf)
+{
+	return 0;
+}
+#endif
+
 static void hal_hw_txrx_ops_attach_kiwi(struct hal_soc *hal_soc)
 {
 	/* init and setup */
@@ -1778,12 +1821,11 @@ static void hal_hw_txrx_ops_attach_kiwi(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_rx_reo_prev_pn_get = hal_rx_reo_prev_pn_get_kiwi;
 
 	/* rx - TLV struct offsets */
+	hal_register_rx_pkt_hdr_tlv_api_kiwi(hal_soc);
 	hal_soc->ops->hal_rx_msdu_end_offset_get =
 					hal_rx_msdu_end_offset_get_generic;
 	hal_soc->ops->hal_rx_mpdu_start_offset_get =
 					hal_rx_mpdu_start_offset_get_generic;
-	hal_soc->ops->hal_rx_pkt_tlv_offset_get =
-					hal_rx_pkt_tlv_offset_get_generic;
 	hal_soc->ops->hal_rx_flow_setup_fse = hal_rx_flow_setup_fse_kiwi;
 	hal_soc->ops->hal_compute_reo_remap_ix2_ix3 =
 					hal_compute_reo_remap_ix2_ix3_kiwi;
@@ -1845,6 +1887,10 @@ static void hal_hw_txrx_ops_attach_kiwi(struct hal_soc *hal_soc)
 				hal_set_reo_ent_desc_reo_dest_ind_be;
 	hal_soc->ops->hal_get_idle_link_bm_id = hal_get_idle_link_bm_id_kiwi;
 	hal_soc->ops->hal_compute_reo_remap_ix0 = NULL;
+#ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
+	hal_soc->ops->hal_get_first_wow_wakeup_packet =
+		hal_get_first_wow_wakeup_packet_kiwi;
+#endif
 };
 
 struct hal_hw_srng_config hw_srng_table_kiwi[] = {

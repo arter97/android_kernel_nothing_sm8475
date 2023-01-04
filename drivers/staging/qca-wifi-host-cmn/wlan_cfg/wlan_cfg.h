@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -168,7 +168,8 @@ struct wlan_srng_cfg {
  * @lro_enabled: enable/disable LRO feature
  * @sg_enabled: enable disable scatter gather feature
  * @gro_enabled: enable disable GRO feature
- * @force_gro_enabled: force enable GRO feature
+ * @tc_based_dynamic_gro: enable/disable tc based dynamic gro
+ * @tc_ingress_prio: ingress prio to be checked for dynamic gro
  * @ipa_enabled: Flag indicating if IPA is enabled
  * @ol_tx_csum_enabled: Flag indicating if TX csum is enabled
  * @ol_rx_csum_enabled: Flag indicating if Rx csum is enabled
@@ -191,7 +192,7 @@ struct wlan_srng_cfg {
  * @rxdma_refill_ring: rxdma refill ring size
  * @rxdma_err_dst_ring: rxdma error detination ring size
  * @raw_mode_war: enable/disable raw mode war
- * @enable_data_stall_detection: flag to enable data stall detection
+ * @enable_data_stall_detection: enable/disable specific data stall detection
  * @disable_intra_bss_fwd: flag to disable intra bss forwarding
  * @rxdma1_enable: flag to indicate if rxdma1 is enabled
  * @delay_mon_replenish: delay monitor buffer replenish
@@ -247,6 +248,8 @@ struct wlan_srng_cfg {
  * @vdev_stats_hw_offload_config: HW vdev stats config
  * @vdev_stats_hw_offload_timer: HW vdev stats timer duration
  * @num_rxdma_status_rings_per_pdev: Num RXDMA status rings
+ * @mpdu_retry_threshold_1: MPDU retry threshold 1 to increment tx bad count
+ * @mpdu_retry_threshold_1: MPDU retry threshold 2 to increment tx bad count
  */
 struct wlan_cfg_dp_soc_ctxt {
 	int num_int_ctxts;
@@ -299,7 +302,8 @@ struct wlan_cfg_dp_soc_ctxt {
 	bool lro_enabled;
 	bool sg_enabled;
 	bool gro_enabled;
-	bool force_gro_enabled;
+	bool tc_based_dynamic_gro;
+	uint32_t tc_ingress_prio;
 	bool ipa_enabled;
 	bool ol_tx_csum_enabled;
 	bool ol_rx_csum_enabled;
@@ -328,7 +332,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	int rxdma_err_dst_ring;
 	uint32_t per_pkt_trace;
 	bool raw_mode_war;
-	bool enable_data_stall_detection;
+	uint32_t enable_data_stall_detection;
 	bool disable_intra_bss_fwd;
 	bool rxdma1_enable;
 	bool delay_mon_replenish;
@@ -406,6 +410,8 @@ struct wlan_cfg_dp_soc_ctxt {
 #endif
 	uint8_t num_rxdma_dst_rings_per_pdev;
 	uint8_t num_rxdma_status_rings_per_pdev;
+	uint8_t mpdu_retry_threshold_1;
+	uint8_t mpdu_retry_threshold_2;
 };
 
 /**

@@ -872,6 +872,22 @@ struct twt_notify_event_param {
 	enum HOST_TWT_NOTIFY_STATUS status;
 };
 
+/* HOST_TWT_NEXT_WORK_ACTION - next action of TWT worker thread
+ * @HOST_TWT_SEND_DELETE_CMD: Send TWT delete command request
+ */
+enum HOST_TWT_NEXT_WORK_ACTION {
+	HOST_TWT_SEND_DELETE_CMD = 1,
+};
+
+/**
+ * struct twt_work_params
+ * @peer_macaddr: peer mac address
+ * @dialog_id: Dialog ID
+ */
+struct twt_work_params {
+	struct qdf_mac_addr peer_macaddr;
+	uint32_t dialog_id;
+};
 #ifdef WLAN_SUPPORT_BCAST_TWT
 /**
  * struct twt_btwt_invite_sta_cmd_param -
@@ -992,6 +1008,15 @@ enum HOST_TWT_CMD_FOR_ACK_EVENT {
 	HOST_TWT_RESUME_DIALOG_CMDID,
 	HOST_TWT_NUDGE_DIALOG_CMDID,
 	HOST_TWT_UNKNOWN_CMDID,
+};
+
+/* access categories */
+enum twt_traffic_ac {
+	TWT_AC_VO  = 0,
+	TWT_AC_VI  = 1,
+	TWT_AC_BE  = 2,
+	TWT_AC_BK  = 3,
+	TWT_AC_MAX = 4,
 };
 
 #endif /* _WLAN_TWT_PUBLIC_STRUCTS_H_ */

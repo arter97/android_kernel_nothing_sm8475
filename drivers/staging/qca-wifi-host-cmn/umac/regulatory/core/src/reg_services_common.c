@@ -1437,7 +1437,7 @@ uint8_t reg_freq_to_chan(struct wlan_objmgr_pdev *pdev,
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
 
 	if (freq == 0) {
-		reg_err_rl("Invalid freq %d", freq);
+		reg_debug_rl("Invalid freq %d", freq);
 		return 0;
 	}
 
@@ -2940,7 +2940,7 @@ reg_update_usable_chan_resp(struct wlan_objmgr_pdev *pdev,
 	struct ch_params ch_params = {0};
 	int index = *count;
 
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < len && index < NUM_CHANNELS; i++) {
 		/* In case usable channels are required for multiple filter
 		 * mask, Some frequencies may present in res_msg . To avoid
 		 * frequency duplication, only mode mask is updated for
@@ -3292,6 +3292,8 @@ reg_get_usable_channel_coex_filter(struct wlan_objmgr_pdev *pdev,
 			    chan_list[chan_enum].center_freq &&
 			    freq_range.end_freq >=
 			    chan_list[chan_enum].center_freq) {
+				reg_debug("avoid freq %d",
+					  chan_list[chan_enum].center_freq);
 				reg_remove_freq(res_msg, chan_enum);
 			}
 		}
@@ -3410,16 +3412,15 @@ wlan_reg_get_usable_channel(struct wlan_objmgr_pdev *pdev,
 		}
 	}
 
-	if (req_msg.filter_mask & 1 << FILTER_CELLULAR_COEX)
-		status =
-		reg_get_usable_channel_coex_filter(pdev, req_msg, res_msg,
-						   chan_list, usable_channels);
-
 	if (req_msg.filter_mask & 1 << FILTER_WLAN_CONCURRENCY)
 		status =
 		reg_get_usable_channel_con_filter(pdev, req_msg, res_msg,
 						  usable_channels);
 
+	if (req_msg.filter_mask & 1 << FILTER_CELLULAR_COEX)
+		status =
+		reg_get_usable_channel_coex_filter(pdev, req_msg, res_msg,
+						   chan_list, usable_channels);
 	if (!(req_msg.filter_mask & 1 << FILTER_CELLULAR_COEX) &&
 	    !(req_msg.filter_mask & 1 << FILTER_WLAN_CONCURRENCY))
 		status =
@@ -5107,6 +5108,72 @@ enum band_info reg_band_bitmap_to_band_info(uint32_t band_bitmap)
 	else
 		return BAND_UNKNOWN;
 }
+
+QDF_STATUS
+reg_add_indoor_concurrency(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
+			   uint32_t freq, enum phy_ch_width width)
+{
+	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
+	struct indoor_concurrency_list *list;
+	const struct bonded_channel_freq *range = NULL;
+	uint8_t i = 0;
+
+	pdev_priv_obj = reg_get_pdev_obj(pdev);
+
+	if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {
+		reg_err("pdev reg component is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (width > CH_WIDTH_20MHZ)
+		range = wlan_reg_get_bonded_chan_entry(freq, width);
+
+	list = &pdev_priv_obj->indoor_list[0];
+	for (i = 0; i < MAX_INDOOR_LIST_SIZE; i++, list++) {
+		if (list->freq == 0 && list->vdev_id == INVALID_VDEV_ID) {
+			list->freq = freq;
+			list->vdev_id = vdev_id;
+			list->chan_range = range;
+			reg_debug("Added freq %d vdev %d width %d at idx %d",
+				  freq, vdev_id, width, i);
+			return QDF_STATUS_SUCCESS;
+		}
+	}
+	reg_err("Unable to add indoor concurrency for vdev %d freq %d width %d",
+		vdev_id, freq, width);
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+reg_remove_indoor_concurrency(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
+			      uint32_t freq)
+{
+	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
+	struct indoor_concurrency_list *list;
+	uint8_t i = 0;
+
+	pdev_priv_obj = reg_get_pdev_obj(pdev);
+
+	if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {
+		reg_err("pdev reg component is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	list = &pdev_priv_obj->indoor_list[0];
+	for (i = 0; i < MAX_INDOOR_LIST_SIZE; i++, list++) {
+		if (list->freq == freq ||
+		    (vdev_id != INVALID_VDEV_ID && list->vdev_id == vdev_id)) {
+			reg_debug("Removed freq %d from idx %d", list->freq, i);
+			list->freq = 0;
+			list->vdev_id = INVALID_VDEV_ID;
+			list->chan_range = NULL;
+			return QDF_STATUS_SUCCESS;
+		}
+		continue;
+	}
+	return QDF_STATUS_E_FAILURE;
+}
+
 #endif
 
 #if defined(CONFIG_BAND_6GHZ)
@@ -6081,7 +6148,7 @@ QDF_STATUS reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 QDF_STATUS reg_get_client_power_for_connecting_ap(struct wlan_objmgr_pdev *pdev,
 						  enum reg_6g_ap_type ap_type,
 						  qdf_freq_t chan_freq,
-						  bool *is_psd,
+						  bool is_psd,
 						  uint16_t *tx_power,
 						  uint16_t *eirp_psd_power)
 {
@@ -6104,8 +6171,7 @@ QDF_STATUS reg_get_client_power_for_connecting_ap(struct wlan_objmgr_pdev *pdev,
 	reg_find_txpower_from_6g_list(chan_freq, master_chan_list,
 				      tx_power);
 
-	*is_psd = reg_is_6g_psd_power(pdev);
-	if (*is_psd)
+	if (is_psd)
 		status = reg_get_6g_chan_psd_eirp_power(chan_freq,
 							master_chan_list,
 							eirp_psd_power);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -647,6 +647,18 @@ struct oem_data {
 };
 #endif
 
+#ifdef MULTI_CLIENT_LL_SUPPORT
+/**
+ * struct latency_level_data - latency data received in the event from the FW
+ * @vdev_id: The latency level for specified vdev_id
+ * @latency_level: latency level honoured by FW
+ */
+struct latency_level_data {
+	uint8_t vdev_id;
+	uint32_t latency_level;
+};
+#endif
+
 /**
  * enum nss_chains_band_info - Band info for dynamic nss, chains change feature
  * @NSS_CHAINS_BAND_2GHZ: 2.4Ghz band
@@ -1045,6 +1057,7 @@ struct peer_assoc_ml_partner_links {
  * @peer_eht_mcs_count: Peer EHT MCS TX/RX MAP count
  * @peer_eht_rx_mcs_set: Peer EHT RX MCS MAP
  * @peer_eht_tx_mcs_set: Peer EHT TX MCS MAP
+ * @puncture_bitmap: 11be static puncture bitmap
  * @peer_ppet: Peer HE PPET info
  * @peer_bss_max_idle_option: Peer BSS Max Idle option update
  * @akm: AKM info
@@ -1123,7 +1136,7 @@ struct peer_assoc_params {
 	uint32_t peer_eht_mcs_count;
 	uint32_t peer_eht_rx_mcs_set[WMI_HOST_MAX_EHT_RATE_SET];
 	uint32_t peer_eht_tx_mcs_set[WMI_HOST_MAX_EHT_RATE_SET];
-	uint16_t puncture_pattern;
+	uint16_t puncture_bitmap;
 #endif
 	struct wmi_host_ppe_threshold peer_ppet;
 	u_int8_t peer_bsscolor_rept_info;
@@ -4733,6 +4746,9 @@ typedef enum {
 #ifdef WLAN_FEATURE_11BE_MLO
 	wmi_vdev_quiet_offload_eventid,
 #endif
+#ifdef MULTI_CLIENT_LL_SUPPORT
+	wmi_vdev_latency_event_id,
+#endif
 	wmi_events_max,
 } wmi_conv_event_id;
 
@@ -5060,6 +5076,18 @@ typedef enum {
 	wmi_vdev_param_set_eht_range_ext,
 	wmi_vdev_param_set_non_data_eht_range_ext,
 #endif
+#ifdef MULTI_CLIENT_LL_SUPPORT
+	wmi_vdev_param_set_normal_latency_flags_config,
+	wmi_vdev_param_set_xr_latency_flags_config,
+	wmi_vdev_param_set_low_latency_flags_config,
+	wmi_vdev_param_set_ultra_low_latency_flags_config,
+	wmi_vdev_param_set_normal_latency_ul_dl_config,
+	wmi_vdev_param_set_xr_latency_ul_dl_config,
+	wmi_vdev_param_set_low_latency_ul_dl_config,
+	wmi_vdev_param_set_ultra_low_latency_ul_dl_config,
+	wmi_vdev_param_set_default_ll_config,
+	wmi_vdev_param_set_multi_client_ll_feature_config,
+#endif
 } wmi_conv_vdev_param_id;
 
 /**
@@ -5353,6 +5381,18 @@ typedef enum {
 	wmi_service_pno_scan_conf_per_ch_support,
 #ifdef WLAN_FEATURE_11BE_MLO
 	wmi_service_mlo_sta_nan_ndi_support,
+#endif
+#ifdef WIFI_POS_CONVERGED
+	wmi_service_rtt_11az_mac_phy_sec_support,
+	wmi_service_rtt_11az_mac_sec_support,
+	wmi_service_rtt_11az_ntb_support,
+	wmi_service_rtt_11az_tb_support,
+#endif
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+	wmi_service_roam_stats_per_candidate_frame_info,
+#endif
+#ifdef MULTI_CLIENT_LL_SUPPORT
+	wmi_service_configure_multi_client_ll_support,
 #endif
 	wmi_services_max,
 } wmi_conv_service_ids;
@@ -7616,7 +7656,7 @@ struct wmi_roam_scan_stats_res {
 #define MAX_ROAM_SCAN_CHAN       38
 #define MAX_ROAM_SCAN_STATS_TLV  5
 #define WLAN_MAX_BTM_CANDIDATE   8
-#define WLAN_ROAM_MAX_FRAME_INFO 6
+#define WLAN_ROAM_MAX_FRAME_INFO (MAX_ROAM_CANDIDATE_AP * 6)
 /**
  * struct btm_req_candidate_info  - BTM request candidate
  * info

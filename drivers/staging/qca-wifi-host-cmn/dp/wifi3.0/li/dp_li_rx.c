@@ -605,14 +605,14 @@ done:
 		}
 
 		/* Get TID from struct cb->tid_val, save to tid */
-		if (qdf_nbuf_is_rx_chfrag_start(nbuf)) {
+		if (qdf_nbuf_is_rx_chfrag_start(nbuf))
 			tid = qdf_nbuf_get_tid_val(nbuf);
-			if (tid >= CDP_MAX_DATA_TIDS) {
-				DP_STATS_INC(soc, rx.err.rx_invalid_tid_err, 1);
-				qdf_nbuf_free(nbuf);
-				nbuf = next;
-				continue;
-			}
+
+		if (qdf_unlikely(tid >= CDP_MAX_DATA_TIDS)) {
+			DP_STATS_INC(soc, rx.err.rx_invalid_tid_err, 1);
+			qdf_nbuf_free(nbuf);
+			nbuf = next;
+			continue;
 		}
 
 		if (qdf_unlikely(!peer)) {
@@ -766,6 +766,8 @@ done:
 			dp_rx_skip_tlvs(soc, nbuf, msdu_metadata.l3_hdr_pad);
 		}
 
+		dp_rx_send_pktlog(soc, rx_pdev, nbuf, QDF_TX_RX_STATUS_OK);
+
 		/*
 		 * process frame for mulitpass phrase processing
 		 */
@@ -901,6 +903,9 @@ done:
 
 		dp_rx_fill_gro_info(soc, rx_tlv_hdr, nbuf, &rx_ol_pkt_cnt);
 
+		dp_rx_mark_first_packet_after_wow_wakeup(vdev->pdev, rx_tlv_hdr,
+							 nbuf);
+
 		dp_rx_update_stats(soc, nbuf);
 
 		dp_pkt_add_timestamp(peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
@@ -1009,6 +1014,11 @@ QDF_STATUS dp_wbm_get_rx_desc_from_hal_desc_li(
 		/* Call appropriate handler */
 		DP_STATS_INC(soc, rx.err.invalid_rbm, 1);
 		dp_rx_err("%pK: Invalid RBM %d", soc, buf_info.rbm);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!dp_rx_is_sw_cookie_valid(soc, buf_info.sw_cookie)) {
+		dp_rx_err("invalid sw_cookie 0x%x", buf_info.sw_cookie);
 		return QDF_STATUS_E_INVAL;
 	}
 

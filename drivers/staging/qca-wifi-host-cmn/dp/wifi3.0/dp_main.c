@@ -6863,6 +6863,7 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		dp_peer_add_ast(soc, peer, peer_mac_addr, ast_type, 0);
 
 		peer->valid = 1;
+		peer->is_tdls_peer = false;
 		dp_local_peer_id_alloc(pdev, peer);
 
 		qdf_spinlock_create(&peer->peer_info_lock);
@@ -10511,6 +10512,7 @@ static QDF_STATUS dp_txrx_dump_stats(struct cdp_soc_t *psoc, uint16_t value,
 		dp_txrx_path_stats(soc);
 		dp_print_soc_interrupt_stats(soc);
 		hal_dump_reg_write_stats(soc->hal_soc);
+		dp_pdev_print_tx_delay_stats(soc);
 		break;
 
 	case CDP_RX_RING_STATS:
@@ -10542,6 +10544,10 @@ static QDF_STATUS dp_txrx_dump_stats(struct cdp_soc_t *psoc, uint16_t value,
 
 	case CDP_DP_SWLM_STATS:
 		dp_print_swlm_stats(soc);
+		break;
+
+	case CDP_DP_TX_HW_LATENCY_STATS:
+		dp_pdev_print_tx_delay_stats(soc);
 		break;
 
 	default:
@@ -10589,6 +10595,7 @@ QDF_STATUS dp_sysfs_fill_stats(ol_txrx_soc_handle soc_hdl,
 	uint32_t host_stats = 0;
 	enum cdp_stats stats;
 	struct cdp_txrx_stats_req req;
+	uint32_t num_stats;
 	struct dp_soc *soc = NULL;
 
 	if (!soc_hdl) {
@@ -10616,6 +10623,14 @@ QDF_STATUS dp_sysfs_fill_stats(ol_txrx_soc_handle soc_hdl,
 	 */
 	if (stats > CDP_TXRX_MAX_STATS)
 		stats = stats + DP_CURR_FW_STATS_AVAIL - DP_HTT_DBG_EXT_STATS_MAX;
+
+	num_stats = QDF_ARRAY_SIZE(dp_stats_mapping_table);
+
+	if (stats >= num_stats) {
+		dp_cdp_err("%pK : Invalid stats option: %d, max num stats: %d",
+				soc, stats, num_stats);
+		return QDF_STATUS_E_INVAL;
+	}
 
 	/* build request */
 	fw_stats = dp_stats_mapping_table[stats][STATS_FW];
@@ -10771,6 +10786,10 @@ QDF_STATUS dp_txrx_clear_dump_stats(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 	switch (value) {
 	case CDP_TXRX_TSO_STATS:
 		dp_txrx_clear_tso_stats(soc);
+		break;
+
+	case CDP_DP_TX_HW_LATENCY_STATS:
+		dp_pdev_clear_tx_delay_stats(soc);
 		break;
 
 	default:
@@ -11636,8 +11655,11 @@ static uint32_t dp_get_cfg(struct cdp_soc_t *soc, enum cdp_dp_cfg cfg)
 	case cfg_dp_gro_enable:
 		value = dpsoc->wlan_cfg_ctx->gro_enabled;
 		break;
-	case cfg_dp_force_gro_enable:
-		value = dpsoc->wlan_cfg_ctx->force_gro_enabled;
+	case cfg_dp_tc_based_dyn_gro_enable:
+		value = dpsoc->wlan_cfg_ctx->tc_based_dynamic_gro;
+		break;
+	case cfg_dp_tc_ingress_prio:
+		value = dpsoc->wlan_cfg_ctx->tc_ingress_prio;
 		break;
 	case cfg_dp_sg_enable:
 		value = dpsoc->wlan_cfg_ctx->sg_enabled;
@@ -11831,6 +11853,73 @@ dp_set_pkt_capture_mode(struct cdp_soc_t *soc_handle, bool val)
 }
 #endif
 
+#ifdef HW_TX_DELAY_STATS_ENABLE
+/**
+ * dp_enable_disable_vdev_tx_delay_stats(): Start/Stop tx delay stats capture
+ * @soc: DP soc handle
+ * @vdev_id: vdev id
+ * @value: value
+ *
+ * Return: None
+ */
+static void
+dp_enable_disable_vdev_tx_delay_stats(struct cdp_soc_t *soc_hdl,
+				      uint8_t vdev_id,
+				      uint8_t value)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev = NULL;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev)
+		return;
+
+	vdev->hw_tx_delay_stats_enabled = value;
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+}
+
+/**
+ * dp_check_vdev_tx_delay_stats_enabled() - check the feature is enabled or not
+ * @soc: DP soc handle
+ * @vdev_id: vdev id
+ *
+ * Returns: 1 if enabled, 0 if disabled
+ */
+static uint8_t
+dp_check_vdev_tx_delay_stats_enabled(struct cdp_soc_t *soc_hdl,
+				     uint8_t vdev_id)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev;
+	uint8_t ret_val = 0;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev)
+		return ret_val;
+
+	ret_val = vdev->hw_tx_delay_stats_enabled;
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return ret_val;
+}
+#endif
+
+/**
+ * dp_set_tx_pause() - Pause or resume tx path
+ * @soc_hdl: Datapath soc handle
+ * @flag: set or clear is_tx_pause
+ *
+ * Return: None.
+ */
+static inline
+void dp_set_tx_pause(struct cdp_soc_t *soc_hdl, bool flag)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	soc->is_tx_pause = flag;
+}
+
 static struct cdp_cmn_ops dp_ops_cmn = {
 	.txrx_soc_attach_target = dp_soc_attach_target_wifi3,
 	.txrx_vdev_attach = dp_vdev_attach_wifi3,
@@ -11866,6 +11955,7 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 	.tx_send = dp_tx_send,
 	.tx_send_exc = dp_tx_send_exception,
 #endif
+	.set_tx_pause = dp_set_tx_pause,
 	.txrx_pdev_init = dp_pdev_init_wifi3,
 	.txrx_get_vdev_mac_addr = dp_get_vdev_mac_addr_wifi3,
 	.txrx_get_ctrl_pdev_from_vdev = dp_get_ctrl_pdev_from_vdev_wifi3,
@@ -11876,6 +11966,7 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 	.delba_process = dp_delba_process_wifi3,
 	.set_addba_response = dp_set_addba_response,
 	.flush_cache_rx_queue = NULL,
+	.tid_update_ba_win_size = dp_rx_tid_update_ba_win_size,
 	/* TODO: get API's for dscp-tid need to be added*/
 	.set_vdev_dscp_tid_map = dp_set_vdev_dscp_tid_map_wifi3,
 	.set_pdev_dscp_tid_map = dp_set_pdev_dscp_tid_map_wifi3,
@@ -12031,6 +12122,11 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 	.txrx_alloc_vdev_stats_id = dp_txrx_alloc_vdev_stats_id,
 	.txrx_reset_vdev_stats_id = dp_txrx_reset_vdev_stats_id,
 #endif
+#ifdef HW_TX_DELAY_STATS_ENABLE
+	.enable_disable_vdev_tx_delay_stats =
+				dp_enable_disable_vdev_tx_delay_stats,
+	.is_tx_delay_stats_enabled = dp_check_vdev_tx_delay_stats_enabled,
+#endif
 	/* TODO */
 };
 
@@ -12096,7 +12192,7 @@ void dp_flush_ring_hptp(struct dp_soc *soc, hal_ring_handle_t hal_srng)
 
 #ifdef DP_TX_TRACKING
 
-#define DP_TX_COMP_MAX_LATENCY_MS 30000
+#define DP_TX_COMP_MAX_LATENCY_MS 60000
 /**
  * dp_tx_comp_delay_check() - calculate time latency for tx completion per pkt
  * @timestamp - tx descriptor timestamp
@@ -12153,8 +12249,6 @@ static void dp_find_missing_tx_comp(struct dp_soc *soc)
 	uint16_t num_desc_per_page;
 	struct dp_tx_desc_s *tx_desc = NULL;
 	struct dp_tx_desc_pool_s *tx_desc_pool = NULL;
-	bool send_fw_stats_cmd = false;
-	uint8_t vdev_id;
 
 	for (i = 0; i < MAX_TXDESC_POOLS; i++) {
 		tx_desc_pool = &soc->tx_desc[i];
@@ -12183,29 +12277,22 @@ static void dp_find_missing_tx_comp(struct dp_soc *soc)
 							tx_desc->timestamp)) {
 					dp_err_rl("Tx completion not rcvd for id: %u",
 						  tx_desc->id);
-
-					if (!send_fw_stats_cmd) {
-						send_fw_stats_cmd = true;
-						vdev_id = i;
+					if (tx_desc->vdev_id == DP_INVALID_VDEV_ID) {
+						tx_desc->flags |= DP_TX_DESC_FLAG_FLUSH;
+						dp_err_rl("Freed tx_desc %u",
+							  tx_desc->id);
+						dp_tx_comp_free_buf(soc,
+								    tx_desc);
+						dp_tx_desc_release(tx_desc, i);
+						DP_STATS_INC(soc,
+							     tx.tx_comp_force_freed, 1);
 					}
 				}
 			} else {
 				dp_err_rl("tx desc %u corrupted, flags: 0x%x",
-				       tx_desc->id, tx_desc->flags);
+					  tx_desc->id, tx_desc->flags);
 			}
 		}
-	}
-
-	/*
-	 * The unit test command to dump FW stats is required only once as the
-	 * stats are dumped at pdev level and not vdev level.
-	 */
-	if (send_fw_stats_cmd && soc->cdp_soc.ol_ops->dp_send_unit_test_cmd) {
-		uint32_t fw_stats_args[2] = {533, 1};
-
-		soc->cdp_soc.ol_ops->dp_send_unit_test_cmd(vdev_id,
-							   WLAN_MODULE_TX, 2,
-							   fw_stats_args);
 	}
 }
 #else
@@ -12653,6 +12740,98 @@ uint32_t dp_get_tx_rings_grp_bitmap(struct cdp_soc_t *soc_hdl)
 	return soc->wlan_cfg_ctx->tx_rings_grp_bitmap;
 }
 
+#ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
+/**
+ * dp_mark_first_wakeup_packet() - set flag to indicate that
+ *    fw is compatible for marking first packet after wow wakeup
+ * @soc_hdl: Datapath soc handle
+ * @pdev_id: id of data path pdev handle
+ * @value: 1 for enabled/ 0 for disabled
+ *
+ * Return: None
+ */
+static void dp_mark_first_wakeup_packet(struct cdp_soc_t *soc_hdl,
+					uint8_t pdev_id, uint8_t value)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_pdev *pdev;
+
+	pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, pdev_id);
+	if (!pdev) {
+		dp_err("pdev is NULL");
+		return;
+	}
+
+	pdev->is_first_wakeup_packet = value;
+}
+#endif
+
+#ifdef CONNECTIVITY_PKTLOG
+/**
+ * dp_register_packetdump_callback() - registers
+ *  tx data packet, tx mgmt. packet and rx data packet
+ *  dump callback handler.
+ *
+ * @soc_hdl: Datapath soc handle
+ * @pdev_id: id of data path pdev handle
+ * @dp_tx_packetdump_cb: tx packetdump cb
+ * @dp_rx_packetdump_cb: rx packetdump cb
+ *
+ * This function is used to register tx data pkt, tx mgmt.
+ * pkt and rx data pkt dump callback
+ *
+ * Return: None
+ *
+ */
+static inline
+void dp_register_packetdump_callback(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
+				     ol_txrx_pktdump_cb dp_tx_packetdump_cb,
+				     ol_txrx_pktdump_cb dp_rx_packetdump_cb)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_pdev *pdev;
+
+	pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, pdev_id);
+	if (!pdev) {
+		dp_err("pdev is NULL!");
+		return;
+	}
+
+	pdev->dp_tx_packetdump_cb = dp_tx_packetdump_cb;
+	pdev->dp_rx_packetdump_cb = dp_rx_packetdump_cb;
+}
+
+/**
+ * dp_deregister_packetdump_callback() - deregidters
+ *  tx data packet, tx mgmt. packet and rx data packet
+ *  dump callback handler
+ * @soc_hdl: Datapath soc handle
+ * @pdev_id: id of data path pdev handle
+ *
+ * This function is used to deregidter tx data pkt.,
+ * tx mgmt. pkt and rx data pkt. dump callback
+ *
+ * Return: None
+ *
+ */
+static inline
+void dp_deregister_packetdump_callback(struct cdp_soc_t *soc_hdl,
+				       uint8_t pdev_id)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_pdev *pdev;
+
+	pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, pdev_id);
+	if (!pdev) {
+		dp_err("pdev is NULL!");
+		return;
+	}
+
+	pdev->dp_tx_packetdump_cb = NULL;
+	pdev->dp_rx_packetdump_cb = NULL;
+}
+#endif
+
 #ifdef DP_PEER_EXTENDED_API
 static struct cdp_misc_ops dp_ops_misc = {
 #ifdef FEATURE_WLAN_TDLS
@@ -12683,6 +12862,13 @@ static struct cdp_misc_ops dp_ops_misc = {
 #endif
 	.display_txrx_hw_info = dp_display_srng_info,
 	.get_tx_rings_grp_bitmap = dp_get_tx_rings_grp_bitmap,
+#ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
+	.mark_first_wakeup_packet = dp_mark_first_wakeup_packet,
+#endif
+#ifdef CONNECTIVITY_PKTLOG
+	.register_pktdump_cb = dp_register_packetdump_callback,
+	.unregister_pktdump_cb = dp_deregister_packetdump_callback,
+#endif
 };
 #endif
 
@@ -12875,6 +13061,7 @@ static struct cdp_peer_ops dp_ops_peer = {
 	.peer_get_peer_mac_addr = dp_peer_get_peer_mac_addr,
 	.get_peer_state = dp_get_peer_state,
 	.peer_flush_frags = dp_peer_flush_frags,
+	.set_peer_as_tdls_peer = dp_set_peer_as_tdls_peer,
 };
 #endif
 
@@ -13517,11 +13704,37 @@ static uint8_t dp_bucket_index(uint32_t delay, uint16_t *array)
 	return (CDP_DELAY_BUCKET_MAX - 1);
 }
 
+#ifdef HW_TX_DELAY_STATS_ENABLE
+/*
+ * cdp_fw_to_hw_delay_range
+ * Fw to hw delay ranges in milliseconds
+ */
+static uint16_t cdp_fw_to_hw_delay[CDP_DELAY_BUCKET_MAX] = {
+	0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 250, 500};
+#else
+static uint16_t cdp_fw_to_hw_delay[CDP_DELAY_BUCKET_MAX] = {
+	0, 2, 4, 6, 8, 10, 20, 30, 40, 50, 100, 250, 500};
+#endif
+
+/*
+ * cdp_sw_enq_delay_range
+ * Software enqueue delay ranges in milliseconds
+ */
+static uint16_t cdp_sw_enq_delay[CDP_DELAY_BUCKET_MAX] = {
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+
+/*
+ * cdp_intfrm_delay_range
+ * Interframe delay ranges in milliseconds
+ */
+static uint16_t cdp_intfrm_delay[CDP_DELAY_BUCKET_MAX] = {
+	0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60};
+
 /**
  * dp_fill_delay_buckets() - Fill delay statistics bucket for each
  *				type of delay
- *
- * @pdev: pdev handle
+ * @tstats: tid tx stats
+ * @rstats: tid rx stats
  * @delay: delay in ms
  * @tid: tid value
  * @mode: type of tx delay mode
@@ -13529,34 +13742,12 @@ static uint8_t dp_bucket_index(uint32_t delay, uint16_t *array)
  * Return: pointer to cdp_delay_stats structure
  */
 static struct cdp_delay_stats *
-dp_fill_delay_buckets(struct dp_pdev *pdev, uint32_t delay,
+dp_fill_delay_buckets(struct cdp_tid_tx_stats *tstats,
+		      struct cdp_tid_rx_stats *rstats, uint32_t delay,
 		      uint8_t tid, uint8_t mode, uint8_t ring_id)
 {
 	uint8_t delay_index = 0;
-	struct cdp_tid_tx_stats *tstats =
-		&pdev->stats.tid_stats.tid_tx_stats[ring_id][tid];
-	struct cdp_tid_rx_stats *rstats =
-		&pdev->stats.tid_stats.tid_rx_stats[ring_id][tid];
-	/*
-	 * cdp_fw_to_hw_delay_range
-	 * Fw to hw delay ranges in milliseconds
-	 */
-	uint16_t cdp_fw_to_hw_delay[CDP_DELAY_BUCKET_MAX] = {
-		0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 250, 500};
-
-	/*
-	 * cdp_sw_enq_delay_range
-	 * Software enqueue delay ranges in milliseconds
-	 */
-	uint16_t cdp_sw_enq_delay[CDP_DELAY_BUCKET_MAX] = {
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
-
-	/*
-	 * cdp_intfrm_delay_range
-	 * Interframe delay ranges in milliseconds
-	 */
-	uint16_t cdp_intfrm_delay[CDP_DELAY_BUCKET_MAX] = {
-		0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60};
+	struct cdp_delay_stats *stats = NULL;
 
 	/*
 	 * Update delay stats in proper bucket
@@ -13564,57 +13755,62 @@ dp_fill_delay_buckets(struct dp_pdev *pdev, uint32_t delay,
 	switch (mode) {
 	/* Software Enqueue delay ranges */
 	case CDP_DELAY_STATS_SW_ENQ:
+		if (!tstats)
+			break;
 
 		delay_index = dp_bucket_index(delay, cdp_sw_enq_delay);
 		tstats->swq_delay.delay_bucket[delay_index]++;
-		return &tstats->swq_delay;
+		stats = &tstats->swq_delay;
+		break;
 
 	/* Tx Completion delay ranges */
 	case CDP_DELAY_STATS_FW_HW_TRANSMIT:
+		if (!tstats)
+			break;
 
 		delay_index = dp_bucket_index(delay, cdp_fw_to_hw_delay);
 		tstats->hwtx_delay.delay_bucket[delay_index]++;
-		return &tstats->hwtx_delay;
+		stats = &tstats->hwtx_delay;
+		break;
 
 	/* Interframe tx delay ranges */
 	case CDP_DELAY_STATS_TX_INTERFRAME:
+		if (!tstats)
+			break;
 
 		delay_index = dp_bucket_index(delay, cdp_intfrm_delay);
 		tstats->intfrm_delay.delay_bucket[delay_index]++;
-		return &tstats->intfrm_delay;
+		stats = &tstats->intfrm_delay;
+		break;
 
 	/* Interframe rx delay ranges */
 	case CDP_DELAY_STATS_RX_INTERFRAME:
+		if (!rstats)
+			break;
 
 		delay_index = dp_bucket_index(delay, cdp_intfrm_delay);
 		rstats->intfrm_delay.delay_bucket[delay_index]++;
-		return &rstats->intfrm_delay;
+		stats = &rstats->intfrm_delay;
+		break;
 
 	/* Ring reap to indication to network stack */
 	case CDP_DELAY_STATS_REAP_STACK:
+		if (!rstats)
+			break;
 
 		delay_index = dp_bucket_index(delay, cdp_intfrm_delay);
 		rstats->to_stack_delay.delay_bucket[delay_index]++;
-		return &rstats->to_stack_delay;
+		stats = &rstats->to_stack_delay;
+		break;
 	default:
 		dp_debug("Incorrect delay mode: %d", mode);
 	}
 
-	return NULL;
+	return stats;
 }
 
-/**
- * dp_update_delay_stats() - Update delay statistics in structure
- *				and fill min, max and avg delay
- *
- * @pdev: pdev handle
- * @delay: delay in ms
- * @tid: tid value
- * @mode: type of tx delay mode
- * @ring id: ring number
- * Return: none
- */
-void dp_update_delay_stats(struct dp_pdev *pdev, uint32_t delay,
+void dp_update_delay_stats(struct cdp_tid_tx_stats *tstats,
+			   struct cdp_tid_rx_stats *rstats, uint32_t delay,
 			   uint8_t tid, uint8_t mode, uint8_t ring_id)
 {
 	struct cdp_delay_stats *dstats = NULL;
@@ -13623,7 +13819,8 @@ void dp_update_delay_stats(struct dp_pdev *pdev, uint32_t delay,
 	 * Delay ranges are different for different delay modes
 	 * Get the correct index to update delay bucket
 	 */
-	dstats = dp_fill_delay_buckets(pdev, delay, tid, mode, ring_id);
+	dstats = dp_fill_delay_buckets(tstats, rstats, delay, tid, mode,
+				       ring_id);
 	if (qdf_unlikely(!dstats))
 		return;
 
@@ -13644,7 +13841,7 @@ void dp_update_delay_stats(struct dp_pdev *pdev, uint32_t delay,
 		if (!dstats->avg_delay)
 			dstats->avg_delay = delay;
 		else
-			dstats->avg_delay = ((delay + dstats->avg_delay) / 2);
+			dstats->avg_delay = ((delay + dstats->avg_delay) >> 1);
 	}
 }
 
@@ -14535,8 +14732,6 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 
 		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev = 1;
-		/* use only MAC0 status ring */
-		soc->wlan_cfg_ctx->num_rxdma_status_rings_per_pdev = 1;
 		break;
 	case TARGET_TYPE_QCA8074:
 		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, true);

@@ -1018,6 +1018,9 @@ struct hal_hw_txrx_ops {
 					    uint32_t tlv, int *num_ref);
 	uint8_t (*hal_get_tlv_hdr_size)(void);
 	uint8_t (*hal_get_idle_link_bm_id)(uint8_t chip_id);
+#ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
+	uint8_t (*hal_get_first_wow_wakeup_packet)(uint8_t *buf);
+#endif
 };
 
 /**
@@ -1071,6 +1074,23 @@ struct hal_reg_write_fail_entry {
 struct hal_reg_write_fail_history {
 	qdf_atomic_t index;
 	struct hal_reg_write_fail_entry record[HAL_REG_WRITE_HIST_SIZE];
+};
+#endif
+
+#ifdef HAL_RECORD_SUSPEND_WRITE
+#define HAL_SUSPEND_WRITE_HISTORY_MAX 256
+
+struct hal_suspend_write_record {
+	uint64_t ts;
+	uint8_t ring_id;
+	uit32_t value;
+	uint32_t direct_wcount;
+};
+
+struct hal_suspend_write_history {
+	qdf_atomic_t index;
+	struct hal_suspend_write_record record[HAL_SUSPEND_WRITE_HISTORY_MAX];
+
 };
 #endif
 

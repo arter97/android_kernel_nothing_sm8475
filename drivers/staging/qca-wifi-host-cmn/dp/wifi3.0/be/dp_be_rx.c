@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -523,8 +523,15 @@ done:
 		}
 
 		/* Get TID from struct cb->tid_val, save to tid */
-		if (qdf_nbuf_is_rx_chfrag_start(nbuf))
+		if (qdf_nbuf_is_rx_chfrag_start(nbuf)) {
 			tid = qdf_nbuf_get_tid_val(nbuf);
+			if (tid >= CDP_MAX_DATA_TIDS) {
+				DP_STATS_INC(soc, rx.err.rx_invalid_tid_err, 1);
+				qdf_nbuf_free(nbuf);
+				nbuf = next;
+				continue;
+			}
+		}
 
 		if (qdf_unlikely(!peer)) {
 			peer = dp_peer_get_ref_by_id(soc, peer_id,
@@ -673,6 +680,8 @@ done:
 			dp_rx_skip_tlvs(soc, nbuf, msdu_metadata.l3_hdr_pad);
 		}
 
+		dp_rx_send_pktlog(soc, rx_pdev, nbuf, QDF_TX_RX_STATUS_OK);
+
 		/*
 		 * process frame for mulitpass phrase processing
 		 */
@@ -774,6 +783,9 @@ done:
 		}
 
 		dp_rx_fill_gro_info(soc, rx_tlv_hdr, nbuf, &rx_ol_pkt_cnt);
+
+		dp_rx_mark_first_packet_after_wow_wakeup(vdev->pdev, rx_tlv_hdr,
+							 nbuf);
 
 		dp_rx_update_stats(soc, nbuf);
 		DP_RX_LIST_APPEND(deliver_list_head,

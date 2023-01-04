@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -83,12 +84,33 @@ reg_set_5dot9_ghz_chan_in_master_mode(struct wlan_regulatory_psoc_priv_obj
 {
 	soc_reg_obj->enable_5dot9_ghz_chan_in_master_mode = false;
 }
+
+static void
+reg_init_indoor_channel_list(struct wlan_regulatory_pdev_priv_obj
+			     *pdev_priv_obj)
+{
+	struct indoor_concurrency_list *list;
+	uint8_t i;
+
+	list = pdev_priv_obj->indoor_list;
+	for (i = 0; i < MAX_INDOOR_LIST_SIZE; i++, list++) {
+		list->freq = 0;
+		list->vdev_id = INVALID_VDEV_ID;
+		list->chan_range = NULL;
+	}
+}
 #else
 static void
 reg_set_5dot9_ghz_chan_in_master_mode(struct wlan_regulatory_psoc_priv_obj
 				      *soc_reg_obj)
 {
 	soc_reg_obj->enable_5dot9_ghz_chan_in_master_mode = true;
+}
+
+static void
+reg_init_indoor_channel_list(struct wlan_regulatory_pdev_priv_obj
+			     *pdev_priv_obj)
+{
 }
 #endif
 
@@ -124,6 +146,7 @@ QDF_STATUS wlan_regulatory_psoc_obj_created_notification(
 	reg_set_5dot9_ghz_chan_in_master_mode(soc_reg_obj);
 	soc_reg_obj->retain_nol_across_regdmn_update = false;
 	soc_reg_obj->is_ext_tpc_supported = false;
+	soc_reg_obj->sta_sap_scc_on_indoor_channel = true;
 
 	for (i = 0; i < MAX_STA_VDEV_CNT; i++)
 		soc_reg_obj->vdev_ids_11d[i] = INVALID_VDEV_ID;
@@ -339,6 +362,8 @@ QDF_STATUS wlan_regulatory_pdev_obj_created_notification(
 	reg_cap_ptr = psoc_priv_obj->reg_cap;
 	pdev_priv_obj->force_ssc_disable_indoor_channel =
 		psoc_priv_obj->force_ssc_disable_indoor_channel;
+	pdev_priv_obj->sta_sap_scc_on_indoor_channel =
+		psoc_priv_obj->sta_sap_scc_on_indoor_channel;
 
 	for (cnt = 0; cnt < PSOC_MAX_PHY_REG_CAP; cnt++) {
 		if (!reg_cap_ptr) {
@@ -377,6 +402,8 @@ QDF_STATUS wlan_regulatory_pdev_obj_created_notification(
 	reg_save_reg_rules_to_pdev(psoc_reg_rules, pdev_priv_obj);
 	pdev_priv_obj->chan_list_recvd =
 		psoc_priv_obj->chan_list_recvd[phy_id];
+
+	reg_init_indoor_channel_list(pdev_priv_obj);
 
 	status = wlan_objmgr_pdev_component_obj_attach(
 			pdev, WLAN_UMAC_COMP_REGULATORY, pdev_priv_obj,

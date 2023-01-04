@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -459,7 +459,29 @@ struct dp_rx_desc *dp_get_rx_desc_from_cookie(struct dp_soc *soc,
 	struct rx_desc_pool *rx_desc_pool;
 	union dp_rx_desc_list_elem_t *rx_desc_elem;
 
-	if (qdf_unlikely(pool_id >= MAX_RXDESC_POOLS))
+	if (qdf_unlikely(pool_id >= MAX_PDEV_CNT))
+		return NULL;
+
+	rx_desc_pool = &pool[pool_id];
+	rx_desc_elem = (union dp_rx_desc_list_elem_t *)
+		(rx_desc_pool->desc_pages.cacheable_pages[page_id] +
+		rx_desc_pool->elem_size * offset);
+
+	return &rx_desc_elem->rx_desc;
+}
+
+static inline
+struct dp_rx_desc *dp_get_rx_mon_status_desc_from_cookie(struct dp_soc *soc,
+							 struct rx_desc_pool *pool,
+							 uint32_t cookie)
+{
+	uint8_t pool_id = DP_RX_DESC_MULTI_PAGE_COOKIE_GET_POOL_ID(cookie);
+	uint16_t page_id = DP_RX_DESC_MULTI_PAGE_COOKIE_GET_PAGE_ID(cookie);
+	uint8_t offset = DP_RX_DESC_MULTI_PAGE_COOKIE_GET_OFFSET(cookie);
+	struct rx_desc_pool *rx_desc_pool;
+	union dp_rx_desc_list_elem_t *rx_desc_elem;
+
+	if (qdf_unlikely(pool_id >= NUM_RXDMA_RINGS_PER_PDEV))
 		return NULL;
 
 	rx_desc_pool = &pool[pool_id];
@@ -512,7 +534,9 @@ static inline
 struct dp_rx_desc *dp_rx_cookie_2_va_mon_status(struct dp_soc *soc,
 						uint32_t cookie)
 {
-	return dp_get_rx_desc_from_cookie(soc, &soc->rx_desc_status[0], cookie);
+	return dp_get_rx_mon_status_desc_from_cookie(soc,
+						     &soc->rx_desc_status[0],
+						     cookie);
 }
 #else
 
@@ -627,6 +651,54 @@ dp_rx_cookie_reset_invalid_bit(hal_ring_desc_t ring_desc)
 #endif
 
 #endif /* QCA_HOST_MODE_WIFI_DISABLED */
+
+#ifdef RX_DESC_MULTI_PAGE_ALLOC
+/**
+ * dp_rx_is_sw_cookie_valid() - check whether SW cookie valid
+ * @soc: dp soc ref
+ * @cookie: Rx buf SW cookie value
+ *
+ * Return: true if cookie is valid else false
+ */
+static inline bool dp_rx_is_sw_cookie_valid(struct dp_soc *soc,
+					    uint32_t cookie)
+{
+	uint8_t pool_id = DP_RX_DESC_MULTI_PAGE_COOKIE_GET_POOL_ID(cookie);
+	uint16_t page_id = DP_RX_DESC_MULTI_PAGE_COOKIE_GET_PAGE_ID(cookie);
+	uint8_t offset = DP_RX_DESC_MULTI_PAGE_COOKIE_GET_OFFSET(cookie);
+	struct rx_desc_pool *rx_desc_pool;
+
+	if (qdf_unlikely(pool_id >= MAX_PDEV_CNT))
+		goto fail;
+
+	rx_desc_pool = &soc->rx_desc_buf[pool_id];
+
+	if (page_id >= rx_desc_pool->desc_pages.num_pages ||
+	    offset >= rx_desc_pool->desc_pages.num_element_per_page)
+		goto fail;
+
+	return true;
+
+fail:
+	DP_STATS_INC(soc, rx.err.invalid_cookie, 1);
+	return false;
+}
+#else
+/**
+ * dp_rx_is_sw_cookie_valid() - check whether SW cookie valid
+ * @soc: dp soc ref
+ * @cookie: Rx buf SW cookie value
+ *
+ * Return: true if cookie is valid else false
+ * checked while fetching Rx descriptor, so no need to check here
+ * Return: true if cookie is valid else false
+ */
+static inline bool dp_rx_is_sw_cookie_valid(struct dp_soc *soc,
+					    uint32_t cookie)
+{
+	return true;
+}
+#endif
 
 QDF_STATUS dp_rx_desc_pool_is_allocated(struct rx_desc_pool *rx_desc_pool);
 QDF_STATUS dp_rx_desc_pool_alloc(struct dp_soc *soc,
@@ -1335,6 +1407,7 @@ dp_rx_update_flow_tag(struct dp_soc *soc, struct dp_vdev *vdev,
 }
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
 
+#define CRITICAL_BUFFER_THRESHOLD	64
 /*
  * dp_rx_buffers_replenish() - replenish rxdma ring with rx nbufs
  *			       called during dp rx initialization
@@ -2021,6 +2094,27 @@ dp_rx_is_list_ready(qdf_nbuf_t nbuf_head,
 		return true;
 
 	return false;
+}
+#endif
+
+#ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
+/**
+ * dp_rx_mark_first_packet_after_wow_wakeup - get first packet after wow wakeup
+ * @pdev: pointer to dp_pdev structure
+ * @rx_tlv: pointer to rx_pkt_tlvs structure
+ * @nbuf: pointer to skb buffer
+ *
+ * Return: None
+ */
+void dp_rx_mark_first_packet_after_wow_wakeup(struct dp_pdev *pdev,
+					      uint8_t *rx_tlv,
+					      qdf_nbuf_t nbuf);
+#else
+static inline void
+dp_rx_mark_first_packet_after_wow_wakeup(struct dp_pdev *pdev,
+					 uint8_t *rx_tlv,
+					 qdf_nbuf_t nbuf)
+{
 }
 #endif
 

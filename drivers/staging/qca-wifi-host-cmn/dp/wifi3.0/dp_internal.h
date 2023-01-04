@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1240,6 +1240,13 @@ void dp_update_vdev_stats(struct dp_soc *soc,
 		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.fw_reason1); \
 		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.fw_reason2); \
 		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.fw_reason3); \
+		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.fw_rem_queue_disable); \
+		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.fw_rem_no_match); \
+		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.drop_threshold); \
+		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.drop_link_desc_na); \
+		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.invalid_drop); \
+		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.mcast_vdev_drop); \
+		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.invalid_rr); \
 		DP_STATS_AGGR(_tgtobj, _srcobj, tx.dropped.age_out); \
 								\
 		DP_STATS_AGGR(_tgtobj, _srcobj, rx.err.mic_err); \
@@ -1428,6 +1435,17 @@ int dp_get_peer_state(struct cdp_soc_t *soc, uint8_t vdev_id,
 void dp_local_peer_id_pool_init(struct dp_pdev *pdev);
 void dp_local_peer_id_alloc(struct dp_pdev *pdev, struct dp_peer *peer);
 void dp_local_peer_id_free(struct dp_pdev *pdev, struct dp_peer *peer);
+/**
+ * dp_set_peer_as_tdls_peer() - set tdls peer flag to peer
+ * @soc_hdl: datapath soc handle
+ * @vdev_id: vdev_id
+ * @peer_mac: peer mac addr
+ * @val: tdls peer flag
+ *
+ * Return: none
+ */
+void dp_set_peer_as_tdls_peer(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			      uint8_t *peer_mac, bool val);
 #else
 /**
  * dp_get_vdevid() - Get virtual interface id which peer registered
@@ -1459,7 +1477,14 @@ static inline
 void dp_local_peer_id_free(struct dp_pdev *pdev, struct dp_peer *peer)
 {
 }
+
+static inline
+void dp_set_peer_as_tdls_peer(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			      uint8_t *peer_mac, bool val)
+{
+}
 #endif
+
 int dp_addba_resp_tx_completion_wifi3(struct cdp_soc_t *cdp_soc,
 				      uint8_t *peer_mac, uint16_t vdev_id,
 				      uint8_t tid,
@@ -1483,6 +1508,21 @@ QDF_STATUS dp_set_addba_response(struct cdp_soc_t *cdp_soc,
 int dp_delba_process_wifi3(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
 			   uint16_t vdev_id, int tid,
 			   uint16_t reasoncode);
+
+/**
+ * dp_rx_tid_update_ba_win_size() - Update the DP tid BA window size
+ * @soc: soc handle
+ * @peer_mac: mac address of peer handle
+ * @vdev_id: id of vdev handle
+ * @tid: tid
+ * @buffersize: BA window size
+ *
+ * Return: success/failure of tid update
+ */
+QDF_STATUS dp_rx_tid_update_ba_win_size(struct cdp_soc_t *cdp_soc,
+					uint8_t *peer_mac, uint16_t vdev_id,
+					uint8_t tid, uint16_t buffersize);
+
 /*
  * dp_delba_tx_completion_wifi3() -  Handle delba tx completion
  *
@@ -1578,16 +1618,17 @@ bool dp_check_pdev_exists(struct dp_soc *soc, struct dp_pdev *data);
 
 /**
  * dp_update_delay_stats() - Update delay statistics in structure
- *                              and fill min, max and avg delay
- * @pdev: pdev handle
+ *				and fill min, max and avg delay
+ * @tstats: tid tx stats
+ * @rstats: tid rx stats
  * @delay: delay in ms
  * @tid: tid value
  * @mode: type of tx delay mode
  * @ring id: ring number
- *
  * Return: none
  */
-void dp_update_delay_stats(struct dp_pdev *pdev, uint32_t delay,
+void dp_update_delay_stats(struct cdp_tid_tx_stats *tstats,
+			   struct cdp_tid_rx_stats *rstats, uint32_t delay,
 			   uint8_t tid, uint8_t mode, uint8_t ring_id);
 
 /**
@@ -2927,4 +2968,183 @@ void dp_accumulate_delay_tid_stats(struct dp_soc *soc,
 				   struct cdp_hist_stats *dst_hstats,
 				   uint8_t tid, uint32_t mode);
 #endif /* QCA_PEER_EXT_STATS */
+
+#ifdef HW_TX_DELAY_STATS_ENABLE
+/*
+ * dp_is_vdev_tx_delay_stats_enabled(): Check if tx delay stats
+ *  is enabled for vdev
+ * @vdev: dp vdev
+ *
+ * Return: true if tx delay stats is enabled for vdev else false
+ */
+static inline uint8_t dp_is_vdev_tx_delay_stats_enabled(struct dp_vdev *vdev)
+{
+	return vdev->hw_tx_delay_stats_enabled;
+}
+
+/*
+ * dp_pdev_print_tx_delay_stats(): Print vdev tx delay stats
+ *  for pdev
+ * @soc: dp soc
+ *
+ * Return: None
+ */
+void dp_pdev_print_tx_delay_stats(struct dp_soc *soc);
+
+/**
+ * dp_pdev_clear_tx_delay_stats() - clear tx delay stats
+ * @soc: soc handle
+ *
+ * Return: None
+ */
+void dp_pdev_clear_tx_delay_stats(struct dp_soc *soc);
+#else
+static inline uint8_t dp_is_vdev_tx_delay_stats_enabled(struct dp_vdev *vdev)
+{
+	return 0;
+}
+
+static inline void dp_pdev_print_tx_delay_stats(struct dp_soc *soc)
+{
+}
+
+static inline void dp_pdev_clear_tx_delay_stats(struct dp_soc *soc)
+{
+}
+#endif
+
+#ifdef CONNECTIVITY_PKTLOG
+/*
+ * dp_tx_send_pktlog() - send tx packet log
+ * @soc: soc handle
+ * @pdev: pdev handle
+ * @tx_desc: TX software descriptor
+ * @nbuf: nbuf
+ * @status: status of tx packet
+ *
+ * This function is used to send tx packet for logging
+ *
+ * Return: None
+ *
+ */
+static inline
+void dp_tx_send_pktlog(struct dp_soc *soc, struct dp_pdev *pdev,
+		       struct dp_tx_desc_s *tx_desc,
+		       qdf_nbuf_t nbuf, enum qdf_dp_tx_rx_status status)
+{
+	ol_txrx_pktdump_cb packetdump_cb = pdev->dp_tx_packetdump_cb;
+
+	if (qdf_unlikely(packetdump_cb) &&
+	    dp_tx_frm_std == tx_desc->frm_type) {
+		packetdump_cb((ol_txrx_soc_handle)soc, pdev->pdev_id,
+			      QDF_NBUF_CB_TX_VDEV_CTX(nbuf),
+			      nbuf, status, QDF_TX_DATA_PKT);
+	}
+}
+
+/*
+ * dp_rx_send_pktlog() - send rx packet log
+ * @soc: soc handle
+ * @pdev: pdev handle
+ * @nbuf: nbuf
+ * @status: status of rx packet
+ *
+ * This function is used to send rx packet for logging
+ *
+ * Return: None
+ *
+ */
+static inline
+void dp_rx_send_pktlog(struct dp_soc *soc, struct dp_pdev *pdev,
+		       qdf_nbuf_t nbuf, enum qdf_dp_tx_rx_status status)
+{
+	ol_txrx_pktdump_cb packetdump_cb = pdev->dp_rx_packetdump_cb;
+
+	if (qdf_unlikely(packetdump_cb)) {
+		packetdump_cb((ol_txrx_soc_handle)soc, pdev->pdev_id,
+			      QDF_NBUF_CB_RX_VDEV_ID(nbuf),
+			      nbuf, status, QDF_RX_DATA_PKT);
+	}
+}
+
+/*
+ * dp_rx_err_send_pktlog() - send rx error packet log
+ * @soc: soc handle
+ * @pdev: pdev handle
+ * @mpdu_desc_info: MPDU descriptor info
+ * @nbuf: nbuf
+ * @status: status of rx packet
+ * @set_pktlen: weither to set packet length
+ *
+ * This API should only be called when we have not removed
+ * Rx TLV from head, and head is pointing to rx_tlv
+ *
+ * This function is used to send rx packet from erro path
+ * for logging for which rx packet tlv is not removed.
+ *
+ * Return: None
+ *
+ */
+static inline
+void dp_rx_err_send_pktlog(struct dp_soc *soc, struct dp_pdev *pdev,
+			   struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+			   qdf_nbuf_t nbuf, enum qdf_dp_tx_rx_status status,
+			   bool set_pktlen)
+{
+	ol_txrx_pktdump_cb packetdump_cb = pdev->dp_rx_packetdump_cb;
+	qdf_size_t skip_size;
+	uint16_t msdu_len, nbuf_len;
+	uint8_t *rx_tlv_hdr;
+	struct hal_rx_msdu_metadata msdu_metadata;
+
+	if (qdf_unlikely(packetdump_cb)) {
+		rx_tlv_hdr = qdf_nbuf_data(nbuf);
+		nbuf_len = hal_rx_msdu_start_msdu_len_get(soc->hal_soc,
+							  rx_tlv_hdr);
+		hal_rx_msdu_metadata_get(soc->hal_soc, rx_tlv_hdr,
+					 &msdu_metadata);
+
+		if (mpdu_desc_info->bar_frame ||
+		    (mpdu_desc_info->mpdu_flags & HAL_MPDU_F_FRAGMENT))
+			skip_size = soc->rx_pkt_tlv_size;
+		else
+			skip_size = soc->rx_pkt_tlv_size +
+					msdu_metadata.l3_hdr_pad;
+
+		if (set_pktlen) {
+			msdu_len = nbuf_len + skip_size;
+			qdf_nbuf_set_pktlen(nbuf, qdf_min(msdu_len,
+					    (uint16_t)RX_DATA_BUFFER_SIZE));
+		}
+
+		qdf_nbuf_pull_head(nbuf, skip_size);
+		packetdump_cb((ol_txrx_soc_handle)soc, pdev->pdev_id,
+			      QDF_NBUF_CB_RX_VDEV_ID(nbuf),
+			      nbuf, status, QDF_RX_DATA_PKT);
+		qdf_nbuf_push_head(nbuf, skip_size);
+	}
+}
+
+#else
+static inline
+void dp_tx_send_pktlog(struct dp_soc *soc, struct dp_pdev *pdev,
+		       struct dp_tx_desc_s *tx_desc,
+		       qdf_nbuf_t nbuf, enum qdf_dp_tx_rx_status status)
+{
+}
+
+static inline
+void dp_rx_send_pktlog(struct dp_soc *soc, struct dp_pdev *pdev,
+		       qdf_nbuf_t nbuf, enum qdf_dp_tx_rx_status status)
+{
+}
+
+static inline
+void dp_rx_err_send_pktlog(struct dp_soc *soc, struct dp_pdev *pdev,
+			   struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+			   qdf_nbuf_t nbuf, enum qdf_dp_tx_rx_status status,
+			   bool set_pktlen)
+{
+}
+#endif
 #endif /* #ifndef _DP_INTERNAL_H_ */

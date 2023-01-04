@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -45,16 +46,18 @@ static uint32_t cm_get_prefix_for_cm_id(enum wlan_cm_source source) {
 
 wlan_cm_id cm_get_cm_id(struct cnx_mgr *cm_ctx, enum wlan_cm_source source)
 {
-	wlan_cm_id cmd_id;
+	wlan_cm_id cm_id;
 	uint32_t prefix;
+	uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
 
 	prefix = cm_get_prefix_for_cm_id(source);
 
-	cmd_id = qdf_atomic_inc_return(&cm_ctx->global_cmd_id);
-	cmd_id = (cmd_id & CM_ID_MASK);
-	cmd_id = (cmd_id | prefix);
+	cm_id = qdf_atomic_inc_return(&cm_ctx->global_cmd_id);
+	cm_id = (cm_id & CM_ID_MASK);
+	cm_id = CM_ID_SET_VDEV_ID(cm_id, vdev_id);
+	cm_id = (cm_id | prefix);
 
-	return cmd_id;
+	return cm_id;
 }
 
 struct cnx_mgr *cm_get_cm_ctx_fl(struct wlan_objmgr_vdev *vdev,
@@ -167,7 +170,7 @@ QDF_STATUS cm_set_key(struct cnx_mgr *cm_ctx, bool unicast,
 	cipher = wlan_crypto_get_cipher(cm_ctx->vdev, unicast, key_idx);
 	if (IS_WEP_CIPHER(cipher)) {
 		wep_key_idx = wlan_crypto_get_default_key_idx(cm_ctx->vdev,
-							      !unicast);
+							      false);
 		crypto_key = wlan_crypto_get_key(cm_ctx->vdev, wep_key_idx);
 		qdf_mem_copy(crypto_key->macaddr, bssid->bytes,
 			     QDF_MAC_ADDR_SIZE);
@@ -526,8 +529,7 @@ cm_handle_disconnect_flush(struct cnx_mgr *cm_ctx, struct cm_req *cm_req)
 	cm_notify_disconnect_complete(cm_ctx, &resp);
 }
 
-static void cm_remove_cmd_from_serialization(struct cnx_mgr *cm_ctx,
-					     wlan_cm_id cm_id)
+void cm_remove_cmd_from_serialization(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id)
 {
 	struct wlan_serialization_queued_cmd_info cmd_info;
 	uint32_t prefix = CM_ID_GET_PREFIX(cm_id);
