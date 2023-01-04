@@ -50,6 +50,8 @@
 #include "pld_common.h"
 #include "wlan_reg_services_api.h"
 #include <wlan_scan_utils_api.h>
+#include <wlan_cp_stats_mc_ucfg_api.h>
+#include <wlan_policy_mgr_api.h>
 
 /*--------------------------------------------------------------------------
    Function definitions
@@ -416,6 +418,8 @@ static bool sap_chan_sel_init(mac_handle_t mac_handle,
 	bool include_dfs_ch = true;
 	uint8_t sta_sap_scc_on_dfs_chnl_config_value;
 	bool ch_support_puncture;
+	bool is_sta_sap_scc;
+	bool sta_sap_scc_on_indoor_channel;
 
 	pSpectInfoParams->numSpectChans =
 		mac->scan.base_channels.numChannels;
@@ -440,6 +444,9 @@ static bool sap_chan_sel_init(mac_handle_t mac_handle,
 	if (!mac->mlme_cfg->dfs_cfg.dfs_master_capable ||
 	    ACS_DFS_MODE_DISABLE == sap_ctx->dfs_mode)
 		include_dfs_ch = false;
+
+	sta_sap_scc_on_indoor_channel =
+		policy_mgr_get_sta_sap_scc_allowed_on_indoor_chnl(mac->psoc);
 
 	/* Fill the channel number in the spectrum in the operating freq band */
 	for (channelnum = 0;
@@ -496,6 +503,18 @@ static bool sap_chan_sel_init(mac_handle_t mac_handle,
 		/* Skip DSRC channels */
 		if (wlan_reg_is_dsrc_freq(pSpectCh->chan_freq))
 			continue;
+
+		/* Skip indoor channels for non-scc indoor scenario*/
+		is_sta_sap_scc = policy_mgr_is_sta_sap_scc(mac->psoc,
+							   *pChans);
+		if (!(is_sta_sap_scc && sta_sap_scc_on_indoor_channel) &&
+		    !policy_mgr_sap_allowed_on_indoor_freq(mac->psoc,
+							   mac->pdev,
+							   *pChans)) {
+			sap_debug("Do not allow SAP on indoor frequency %u",
+				  *pChans);
+			continue;
+		}
 
 		/*
 		 * Skip the channels which are not in ACS config from user
@@ -637,10 +656,10 @@ static uint32_t sap_weight_channel_noise_floor(struct sap_context *sap_ctx,
 	if (noise_floor_weight > softap_nf_weight_local)
 		noise_floor_weight = softap_nf_weight_local;
 
-	sap_debug("nf=%d, nfwc=%d, nfwl=%d, nfw=%d",
+	sap_debug("nf=%d, nfwc=%d, nfwl=%d, nfw=%d freq=%d",
 		  channel_stat->noise_floor,
 		  softap_nf_weight_cfg, softap_nf_weight_local,
-		  noise_floor_weight);
+		  noise_floor_weight, channel_stat->channelfreq);
 
 	return noise_floor_weight;
 }
@@ -1294,7 +1313,8 @@ static void sap_compute_spect_weight(tSapChSelSpectInfo *pSpectInfoParams,
 	qdf_list_node_t *cur_lst = NULL, *next_lst = NULL;
 	struct scan_cache_node *cur_node = NULL;
 	uint32_t normalized_weight;
-	uint8_t normalize_factor;
+	uint8_t normalize_factor = 100;
+	uint8_t dfs_normalize_factor;
 	uint32_t chan_freq;
 	struct acs_weight *weight_list =
 				mac->mlme_cfg->acs.normalize_weight_chan;
@@ -1413,23 +1433,14 @@ static void sap_compute_spect_weight(tSapChSelSpectInfo *pSpectInfoParams,
 
 		chan_freq = pSpectCh->chan_freq;
 
-		if (wlan_reg_is_dfs_for_freq(mac->pdev, chan_freq)) {
-			normalize_factor =
-				MLME_GET_DFS_CHAN_WEIGHT(
-				mac->mlme_cfg->acs.np_chan_weightage);
-			freq_present_in_list = true;
-			sap_debug_rl("DFS channel weightage %d",
-				     normalize_factor);
-		}
-
 		/* Check if the freq is present in range list */
 		for (i = 0; i < mac->mlme_cfg->acs.num_weight_range; i++) {
 			if (chan_freq >= range_list[i].start_freq &&
 			    chan_freq <= range_list[i].end_freq) {
 				normalize_factor =
 					range_list[i].normalize_weight;
-				sap_debug("Range list, freq %d normalize weight factor %d",
-					  chan_freq, normalize_factor);
+				sap_debug_rl("Range list, freq %d normalize weight factor %d",
+					     chan_freq, normalize_factor);
 				freq_present_in_list = true;
 			}
 		}
@@ -1445,6 +1456,21 @@ static void sap_compute_spect_weight(tSapChSelSpectInfo *pSpectInfoParams,
 					  chan_freq, normalize_factor);
 				freq_present_in_list = true;
 			}
+		}
+
+		if (wlan_reg_is_dfs_for_freq(mac->pdev, chan_freq)) {
+			dfs_normalize_factor =
+				MLME_GET_DFS_CHAN_WEIGHT(
+				mac->mlme_cfg->acs.np_chan_weightage);
+			if (freq_present_in_list)
+				normalize_factor =
+					qdf_min(dfs_normalize_factor,
+						normalize_factor);
+			else
+				normalize_factor = dfs_normalize_factor;
+			freq_present_in_list = true;
+			sap_debug_rl("DFS channel weightage %d min %d",
+				     dfs_normalize_factor, normalize_factor);
 		}
 
 		if (freq_present_in_list) {
@@ -1463,9 +1489,10 @@ static void sap_compute_spect_weight(tSapChSelSpectInfo *pSpectInfoParams,
 		pSpectCh->weight_copy = pSpectCh->weight;
 
 debug_info:
-		sap_debug_rl("freq = %d, weight = %d rssi = %d bss count = %d",
+		sap_debug_rl("freq = %d, weight = %d rssi = %d bss count = %d factor %d",
 			     pSpectCh->chan_freq, pSpectCh->weight,
-			     pSpectCh->rssiAgr, pSpectCh->bssCount);
+			     pSpectCh->rssiAgr, pSpectCh->bssCount,
+			     normalize_factor);
 
 		pSpectCh++;
 	}

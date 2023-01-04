@@ -283,10 +283,12 @@ QDF_STATUS cm_roam_control_restore_default_config(struct wlan_objmgr_pdev *pdev,
  * cm_update_pmk_cache_ft - API to update MDID in PMKSA cache entry
  * @psoc: psoc pointer
  * @vdev_id: dvev ID
+ * @pmk_cache: pmksa from the userspace
  *
  * Return: None
  */
-void cm_update_pmk_cache_ft(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
+void cm_update_pmk_cache_ft(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
+			    struct wlan_crypto_pmksa *pmk_cache);
 
 /**
  * cm_lookup_pmkid_using_bssid() - lookup pmkid using bssid
@@ -347,11 +349,14 @@ cm_store_sae_single_pmk_to_global_cache(struct wlan_objmgr_psoc *psoc,
  * with same pmk or not
  * @psoc: psoc
  * @vdev_id: vdev id
+ * @psk_pmk: pmk of roamed AP
+ * @pmk_len: pml length
  *
  * Return: void
  */
 void cm_check_and_set_sae_single_pmk_cap(struct wlan_objmgr_psoc *psoc,
-					 uint8_t vdev_id);
+					 uint8_t vdev_id, uint8_t *psk_pmk,
+					 uint8_t pmk_len);
 #else
 static inline void
 cm_store_sae_single_pmk_to_global_cache(struct wlan_objmgr_psoc *psoc,
@@ -360,7 +365,8 @@ cm_store_sae_single_pmk_to_global_cache(struct wlan_objmgr_psoc *psoc,
 {}
 static inline void
 cm_check_and_set_sae_single_pmk_cap(struct wlan_objmgr_psoc *psoc,
-				    uint8_t vdev_id)
+				    uint8_t vdev_id, uint8_t *psk_pmk,
+				    uint8_t pmk_len)
 {}
 #endif
 

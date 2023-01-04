@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -198,6 +199,7 @@ tpDphHashNode dph_init_sta_state(struct mac_context *mac, tSirMacAddr staAddr,
 	sta->is_disassoc_deauth_in_progress = 0;
 	sta->sta_deletion_in_progress = false;
 	sta->valid = 1;
+	sta->is_key_installed = 0;
 	return sta;
 }
 
@@ -332,6 +334,8 @@ QDF_STATUS dph_delete_hash_entry(struct mac_context *mac, tSirMacAddr staAddr,
 		ptr->added = 0;
 		ptr->is_disassoc_deauth_in_progress = 0;
 		ptr->sta_deletion_in_progress = false;
+		ptr->ocv_enabled = 0;
+		ptr->last_ocv_done_freq = 0;
 		ptr->next = 0;
 	} else {
 		pe_err("Entry not present STA addr: "QDF_MAC_ADDR_FMT,

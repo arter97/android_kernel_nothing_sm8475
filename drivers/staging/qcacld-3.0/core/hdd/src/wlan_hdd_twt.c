@@ -260,6 +260,9 @@ static int hdd_twt_configure(struct hdd_adapter *adapter,
 		ret = osif_twt_clear_session_traffic_stats(vdev,
 							   twt_param_attr);
 		break;
+	case QCA_WLAN_TWT_SET_PARAM:
+		ret = osif_twt_set_param(vdev, twt_param_attr);
+		break;
 	default:
 		hdd_err("Invalid TWT Operation");
 		ret = -EINVAL;
@@ -4657,6 +4660,8 @@ void __hdd_twt_update_work_handler(struct hdd_context *hdd_ctx)
 	hdd_debug("Total connection %d, sta_count %d, sap_count %d",
 		  num_connections, sta_count, sap_count);
 	switch (num_connections) {
+	case 0:
+		break;
 	case 1:
 		if (sta_count == 1) {
 			hdd_send_twt_requestor_enable_cmd(hdd_ctx);
@@ -4729,7 +4734,7 @@ void __hdd_twt_update_work_handler(struct hdd_context *hdd_ctx)
 		}
 		break;
 	default:
-		hdd_err("Unexpected number of connection");
+		hdd_debug("Unexpected number of connection");
 		break;
 	}
 }

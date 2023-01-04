@@ -36,6 +36,19 @@
 #include <net/cnss2.h>
 #endif
 #endif
+
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#ifdef CONFIG_PLD_SNOC_ICNSS
+#ifdef CONFIG_PLD_SNOC_ICNSS2
+#include "icnss2.h"
+#else
+#include "icnss.h"
+#endif
+#endif
+#ifdef CONFIG_PLD_IPCI_ICNSS
+#include "icnss2.h"
+#endif
+#else
 #ifdef CONFIG_PLD_SNOC_ICNSS
 #ifdef CONFIG_PLD_SNOC_ICNSS2
 #include <soc/qcom/icnss2.h>
@@ -45,6 +58,7 @@
 #endif
 #ifdef CONFIG_PLD_IPCI_ICNSS
 #include <soc/qcom/icnss2.h>
+#endif
 #endif
 
 #include "pld_pcie.h"
@@ -3261,7 +3275,7 @@ const char *pld_bus_width_type_to_str(enum pld_bus_width_type level)
 		return "LOW_LAT";
 	default:
 		if (level > PLD_BUS_WIDTH_ULTRA_HIGH)
-			return "ULTRA_HIGH+";
+			return "SUPER_HIGH";
 		else
 			return "INVAL";
 	}

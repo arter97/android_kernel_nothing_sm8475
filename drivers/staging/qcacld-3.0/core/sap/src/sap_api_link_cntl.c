@@ -128,9 +128,17 @@ void sap_config_acs_result(mac_handle_t mac_handle,
 {
 	struct ch_params ch_params = {0};
 	struct mac_context *mac_ctx = MAC_CONTEXT(mac_handle);
+	enum phy_ch_width new_ch_width;
 
 	ch_params.ch_width = sap_ctx->acs_cfg->ch_width;
 	sap_acs_set_puncture_support(sap_ctx, &ch_params);
+
+	new_ch_width =
+		wlan_sap_get_concurrent_bw(mac_ctx->pdev, mac_ctx->psoc,
+					   sap_ctx->acs_cfg->pri_ch_freq,
+					   ch_params.ch_width);
+	ch_params.ch_width = new_ch_width;
+
 	wlan_reg_set_channel_params_for_freq(
 			mac_ctx->pdev, sap_ctx->acs_cfg->pri_ch_freq,
 			sec_ch_freq, &ch_params);
@@ -461,10 +469,11 @@ wlansap_roam_process_ch_change_success(struct mac_context *mac_ctx,
 				CHANNEL_STATE_DFS)
 			is_ch_dfs = true;
 	} else {
-		if (wlan_reg_get_channel_state_for_freq(
-						mac_ctx->pdev,
-						target_chan_freq) ==
-		    CHANNEL_STATE_DFS)
+		/* Indoor channels are also marked DFS, therefore
+		 * check if the channel has REGULATORY_CHAN_RADAR
+		 * channel flag to identify if the channel is DFS
+		 */
+		if (wlan_reg_is_dfs_for_freq(mac_ctx->pdev, target_chan_freq))
 			is_ch_dfs = true;
 	}
 	if (WLAN_REG_IS_6GHZ_CHAN_FREQ(sap_ctx->chan_freq))

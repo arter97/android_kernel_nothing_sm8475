@@ -398,14 +398,12 @@ static QDF_STATUS lim_populate_fd_tmpl_frame(struct mac_context *mac,
 
 	if (wlan_reg_is_6ghz_chan_freq(cur_chan_freq)) {
 		fd_cntl_subfield |= WLAN_FD_FRAMECNTL_CAP;
-		pe_debug("FD Capability Present");
 		length = WLAN_FD_CAP_LEN;
 	}
 
 	/* For 80+80 set Channel center freq segment 1 */
 	if (IS_WLAN_PHYMODE_160MHZ(cur_phymode)) {
 		fd_cntl_subfield |= WLAN_FD_FRAMECNTL_CH_CENTERFREQ;
-		pe_debug("Center frequenceny Present");
 		length += 1;
 	}
 
@@ -435,10 +433,6 @@ static QDF_STATUS lim_populate_fd_tmpl_frame(struct mac_context *mac,
 	*(uint32_t *)frm = qdf_cpu_to_le32(shortssid);
 	frm += 4;
 	*frame_size += 4;
-	pe_debug("Category:%02x Action:%02x  fd_cntl:%02x bcn_intvl:%02x short ssid:%02x frame_size:%02x",
-		 fd_header->action_header.action_category,
-		 fd_header->action_header.action_code, fd_cntl_subfield,
-		 fd_header->bcn_interval, shortssid, *frame_size);
 
 	/* Length - 1 byte */
 	if (length) {
@@ -453,7 +447,6 @@ static QDF_STATUS lim_populate_fd_tmpl_frame(struct mac_context *mac,
 		lim_populate_fd_capability(pe_session, cur_phymode, &fd_cap[0]);
 		qdf_mem_copy(frm, fd_cap, WLAN_FD_CAP_LEN);
 		frm += WLAN_FD_CAP_LEN;
-		pe_debug("fd_cap: %02x %02x", fd_cap[0], fd_cap[1]);
 	}
 
 	/* Channel Center Freq Segment 1 - 1 byte */
@@ -461,7 +454,6 @@ static QDF_STATUS lim_populate_fd_tmpl_frame(struct mac_context *mac,
 		/* spec has seg0 and seg1 naming while we use seg1 and seg2 */
 		*frm = des_chan->ch_freq_seg1;
 		frm++;
-		pe_debug("ch_center_freq: %02x", des_chan->ch_freq_seg1);
 	}
 
 	/* Add TPE IE */
@@ -469,7 +461,6 @@ static QDF_STATUS lim_populate_fd_tmpl_frame(struct mac_context *mac,
 	    (pe_session->vhtCapability)) {
 		populate_dot11f_tx_power_env(mac, &tpe[0], chwidth,
 					     cur_chan_freq, &tpe_num, false);
-		pe_debug("tpe_num: %02x", tpe_num);
 		if (tpe_num > WLAN_MAX_NUM_TPE_IE) {
 			pe_err("tpe_num  %d greater than max size", tpe_num);
 			return QDF_STATUS_E_FAILURE;
@@ -501,12 +492,10 @@ static QDF_STATUS lim_populate_fd_tmpl_frame(struct mac_context *mac,
 						tpe[idx].max_tx_pwr_interpret;
 			tpe_ie->max_tx_pwr_category =
 						tpe[idx].max_tx_pwr_category;
-			pe_debug("tx_pwr_info: %02x", tpe_ie->tx_pwr_info);
 			frm = &tpe_ie->elem[0];
 
 			for (i = 0; i < tpe[idx].num_tx_power; i++) {
 				*frm = tpe[idx].tx_power[i];
-				pe_debug("tx_pwr[%d]: %02x", i, *frm);
 				frm++;
 			}
 
@@ -556,7 +545,7 @@ static QDF_STATUS lim_send_fils_discovery_template(struct mac_context *mac,
 
 	pe_debug("Fils Discovery template created successfully %d", n_bytes);
 
-	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_PE, QDF_TRACE_LEVEL_ERROR,
+	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_PE, QDF_TRACE_LEVEL_DEBUG,
 			   fd_params->frm, n_bytes);
 
 	fd_params->tmpl_len = n_bytes;
@@ -893,52 +882,51 @@ uint32_t lim_send_probe_rsp_template_to_hal(struct mac_context *mac,
  * @timestamp_offset: return for the offset of the timestamp field
  * @time_value_offset: return for the time_value field in the TA IE
  *
- * Return: the length of the buffer.
+ * Return: the length of the buffer on success and error code on failure.
  */
 int sch_gen_timing_advert_frame(struct mac_context *mac_ctx, tSirMacAddr self_addr,
 	uint8_t **buf, uint32_t *timestamp_offset, uint32_t *time_value_offset)
 {
-	tDot11fTimingAdvertisementFrame frame;
+	tDot11fTimingAdvertisementFrame frame = {};
 	uint32_t payload_size, buf_size;
-	int status;
+	QDF_STATUS status;
+	uint32_t ret;
 	struct qdf_mac_addr wildcard_bssid = {
 		{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
 	};
 
-	qdf_mem_zero((uint8_t *)&frame, sizeof(tDot11fTimingAdvertisementFrame));
-
 	/* Populate the TA fields */
 	status = populate_dot11f_timing_advert_frame(mac_ctx, &frame);
-	if (status) {
+	if (!QDF_IS_STATUS_SUCCESS(status)) {
 		pe_err("Error populating TA frame %x", status);
-		return status;
+		return qdf_status_to_os_return(status);
 	}
 
-	status = dot11f_get_packed_timing_advertisement_frame_size(mac_ctx,
+	ret = dot11f_get_packed_timing_advertisement_frame_size(mac_ctx,
 		&frame, &payload_size);
-	if (DOT11F_FAILED(status)) {
-		pe_err("Error getting packed frame size %x", status);
-		return status;
-	} else if (DOT11F_WARNED(status)) {
-		pe_warn("Warning getting packed frame size");
+	if (DOT11F_FAILED(ret)) {
+		pe_err("Error getting packed frame size %x", ret);
+		return -EINVAL;
 	}
+	if (DOT11F_WARNED(ret))
+		pe_warn("Warning getting packed frame size");
 
 	buf_size = sizeof(tSirMacMgmtHdr) + payload_size;
 	*buf = qdf_mem_malloc(buf_size);
 	if (!*buf)
-		return QDF_STATUS_E_FAILURE;
+		return -ENOMEM;
 
 	payload_size = 0;
-	status = dot11f_pack_timing_advertisement_frame(mac_ctx, &frame,
+	ret = dot11f_pack_timing_advertisement_frame(mac_ctx, &frame,
 		*buf + sizeof(tSirMacMgmtHdr), buf_size -
 		sizeof(tSirMacMgmtHdr), &payload_size);
-	pe_err("TA payload size2 = %d", payload_size);
-	if (DOT11F_FAILED(status)) {
-		pe_err("Error packing frame %x", status);
+	pe_debug("TA payload size2 = %d", payload_size);
+	if (DOT11F_FAILED(ret)) {
+		pe_err("Error packing frame %x", ret);
 		goto fail;
-	} else if (DOT11F_WARNED(status)) {
-		pe_warn("Warning packing frame");
 	}
+	if (DOT11F_WARNED(ret))
+		pe_warn("Warning packing frame");
 
 	lim_populate_mac_header(mac_ctx, *buf, SIR_MAC_MGMT_FRAME,
 		SIR_MAC_MGMT_TIME_ADVERT, wildcard_bssid.bytes, self_addr);
@@ -965,7 +953,7 @@ int sch_gen_timing_advert_frame(struct mac_context *mac_ctx, tSirMacAddr self_ad
 	return payload_size + sizeof(tSirMacMgmtHdr);
 
 fail:
-	if (*buf)
-		qdf_mem_free(*buf);
-	return status;
+	qdf_mem_free(*buf);
+	*buf = NULL;
+	return -EINVAL;
 }

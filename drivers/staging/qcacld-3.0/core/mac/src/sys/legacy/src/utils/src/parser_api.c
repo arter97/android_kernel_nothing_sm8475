@@ -3751,6 +3751,10 @@ sir_convert_assoc_resp_frame2_struct(struct mac_context *mac,
 			ext_cap->fine_time_meas_responder);
 	}
 
+	if (ar->OperatingMode.present) {
+		qdf_mem_copy(&pAssocRsp->oper_mode_ntf, &ar->OperatingMode,
+			     sizeof(tDot11fIEOperatingMode));
+	}
 	if (ar->QosMapSet.present) {
 		pAssocRsp->QosMapSet.present = 1;
 		convert_qos_mapset_frame(mac, &pAssocRsp->QosMapSet,
@@ -3806,6 +3810,10 @@ sir_convert_assoc_resp_frame2_struct(struct mac_context *mac,
 		pe_debug("320MHz support: %d",
 			 pAssocRsp->eht_cap.support_320mhz_6ghz);
 	}
+
+	if (ar->eht_op.present)
+		qdf_mem_copy(&pAssocRsp->eht_op, &ar->eht_op,
+			     sizeof(tDot11fIEeht_op));
 
 	if (ar->he_6ghz_band_cap.present) {
 		pe_debug("11AX: HE Band Capability IE present");
@@ -7700,6 +7708,8 @@ populate_dot11f_mlo_caps(struct mac_context *mac_ctx,
 	mlo_ie->medium_sync_delay_info_present = 0;
 	mlo_ie->eml_capab_present = 0;
 	mlo_ie->mld_capab_present = 1;
+	mlo_ie->reserved = 0;
+	mlo_ie->reserved_1 = 0;
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -8685,6 +8695,11 @@ QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 
 	/* find out number of links from bcn or prb rsp */
 	total_sta_prof = 1;
+	if (wlan_mlme_is_sta_single_mlo_conn(
+				wlan_vdev_get_psoc(pe_session->vdev))) {
+		pe_debug("Single link mlo connection is enabled for mlo sta");
+		total_sta_prof = 0;
+	}
 	partner_info = &pe_session->lim_join_req->partner_info;
 
 	mlo_dev_ctx = pe_session->vdev->mlo_dev_ctx;

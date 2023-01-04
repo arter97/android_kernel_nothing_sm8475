@@ -1219,6 +1219,37 @@ struct rcpi_info {
 
 struct hdd_context;
 
+#ifdef MULTI_CLIENT_LL_SUPPORT
+/* Max host clients which can request the FW arbiter with the latency level */
+#define WLM_MAX_HOST_CLIENT 5
+
+/**
+ * struct wlm_multi_client_info_table - To store multi client id information
+ * @client_id: host id for a client
+ * @port_id: client id coming from upper layer
+ * @in_use: set true for a client when host receives vendor cmd for that client
+ */
+struct wlm_multi_client_info_table {
+	uint32_t client_id;
+	uint32_t port_id;
+	bool in_use;
+};
+#endif
+
+#ifdef WLAN_FEATURE_DYNAMIC_RX_AGGREGATION
+/**
+ * enum qdisc_filter_status - QDISC filter status
+ * @QDISC_FILTER_RTNL_LOCK_FAIL: rtnl lock acquire failed
+ * @QDISC_FILTER_PRIO_MATCH: qdisc filter with priority match
+ * @QDISC_FILTER_PRIO_MISMATCH: no filter match with configured priority
+ */
+enum qdisc_filter_status {
+	QDISC_FILTER_RTNL_LOCK_FAIL,
+	QDISC_FILTER_PRIO_MATCH,
+	QDISC_FILTER_PRIO_MISMATCH,
+};
+#endif
+
 /**
  * struct hdd_adapter - hdd vdev/net_device context
  * @vdev: object manager vdev context
@@ -1232,6 +1263,12 @@ struct hdd_context;
  * @cache_sta_count: number of currently cached stations
  * @acs_complete_event: acs complete event
  * @latency_level: 0 - normal, 1 - xr, 2 - low, 3 - ultralow
+ * @multi_client_ll_support: to check multi client ll support in driver
+ * @client_info: To store multi client id information
+ * @multi_ll_response_cookie: cookie for multi client ll command
+ * @multi_ll_req_in_progress: to check multi client ll request in progress
+ * @multi_ll_resp_expected: to decide whether host will wait for multi client
+ * event or not
  * @last_disconnect_reason: Last disconnected internal reason code
  *                          as per enum qca_disconnect_reason_codes
  * @connect_req_status: Last disconnected internal status code
@@ -1248,6 +1285,7 @@ struct hdd_context;
  * @delete_in_progress: Flag to indicate that the adapter delete is in
  *			progress, and any operation using rtnl lock inside
  *			the driver can be avoided/skipped.
+ * @is_virtual_iface: Indicates that netdev is called from virtual interface
  * @mon_adapter: hdd_adapter of monitor mode.
  * @set_mac_addr_req_ctx: Set MAC address command request context
  */
@@ -1519,6 +1557,13 @@ struct hdd_adapter {
 	uint32_t mon_chan_freq;
 	uint32_t mon_bandwidth;
 	uint16_t latency_level;
+#ifdef MULTI_CLIENT_LL_SUPPORT
+	bool multi_client_ll_support;
+	struct wlm_multi_client_info_table client_info[WLM_MAX_HOST_CLIENT];
+	void *multi_ll_response_cookie;
+	bool multi_ll_req_in_progress;
+	bool multi_ll_resp_expected;
+#endif
 #ifdef FEATURE_MONITOR_MODE_SUPPORT
 	bool monitor_mode_vdev_up_in_progress;
 #endif
@@ -1555,7 +1600,7 @@ struct hdd_adapter {
 	void *cookie;
 	bool response_expected;
 #endif
-	uint8_t gro_disallowed[DP_MAX_RX_THREADS];
+	qdf_atomic_t gro_disallowed;
 	uint8_t gro_flushed[DP_MAX_RX_THREADS];
 	bool handle_feature_update;
 	/* Indicate if TSO and checksum offload features are enabled or not */
@@ -1569,6 +1614,7 @@ struct hdd_adapter {
 	/* Flag to indicate whether it is a pre cac adapter or not */
 	bool is_pre_cac_adapter;
 	bool delete_in_progress;
+	bool is_virtual_iface;
 #ifdef WLAN_FEATURE_BIG_DATA_STATS
 	struct big_data_stats_event big_data_stats;
 #endif
@@ -1589,6 +1635,22 @@ struct hdd_adapter {
 #define WLAN_HDD_GET_HOSTAP_STATE_PTR(adapter) \
 				(&(adapter)->session.ap.hostapd_state)
 #define WLAN_HDD_GET_SAP_CTX_PTR(adapter) ((adapter)->session.ap.sap_context)
+
+/**
+ * hdd_is_sta_authenticated() - check if given adapter's STA
+ *				session authenticated
+ * @adapter: adapter pointer
+ *
+ * Return: STA session is_authenticated flag value
+ */
+static inline
+uint8_t hdd_is_sta_authenticated(struct hdd_adapter *adapter)
+{
+	struct hdd_station_ctx *sta_ctx =
+			WLAN_HDD_GET_STATION_CTX_PTR(adapter);
+
+	return sta_ctx->conn_info.is_authenticated;
+}
 
 #ifdef WLAN_FEATURE_NAN
 #define WLAN_HDD_IS_NDP_ENABLED(hdd_ctx) ((hdd_ctx)->nan_datapath_enabled)
@@ -1920,6 +1982,8 @@ struct hdd_rtpm_tput_policy_context {
 };
 #endif
 
+#define MAX_TGT_HW_NAME_LEN 32
+
 /**
  * struct hdd_context - hdd shared driver and psoc/device context
  * @psoc: object manager psoc context
@@ -1935,7 +1999,8 @@ struct hdd_rtpm_tput_policy_context {
  * @country_change_work: work for updating vdev when country changes
  * @rx_aggregation: rx aggregation enable or disable state
  * @gro_force_flush: gro force flushed indication flag
- * @force_gro_enable: force GRO enable or disable flag
+ * @tc_based_dyn_gro: TC based dynamic GRO enable/disable flag
+ * @tc_ingress_prio: TC ingress priority
  * @current_pcie_gen_speed: current pcie gen speed
  * @pm_qos_req: pm_qos request for all cpu cores
  * @qos_cpu_mask: voted cpu core mask
@@ -1948,7 +2013,6 @@ struct hdd_rtpm_tput_policy_context {
  * @twt_en_dis_work: work to send twt enable/disable cmd on MCC/SCC concurrency
  * @dump_in_progress: Stores value of dump in progress
  * @hdd_dual_sta_policy: Concurrent STA policy configuration
- * @rx_skip_qdisc_chk_conc: flag to skip ingress qdisc check in concurrency
  */
 struct hdd_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -1993,6 +2057,7 @@ struct hdd_context {
 	bool is_ol_rx_thread_suspended;
 #endif
 
+	bool hdd_wlan_suspend_in_progress;
 	bool hdd_wlan_suspended;
 	bool suspended;
 	/* flag to start pktlog after SSR/PDR if previously enabled */
@@ -2059,7 +2124,7 @@ struct hdd_context {
 	/* defining the chip/rom revision */
 	uint32_t target_hw_revision;
 	/* chip/rom name */
-	char *target_hw_name;
+	char target_hw_name[MAX_TGT_HW_NAME_LEN];
 	struct regulatory reg;
 #ifdef FEATURE_WLAN_CH_AVOID
 	uint16_t unsafe_channel_count;
@@ -2286,7 +2351,8 @@ struct hdd_context {
 	struct {
 		qdf_atomic_t rx_aggregation;
 		uint8_t gro_force_flush[DP_MAX_RX_THREADS];
-		bool force_gro_enable;
+		bool tc_based_dyn_gro;
+		uint32_t tc_ingress_prio;
 	} dp_agg_param;
 	int current_pcie_gen_speed;
 	qdf_workqueue_t *adapter_ops_wq;
@@ -2320,8 +2386,6 @@ struct hdd_context {
 #ifdef THERMAL_STATS_SUPPORT
 	bool is_therm_stats_in_progress;
 #endif
-	qdf_atomic_t rx_skip_qdisc_chk_conc;
-
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
 	bool is_vdev_macaddr_dynamic_update_supported;
 #endif
@@ -3958,6 +4022,20 @@ int hdd_start_ap_adapter(struct hdd_adapter *adapter);
 int hdd_configure_cds(struct hdd_context *hdd_ctx);
 int hdd_set_fw_params(struct hdd_adapter *adapter);
 
+#ifdef MULTI_CLIENT_LL_SUPPORT
+/**
+ * wlan_hdd_deinit_multi_client_info_table() - to deinit multi client info table
+ * @adapter: hdd vdev/net_device context
+ *
+ * Return: none
+ */
+void wlan_hdd_deinit_multi_client_info_table(struct hdd_adapter *adapter);
+#else
+static inline void
+wlan_hdd_deinit_multi_client_info_table(struct hdd_adapter *adapter)
+{}
+#endif
+
 /**
  * hdd_wlan_start_modules() - Single driver state machine for starting modules
  * @hdd_ctx: HDD context
@@ -4954,8 +5032,6 @@ static inline bool hdd_nbuf_dst_addr_is_self_addr(struct hdd_adapter *adapter,
 				    QDF_NBUF_DEST_MAC_OFFSET);
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)) && \
-     defined(WLAN_FEATURE_11AX)
 /**
  * hdd_cleanup_conn_info() - Cleanup connectin info
  * @adapter: Adapter upon which the command was received
@@ -4966,23 +5042,6 @@ static inline bool hdd_nbuf_dst_addr_is_self_addr(struct hdd_adapter *adapter,
  * Return: none
  */
 void hdd_cleanup_conn_info(struct hdd_adapter *adapter);
-/**
- * hdd_sta_destroy_ctx_all() - cleanup all station contexts
- * @hdd_ctx: Global HDD context
- *
- * This function destroys all the station contexts
- *
- * Return: none
- */
-void hdd_sta_destroy_ctx_all(struct hdd_context *hdd_ctx);
-#else
-static inline void hdd_cleanup_conn_info(struct hdd_adapter *adapter)
-{
-}
-static inline void hdd_sta_destroy_ctx_all(struct hdd_context *hdd_ctx)
-{
-}
-#endif
 
 #ifdef FEATURE_WLAN_RESIDENT_DRIVER
 extern char *country_code;

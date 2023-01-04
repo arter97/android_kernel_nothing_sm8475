@@ -127,6 +127,10 @@ typedef uint8_t tSirVersionString[SIR_VERSION_STRING_LEN];
 #define SIR_KEK_KEY_LEN 16
 #define SIR_KEK_KEY_LEN_FILS 64
 
+#define SIR_FILS_HLP_OUI_TYPE  "\x5"
+#define SIR_FILS_HLP_OUI_LEN   1
+#define SIR_FILS_HLP_IE_LEN    2048
+
 #define SIR_REPLAY_CTR_LEN 8
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 #define SIR_UAPSD_BITOFFSET_ACVO     0
@@ -5197,6 +5201,12 @@ struct sir_sae_info {
  * @vdev_id: vdev id
  * @sae_status: SAE status, 0: Success, Non-zero: Failure.
  * @peer_mac_addr: peer MAC address
+ * @result_code: This carries the reason of the SAE auth failure.
+ *               Currently, SAE authentication failure may happen due to
+ *               1. Authentication failure detected as part of SAE auth frame
+ *                  exchanges and validation.
+ *               2. Deauth received from AP while SAE authentication is in
+ *                  progress.
  */
 struct sir_sae_msg {
 	uint16_t message_type;
@@ -5204,6 +5214,7 @@ struct sir_sae_msg {
 	uint16_t vdev_id;
 	uint8_t sae_status;
 	tSirMacAddr peer_mac_addr;
+	tSirResultCodes result_code;
 };
 
 #ifdef WLAN_FEATURE_MOTION_DETECTION

@@ -245,9 +245,11 @@ void lim_process_mlm_start_cnf(struct mac_context *mac, uint32_t *msg_buf)
 					CHANNEL_STATE_DFS))
 				send_bcon_ind = true;
 		} else {
-			if (wlan_reg_get_channel_state_for_freq(mac->pdev,
-								chan_freq)
-					!= CHANNEL_STATE_DFS)
+			/* Indoor channels are also marked DFS, therefore
+			 * check if the channel has REGULATORY_CHAN_RADAR
+			 * channel flag to identify if the channel is DFS
+			 */
+			if (!wlan_reg_is_dfs_for_freq(mac->pdev, chan_freq))
 				send_bcon_ind = true;
 		}
 		if (WLAN_REG_IS_6GHZ_CHAN_FREQ(pe_session->curr_op_freq))
@@ -586,11 +588,15 @@ void lim_process_mlm_auth_cnf(struct mac_context *mac_ctx, uint32_t *msg)
 			 * password is used. Then AP will still reject the
 			 * authentication even correct password is used unless
 			 * STA send deauth to AP upon authentication failure.
+			 *
+			 * Do not send deauth mgmt frame when already in Deauth
+			 * state while joining.
 			 */
-			if (auth_type == eSIR_AUTH_TYPE_SAE) {
+			if (auth_type == eSIR_AUTH_TYPE_SAE &&
+			    auth_cnf->resultCode != eSIR_SME_DEAUTH_WHILE_JOIN) {
 				pe_debug("Send deauth for SAE auth failure");
 				lim_send_deauth_mgmt_frame(mac_ctx,
-						       auth_cnf->protStatusCode,
+						       REASON_TIMEDOUT,
 						       auth_cnf->peerMacAddr,
 						       session_entry, false);
 			}
@@ -2295,6 +2301,7 @@ void lim_handle_add_bss_rsp(struct mac_context *mac_ctx,
 	enum bss_type bss_type;
 	struct wlan_lmac_if_reg_tx_ops *tx_ops;
 	struct vdev_mlme_obj *mlme_obj;
+	struct pe_session *sta_session;
 
 	if (!add_bss_rsp) {
 		pe_err("add_bss_rsp is NULL");
@@ -2334,6 +2341,24 @@ void lim_handle_add_bss_rsp(struct mac_context *mac_ctx,
 				tx_ops->set_tpc_power(mac_ctx->psoc,
 						      session_entry->vdev_id,
 						      &mlme_obj->reg_tpc_obj);
+			if (wlan_get_tpc_update_required_for_sta(
+							session_entry->vdev)) {
+				sta_session =
+					lim_get_concurrent_session(mac_ctx,
+							   session_entry->vdev_id,
+							   session_entry->opmode);
+				if (!sta_session) {
+					pe_err("TPC update required is set, but concurrent session doesn't exist");
+					wlan_set_tpc_update_required_for_sta(
+							session_entry->vdev,
+							false);
+				} else {
+					lim_update_tx_power(mac_ctx,
+							    session_entry,
+							    sta_session,
+							    false);
+				}
+			}
 		}
 	}
 	bss_type = session_entry->bssType;
@@ -2699,6 +2724,7 @@ static void lim_process_switch_channel_join_req(
 	struct vdev_mlme_obj *mlme_obj;
 	struct wlan_lmac_if_reg_tx_ops *tx_ops;
 	bool tpe_change = false;
+	struct pe_session *sap_session;
 
 	if (status != QDF_STATUS_SUCCESS) {
 		pe_err("Change channel failed!!");
@@ -2862,7 +2888,23 @@ static void lim_process_switch_channel_join_req(
 		goto error;
 	}
 
-	if (wlan_reg_is_ext_tpc_supported(mac_ctx->psoc)) {
+	sap_session =
+		lim_get_concurrent_session(mac_ctx, session_entry->vdev_id,
+					   session_entry->opmode);
+
+	/*
+	 * STA LPI + SAP VLP is supported. For this, STA should move to
+	 * VLP power.
+	 * If there is a concurrent SAP operating on VLP in the same channel,
+	 * then do not update the TPC if the connecting AP is in LPI.
+	 */
+	if (sap_session &&
+	    lim_is_power_change_required_for_sta(mac_ctx, session_entry,
+						 sap_session))
+		lim_update_tx_power(mac_ctx, sap_session, session_entry, false);
+
+	if (wlan_reg_is_ext_tpc_supported(mac_ctx->psoc) &&
+	    !session_entry->sta_follows_sap_power) {
 		tx_ops = wlan_reg_get_tx_ops(mac_ctx->psoc);
 
 		lim_process_tpe_ie_from_beacon(mac_ctx, session_entry, bss,
@@ -3061,6 +3103,7 @@ void lim_process_switch_channel_rsp(struct mac_context *mac,
 		 */
 		policy_mgr_update_connection_info(mac->psoc,
 						pe_session->smeSessionId);
+		lim_check_conc_power_for_csa(mac, pe_session);
 		break;
 	case LIM_SWITCH_CHANNEL_MONITOR:
 		lim_handle_mon_switch_channel_rsp(pe_session, status);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -132,6 +132,36 @@ enum hdd_dot11_mode {
 			eHDD_DOT11_MODE_11ax, \
 			CFG_VALUE_OR_DEFAULT, \
 			"dot11 mode")
+
+#ifdef FEATURE_RUNTIME_PM
+/*
+ * <ini>
+ * cpu_cxpc_threshold - PM QOS threshold
+ * @Min: 0
+ * @Max: 15000
+ * @Default: 10000
+ *
+ * This ini is used to set PM QOS threshold value
+ *
+ * Related: None.
+ *
+ * Supported Feature: ALL
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+ #define CFG_CPU_CXPC_THRESHOLD CFG_INI_UINT( \
+			"cpu_cxpc_threshold", \
+			0, \
+			15000, \
+			10000, \
+			CFG_VALUE_OR_DEFAULT, \
+			"PM QOS threshold")
+#define CFG_CPU_CXPC_THRESHOLD_ALL CFG(CFG_CPU_CXPC_THRESHOLD)
+#else
+#define CFG_CPU_CXPC_THRESHOLD_ALL
+#endif
 
 #ifdef QCA_WIFI_EMULATION
 #define CFG_INTERFACE_CHANGE_WAIT_DEFAULT	300000
@@ -1309,6 +1339,43 @@ struct dhcp_server {
 
 /*
  * <ini>
+ * gActionOUIExtendWowITO - Used to extend ITO(Inactivity Time-Out) value under
+ * WoWLAN mode for specified APs.
+ *
+ * @Default: NULL
+ *
+ * Some APs sometimes don't honor Qos null frames under WoWLAN mode if
+ * station's ITO is too small. This ini is used to specify AP OUIs which
+ * exhibit this behavior. When connected to such an AP, the station's ITO
+ * value will be extended when in WoWLAN mode.
+ * For example, it extends the ITO value(under WoWLAN mode) when connected
+ * to AP whose OUI is 001018 and vendor specific data is 0201009C0000 with
+ * the following setting:
+ *     gActionOUIExtendWowITO=001018 06 0201009C0000 FC 01
+ *         OUI: 001018
+ *         OUI data Len : 06
+ *         OUI Data : 0201009C0000
+ *         OUI data Mask: FC - 11111100
+ *         Info Mask : 01 - only OUI present in Info mask
+ * Refer to gEnableActionOUI for more detail about the format.
+ *
+ * Related: gEnableActionOUI
+ *
+ * Supported Feature: Action OUIs
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_ACTION_OUI_EXTEND_WOW_ITO CFG_INI_STRING( \
+	"gActionOUIExtendWowITO", \
+	0, \
+	ACTION_OUI_MAX_STR_LEN, \
+	"", \
+	"Used to extend inactivity time out under WoWLAN mode for specified APs")
+
+/*
+ * <ini>
  * gActionOUIReconnAssocTimeout - Used to specify action OUIs to
  * reconnect to same BSSID when wait for association response timeout
  *
@@ -1360,6 +1427,14 @@ struct dhcp_server {
  *   OUI data Len: 00
  *   Info Mask : 01 - only OUI present in Info mask
  *
+ * OUI 3: 000ce7
+ *   OUI data Len: 00
+ *   Info Mask : 01 - only OUI present in Info mask
+ *
+ * OUI 4: 00e0fc
+ *   OUI data Len: 00
+ *   Info Mask : 01 - only OUI present in Info mask
+ *
  * Refer to gEnableActionOUI for more detail about the format.
  *
  * Related: gEnableActionOUI
@@ -1374,7 +1449,7 @@ struct dhcp_server {
 	"gActionOUIDisableTWT", \
 	0, \
 	ACTION_OUI_MAX_STR_LEN, \
-	"001018 00 01 000986 00 01", \
+	"001018 00 01 000986 00 01 000ce7 00 01 00e0fc 00 01", \
 	"Used to specify action OUIs to control TWT configuration")
 
 /* End of action oui inis */
@@ -1795,6 +1870,7 @@ enum host_log_level {
 	CFG(CFG_ACTION_OUI_DISABLE_AGGRESSIVE_TX) \
 	CFG(CFG_ACTION_OUI_FORCE_MAX_NSS) \
 	CFG(CFG_ACTION_OUI_DISABLE_AGGRESSIVE_EDCA) \
+	CFG(CFG_ACTION_OUI_EXTEND_WOW_ITO) \
 	CFG(CFG_ACTION_OUI_SWITCH_TO_11N_MODE) \
 	CFG(CFG_ACTION_OUI_RECONN_ASSOCTIMEOUT) \
 	CFG(CFG_ACTION_OUI_DISABLE_TWT) \
@@ -1824,5 +1900,6 @@ enum host_log_level {
 	CFG(CFG_READ_MAC_ADDR_FROM_MAC_FILE) \
 	CFG(CFG_SAR_CONVERSION) \
 	CFG(CFG_ENABLE_HOST_MODULE_LOG_LEVEL) \
-	SAR_SAFETY_FEATURE_ALL
+	SAR_SAFETY_FEATURE_ALL \
+	CFG_CPU_CXPC_THRESHOLD_ALL
 #endif

@@ -34,6 +34,7 @@
 #include "wni_api.h"
 #include "wlan_mlme_vdev_mgr_interface.h"
 #include "wlan_cm_api.h"
+#include "wlan_scan_api.h"
 
 static void if_mgr_enable_roaming_on_vdev(struct wlan_objmgr_pdev *pdev,
 					  void *object, void *arg)
@@ -765,6 +766,20 @@ QDF_STATUS if_mgr_validate_candidate(struct wlan_objmgr_vdev *vdev,
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc)
 		return QDF_STATUS_E_FAILURE;
+
+	/*
+	 * Do not allow STA to connect on 6Ghz or indoor channel for non dbs
+	 * hardware if SAP and skip_6g_and_indoor_freq_scan ini are present
+	 */
+	if (op_mode == QDF_STA_MODE &&
+	    !policy_mgr_is_sta_chan_valid_for_connect_and_roam(pdev,
+							       chan_freq)) {
+		ifmgr_debug("STA connection not allowed on bssid: "QDF_MAC_ADDR_FMT" with freq: %d (6Ghz or indoor(%d)), as not valid for connection",
+			    QDF_MAC_ADDR_REF(candidate_info->peer_addr.bytes),
+			    chan_freq,
+			    wlan_reg_is_freq_indoor(pdev, chan_freq));
+		return QDF_STATUS_E_INVAL;
+	}
 
 	/*
 	 * Ignore the BSS if any other vdev is already connected to it.

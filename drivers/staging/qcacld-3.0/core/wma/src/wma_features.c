@@ -1647,6 +1647,10 @@ static const uint8_t *wma_wow_wake_reason_str(A_INT32 wake_reason)
 		return "ROAM_STATS";
 	case WOW_REASON_RTT_11AZ:
 		return "WOW_REASON_RTT_11AZ";
+	case WOW_REASON_DELAYED_WAKEUP_HOST_CFG_TIMER_ELAPSED:
+		return "DELAYED_WAKEUP_TIMER_ELAPSED";
+	case WOW_REASON_DELAYED_WAKEUP_DATA_STORE_LIST_FULL:
+		return "DELAYED_WAKEUP_DATA_STORE_LIST_FULL";
 	default:
 		return "unknown";
 	}
@@ -2597,8 +2601,10 @@ static int wma_wake_event_packet(
 	case WOW_REASON_RA_MATCH:
 	case WOW_REASON_RECV_MAGIC_PATTERN:
 	case WOW_REASON_PACKET_FILTER_MATCH:
-		wma_debug("Wake event packet:");
-		qdf_trace_hex_dump(QDF_MODULE_ID_WMA, QDF_TRACE_LEVEL_DEBUG,
+	case WOW_REASON_DELAYED_WAKEUP_HOST_CFG_TIMER_ELAPSED:
+	case WOW_REASON_DELAYED_WAKEUP_DATA_STORE_LIST_FULL:
+		wma_info("Wake event packet:");
+		qdf_trace_hex_dump(QDF_MODULE_ID_WMA, QDF_TRACE_LEVEL_INFO,
 				   packet, packet_len);
 
 		vdev = &wma->interfaces[wake_info->vdev_id];
@@ -3679,8 +3685,8 @@ int wma_update_tdls_peer_state(WMA_HANDLE handle,
 		goto end_tdls_peer_state;
 	}
 
-	if (MLME_IS_ROAM_SYNCH_IN_PROGRESS(wma_handle->psoc,
-					   peer_state->vdev_id)) {
+	if (wlan_cm_is_roam_sync_in_progress(wma_handle->psoc,
+					     peer_state->vdev_id)) {
 		wma_err("roaming in progress, reject peer update cmd!");
 		ret = -EPERM;
 		goto end_tdls_peer_state;

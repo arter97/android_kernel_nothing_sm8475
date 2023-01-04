@@ -1738,7 +1738,7 @@ static int wma_unified_link_peer_stats_event_handler(void *handle,
 
 	link_stats_results->paramId = WMI_LINK_STATS_ALL_PEER;
 	link_stats_results->rspId = fixed_param->request_id;
-	link_stats_results->ifaceId = 0;
+	link_stats_results->ifaceId = fixed_param->vdev_id_info.vdev_id;
 	link_stats_results->num_peers = fixed_param->num_peers;
 	link_stats_results->peer_event_number = fixed_param->peer_event_number;
 	link_stats_results->moreResultToFollow = fixed_param->more_data;
@@ -2311,7 +2311,7 @@ __wma_unified_link_radio_stats_event_handler(tp_wma_handle wma_handle,
 link_radio_stats_cb:
 	link_stats_results->paramId = WMI_LINK_STATS_RADIO;
 	link_stats_results->rspId = fixed_param->request_id;
-	link_stats_results->ifaceId = 0;
+	link_stats_results->ifaceId = fixed_param->vdev_id_info.vdev_id;
 	link_stats_results->peer_event_number = 0;
 
 	/*
@@ -4843,6 +4843,61 @@ int wma_cold_boot_cal_event_handler(void *wma_ctx, uint8_t *event_buff,
 
 	return 0;
 }
+
+#ifdef MULTI_CLIENT_LL_SUPPORT
+int wma_latency_level_event_handler(void *wma_ctx, uint8_t *event_buff,
+				    uint32_t len)
+{
+	WMI_VDEV_LATENCY_LEVEL_EVENTID_param_tlvs *param_buf;
+	struct mac_context *pmac =
+		(struct mac_context *)cds_get_context(QDF_MODULE_ID_PE);
+	wmi_vdev_latency_event_fixed_param *event;
+	struct latency_level_data event_data;
+	bool multi_client_ll_support, multi_client_ll_caps;
+
+	if (!pmac) {
+		wma_err("NULL mac handle");
+		return -EINVAL;
+	}
+
+	multi_client_ll_support =
+		pmac->mlme_cfg->wlm_config.multi_client_ll_support;
+	multi_client_ll_caps =
+		wlan_mlme_get_wlm_multi_client_ll_caps(pmac->psoc);
+
+	wma_debug("multi client ll INI:%d, caps:%d", multi_client_ll_support,
+		  multi_client_ll_caps);
+
+	if ((!multi_client_ll_support) || (!multi_client_ll_caps))
+		return -EINVAL;
+
+	if (!pmac->sme.latency_level_event_handler_cb) {
+		wma_err("latency level data handler cb is not registered");
+		return -EINVAL;
+	}
+
+	param_buf = (WMI_VDEV_LATENCY_LEVEL_EVENTID_param_tlvs *)event_buff;
+	if (!param_buf) {
+		wma_err("Invalid latency level data Event");
+		return -EINVAL;
+	}
+
+	event = param_buf->fixed_param;
+	if (!event) {
+		wma_err("Invalid fixed param in latency data Event");
+		return -EINVAL;
+	}
+
+	event_data.vdev_id = event->vdev_id;
+	event_data.latency_level = event->latency_level;
+	wma_debug("received event latency level :%d, vdev_id:%d",
+		  event->latency_level, event->vdev_id);
+	pmac->sme.latency_level_event_handler_cb(&event_data,
+						     event->vdev_id);
+
+	return 0;
+}
+#endif
 
 #ifdef FEATURE_OEM_DATA
 int wma_oem_event_handler(void *wma_ctx, uint8_t *event_buff, uint32_t len)

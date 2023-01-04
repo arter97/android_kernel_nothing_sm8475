@@ -34,6 +34,7 @@
 #include "wlan_cp_stats_mc_ucfg_api.h"
 #include "wlan_mlme_ucfg_api.h"
 #include "wlan_cp_stats_ucfg_api.h"
+#include "osif_vdev_sync.h"
 
 #define TWT_ACK_COMPLETE_TIMEOUT 1000
 
@@ -68,6 +69,7 @@ qca_wlan_vendor_twt_add_dialog_policy[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_MAX + 1] = 
 							.type = NLA_U8 },
 	[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_BCAST_PERSISTENCE] = {.type = NLA_U8 },
 	[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_WAKE_TIME_TSF] = {.type = NLA_U64 },
+	[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_ANNOUNCE_TIMEOUT] = {.type = NLA_U32 },
 };
 
 static const struct nla_policy
@@ -84,6 +86,11 @@ qca_wlan_vendor_twt_nudge_dialog_policy[QCA_WLAN_VENDOR_ATTR_TWT_NUDGE_MAX + 1] 
 	[QCA_WLAN_VENDOR_ATTR_TWT_NUDGE_WAKE_TIME] = {.type = NLA_U32 },
 	[QCA_WLAN_VENDOR_ATTR_TWT_NUDGE_NEXT_TWT_SIZE] = {.type = NLA_U32 },
 	[QCA_WLAN_VENDOR_ATTR_TWT_NUDGE_MAC_ADDR] = VENDOR_NLA_POLICY_MAC_ADDR,
+};
+
+static const struct nla_policy
+qca_wlan_vendor_twt_set_param_policy[QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_MAX + 1] = {
+	[QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_AP_AC_VALUE] = {.type = NLA_U8 },
 };
 
 static const struct nla_policy
@@ -330,6 +337,12 @@ osif_twt_parse_add_dialog_attrs(struct nlattr **tb,
 	else
 		params->wake_time_tsf = 0;
 
+	cmd_id = QCA_WLAN_VENDOR_ATTR_TWT_SETUP_ANNOUNCE_TIMEOUT;
+	if (tb[cmd_id])
+		params->announce_timeout_us = nla_get_u32(tb[cmd_id]);
+	else
+		params->announce_timeout_us = 0;
+
 	osif_debug("twt: dialog_id %d, vdev %d, wake intvl_us %d, min %d, max %d, mantis %d",
 		  params->dialog_id, params->vdev_id, params->wake_intvl_us,
 		  params->min_wake_intvl_us, params->max_wake_intvl_us,
@@ -347,7 +360,8 @@ osif_twt_parse_add_dialog_attrs(struct nlattr **tb,
 	osif_debug("twt: peer mac_addr "
 		  QDF_MAC_ADDR_FMT,
 		  QDF_MAC_ADDR_REF(params->peer_macaddr.bytes));
-
+	osif_debug("twt: announce timeout(in us) %u",
+		   params->announce_timeout_us);
 	return 0;
 }
 
@@ -395,7 +409,7 @@ int osif_fill_peer_macaddr(struct wlan_objmgr_vdev *vdev, uint8_t *mac_addr)
 	peer = wlan_objmgr_vdev_try_get_bsspeer(vdev, WLAN_TWT_ID);
 	if (!peer) {
 		osif_err("peer is null");
-		return -EINVAL;
+		return -EAGAIN;
 	}
 	wlan_peer_obj_lock(peer);
 	qdf_mem_copy(mac_addr, wlan_peer_get_macaddr(peer), QDF_MAC_ADDR_SIZE);
@@ -1055,11 +1069,11 @@ void
 osif_twt_handle_renego_failure(struct wlan_objmgr_psoc *psoc,
 		       struct twt_add_dialog_complete_event *event)
 {
-	struct twt_del_dialog_param params = {0};
 	uint8_t pdev_id;
 	struct wlan_objmgr_pdev *pdev;
 	struct wlan_objmgr_vdev *vdev;
 	uint32_t vdev_id;
+	uint32_t twt_next_action = 0;
 
 	if (!event)
 		return;
@@ -1085,15 +1099,9 @@ osif_twt_handle_renego_failure(struct wlan_objmgr_psoc *psoc,
 		goto end;
 	}
 
-	qdf_copy_macaddr(&params.peer_macaddr, &event->params.peer_macaddr);
-	params.vdev_id = vdev_id;
-	params.dialog_id = event->params.dialog_id;
-
-	osif_debug("renego: twt_terminate: vdev_id:%d dialog_id:%d peer mac_addr "
-		  QDF_MAC_ADDR_FMT, params.vdev_id, params.dialog_id,
-		  QDF_MAC_ADDR_REF(params.peer_macaddr.bytes));
-
-	osif_send_sta_twt_teardown_req(vdev, psoc, &params);
+	twt_next_action = HOST_TWT_SEND_DELETE_CMD;
+	ucfg_twt_set_work_params(vdev, &event->params, twt_next_action);
+	qdf_sched_work(0, &vdev->twt_work);
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_TWT_ID);
 
@@ -2252,4 +2260,174 @@ int osif_twt_clear_session_traffic_stats(struct wlan_objmgr_vdev *vdev,
 							peer_mac.bytes);
 
 	return ret;
+}
+
+/**
+ * osif_twt_convert_ac_value() - map ac setting to the value to be used in FW.
+ * @ac_value: ac value to be mapped.
+ *
+ * Return: enum twt_traffic_ac
+ */
+static inline
+enum twt_traffic_ac osif_twt_convert_ac_value(enum qca_wlan_ac_type ac_value)
+{
+	switch (ac_value) {
+	case QCA_WLAN_AC_BE:
+		return TWT_AC_BE;
+	case QCA_WLAN_AC_BK:
+		return TWT_AC_BK;
+	case QCA_WLAN_AC_VI:
+		return TWT_AC_VI;
+	case QCA_WLAN_AC_VO:
+		return TWT_AC_VO;
+	case QCA_WLAN_AC_ALL:
+		return TWT_AC_MAX;
+	}
+	osif_err("invalid enum: %u", ac_value);
+	return TWT_AC_MAX;
+}
+
+/**
+ * osif_twt_add_ac_config() - pdev TWT param send
+ * @psoc: Pointer to psoc object
+ * @twt_ac: TWT access category
+ *
+ * Return: QDF Status
+ */
+static int osif_twt_add_ac_config(struct wlan_objmgr_vdev *vdev,
+				  enum qca_wlan_ac_type twt_ac)
+{
+	bool is_responder_en;
+	int ret = 0;
+	struct wlan_objmgr_psoc *psoc;
+	enum QDF_OPMODE device_mode;
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc)
+		return -EINVAL;
+
+	device_mode = wlan_vdev_mlme_get_opmode(vdev);
+
+	if (twt_ac < QCA_WLAN_AC_BE || twt_ac > QCA_WLAN_AC_VO) {
+		osif_err_rl("Invalid AC parameter. Value: %d", twt_ac);
+		return -EINVAL;
+	}
+
+	ucfg_twt_cfg_get_responder(psoc, &is_responder_en);
+
+	if (device_mode == QDF_SAP_MODE && is_responder_en) {
+		ret = ucfg_twt_ac_pdev_param_send(psoc,
+						  osif_twt_convert_ac_value(twt_ac));
+	} else {
+		osif_err_rl("Undesired device mode. Mode: %d and responder: %d",
+			    device_mode, is_responder_en);
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+int osif_twt_set_param(struct wlan_objmgr_vdev *vdev,
+		       struct nlattr *twt_param_attr)
+{
+	struct nlattr *tb[QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_MAX + 1];
+	int ret;
+	int cmd_id;
+	enum qca_wlan_ac_type twt_ac;
+
+	ret = wlan_cfg80211_nla_parse_nested
+					(tb,
+					 QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_MAX,
+					 twt_param_attr,
+					 qca_wlan_vendor_twt_set_param_policy);
+	if (ret)
+		return ret;
+
+	cmd_id = QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_AP_AC_VALUE;
+
+	if (tb[cmd_id]) {
+		twt_ac = nla_get_u8(tb[cmd_id]);
+		osif_debug("TWT_AC_CONFIG_VALUE: %d", twt_ac);
+		ret = osif_twt_add_ac_config(vdev, twt_ac);
+
+		if (ret) {
+			osif_err("Fail to set TWT AC parameter, errno %d",
+				 ret);
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+void __osif_twt_work_handler(struct wlan_objmgr_vdev *vdev)
+{
+	struct twt_del_dialog_param params = {0};
+	struct twt_work_params twt_work_params = {0};
+	struct wlan_objmgr_psoc *psoc;
+	uint8_t vdev_id;
+	uint32_t next_action;
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc) {
+		osif_err("psoc is null");
+		return;
+	}
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	ucfg_twt_get_work_params(vdev, &twt_work_params, &next_action);
+
+	if (next_action != HOST_TWT_SEND_DELETE_CMD) {
+		osif_debug("Do not send STA teardown req as TWT renegotiation work is not scheduled");
+		return;
+	}
+
+	qdf_copy_macaddr(&params.peer_macaddr, &twt_work_params.peer_macaddr);
+	params.dialog_id = twt_work_params.dialog_id;
+	params.vdev_id = vdev_id;
+
+	osif_send_sta_twt_teardown_req(vdev, psoc, &params);
+}
+
+void osif_twt_work_handler(void *data)
+{
+	struct wlan_objmgr_vdev *vdev = (struct wlan_objmgr_vdev *)data;
+	struct net_device *net_dev;
+	struct osif_vdev_sync *vdev_sync;
+	struct vdev_osif_priv *priv;
+	int errno;
+
+	if (!vdev) {
+		osif_err("vdev is null");
+		return;
+	}
+
+	priv = wlan_vdev_get_ospriv(vdev);
+	if (!priv || !priv->wdev || !priv->wdev->netdev)
+		return;
+
+	net_dev = priv->wdev->netdev;
+	errno = osif_vdev_sync_op_start(net_dev, &vdev_sync);
+	if (errno)
+		return;
+
+	__osif_twt_work_handler(vdev);
+
+	osif_vdev_sync_op_stop(vdev_sync);
+}
+
+QDF_STATUS osif_twt_create_work(struct wlan_objmgr_vdev *vdev)
+{
+	qdf_create_work(0, &vdev->twt_work,
+			osif_twt_work_handler, vdev);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS osif_twt_destroy_work(struct wlan_objmgr_vdev *vdev)
+{
+	qdf_flush_work(&vdev->twt_work);
+	qdf_destroy_work(NULL, &vdev->twt_work);
+
+	return QDF_STATUS_SUCCESS;
 }

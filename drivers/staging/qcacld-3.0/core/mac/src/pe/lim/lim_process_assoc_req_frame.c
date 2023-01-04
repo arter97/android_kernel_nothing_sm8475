@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1221,8 +1221,8 @@ static bool lim_process_assoc_req_no_sta_ctx(struct mac_context *mac_ctx,
 		 * Maximum number of STAs that AP can handle reached.
 		 * Send Association response to peer MAC entity
 		 */
-		pe_err("Max Sta count reached : %d",
-				mac_ctx->lim.maxStation);
+		pe_info_rl("Max Sta count reached : %d",
+			   mac_ctx->lim.maxStation);
 		lim_reject_association(mac_ctx, sa, sub_type, false,
 				       (tAniAuthType)0, 0, false,
 				       STATUS_UNSPECIFIED_FAILURE,
@@ -1879,6 +1879,8 @@ static bool lim_update_sta_ds(struct mac_context *mac_ctx, tSirMacAddr sa,
 	if (sta_ds->rmfEnabled) {
 		sta_ds->ocv_enabled = lim_is_ocv_enable_in_assoc_req(mac_ctx,
 								     assoc_req);
+		if (sta_ds->ocv_enabled)
+			sta_ds->last_ocv_done_freq = session->curr_op_freq;
 		/* Try to delete it before, creating.*/
 		lim_delete_pmf_query_timer(sta_ds);
 		if (tx_timer_create(mac_ctx, &sta_ds->pmfSaQueryTimer,
@@ -2182,7 +2184,8 @@ bool lim_send_assoc_ind_to_sme(struct mac_context *mac_ctx,
 	if (wlan_vdev_mlme_is_mlo_ap(session->vdev) &&
 	    assoc_req->eht_cap.present &&
 	    IS_DOT11_MODE_EHT(session->dot11mode) &&
-	    (partner_peer_idx || assoc_req->mlo_info.num_partner_links))
+	    (partner_peer_idx ||
+	     !qdf_is_macaddr_zero((struct qdf_mac_addr *)assoc_req->mld_mac)))
 		peer_idx = lim_assign_mlo_conn_idx(mac_ctx, session,
 						   partner_peer_idx);
 	else

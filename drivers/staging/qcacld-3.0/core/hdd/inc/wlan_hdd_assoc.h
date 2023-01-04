@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -146,6 +147,7 @@ struct hdd_conn_flag {
  * @ch_width: channel width of operating channel
  * @max_tx_bitrate: Max tx bitrate supported by the AP
  * to which currently sta is connected.
+ * @prev_ap_bcn_ie: ap beacon IE information to which sta is currently connected
  */
 struct hdd_connection_info {
 	eConnectionState conn_state;
@@ -185,6 +187,7 @@ struct hdd_connection_info {
 	char connect_time[HDD_TIME_STRING_LEN];
 	enum phy_ch_width ch_width;
 	struct rate_info max_tx_bitrate;
+	struct element_info prev_ap_bcn_ie;
 };
 
 /* Forward declarations */
@@ -539,4 +542,12 @@ wlan_hdd_ft_set_key_delay(struct wlan_objmgr_vdev *vdev)
 }
 #endif
 
+/**
+ * hdd_convert_ch_width_to_cdp_peer_bw() - Convert ch_width to DP format
+ * @ch_width: ch_width
+ *
+ * Return: cdp_peer_bw enumeration
+ */
+enum cdp_peer_bw
+hdd_convert_ch_width_to_cdp_peer_bw(enum phy_ch_width ch_width);
 #endif

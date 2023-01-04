@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -59,6 +59,7 @@
 (DOT11F_FF_CATEGORY_LEN + DOT11F_FF_ACTION_LEN + DOT11F_FF_TRANSACTIONID_LEN)
 #define SA_QUERY_RESP_MIN_LEN \
 (DOT11F_FF_CATEGORY_LEN + DOT11F_FF_ACTION_LEN + DOT11F_FF_TRANSACTIONID_LEN)
+#define SA_QUERY_IE_OFFSET (4)
 
 static last_processed_msg rrm_link_action_frm;
 
@@ -191,8 +192,7 @@ lim_process_ext_channel_switch_action_frame(struct mac_context *mac_ctx,
 	if (!(session_entry->curr_op_freq != target_freq &&
 	      ((wlan_reg_get_channel_state_for_freq(mac_ctx->pdev, target_freq) ==
 		  CHANNEL_STATE_ENABLE) ||
-	       (wlan_reg_get_channel_state_for_freq(mac_ctx->pdev, target_freq) ==
-		  CHANNEL_STATE_DFS &&
+	       (wlan_reg_is_dfs_for_freq(mac_ctx->pdev, target_freq) &&
 		!policy_mgr_concurrent_open_sessions_running(
 			mac_ctx->psoc))))) {
 		pe_err("Channel freq: %d is not valid", target_freq);
@@ -245,10 +245,7 @@ static void __lim_process_operating_mode_action_frame(struct mac_context *mac_ct
 	uint32_t status;
 	tpDphHashNode sta_ptr;
 	uint16_t aid;
-	uint8_t oper_mode;
-	uint8_t cb_mode;
 	uint8_t ch_bw = 0;
-	uint8_t skip_opmode_update = false;
 
 	mac_hdr = WMA_GET_RX_MAC_HEADER(rx_pkt_info);
 	body_ptr = WMA_GET_RX_MPDU_DATA(rx_pkt_info);
@@ -288,91 +285,17 @@ static void __lim_process_operating_mode_action_frame(struct mac_context *mac_ct
 		goto end;
 	}
 
-	if (wlan_reg_is_24ghz_ch_freq(session->curr_op_freq))
-		cb_mode = mac_ctx->roam.configParam.channelBondingMode24GHz;
-	else
-		cb_mode = mac_ctx->roam.configParam.channelBondingMode5GHz;
-	/*
-	 * Do not update the channel bonding mode if channel bonding
-	 * mode is disabled in INI.
-	 */
-	if (WNI_CFG_CHANNEL_BONDING_MODE_DISABLE == cb_mode) {
-		pe_debug("channel bonding disabled");
-		goto update_nss;
-	}
+	lim_update_nss(mac_ctx, sta_ptr,
+		       operating_mode_frm->OperatingMode.rxNSS,
+		       session);
 
-	if (sta_ptr->htSupportedChannelWidthSet) {
-		if (WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ <
-				sta_ptr->vhtSupportedChannelWidthSet)
-			oper_mode = eHT_CHANNEL_WIDTH_160MHZ;
-		else
-			oper_mode = sta_ptr->vhtSupportedChannelWidthSet + 1;
-	} else {
-		oper_mode = eHT_CHANNEL_WIDTH_20MHZ;
-	}
-
-	if ((oper_mode == eHT_CHANNEL_WIDTH_80MHZ) &&
-			(operating_mode_frm->OperatingMode.chanWidth >
-				eHT_CHANNEL_WIDTH_80MHZ))
-		skip_opmode_update = true;
-
-	if (!skip_opmode_update && (oper_mode !=
-		operating_mode_frm->OperatingMode.chanWidth)) {
-		uint32_t fw_vht_ch_wd = wma_get_vht_ch_width();
-
-		pe_debug("received Chanwidth: %d",
-			 operating_mode_frm->OperatingMode.chanWidth);
-
-		pe_debug(" MAC: %0x:%0x:%0x:%0x:%0x:%0x",
-			mac_hdr->sa[0], mac_hdr->sa[1], mac_hdr->sa[2],
-			mac_hdr->sa[3], mac_hdr->sa[4], mac_hdr->sa[5]);
-
-		if (operating_mode_frm->OperatingMode.chanWidth >=
-				eHT_CHANNEL_WIDTH_160MHZ
-				&& (fw_vht_ch_wd >= eHT_CHANNEL_WIDTH_160MHZ)) {
-			sta_ptr->vhtSupportedChannelWidthSet =
-				WNI_CFG_VHT_CHANNEL_WIDTH_160MHZ;
-			sta_ptr->htSupportedChannelWidthSet =
-				eHT_CHANNEL_WIDTH_40MHZ;
-			ch_bw = eHT_CHANNEL_WIDTH_160MHZ;
-		} else if (operating_mode_frm->OperatingMode.chanWidth >=
-				eHT_CHANNEL_WIDTH_80MHZ) {
-			sta_ptr->vhtSupportedChannelWidthSet =
-				WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
-			sta_ptr->htSupportedChannelWidthSet =
-				eHT_CHANNEL_WIDTH_40MHZ;
-			ch_bw = eHT_CHANNEL_WIDTH_80MHZ;
-		} else if (operating_mode_frm->OperatingMode.chanWidth ==
-				eHT_CHANNEL_WIDTH_40MHZ) {
-			sta_ptr->vhtSupportedChannelWidthSet =
-				WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
-			sta_ptr->htSupportedChannelWidthSet =
-				eHT_CHANNEL_WIDTH_40MHZ;
-			ch_bw = eHT_CHANNEL_WIDTH_40MHZ;
-		} else if (operating_mode_frm->OperatingMode.chanWidth ==
-				eHT_CHANNEL_WIDTH_20MHZ) {
-			sta_ptr->vhtSupportedChannelWidthSet =
-				WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
-			sta_ptr->htSupportedChannelWidthSet =
-				eHT_CHANNEL_WIDTH_20MHZ;
-			ch_bw = eHT_CHANNEL_WIDTH_20MHZ;
-		}
-		lim_check_vht_op_mode_change(mac_ctx, session, ch_bw,
-					     mac_hdr->sa);
-	}
-
-update_nss:
-	if (sta_ptr->vhtSupportedRxNss !=
-			(operating_mode_frm->OperatingMode.rxNSS + 1)) {
-		sta_ptr->vhtSupportedRxNss =
-			operating_mode_frm->OperatingMode.rxNSS + 1;
-		lim_set_nss_change(mac_ctx, session, sta_ptr->vhtSupportedRxNss,
-			mac_hdr->sa);
-	}
-	wlan_son_deliver_opmode(session->vdev,
-				ch_bw,
-				sta_ptr->vhtSupportedRxNss,
-				mac_hdr->sa);
+	if (lim_update_channel_width(mac_ctx, sta_ptr, session,
+				 operating_mode_frm->OperatingMode.chanWidth,
+				 &ch_bw))
+		wlan_son_deliver_opmode(session->vdev,
+					ch_bw,
+					sta_ptr->vhtSupportedRxNss,
+					mac_hdr->sa);
 
 end:
 	qdf_mem_free(operating_mode_frm);
@@ -1234,8 +1157,12 @@ __lim_process_link_measurement_req(struct mac_context *mac, uint8_t *pRxPacketIn
 		pe_debug("There were warnings while unpacking a Link Measure request (0x%08x, %d bytes):",
 			nStatus, frameLen);
 	}
-	/* Call rrm function to handle the request. */
 
+	if (pe_session->sta_follows_sap_power) {
+		pe_debug("STA power has changed, reject the link measurement request");
+		return QDF_STATUS_E_FAILURE;
+	}
+	/* Call rrm function to handle the request. */
 	return rrm_process_link_measurement_request(mac, pRxPacketInfo, &frm,
 					     pe_session);
 
@@ -1286,6 +1213,48 @@ __lim_process_neighbor_report(struct mac_context *mac, uint8_t *pRxPacketInfo,
 	qdf_mem_free(pFrm);
 }
 
+static bool
+lim_check_oci_match(struct mac_context *mac, struct pe_session *pe_session,
+		    uint8_t *ie, uint8_t *peer, uint32_t ie_len)
+{
+	const uint8_t *oci_ie;
+	tDot11fIEoci self_oci, *peer_oci;
+
+	if (!lim_is_self_and_peer_ocv_capable(mac, peer, pe_session))
+		return true;
+
+	oci_ie = wlan_get_ie_ptr_from_eid(DOT11F_EID_OCI, ie, ie_len);
+	if (!oci_ie) {
+		pe_err("OCV not found OCI in SA Query frame!");
+		return false;
+	}
+
+	/* OCV enabled, check the OCI information:
+	 * Element ID           : 1 byte
+	 * Packet length        : 1 byte
+	 * Element ID extension : 1 byte
+	 * Operating class      : 1 byte
+	 * Primary channel      : 1 byte
+	 * Freq_seg_1_ch_num    : 1 byte
+	 */
+	peer_oci = (tDot11fIEoci *)&oci_ie[2];
+	lim_fill_oci_params(mac, pe_session, &self_oci);
+
+	if ((self_oci.op_class != peer_oci->op_class) ||
+	    (self_oci.prim_ch_num != peer_oci->prim_ch_num) ||
+	    (self_oci.freq_seg_1_ch_num != peer_oci->freq_seg_1_ch_num)) {
+		pe_err("OCI mismatch,self %d %d %d, peer %d %d %d",
+		       self_oci.op_class,
+		       self_oci.prim_ch_num,
+		       self_oci.freq_seg_1_ch_num,
+		       peer_oci->op_class,
+		       peer_oci->prim_ch_num,
+		       peer_oci->freq_seg_1_ch_num);
+		return false;
+	}
+
+	return true;
+}
 
 /**
  * limProcessSAQueryRequestActionFrame
@@ -1310,17 +1279,19 @@ static void __lim_process_sa_query_request_action_frame(struct mac_context *mac,
 							uint8_t *pRxPacketInfo,
 							struct pe_session *pe_session)
 {
-	tpSirMacMgmtHdr pHdr;
-	uint8_t *pBody;
+	tpSirMacMgmtHdr mac_header;
+	uint8_t *p_body;
 	uint32_t frame_len;
 	uint8_t transId[2];
+	tpDphHashNode sta_ds;
+	uint16_t aid;
 
 	/* Prima  --- Below Macro not available in prima
 	   pHdr = SIR_MAC_BD_TO_MPDUHEADER(pBd);
 	   pBody = SIR_MAC_BD_TO_MPDUDATA(pBd); */
 
-	pHdr = WMA_GET_RX_MAC_HEADER(pRxPacketInfo);
-	pBody = WMA_GET_RX_MPDU_DATA(pRxPacketInfo);
+	mac_header = WMA_GET_RX_MAC_HEADER(pRxPacketInfo);
+	p_body = WMA_GET_RX_MPDU_DATA(pRxPacketInfo);
 	frame_len = WMA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
 	if (frame_len < SA_QUERY_REQ_MIN_LEN) {
@@ -1328,7 +1299,7 @@ static void __lim_process_sa_query_request_action_frame(struct mac_context *mac,
 		return;
 	}
 	/* If this is an unprotected SA Query Request, then ignore it. */
-	if (pHdr->fc.wep == 0)
+	if (mac_header->fc.wep == 0)
 		return;
 
 	/* 11w offload is enabled then firmware should not fwd this frame */
@@ -1343,12 +1314,40 @@ static void __lim_process_sa_query_request_action_frame(struct mac_context *mac,
 	   Category       : 1 byte
 	   Action         : 1 byte
 	   Transaction ID : 2 bytes */
-	qdf_mem_copy(&transId[0], &pBody[2], 2);
+	qdf_mem_copy(&transId[0], &p_body[2], 2);
+
+	sta_ds = dph_lookup_hash_entry(mac, mac_header->sa, &aid,
+				       &pe_session->dph.dphHashTable);
+
+	if (!lim_check_oci_match(mac, pe_session,
+				 p_body + SA_QUERY_IE_OFFSET,
+				 mac_header->sa,
+				 frame_len - SA_QUERY_IE_OFFSET)) {
+		/*
+		 * In case of channel switch, last ocv frequency will be
+		 * different from current frquency.
+		 * If there is channel switch and OCI is inavlid in sa_query,
+		 * deauth STA on new channel.
+		 */
+		if (sta_ds && sta_ds->ocv_enabled &&
+		    sta_ds->last_ocv_done_freq != pe_session->curr_op_freq)
+			lim_send_deauth_mgmt_frame(mac, REASON_OCI_MISMATCH,
+						   mac_header->sa, pe_session,
+						   false);
+		return;
+	}
+
+	/*
+	 * Update the last ocv done freq when OCI is valid.
+	 * To support above algo, if it is moved to the current freq.
+	 */
+	if (sta_ds && sta_ds->ocv_enabled)
+		sta_ds->last_ocv_done_freq = pe_session->curr_op_freq;
 
 	/* Send 11w SA query response action frame */
 	if (lim_send_sa_query_response_frame(mac,
 					     transId,
-					     pHdr->sa,
+					     mac_header->sa,
 					     pe_session) != QDF_STATUS_SUCCESS) {
 		pe_err("fail to send SA query response action frame");
 		return;
@@ -1377,17 +1376,17 @@ static void __lim_process_sa_query_response_action_frame(struct mac_context *mac
 							 uint8_t *pRxPacketInfo,
 							 struct pe_session *pe_session)
 {
-	tpSirMacMgmtHdr pHdr;
+	tpSirMacMgmtHdr m_hdr;
 	uint32_t frame_len;
-	uint8_t *pBody;
+	uint8_t *p_body;
 	tpDphHashNode pSta;
 	uint16_t aid;
 	uint16_t transId;
 	uint8_t retryNum;
 
-	pHdr = WMA_GET_RX_MAC_HEADER(pRxPacketInfo);
+	m_hdr = WMA_GET_RX_MAC_HEADER(pRxPacketInfo);
 	frame_len = WMA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-	pBody = WMA_GET_RX_MPDU_DATA(pRxPacketInfo);
+	p_body = WMA_GET_RX_MPDU_DATA(pRxPacketInfo);
 	pe_debug("SA Query Response received");
 
 	if (frame_len < SA_QUERY_RESP_MIN_LEN) {
@@ -1398,8 +1397,8 @@ static void __lim_process_sa_query_response_action_frame(struct mac_context *mac
 	 * Forward to SME to HDD to wpa_supplicant.
 	 */
 	if (LIM_IS_STA_ROLE(pe_session)) {
-		lim_send_sme_mgmt_frame_ind(mac, pHdr->fc.subType,
-					    (uint8_t *)pHdr,
+		lim_send_sme_mgmt_frame_ind(mac, m_hdr->fc.subType,
+					    (uint8_t *)m_hdr,
 					    frame_len + sizeof(tSirMacMgmtHdr),
 					    0,
 					    WMA_GET_RX_FREQ(pRxPacketInfo),
@@ -1410,18 +1409,18 @@ static void __lim_process_sa_query_response_action_frame(struct mac_context *mac
 	}
 
 	/* If this is an unprotected SA Query Response, then ignore it. */
-	if (pHdr->fc.wep == 0)
+	if (m_hdr->fc.wep == 0)
 		return;
 
 	pSta =
-		dph_lookup_hash_entry(mac, pHdr->sa, &aid,
+		dph_lookup_hash_entry(mac, m_hdr->sa, &aid,
 				      &pe_session->dph.dphHashTable);
 	if (!pSta)
 		return;
 
 	pe_debug("SA Query Response source addr:  %0x:%0x:%0x:%0x:%0x:%0x",
-		pHdr->sa[0], pHdr->sa[1], pHdr->sa[2], pHdr->sa[3],
-		pHdr->sa[4], pHdr->sa[5]);
+		 m_hdr->sa[0], m_hdr->sa[1], m_hdr->sa[2], m_hdr->sa[3],
+		 m_hdr->sa[4], m_hdr->sa[5]);
 	pe_debug("SA Query state for station: %d", pSta->pmfSaQueryState);
 
 	if (DPH_SA_QUERY_IN_PROGRESS != pSta->pmfSaQueryState)
@@ -1432,13 +1431,19 @@ static void __lim_process_sa_query_response_action_frame(struct mac_context *mac
 	   Category       : 1 byte
 	   Action         : 1 byte
 	   Transaction ID : 2 bytes */
-	qdf_mem_copy(&transId, &pBody[2], 2);
+	qdf_mem_copy(&transId, &p_body[2], 2);
 
 	/* If SA Query is in progress with the station and the station
 	   responds then the association request that triggered the SA
 	   query is from a rogue station, just go back to initial state. */
 	for (retryNum = 0; retryNum <= pSta->pmfSaQueryRetryCount; retryNum++)
 		if (transId == pSta->pmfSaQueryStartTransId + retryNum) {
+			if (!lim_check_oci_match(mac, pe_session,
+						 p_body + SA_QUERY_IE_OFFSET,
+						 m_hdr->sa,
+						 frame_len -
+						 SA_QUERY_IE_OFFSET))
+				return;
 			pe_debug("Found matching SA Query Request - transaction ID: %d",
 				transId);
 			tx_timer_deactivate(&pSta->pmfSaQueryTimer);
@@ -1512,6 +1517,8 @@ static void lim_process_addba_req(struct mac_context *mac_ctx, uint8_t *rx_pkt_i
 	tpDphHashNode sta_ds;
 	uint16_t aid, buff_size;
 	bool he_cap = false;
+	bool eht_cap = false;
+	uint8_t extd_buff_size = 0;
 
 	mac_hdr = WMA_GET_RX_MAC_HEADER(rx_pkt_info);
 	body_ptr = WMA_GET_RX_MPDU_DATA(rx_pkt_info);
@@ -1540,10 +1547,14 @@ static void lim_process_addba_req(struct mac_context *mac_ctx, uint8_t *rx_pkt_i
 				       &session->dph.dphHashTable);
 	if (sta_ds && lim_is_session_he_capable(session))
 		he_cap = lim_is_sta_he_capable(sta_ds);
+	if (sta_ds && lim_is_session_eht_capable(session))
+		eht_cap = lim_is_sta_eht_capable(sta_ds);
 	if (sta_ds && sta_ds->staType == STA_ENTRY_NDI_PEER)
 		he_cap = lim_is_session_he_capable(session);
 
-	if (he_cap)
+	if (eht_cap)
+		buff_size = MAX_EHT_BA_BUFF_SIZE;
+	else if (he_cap)
 		buff_size = MAX_BA_BUFF_SIZE;
 	else
 		buff_size = SIR_MAC_BA_DEFAULT_BUFF_SIZE;
@@ -1551,15 +1562,22 @@ static void lim_process_addba_req(struct mac_context *mac_ctx, uint8_t *rx_pkt_i
 	if (mac_ctx->usr_cfg_ba_buff_size)
 		buff_size = mac_ctx->usr_cfg_ba_buff_size;
 
+	if (addba_req->addba_extn_element.present)
+		/* addba_extn_element should be updated per 11be spec */
+		extd_buff_size = addba_req->addba_extn_element.reserved >> 2;
+
 	if (addba_req->addba_param_set.buff_size)
 		buff_size = QDF_MIN(buff_size,
 				    addba_req->addba_param_set.buff_size);
+	else if (extd_buff_size)
+		/* limit the buff size */
+		buff_size = QDF_MIN(buff_size, MAX_EHT_BA_BUFF_SIZE);
 
-	pe_debug("token %d tid %d timeout %d buff_size in frame %d buf_size calculated %d ssn %d",
+	pe_debug("token %d tid %d timeout %d buff_size in frame %d buf_size calculated %d ssn %d, extd buff size %d",
 		 addba_req->DialogToken.token, addba_req->addba_param_set.tid,
 		 addba_req->ba_timeout.timeout,
 		 addba_req->addba_param_set.buff_size, buff_size,
-		 addba_req->ba_start_seq_ctrl.ssn);
+		 addba_req->ba_start_seq_ctrl.ssn, extd_buff_size);
 
 	qdf_status = cdp_addba_requestprocess(
 					soc, mac_hdr->sa,
@@ -1618,7 +1636,7 @@ static void lim_process_delba_req(struct mac_context *mac_ctx, uint8_t *rx_pkt_i
 	body_ptr = WMA_GET_RX_MPDU_DATA(rx_pkt_info);
 	frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
 
-	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_PE, QDF_TRACE_LEVEL_INFO,
+	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_PE, QDF_TRACE_LEVEL_DEBUG,
 			   body_ptr, frame_len);
 
 	delba_req = qdf_mem_malloc(sizeof(*delba_req));
@@ -1642,7 +1660,7 @@ static void lim_process_delba_req(struct mac_context *mac_ctx, uint8_t *rx_pkt_i
 			delba_req->delba_param_set.tid, delba_req->Reason.code);
 
 	if (QDF_STATUS_SUCCESS != qdf_status)
-		pe_err("Failed to process delba request");
+		pe_err_rl("Failed to process delba request");
 
 error:
 	qdf_mem_free(delba_req);

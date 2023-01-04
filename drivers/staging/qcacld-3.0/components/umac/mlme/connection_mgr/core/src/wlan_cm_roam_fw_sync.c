@@ -332,7 +332,7 @@ cm_populate_connect_ies(struct roam_offload_synch_ind *roam_synch_data,
 		qdf_mem_copy(connect_ies->assoc_req.ptr, reassoc_req_ptr,
 			     connect_ies->assoc_req.len);
 	}
-	rsp->connect_rsp.is_ft = roam_synch_data->is_ft_im_roam;
+	rsp->connect_rsp.is_assoc = roam_synch_data->is_assoc;
 
 	cm_fill_fils_ie(connect_ies, roam_synch_data);
 
@@ -836,7 +836,6 @@ cm_fw_roam_sync_propagation(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 	}
 
 	cm_process_roam_keys(vdev, rsp, cm_id);
-	mlme_cm_osif_connect_complete(vdev, connect_rsp);
 
 	/**
 	 * Don't send roam_sync complete for MLO link vdevs.
@@ -874,6 +873,7 @@ cm_fw_roam_sync_propagation(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 			 CM_PREFIX_REF(vdev_id, cm_id));
 		goto error;
 	}
+	mlme_cm_osif_connect_complete(vdev, connect_rsp);
 	mlme_cm_osif_roam_complete(vdev);
 	mlme_debug(CM_PREFIX_FMT, CM_PREFIX_REF(vdev_id, cm_id));
 	if (!wlan_vdev_mlme_is_mlo_link_vdev(vdev))
@@ -952,7 +952,11 @@ QDF_STATUS cm_fw_roam_complete(struct cnx_mgr *cm_ctx, void *data)
 		roam_synch_data->hw_mode_trans_ind.vdev_mac_map,
 		0, NULL, psoc);
 
-	cm_check_and_set_sae_single_pmk_cap(psoc, vdev_id);
+	if (roam_synch_data->pmk_len)
+		cm_check_and_set_sae_single_pmk_cap(psoc, vdev_id,
+						    roam_synch_data->pmk,
+						    roam_synch_data->pmk_len);
+
 	cm_csr_send_set_ie(cm_ctx->vdev);
 
 	if (ucfg_pkt_capture_get_pktcap_mode(psoc))
@@ -1012,6 +1016,7 @@ QDF_STATUS cm_fw_roam_invoke_fail(struct wlan_objmgr_psoc *psoc,
 	enum wlan_cm_source source;
 	struct cnx_mgr *cm_ctx;
 	struct cm_roam_req *roam_req = NULL;
+	struct qdf_mac_addr bssid;
 
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc,
 						    vdev_id,
@@ -1037,6 +1042,7 @@ QDF_STATUS cm_fw_roam_invoke_fail(struct wlan_objmgr_psoc *psoc,
 
 	cm_id = roam_req->cm_id;
 	source = roam_req->req.source;
+	bssid = roam_req->req.bssid;
 
 	status = cm_sm_deliver_event(vdev, WLAN_CM_SM_EV_ROAM_INVOKE_FAIL,
 				     sizeof(wlan_cm_id), &cm_id);
@@ -1051,7 +1057,7 @@ QDF_STATUS cm_fw_roam_invoke_fail(struct wlan_objmgr_psoc *psoc,
 	 * highest score. It is requirement from customer which can avoid
 	 * ping-pong roaming.
 	 */
-	if (qdf_is_macaddr_broadcast(&roam_req->req.bssid))
+	if (qdf_is_macaddr_broadcast(&bssid))
 		mlme_debug("Keep current connection");
 	else if (source == CM_ROAMING_HOST || source == CM_ROAMING_NUD_FAILURE)
 		status = mlo_disconnect(vdev, CM_ROAM_DISCONNECT,

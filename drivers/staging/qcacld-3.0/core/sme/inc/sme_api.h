@@ -582,6 +582,44 @@ QDF_STATUS sme_roam_disconnect_sta(mac_handle_t mac_handle, uint8_t sessionId,
 QDF_STATUS sme_roam_deauth_sta(mac_handle_t mac_handle, uint8_t sessionId,
 		struct csr_del_sta_params *pDelStaParams);
 
+#ifdef MULTI_CLIENT_LL_SUPPORT
+/**
+ * sme_multi_client_ll_rsp_register_callback() - Register multi client low
+ * latency callback
+ * @mac_handle: Opaque handle to the MAC context
+ * @latency_level_event_handler_cb: Function to be invoked for low latency
+ * event
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS sme_multi_client_ll_rsp_register_callback(mac_handle_t mac_handle,
+				void (*latency_level_event_handler_cb)
+				(const struct latency_level_data *event_data,
+				 uint8_t vdev_id));
+
+/**
+ * sme_multi_client_ll_rsp_deregister_callback() - De Register multi client
+ * low latency callback
+ * @mac_handle: Opaque handle to the MAC context
+ *
+ * Return: void
+ */
+void sme_multi_client_ll_rsp_deregister_callback(mac_handle_t mac_handle);
+#else
+static inline QDF_STATUS
+sme_multi_client_ll_rsp_register_callback(mac_handle_t mac_handle,
+				void (*latency_level_event_handler_cb)
+				(const void *event_data,
+				 uint8_t vdev_id))
+{
+	return QDF_STATUS_E_FAILURE;
+}
+
+static inline
+void sme_multi_client_ll_rsp_deregister_callback(mac_handle_t mac_handle)
+{}
+#endif
+
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 /**
  * sme_set_roam_scan_ch_event_cb() - Register roam scan ch callback
@@ -1228,16 +1266,20 @@ QDF_STATUS sme_send_rate_update_ind(mac_handle_t mac_handle,
 void sme_get_command_q_status(mac_handle_t mac_handle);
 
 /**
- * sme_set_wlm_latency_level_ind() - Used to set the latency level to fw
- * @mac_handle
- * @session_id
- * @latency_level
+ * sme_set_wlm_latency_level() - Used to set the latency level to fw
+ * @mac_handle: mac handle
+ * @vdev_id: vdev id
+ * @latency_level: latency level to be set in FW
+ * @client_id_bitmap: client id bitmap
+ * @force_reset: flag to reset latency level
  *
  * Return QDF_STATUS
  */
 QDF_STATUS sme_set_wlm_latency_level(mac_handle_t mac_handle,
-				     uint16_t session_id,
-				     uint16_t latency_level);
+				uint16_t vdev_id, uint16_t latency_level,
+				uint32_t client_id_bitmap,
+				bool force_reset);
+
 /*
  * SME API to enable/disable idle mode powersave
  * This should be called only if powersave offload
@@ -4360,21 +4402,6 @@ QDF_STATUS sme_get_ani_level(mac_handle_t mac_handle, uint32_t *freqs,
 			     void *context), void *context);
 #endif /* FEATURE_ANI_LEVEL_REQUEST */
 
-/**
- * sme_get_prev_connected_bss_ies() - Get the previous connected AP IEs
- * @mac_handle: The handle returned by mac_open.
- * @vdev_id: vdev id
- * @ies: IEs of the disconnected AP. Currently to carry beacon IEs.
- * @ie_len: Length of the @ies
- *
- * This API extracts the IEs from the previous connected AP info and update
- * them to the ies and ie_len.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS sme_get_prev_connected_bss_ies(mac_handle_t mac_handle,
-					  uint8_t vdev_id,
-					  uint8_t **ies, uint32_t *ie_len);
 /*
  * sme_vdev_self_peer_delete_resp() - Response for self peer delete
  * @del_vdev_params: parameters for which vdev self peer has been deleted

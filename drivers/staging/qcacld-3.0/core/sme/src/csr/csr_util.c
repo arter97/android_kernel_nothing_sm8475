@@ -721,7 +721,7 @@ uint16_t csr_check_concurrent_channel_overlap(struct mac_context *mac_ctx,
 			status =
 				policy_mgr_get_sap_mandatory_channel(
 					mac_ctx->psoc, sap_ch_freq,
-					&intf_ch_freq);
+					&intf_ch_freq, vdev_id);
 			if (QDF_IS_STATUS_ERROR(status))
 				sme_err("no mandatory channel");
 		}
@@ -1236,6 +1236,11 @@ QDF_STATUS csr_set_modify_profile_fields(struct mac_context *mac,
 {
 	struct csr_roam_session *pSession = CSR_GET_SESSION(mac, sessionId);
 
+	if (!pSession) {
+		sme_err("Session_id invalid %d", sessionId);
+		return QDF_STATUS_E_INVAL;
+	}
+
 	qdf_mem_copy(&pSession->modifyProfileFields,
 		     pModifyProfileFields, sizeof(tCsrRoamModifyProfileFields));
 
@@ -1418,6 +1423,7 @@ enum csr_cfgdot11mode csr_phy_mode_to_dot11mode(enum wlan_phymode phy_mode)
 	case WLAN_PHYMODE_11BEA_EHT80:
 	case WLAN_PHYMODE_11BEG_EHT80:
 	case WLAN_PHYMODE_11BEA_EHT160:
+	case WLAN_PHYMODE_11BEA_EHT320:
 		return eCSR_CFG_DOT11_MODE_11BE;
 #endif
 	default:

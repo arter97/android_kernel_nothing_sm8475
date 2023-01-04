@@ -952,6 +952,21 @@ ucfg_mlme_set_fast_roam_in_concurrency_enabled(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef MULTI_CLIENT_LL_SUPPORT
+bool ucfg_mlme_get_wlm_multi_client_ll_caps(struct wlan_objmgr_psoc *psoc)
+{
+	return wlan_mlme_get_wlm_multi_client_ll_caps(psoc);
+}
+
+QDF_STATUS
+ucfg_mlme_cfg_get_multi_client_ll_ini_support(struct wlan_objmgr_psoc *psoc,
+					      bool *multi_client_ll_support)
+{
+	return mlme_get_cfg_multi_client_ll_ini_support(psoc,
+						multi_client_ll_support);
+}
+#endif
+
 #ifdef FEATURE_WLAN_ESE
 QDF_STATUS
 ucfg_mlme_is_ese_enabled(struct wlan_objmgr_psoc *psoc, bool *val)
@@ -1710,3 +1725,31 @@ bool ucfg_mlme_get_coex_unsafe_chan_reg_disable(
 	return mlme_obj->cfg.reg.coex_unsafe_chan_reg_disable;
 }
 #endif
+
+enum wlan_phymode
+ucfg_mlme_get_vdev_phy_mode(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
+{
+	struct wlan_objmgr_vdev *vdev;
+	struct vdev_mlme_obj *mlme_obj;
+	enum wlan_phymode phymode;
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_MLME_OBJMGR_ID);
+	if (!vdev) {
+		mlme_err("get vdev failed for vdev_id: %d", vdev_id);
+		return WLAN_PHYMODE_AUTO;
+	}
+
+	mlme_obj = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!mlme_obj) {
+		mlme_err("failed to get mlme_obj vdev_id: %d", vdev_id);
+		phymode = WLAN_PHYMODE_AUTO;
+		goto done;
+	}
+	phymode = mlme_obj->mgmt.generic.phy_mode;
+
+done:
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
+
+	return phymode;
+}

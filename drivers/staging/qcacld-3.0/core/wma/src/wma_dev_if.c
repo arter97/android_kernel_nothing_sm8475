@@ -348,7 +348,8 @@ static struct wma_target_req *wma_find_remove_req_msgtype(tp_wma_handle wma,
 	if (QDF_STATUS_SUCCESS != qdf_list_peek_front(&wma->wma_hold_req_queue,
 						      &node2)) {
 		qdf_spin_unlock_bh(&wma->wma_hold_req_q_lock);
-		wma_err("unable to get msg node from request queue");
+		wma_debug("unable to get msg node from request queue for vdev_id %d type %d",
+			  vdev_id, msg_type);
 		return NULL;
 	}
 
@@ -365,7 +366,7 @@ static struct wma_target_req *wma_find_remove_req_msgtype(tp_wma_handle wma,
 		if (QDF_STATUS_SUCCESS != status) {
 			qdf_spin_unlock_bh(&wma->wma_hold_req_q_lock);
 			wma_debug("Failed to remove request. vdev_id %d type %d",
-				 vdev_id, msg_type);
+				  vdev_id, msg_type);
 			return NULL;
 		}
 		break;
@@ -375,13 +376,13 @@ static struct wma_target_req *wma_find_remove_req_msgtype(tp_wma_handle wma,
 
 	qdf_spin_unlock_bh(&wma->wma_hold_req_q_lock);
 	if (!found) {
-		wma_err("target request not found for vdev_id %d type %d",
-			 vdev_id, msg_type);
+		wma_debug("target request not found for vdev_id %d type %d",
+			  vdev_id, msg_type);
 		return NULL;
 	}
 
 	wma_debug("target request found for vdev id: %d type %d",
-		 vdev_id, msg_type);
+		  vdev_id, msg_type);
 
 	return req_msg;
 }
@@ -1915,7 +1916,7 @@ QDF_STATUS wma_add_peer(tp_wma_handle wma,
 	if (peer_type == WMI_PEER_TYPE_TDLS)
 		cdp_peer_set_peer_as_tdls(dp_soc, vdev_id, peer_addr, true);
 
-	if (MLME_IS_ROAM_SYNCH_IN_PROGRESS(wma->psoc, vdev_id) ||
+	if (wlan_cm_is_roam_sync_in_progress(wma->psoc, vdev_id) ||
 	    MLME_IS_MLO_ROAM_SYNCH_IN_PROGRESS(wma->psoc, vdev_id)) {
 		wma_debug("LFR3: Created peer "QDF_MAC_ADDR_FMT" vdev_id %d, peer_count %d",
 			 QDF_MAC_ADDR_REF(peer_addr), vdev_id,
@@ -1994,7 +1995,7 @@ static void wma_cdp_peer_setup(tp_wma_handle wma,
 	    wlan_vdev_mlme_get_is_mlo_link(wma->psoc, vdev_id)) {
 		peer_info.is_first_link = 1;
 		peer_info.is_primary_link = 0;
-	} else if (MLME_IS_ROAM_SYNCH_IN_PROGRESS(wma->psoc, vdev_id) &&
+	} else if (wlan_cm_is_roam_sync_in_progress(wma->psoc, vdev_id) &&
 		   wlan_vdev_mlme_get_is_mlo_vdev(wma->psoc, vdev_id)) {
 		peer_info.is_first_link = 0;
 		peer_info.is_primary_link = 1;
@@ -2667,6 +2668,155 @@ QDF_STATUS wma_vdev_self_peer_create(struct vdev_mlme_obj *vdev_mlme)
 	return status;
 }
 
+#ifdef MULTI_CLIENT_LL_SUPPORT
+/**
+ * wma_set_vdev_latency_level_param() - Set per vdev latency level params in FW
+ * @wma_handle: wma handle
+ * @mac: mac context
+ * @vdev_id: vdev id
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS wma_set_vdev_latency_level_param(tp_wma_handle wma_handle,
+						   struct mac_context *mac,
+						   uint8_t vdev_id)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	bool multi_client_ll_ini_support, multi_client_ll_caps;
+	uint32_t latency_flags;
+	static uint32_t ll[4] = {100, 60, 40, 20};
+	uint32_t ul_latency, dl_latency, ul_dl_latency;
+	uint8_t default_latency_level;
+
+	multi_client_ll_ini_support =
+			mac->mlme_cfg->wlm_config.multi_client_ll_support;
+	multi_client_ll_caps =
+			wlan_mlme_get_wlm_multi_client_ll_caps(mac->psoc);
+	wma_debug("INI support: %d, fw capability:%d",
+		  multi_client_ll_ini_support, multi_client_ll_caps);
+	/*
+	 * Multi-Client arbiter functionality is enabled only if both INI is
+	 * set, and Service bit is configured.
+	 */
+	if (!(multi_client_ll_ini_support && multi_client_ll_caps))
+		return status;
+
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_MULTI_CLIENT_LL_FEATURE_CONFIGURATION,
+			multi_client_ll_ini_support);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure low latency feature");
+		return status;
+	}
+
+	/* wlm latency level index:0 - normal, 1 - xr, 2 - low, 3 - ultralow */
+	wma_debug("Setting vdev params for latency level flags");
+
+	latency_flags = mac->mlme_cfg->wlm_config.latency_flags[0];
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_NORMAL_LATENCY_FLAGS_CONFIGURATION,
+			latency_flags);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure normal latency flag");
+		return status;
+	}
+
+	latency_flags = mac->mlme_cfg->wlm_config.latency_flags[1];
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_XR_LATENCY_FLAGS_CONFIGURATION,
+			latency_flags);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure xr latency flag");
+		return status;
+	}
+
+	latency_flags = mac->mlme_cfg->wlm_config.latency_flags[2];
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_LOW_LATENCY_FLAGS_CONFIGURATION,
+			latency_flags);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure low latency flag");
+		return status;
+	}
+
+	latency_flags = mac->mlme_cfg->wlm_config.latency_flags[3];
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_ULTRA_LOW_LATENCY_FLAGS_CONFIGURATION,
+			latency_flags);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure ultra low latency flag");
+		return status;
+	}
+
+	wma_debug("Setting vdev params for Latency level UL/DL flags");
+	/*
+	 * Latency level UL/DL
+	 * 0-15 bits: UL and 16-31 bits: DL
+	 */
+	dl_latency = ll[0];
+	ul_latency = ll[0];
+	ul_dl_latency = dl_latency << 16 | ul_latency;
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_NORMAL_LATENCY_UL_DL_CONFIGURATION,
+			ul_dl_latency);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure normal latency ul dl flag");
+		return status;
+	}
+
+	dl_latency = ll[1];
+	ul_latency = ll[1];
+	ul_dl_latency = dl_latency << 16 | ul_latency;
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_XR_LATENCY_UL_DL_CONFIGURATION,
+			ul_dl_latency);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure normal latency ul dl flag");
+		return status;
+	}
+
+	dl_latency = ll[2];
+	ul_latency = ll[2];
+	ul_dl_latency = dl_latency << 16 | ul_latency;
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_LOW_LATENCY_UL_DL_CONFIGURATION,
+			ul_dl_latency);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure normal latency ul dl flag");
+		return status;
+	}
+
+	dl_latency = ll[3];
+	ul_latency = ll[3];
+	ul_dl_latency = dl_latency << 16 | ul_latency;
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_ULTRA_LOW_LATENCY_UL_DL_CONFIGURATION,
+			ul_dl_latency);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure normal latency ul dl flag");
+		return status;
+	}
+
+	default_latency_level = mac->mlme_cfg->wlm_config.latency_level;
+	status  = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
+			WMI_VDEV_PARAM_DEFAULT_LATENCY_LEVEL_CONFIGURATION,
+			default_latency_level);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wma_err("failed to configure low latency feature");
+		return status;
+	}
+
+	return status;
+}
+#else
+static QDF_STATUS wma_set_vdev_latency_level_param(tp_wma_handle wma_handle,
+						   struct mac_context *mac,
+						   uint8_t vdev_id)
+{
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
 QDF_STATUS wma_post_vdev_create_setup(struct wlan_objmgr_vdev *vdev)
 {
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
@@ -2902,6 +3052,10 @@ QDF_STATUS wma_post_vdev_create_setup(struct wlan_objmgr_vdev *vdev)
 		if (QDF_IS_STATUS_ERROR(ret))
 			wma_err("Failed to configure active APF mode");
 	}
+
+	if (vdev_mlme->mgmt.generic.type == WMI_VDEV_TYPE_STA &&
+	    vdev_mlme->mgmt.generic.subtype == 0)
+		wma_set_vdev_latency_level_param(wma_handle, mac, vdev_id);
 
 	wma_vdev_set_data_tx_callback(vdev);
 
@@ -4412,7 +4566,7 @@ static void wma_add_sta_req_ap_mode(tp_wma_handle wma, tpAddStaParams add_sta)
 		  QDF_MAC_ADDR_REF(add_sta->staMac), state);
 	cdp_peer_state_update(soc, add_sta->staMac, state);
 
-	add_sta->nss    = iface->nss;
+	add_sta->nss    = wma_objmgr_get_peer_mlme_nss(wma, add_sta->staMac);
 	add_sta->status = QDF_STATUS_SUCCESS;
 send_rsp:
 	/* Do not send add stat resp when peer assoc cnf is enabled */
@@ -4656,8 +4810,8 @@ static void wma_add_sta_req_sta_mode(tp_wma_handle wma, tpAddStaParams params)
 					      OL_TXRX_PEER_STATE_CONN);
 		}
 
-		if (MLME_IS_ROAM_SYNCH_IN_PROGRESS(wma->psoc,
-						   params->smesessionId) ||
+		if (wlan_cm_is_roam_sync_in_progress(wma->psoc,
+						     params->smesessionId) ||
 		    MLME_IS_MLO_ROAM_SYNCH_IN_PROGRESS(wma->psoc,
 						       params->smesessionId)) {
 			/* iface->nss = params->nss; */
@@ -4855,7 +5009,8 @@ out:
 		  QDF_MAC_ADDR_REF(params->bssId), params->status);
 
 	/* Don't send a response during roam sync operation */
-	if (!MLME_IS_ROAM_SYNCH_IN_PROGRESS(wma->psoc, params->smesessionId) &&
+	if (!wlan_cm_is_roam_sync_in_progress(wma->psoc,
+					      params->smesessionId) &&
 	    !MLME_IS_MLO_ROAM_SYNCH_IN_PROGRESS(wma->psoc,
 						params->smesessionId))
 		wma_send_msg_high_priority(wma, WMA_ADD_STA_RSP,
@@ -5156,6 +5311,7 @@ void wma_add_sta(tp_wma_handle wma, tpAddStaParams add_sta)
 	uint8_t oper_mode = BSS_OPERATIONAL_MODE_STA;
 	void *htc_handle;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	uint8_t vdev_id = add_sta->smesessionId;
 
 	htc_handle = lmac_get_htc_hdl(wma->psoc);
 	if (!htc_handle) {
@@ -5163,13 +5319,13 @@ void wma_add_sta(tp_wma_handle wma, tpAddStaParams add_sta)
 		return;
 	}
 
-	wma_debug("Vdev %d BSSID "QDF_MAC_ADDR_FMT, add_sta->smesessionId,
+	wma_debug("Vdev %d BSSID "QDF_MAC_ADDR_FMT, vdev_id,
 		  QDF_MAC_ADDR_REF(add_sta->bssId));
 
-	if (wma_is_vdev_in_ap_mode(wma, add_sta->smesessionId))
+	if (wma_is_vdev_in_ap_mode(wma, vdev_id))
 		oper_mode = BSS_OPERATIONAL_MODE_AP;
 
-	if (WMA_IS_VDEV_IN_NDI_MODE(wma->interfaces, add_sta->smesessionId))
+	if (WMA_IS_VDEV_IN_NDI_MODE(wma->interfaces, vdev_id))
 		oper_mode = BSS_OPERATIONAL_MODE_NDI;
 	switch (oper_mode) {
 	case BSS_OPERATIONAL_MODE_STA:
@@ -5180,12 +5336,17 @@ void wma_add_sta(tp_wma_handle wma, tpAddStaParams add_sta)
 		wma_add_sta_req_ap_mode(wma, add_sta);
 		break;
 	case BSS_OPERATIONAL_MODE_NDI:
-		status = wma_add_sta_ndi_mode(wma, add_sta);
+		wma_add_sta_ndi_mode(wma, add_sta);
 		break;
 	}
 
+	/*
+	 * not use add_sta after this to avoid use after free
+	 * as it maybe freed.
+	 */
+
 	/* handle wow for sap with 1 or more peer in same way */
-	if (wma_is_vdev_in_sap_mode(wma, add_sta->smesessionId)) {
+	if (wma_is_vdev_in_sap_mode(wma, vdev_id)) {
 		bool is_bus_suspend_allowed_in_sap_mode =
 			(wlan_pmo_get_sap_mode_bus_suspend(wma->psoc) &&
 				wmi_service_enabled(wma->wmi_handle,
@@ -5194,7 +5355,7 @@ void wma_add_sta(tp_wma_handle wma, tpAddStaParams add_sta)
 			htc_vote_link_up(htc_handle, HTC_LINK_VOTE_SAP_USER_ID);
 			wmi_info("sap d0 wow");
 		} else {
-			wmi_info("sap d3 wow");
+			wmi_debug("sap d3 wow");
 			wma_sap_d3_wow_client_connect(wma);
 		}
 		wma_sap_prevent_runtime_pm(wma);
@@ -5203,7 +5364,7 @@ void wma_add_sta(tp_wma_handle wma, tpAddStaParams add_sta)
 	}
 
 	/* handle wow for p2pgo with 1 or more peer in same way */
-	if (wma_is_vdev_in_go_mode(wma, add_sta->smesessionId)) {
+	if (wma_is_vdev_in_go_mode(wma, vdev_id)) {
 		bool is_bus_suspend_allowed_in_go_mode =
 			(wlan_pmo_get_go_mode_bus_suspend(wma->psoc) &&
 				wmi_service_enabled(wma->wmi_handle,
@@ -5255,7 +5416,7 @@ void wma_delete_sta(tp_wma_handle wma, tpDeleteStaParams del_sta)
 
 	switch (oper_mode) {
 	case BSS_OPERATIONAL_MODE_STA:
-		if (MLME_IS_ROAM_SYNCH_IN_PROGRESS(wma->psoc, vdev_id) ||
+		if (wlan_cm_is_roam_sync_in_progress(wma->psoc, vdev_id) ||
 		    MLME_IS_MLO_ROAM_SYNCH_IN_PROGRESS(wma->psoc, vdev_id)) {
 			wma_debug("LFR3: Del STA on vdev_id %d", vdev_id);
 			qdf_mem_free(del_sta);
@@ -5296,7 +5457,7 @@ void wma_delete_sta(tp_wma_handle wma, tpDeleteStaParams del_sta)
 					   HTC_LINK_VOTE_SAP_USER_ID);
 			wmi_info("sap d0 wow");
 		} else {
-			wmi_info("sap d3 wow");
+			wmi_debug("sap d3 wow");
 			wma_sap_d3_wow_client_disconnect(wma);
 		}
 		wma_sap_allow_runtime_pm(wma);
@@ -5534,7 +5695,7 @@ void wma_delete_bss(tp_wma_handle wma, uint8_t vdev_id)
 		qdf_mem_free(roam_scan_stats_req);
 	}
 
-	if (MLME_IS_ROAM_SYNCH_IN_PROGRESS(wma->psoc, vdev_id) ||
+	if (wlan_cm_is_roam_sync_in_progress(wma->psoc, vdev_id) ||
 	    MLME_IS_MLO_ROAM_SYNCH_IN_PROGRESS(wma->psoc, vdev_id)) {
 		roam_synch_in_progress = true;
 		wma_debug("LFR3: Setting vdev_up to FALSE for vdev:%d",
@@ -5731,7 +5892,7 @@ QDF_STATUS wma_set_wlm_latency_level(void *wma_ptr,
 	QDF_STATUS ret;
 	tp_wma_handle wma = (tp_wma_handle)wma_ptr;
 
-	wma_debug("set latency level %d, flags flag 0x%x",
+	wma_debug("set latency level %d, fw wlm_latency_flags 0x%x",
 		 latency_params->wlm_latency_level,
 		 latency_params->wlm_latency_flags);
 

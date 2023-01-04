@@ -508,10 +508,11 @@ is_wlansap_cac_required_for_chan(struct mac_context *mac_ctx,
 				CHANNEL_STATE_DFS)
 			is_ch_dfs = true;
 	} else {
-		if (wlan_reg_get_channel_state_for_freq(
-						mac_ctx->pdev,
-						chan_freq) ==
-		    CHANNEL_STATE_DFS)
+		/* Indoor channels are also marked DFS, therefore
+		 * check if the channel has REGULATORY_CHAN_RADAR
+		 * channel flag to identify if the channel is DFS
+		 */
+		if (wlan_reg_is_dfs_for_freq(mac_ctx->pdev, chan_freq))
 			is_ch_dfs = true;
 	}
 	if (WLAN_REG_IS_6GHZ_CHAN_FREQ(chan_freq))
@@ -978,20 +979,6 @@ static bool sap_process_liberal_scc_for_go(struct sap_context *sap_context)
 }
 #endif
 
-#ifdef FEATURE_WLAN_CH_AVOID_EXT
-static inline
-uint32_t sap_get_restriction_mask(struct sap_context *sap_context)
-{
-	return sap_context->restriction_mask;
-}
-#else
-static inline
-uint32_t sap_get_restriction_mask(struct sap_context *sap_context)
-{
-	return -EINVAL;
-}
-#endif
-
 QDF_STATUS
 sap_validate_chan(struct sap_context *sap_context,
 		  bool pre_start_bss,
@@ -1139,8 +1126,7 @@ validation_done:
 		  sap_context->chan_freq);
 
 	if (!policy_mgr_is_safe_channel(mac_ctx->psoc,
-					sap_context->chan_freq) &&
-	   (sap_get_restriction_mask(sap_context) & BIT(NL80211_IFTYPE_AP))) {
+					sap_context->chan_freq)) {
 		sap_warn("Abort SAP start due to unsafe channel");
 		return QDF_STATUS_E_ABORTED;
 	}
@@ -1177,7 +1163,7 @@ QDF_STATUS sap_channel_sel(struct sap_context *sap_context)
 	struct mac_context *mac_ctx;
 	struct scan_start_request *req;
 	struct wlan_objmgr_vdev *vdev = NULL;
-	uint8_t i;
+	uint8_t i, j;
 	uint32_t *freq_list = NULL;
 	uint8_t num_of_channels = 0;
 	mac_handle_t mac_handle;
@@ -1238,7 +1224,7 @@ QDF_STATUS sap_channel_sel(struct sap_context *sap_context)
 		}
 
 		sap_get_freq_list(sap_context, &freq_list, &num_of_channels);
-		if (!num_of_channels) {
+		if (!num_of_channels || !freq_list) {
 			sap_err("No freq sutiable for SAP in current list, SAP failed");
 			return QDF_STATUS_E_FAILURE;
 		}
@@ -1269,10 +1255,13 @@ QDF_STATUS sap_channel_sel(struct sap_context *sap_context)
 		req->scan_req.scan_req_id = sap_context->req_id;
 		req->scan_req.scan_priority = SCAN_PRIORITY_HIGH;
 		req->scan_req.scan_f_bcast_probe = true;
-
-		req->scan_req.chan_list.num_chan = num_of_channels;
-		for (i = 0; i < num_of_channels; i++)
-			req->scan_req.chan_list.chan[i].freq = freq_list[i];
+		for (i = 0, j = 0; i < num_of_channels; i++) {
+			if (wlan_reg_is_6ghz_chan_freq(freq_list[i]) &&
+			    !wlan_reg_is_6ghz_psc_chan_freq(freq_list[i]))
+				continue;
+			req->scan_req.chan_list.chan[j++].freq = freq_list[i];
+		}
+		req->scan_req.chan_list.num_chan = j;
 		sap_context->freq_list = freq_list;
 		sap_context->num_of_channel = num_of_channels;
 		/* Set requestType to Full scan */
@@ -2059,7 +2048,7 @@ QDF_STATUS sap_signal_hdd_event(struct sap_context *sap_ctx,
 		bss_complete->status = (eSapStatus) context;
 		bss_complete->staId = sap_ctx->sap_sta_id;
 
-		sap_info("(eSAP_START_BSS_EVENT): staId = %d",
+		sap_debug("(eSAP_START_BSS_EVENT): staId = %d",
 			  bss_complete->staId);
 
 		bss_complete->operating_chan_freq = sap_ctx->chan_freq;
@@ -2673,6 +2662,8 @@ static QDF_STATUS sap_validate_dfs_nol(struct sap_context *sap_ctx,
 	bool b_leak_chan = false;
 	uint16_t temp_freq;
 	uint16_t sap_freq;
+	enum channel_state ch_state;
+	bool is_chan_nol = false;
 
 	sap_freq = sap_ctx->chan_freq;
 	temp_freq = sap_freq;
@@ -2689,9 +2680,24 @@ static QDF_STATUS sap_validate_dfs_nol(struct sap_context *sap_ctx,
 	 * check if channel is in DFS_NOL or if the channel
 	 * has leakage to the channels in NOL
 	 */
-	if (sap_dfs_is_channel_in_nol_list(sap_ctx, sap_ctx->chan_freq,
-					   PHY_CHANNEL_BONDING_STATE_MAX) ||
-	    b_leak_chan) {
+
+	if (sap_phymode_is_eht(sap_ctx->phyMode)) {
+		ch_state =
+			wlan_reg_get_channel_state_from_secondary_list_for_freq(
+						mac_ctx->pdev, sap_freq);
+		if (CHANNEL_STATE_ENABLE != ch_state &&
+		    CHANNEL_STATE_DFS != ch_state) {
+			sap_err_rl("Invalid sap freq = %d, ch state=%d",
+				   sap_freq, ch_state);
+			is_chan_nol = true;
+		}
+	} else {
+		is_chan_nol = sap_dfs_is_channel_in_nol_list(
+					sap_ctx, sap_ctx->chan_freq,
+					PHY_CHANNEL_BONDING_STATE_MAX);
+	}
+
+	if (is_chan_nol || b_leak_chan) {
 		qdf_freq_t chan_freq;
 
 		/* find a new available channel */
@@ -2765,6 +2771,53 @@ static void sap_validate_chanmode_and_chwidth(struct mac_context *mac_ctx,
 			 orig_phymode, sap_ctx->phyMode);
 }
 
+static bool
+wlansap_is_power_change_required(struct mac_context *mac_ctx,
+				 qdf_freq_t sap_freq)
+{
+	struct wlan_objmgr_vdev *sta_vdev;
+	uint8_t sta_vdev_id;
+	enum hw_mode_bandwidth ch_wd;
+	uint8_t country[CDS_COUNTRY_CODE_LEN + 1];
+	uint32_t ap_pwr_type_6g = 0;
+	bool indoor_ch_support = false;
+
+	if (!mac_ctx || !mac_ctx->psoc || !mac_ctx->pdev)
+		return false;
+
+	if (!policy_mgr_is_sta_present_on_freq(mac_ctx->psoc, &sta_vdev_id,
+					       sap_freq, &ch_wd)) {
+		return false;
+	}
+
+	sta_vdev = wlan_objmgr_get_vdev_by_id_from_psoc(mac_ctx->psoc,
+							sta_vdev_id,
+							WLAN_LEGACY_SAP_ID);
+	if (!sta_vdev)
+		return false;
+
+	ap_pwr_type_6g = wlan_mlme_get_6g_ap_power_type(sta_vdev);
+
+	wlan_objmgr_vdev_release_ref(sta_vdev, WLAN_LEGACY_SAP_ID);
+
+	if (ap_pwr_type_6g == REG_VERY_LOW_POWER_AP)
+		return false;
+	ucfg_mlme_get_indoor_channel_support(mac_ctx->psoc, &indoor_ch_support);
+
+	if (ap_pwr_type_6g == REG_INDOOR_AP && indoor_ch_support) {
+		sap_debug("STA is connected to Indoor AP and indoor concurrency is supported");
+		return false;
+	}
+
+	wlan_reg_read_current_country(mac_ctx->psoc, country);
+	if (!wlan_reg_ctry_support_vlp(country)) {
+		sap_debug("Device country doesn't support VLP");
+		return false;
+	}
+
+	return !wlan_reg_is_freq_indoor(mac_ctx->pdev, sap_freq);
+}
+
 /**
  * sap_goto_starting() - Trigger softap start
  * @sap_ctx: SAP context
@@ -2792,6 +2845,12 @@ static QDF_STATUS sap_goto_starting(struct sap_context *sap_ctx,
 		qdf_status = sap_validate_dfs_nol(sap_ctx, mac_ctx);
 		if (!QDF_IS_STATUS_SUCCESS(qdf_status))
 			return qdf_status;
+	} else if (!policy_mgr_get_ap_6ghz_capable(mac_ctx->psoc,
+						   sap_ctx->sessionId, NULL)) {
+		return QDF_STATUS_E_FAILURE;
+	} else if (wlansap_is_power_change_required(mac_ctx,
+						    sap_ctx->chan_freq)) {
+		wlan_set_tpc_update_required_for_sta(sap_ctx->vdev, true);
 	}
 
 	/*
@@ -3195,10 +3254,12 @@ static QDF_STATUS sap_fsm_state_starting(struct sap_context *sap_ctx,
 					CHANNEL_STATE_DFS)
 				is_dfs = true;
 		} else {
-			if (wlan_reg_get_channel_state_for_freq(
-							mac_ctx->pdev,
-							sap_chan_freq) ==
-			    CHANNEL_STATE_DFS)
+			/* Indoor channels are also marked DFS, therefore
+			 * check if the channel has REGULATORY_CHAN_RADAR
+			 * channel flag to identify if the channel is DFS
+			 */
+			if (wlan_reg_is_dfs_for_freq(mac_ctx->pdev,
+						     sap_chan_freq))
 				is_dfs = true;
 		}
 		if (WLAN_REG_IS_6GHZ_CHAN_FREQ(sap_ctx->chan_freq))
