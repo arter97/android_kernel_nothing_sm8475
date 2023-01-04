@@ -371,6 +371,9 @@ static int handle_session_error(struct msm_vidc_inst *inst,
 	case HFI_ERROR_FATAL:
 		error = "fatal error";
 		break;
+	case HFI_ERROR_STREAM_UNSUPPORTED:
+		error = "stream unsupported";
+		break;
 	default:
 		error = "unknown";
 		break;
@@ -857,6 +860,7 @@ static int handle_output_buffer(struct msm_vidc_inst *inst,
 			i_vpr_e(inst, "%s: reset data size to zero for last flag buffer\n",
 				__func__);
 			buffer->data_size = 0;
+			buf->data_size = 0;
 		}
 		if (buffer->flags & HFI_BUF_FW_FLAG_READONLY) {
 			i_vpr_e(inst, "%s: reset RO flag for last flag buffer\n",
@@ -864,6 +868,7 @@ static int handle_output_buffer(struct msm_vidc_inst *inst,
 			buffer->flags &= ~HFI_BUF_FW_FLAG_READONLY;
 		}
 		if (!msm_vidc_allow_last_flag(inst)) {
+			inst->psc_or_last_flag_discarded = true;
 			i_vpr_e(inst, "%s: reset last flag for last flag buffer\n",
 				__func__);
 			buffer->flags &= ~HFI_BUF_FW_FLAG_LAST;
@@ -898,6 +903,9 @@ static int handle_output_buffer(struct msm_vidc_inst *inst,
 	} else {
 		inst->power.fw_cr = inst->hfi_frame_info.cr;
 	}
+
+	if (is_encode_session(inst) && inst->max_filled_len > buf->data_size)
+		inst->max_filled_len = buf->data_size;
 
 	if (!is_image_session(inst) && is_decode_session(inst) && buf->data_size)
 		msm_vidc_update_timestamp(inst, buf->timestamp);
@@ -1012,8 +1020,12 @@ static int handle_output_metadata_buffer(struct msm_vidc_inst *inst,
 	buf->attr |= MSM_VIDC_ATTR_DEQUEUED;
 	buf->flags = 0;
 	if (buffer->flags & HFI_BUF_FW_FLAG_LAST) {
-		if (!msm_vidc_allow_last_flag(inst))
+		if (!msm_vidc_allow_last_flag(inst)) {
+			inst->psc_or_last_flag_discarded = true;
+			i_vpr_e(inst, "%s: reset last flag for last flag metadata buffer\n",
+				__func__);
 			buffer->flags &= ~HFI_BUF_FW_FLAG_LAST;
+		}
 	}
 	if (buffer->flags & HFI_BUF_FW_FLAG_LAST)
 		buf->flags |= MSM_VIDC_BUF_FLAG_LAST;
@@ -1053,6 +1065,10 @@ static int handle_dequeue_buffers(struct msm_vidc_inst *inst)
 						"vb2 done already", inst, buf);
 				} else {
 					buf->attr |= MSM_VIDC_ATTR_BUFFER_DONE;
+					rc = msm_vidc_dqbuf_cache_operation(inst, buf);
+					if (rc)
+						return rc;
+
 					msm_vidc_vb2_buffer_done(inst, buf);
 				}
 				msm_vidc_put_driver_buf(inst, buf);
@@ -1340,6 +1356,7 @@ static int handle_dpb_list_property(struct msm_vidc_inst *inst,
 			"%s: dpb list payload size %d exceeds expected max size %d\n",
 			__func__, payload_size, MAX_DPB_LIST_PAYLOAD_SIZE);
 		msm_vidc_change_inst_state(inst, MSM_VIDC_ERROR, __func__);
+		return -EINVAL;
 	}
 	memcpy(inst->dpb_list_payload, payload_start, payload_size);
 
@@ -1701,6 +1718,9 @@ void handle_session_response_work_handler(struct work_struct *work)
 			} else if (allow == MSM_VIDC_DISCARD) {
 				/* if ipsc is discarded then override the psc properties again */
 				inst->ipsc_properties_set = false;
+				inst->psc_or_last_flag_discarded = true;
+				i_vpr_e(inst, "%s: ipsc discarded. state %s\n",
+					__func__, state_name(inst->state));
 				/* discard current entry processing */
 				break;
 			} else if (allow == MSM_VIDC_ALLOW) {
@@ -1728,6 +1748,10 @@ void handle_session_response_work_handler(struct work_struct *work)
 				rc = msm_vidc_state_change_last_flag(inst);
 				if (rc)
 					msm_vidc_change_inst_state(inst, MSM_VIDC_ERROR, __func__);
+			} else {
+				i_vpr_e(inst, "%s: last flag discarded. state %s\n",
+					__func__, state_name(inst->state));
+				inst->psc_or_last_flag_discarded = true;
 			}
 			break;
 		default:
@@ -1736,8 +1760,8 @@ void handle_session_response_work_handler(struct work_struct *work)
 			break;
 		}
 		list_del(&resp_work->list);
-		kfree(resp_work->data);
-		kfree(resp_work);
+		msm_vidc_vmem_free((void **)&resp_work->data);
+		msm_vidc_vmem_free((void **)&resp_work);
 	}
 	inst_unlock(inst, __func__);
 
@@ -1747,16 +1771,16 @@ void handle_session_response_work_handler(struct work_struct *work)
 static int queue_response_work(struct msm_vidc_inst *inst,
 	enum response_work_type type, void *hdr, u32 hdr_size)
 {
-	struct response_work *work;
+	struct response_work *work = NULL;
+	int rc = 0;
 
-	work = kzalloc(sizeof(struct response_work), GFP_KERNEL);
-	if (!work)
+	rc = msm_vidc_vmem_alloc(sizeof(struct response_work), (void **)&work, __func__);
+	if (rc)
 		return -ENOMEM;
 	INIT_LIST_HEAD(&work->list);
 	work->type = type;
 	work->data_size = hdr_size;
-	work->data = kzalloc(hdr_size, GFP_KERNEL);
-	if (!work->data)
+	if (msm_vidc_vmem_alloc(hdr_size, (void **)&work->data, "Work data"))
 		return -ENOMEM;
 	memcpy(work->data, hdr, hdr_size);
 	list_add_tail(&work->list, &inst->response_works);
@@ -1777,8 +1801,8 @@ int cancel_response_work(struct msm_vidc_inst *inst)
 
 	list_for_each_entry_safe(work, dummy_work, &inst->response_works, list) {
 		list_del(&work->list);
-		kfree(work->data);
-		kfree(work);
+		msm_vidc_vmem_free((void **)&work->data);
+		msm_vidc_vmem_free((void **)&work);
 	}
 
 	return 0;
@@ -1812,7 +1836,7 @@ static int handle_session_response(struct msm_vidc_core *core,
 
 	inst = get_inst(core, hdr->session_id);
 	if (!inst) {
-		d_vpr_e("%s: Invalid params\n", __func__);
+		d_vpr_e("%s: Invalid inst\n", __func__);
 		return -EINVAL;
 	}
 

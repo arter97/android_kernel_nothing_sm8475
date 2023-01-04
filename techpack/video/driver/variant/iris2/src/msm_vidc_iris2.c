@@ -109,6 +109,9 @@
 
 #define WRAPPER_DEBUG_BRIDGE_LPI_CONTROL_IRIS2	(WRAPPER_BASE_OFFS_IRIS2 + 0x54)
 #define WRAPPER_DEBUG_BRIDGE_LPI_STATUS_IRIS2	(WRAPPER_BASE_OFFS_IRIS2 + 0x58)
+#define WRAPPER_IRIS_CPU_NOC_LPI_CONTROL	(WRAPPER_BASE_OFFS_IRIS2 + 0x5C)
+#define WRAPPER_IRIS_CPU_NOC_LPI_STATUS		(WRAPPER_BASE_OFFS_IRIS2 + 0x60)
+#define WRAPPER_CORE_POWER_STATUS		(WRAPPER_BASE_OFFS_IRIS2 + 0x80)
 #define WRAPPER_CORE_CLOCK_CONFIG_IRIS2		(WRAPPER_BASE_OFFS_IRIS2 + 0x88)
 
 /*
@@ -437,13 +440,29 @@ static int __setup_ucregion_memory_map_iris2(struct msm_vidc_core *vidc_core)
 	return 0;
 }
 
+static bool is_iris2_hw_power_collapsed(struct msm_vidc_core *core)
+{
+	int rc = 0;
+	u32 value = 0, pwr_status = 0;
+
+	rc = __read_register(core, WRAPPER_CORE_POWER_STATUS, &value);
+	if (rc)
+		return false;
+
+	// if (1), CORE_SS(0) power is on and if (0), CORE_ss(0) power is off
+	pwr_status = value & BIT(1);
+
+	return pwr_status ? false : true;
+
+}
+
 static int __power_off_iris2_hardware(struct msm_vidc_core *core)
 {
 	int rc = 0, i;
 	u32 value = 0;
 
-	if (core->hw_power_control) {
-		d_vpr_h("%s: hardware power control enabled\n", __func__);
+	if (core->hw_power_control && is_iris2_hw_power_collapsed(core)) {
+		d_vpr_h("%s: hardware power control enabled and power collapsed\n", __func__);
 		goto disable_power;
 	}
 
@@ -475,7 +494,7 @@ static int __power_off_iris2_hardware(struct msm_vidc_core *core)
 				__func__, i, value);
 	}
 
-	if (core->platform->data.vpu_ver == VPU_VERSION_IRIS2_1)
+	if (core->platform->data.vpu_ver == VPU_VERSION_IRIS2_1PIPE)
 		goto skip_aon_mvp_noc;
 
 	/* Apply partial reset on MSF interface and wait for ACK */
@@ -515,15 +534,22 @@ skip_aon_mvp_noc:
 
 disable_power:
 	/* power down process */
+	rc = __disable_unprepare_clock_iris2(core, "vcodec_clk");
+	if (rc) {
+		d_vpr_e("%s: disable unprepare vcodec_clk failed\n", __func__);
+		rc = 0;
+	}
 	rc = __disable_regulator_iris2(core, "vcodec");
 	if (rc) {
 		d_vpr_e("%s: disable regulator vcodec failed\n", __func__);
 		rc = 0;
 	}
-	rc = __disable_unprepare_clock_iris2(core, "vcodec_clk");
-	if (rc) {
-		d_vpr_e("%s: disable unprepare vcodec_clk failed\n", __func__);
-		rc = 0;
+	if (core->platform->data.vpu_ver == VPU_VERSION_IRIS2_1PIPE) {
+		rc = __disable_unprepare_clock_iris2(core, "video_mvs0_axi_clk");
+		if (rc) {
+			d_vpr_e("%s: disable unprepare video_mvs0_axi_clk failed\n", __func__);
+			rc = 0;
+		}
 	}
 
 	return rc;
@@ -541,7 +567,7 @@ static int __power_off_iris2_controller(struct msm_vidc_core *core)
 	if (rc)
 		return rc;
 
-	if (core->platform->data.vpu_ver == VPU_VERSION_IRIS2_1)
+	if (core->platform->data.vpu_ver == VPU_VERSION_IRIS2_1PIPE)
 		goto skip_aon_mvp_noc;
 
 	/* set MNoC to low power, set PD_NOC_QREQ (bit 0) */
@@ -555,7 +581,22 @@ static int __power_off_iris2_controller(struct msm_vidc_core *core)
 	if (rc)
 		d_vpr_h("%s: AON_WRAPPER_MVP_NOC_LPI_CONTROL failed\n", __func__);
 
+	if (core->platform->data.vpu_ver != VPU_VERSION_IRIS2)
+		goto skip_cpu_noc;
+
+	/* Set Iris CPU NoC to Low power */
+	rc = __write_register_masked(core, WRAPPER_IRIS_CPU_NOC_LPI_CONTROL,
+			0x1, BIT(0));
+	if (rc)
+		return rc;
+
+	rc = __read_register_with_poll_timeout(core, WRAPPER_IRIS_CPU_NOC_LPI_STATUS,
+			0x1, 0x1, 200, 2000);
+	if (rc)
+		d_vpr_h("%s: WRAPPER_IRIS_CPU_NOC_LPI_CONTROL failed\n", __func__);
+
 	/* Set Debug bridge Low power */
+skip_cpu_noc:
 skip_aon_mvp_noc:
 	rc = __write_register(core, WRAPPER_DEBUG_BRIDGE_LPI_CONTROL_IRIS2, 0x7);
 	if (rc)
@@ -595,6 +636,15 @@ skip_aon_mvp_noc:
 		return rc;
 #endif
 
+	/* Disable VIDEO_CC_VENUS_AHB_CLK clock */
+	if (core->platform->data.vpu_ver == VPU_VERSION_IRIS2_1PIPE) {
+		rc = __disable_unprepare_clock_iris2(core, "iface_clk");
+		if (rc) {
+			d_vpr_e("%s: disable unprepare iface_clk failed\n", __func__);
+			rc = 0;
+		}
+	}
+
 	/* Turn off MVP MVS0C core clock */
 	rc = __disable_unprepare_clock_iris2(core, "core_clk");
 	if (rc) {
@@ -602,10 +652,10 @@ skip_aon_mvp_noc:
 		rc = 0;
 	}
 
-	/* Disable GCC_VIDEO_AXI0_CLK clock */
-	rc = __disable_unprepare_clock_iris2(core, "gcc_video_axi0");
+	/* Disable VIDEO_CTL_AXI0_CLK clock */
+	rc = __disable_unprepare_clock_iris2(core, "video_ctl_axi0_clk");
 	if (rc) {
-		d_vpr_e("%s: disable unprepare gcc_video_axi0 failed\n", __func__);
+		d_vpr_e("%s: disable unprepare video_ctl_axi0_clk failed\n", __func__);
 		rc = 0;
 	}
 
@@ -675,7 +725,7 @@ static int __power_on_iris2_controller(struct msm_vidc_core *core)
 	if (rc)
 		goto fail_reset_ahb2axi;
 
-	rc = __prepare_enable_clock_iris2(core, "gcc_video_axi0");
+	rc = __prepare_enable_clock_iris2(core, "video_ctl_axi0_clk");
 	if (rc)
 		goto fail_clk_axi;
 
@@ -683,10 +733,18 @@ static int __power_on_iris2_controller(struct msm_vidc_core *core)
 	if (rc)
 		goto fail_clk_controller;
 
+	if (core->platform->data.vpu_ver == VPU_VERSION_IRIS2_1PIPE) {
+		rc = __prepare_enable_clock_iris2(core, "iface_clk");
+		if (rc)
+			goto fail_iface_clk;
+	}
+
 	return 0;
 
+fail_iface_clk:
+	__disable_unprepare_clock_iris2(core, "core_clk");
 fail_clk_controller:
-	__disable_unprepare_clock_iris2(core, "gcc_video_axi0");
+	__disable_unprepare_clock_iris2(core, "video_ctl_axi0_clk");
 fail_clk_axi:
 fail_reset_ahb2axi:
 	__disable_regulator_iris2(core, "iris-ctl");
@@ -702,6 +760,12 @@ static int __power_on_iris2_hardware(struct msm_vidc_core *core)
 	if (rc)
 		goto fail_regulator;
 
+	if (core->platform->data.vpu_ver == VPU_VERSION_IRIS2_1PIPE) {
+		rc = __prepare_enable_clock_iris2(core, "video_mvs0_axi_clk");
+		if (rc)
+			goto fail_clk_axi;
+	}
+
 	rc = __prepare_enable_clock_iris2(core, "vcodec_clk");
 	if (rc)
 		goto fail_clk_controller;
@@ -709,6 +773,9 @@ static int __power_on_iris2_hardware(struct msm_vidc_core *core)
 	return 0;
 
 fail_clk_controller:
+	if (core->platform->data.vpu_ver == VPU_VERSION_IRIS2_1PIPE)
+		__disable_unprepare_clock_iris2(core, "video_mvs0_axi_clk");
+fail_clk_axi:
 	__disable_regulator_iris2(core, "vcodec");
 fail_regulator:
 	return rc;
@@ -717,6 +784,11 @@ fail_regulator:
 static int __power_on_iris2(struct msm_vidc_core *core)
 {
 	int rc = 0;
+
+	if (!core || !core->platform) {
+		d_vpr_e("%s: invalid params\n", __func__);
+		return -EINVAL;
+	}
 
 	if (core->power_enabled)
 		return 0;

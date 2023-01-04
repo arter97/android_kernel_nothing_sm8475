@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -313,6 +314,32 @@ exit:
 	return rc;
 }
 
+int msm_vidc_vmem_alloc(unsigned long size, void **mem, const char *msg)
+{
+	int rc = 0;
+
+	if (*mem) {
+		d_vpr_e("%s: error: double alloc\n", msg);
+		rc = -EINVAL;
+	}
+
+	*mem = vzalloc(size);
+	if (!*mem) {
+		d_vpr_e("allocation failed for %s\n", msg);
+		rc = -ENOMEM;
+	}
+
+	return rc;
+}
+
+void msm_vidc_vmem_free(void **addr)
+{
+	if (addr && *addr) {
+		vfree(*addr);
+		*addr = NULL;
+	}
+}
+
 int msm_vidc_memory_alloc(struct msm_vidc_core *core, struct msm_vidc_alloc *mem)
 {
 	int rc = 0;
@@ -346,7 +373,10 @@ int msm_vidc_memory_alloc(struct msm_vidc_core *core, struct msm_vidc_alloc *mem
 			return -EINVAL;
 		}
 	} else {
-		heap_name = "qcom,system";
+		if (core->is_non_coherent && mem->type == MSM_VIDC_BUF_QUEUE)
+			heap_name = "qcom,system-uncached";
+		else
+			heap_name = "qcom,system";
 	}
 
 	heap = dma_heap_find(heap_name);
@@ -377,12 +407,23 @@ int msm_vidc_memory_alloc(struct msm_vidc_core *core, struct msm_vidc_alloc *mem
 
 	if (mem->map_kernel) {
 		dma_buf_begin_cpu_access(mem->dmabuf, DMA_BIDIRECTIONAL);
+
+#if (KERNEL_VERSION(5, 15, 0) > LINUX_VERSION_CODE)
 		mem->kvaddr = dma_buf_vmap(mem->dmabuf);
 		if (!mem->kvaddr) {
 			d_vpr_e("%s: kernel map failed\n", __func__);
 			rc = -EIO;
 			goto error;
 		}
+#else
+		rc = dma_buf_vmap(mem->dmabuf, &mem->dmabuf_map);
+		if (rc) {
+			d_vpr_e("%s: kernel map failed\n", __func__);
+			rc = -EIO;
+			goto error;
+		}
+		mem->kvaddr = mem->dmabuf_map.vaddr;
+#endif
 	}
 
 	d_vpr_h(
@@ -417,7 +458,11 @@ int msm_vidc_memory_free(struct msm_vidc_core *core, struct msm_vidc_alloc *mem)
 		buf_name(mem->type), mem->secure, mem->region);
 
 	if (mem->kvaddr) {
+#if (KERNEL_VERSION(5, 15, 0) > LINUX_VERSION_CODE)
 		dma_buf_vunmap(mem->dmabuf, mem->kvaddr);
+#else
+		dma_buf_vunmap(mem->dmabuf, &mem->dmabuf_map);
+#endif
 		mem->kvaddr = NULL;
 		dma_buf_end_cpu_access(mem->dmabuf, DMA_BIDIRECTIONAL);
 	}
@@ -432,8 +477,9 @@ int msm_vidc_memory_free(struct msm_vidc_core *core, struct msm_vidc_alloc *mem)
 
 void *msm_memory_alloc(struct msm_vidc_inst *inst, enum msm_memory_pool_type type)
 {
-	struct msm_memory_alloc_header *hdr;
+	struct msm_memory_alloc_header *hdr = NULL;
 	struct msm_memory_pool *pool;
+	int rc = 0;
 
 	if (!inst || type < 0 || type >= MSM_MEM_POOL_MAX) {
 		d_vpr_e("%s: Invalid params\n", __func__);
@@ -459,11 +505,11 @@ void *msm_memory_alloc(struct msm_vidc_inst *inst, enum msm_memory_pool_type typ
 		return hdr->buf;
 	}
 
-	hdr = kzalloc(pool->size + sizeof(struct msm_memory_alloc_header), GFP_KERNEL);
-	if (!hdr) {
-		i_vpr_e(inst, "%s: buffer allocation failed\n", __func__);
+	rc = msm_vidc_vmem_alloc(pool->size + sizeof(struct msm_memory_alloc_header),
+			(void **)&hdr, __func__);
+	if (rc)
 		return NULL;
-	}
+
 	INIT_LIST_HEAD(&hdr->list);
 	hdr->type = type;
 	hdr->busy = true;
@@ -533,14 +579,14 @@ static void msm_vidc_destroy_pool_buffers(struct msm_vidc_inst *inst,
 	/* destroy all free buffers */
 	list_for_each_entry_safe(hdr, dummy, &pool->free_pool, list) {
 		list_del(&hdr->list);
-		kfree(hdr);
+		msm_vidc_vmem_free((void **)&hdr);
 		fcount++;
 	}
 
 	/* destroy all busy buffers */
 	list_for_each_entry_safe(hdr, dummy, &pool->busy_pool, list) {
 		list_del(&hdr->list);
-		kfree(hdr);
+		msm_vidc_vmem_free((void **)&hdr);
 		bcount++;
 	}
 
@@ -606,13 +652,23 @@ int msm_memory_pools_init(struct msm_vidc_inst *inst)
 	return 0;
 }
 
-/*
+
 int msm_memory_cache_operations(struct msm_vidc_inst *inst,
-	struct dma_buf *dbuf, enum smem_cache_ops cache_op,
-	unsigned long offset, unsigned long size, u32 sid)
+	struct dma_buf *dbuf, enum msm_memory_cache_type cache_type,
+	u32 offset, u32 size)
 {
+	struct msm_vidc_core *core;
 	int rc = 0;
-	unsigned long flags = 0;
+
+	if (!inst || !dbuf) {
+		d_vpr_e("%s: Invalid params\n", __func__);
+		return -EINVAL;
+	}
+	core = inst->core;
+
+	/* skip cache ops for "dma-coherent" enabled chipsets */
+	if (!core->is_non_coherent)
+		return 0;
 
 	if (!inst) {
 		d_vpr_e("%s: invalid parameters\n", __func__);
@@ -624,18 +680,9 @@ int msm_memory_cache_operations(struct msm_vidc_inst *inst,
 		return -EINVAL;
 	}
 
-	rc = dma_buf_get_flags(dbuf, &flags);
-	if (rc) {
-		i_vpr_e(inst, "%s: dma_buf_get_flags failed, err %d\n",
-			__func__, rc);
-		return rc;
-	} else if (!(flags & ION_FLAG_CACHED)) {
-		return rc;
-	}
-
-	switch (cache_op) {
-	case SMEM_CACHE_CLEAN:
-	case SMEM_CACHE_CLEAN_INVALIDATE:
+	switch (cache_type) {
+	case MSM_MEM_CACHE_CLEAN:
+	case MSM_MEM_CACHE_CLEAN_INVALIDATE:
 		rc = dma_buf_begin_cpu_access_partial(dbuf, DMA_TO_DEVICE,
 				offset, size);
 		if (rc)
@@ -643,7 +690,7 @@ int msm_memory_cache_operations(struct msm_vidc_inst *inst,
 		rc = dma_buf_end_cpu_access_partial(dbuf, DMA_TO_DEVICE,
 				offset, size);
 		break;
-	case SMEM_CACHE_INVALIDATE:
+	case MSM_MEM_CACHE_INVALIDATE:
 		rc = dma_buf_begin_cpu_access_partial(dbuf, DMA_TO_DEVICE,
 				offset, size);
 		if (rc)
@@ -653,7 +700,7 @@ int msm_memory_cache_operations(struct msm_vidc_inst *inst,
 		break;
 	default:
 		i_vpr_e(inst, "%s: cache (%d) operation not supported\n",
-			__func__, cache_op);
+			__func__, cache_type);
 		rc = -EINVAL;
 		break;
 	}
@@ -661,6 +708,7 @@ int msm_memory_cache_operations(struct msm_vidc_inst *inst,
 	return rc;
 }
 
+/*
 int msm_smem_memory_prefetch(struct msm_vidc_inst *inst)
 {
 	int i, rc = 0;

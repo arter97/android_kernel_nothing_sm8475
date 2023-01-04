@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "msm_media_info.h"
@@ -302,11 +303,17 @@ u32 msm_vidc_encoder_output_size(struct msm_vidc_inst *inst)
 	u32 width, height;
 	struct v4l2_format *f;
 
+	if (!inst || !inst->capabilities) {
+		d_vpr_e("%s: invalid params\n", __func__);
+		return 0;
+	}
+
 	f = &inst->fmts[OUTPUT_PORT];
 	/*
 	 * Encoder output size calculation: 32 Align width/height
 	 * For heic session : YUVsize * 2
 	 * For resolution <= 480x360p : YUVsize * 2
+	 * For resolution > 360p & <= FHD : YUVsize : if CAC disabled
 	 * For resolution > 360p & <= 4K : YUVsize / 2
 	 * For resolution > 4k : YUVsize / 4
 	 * Initially frame_size = YUVsize * 2;
@@ -318,11 +325,15 @@ u32 msm_vidc_encoder_output_size(struct msm_vidc_inst *inst)
 	frame_size = (width * height * 3);
 
 	/* Image session: 2 x yuv size */
-	if (is_image_session(inst))
+	if (is_image_session(inst) ||
+		inst->capabilities->cap[BITRATE_MODE].value == V4L2_MPEG_VIDEO_BITRATE_MODE_CQ)
 		goto skip_calc;
 
 	if (mbs_per_frame <= NUM_MBS_360P)
 		(void)frame_size; /* Default frame_size = YUVsize * 2 */
+	else if (inst->capabilities->cap[CONTENT_ADAPTIVE_CODING].value ==
+				V4L2_MPEG_MSM_VIDC_DISABLE && mbs_per_frame <= NUM_MBS_FHD)
+		frame_size = frame_size >> 1;
 	else if (mbs_per_frame <= NUM_MBS_4k)
 		frame_size = frame_size >> 2;
 	else

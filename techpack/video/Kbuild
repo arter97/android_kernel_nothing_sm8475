@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-KBUILD_CPPFLAGS += -DCONFIG_MSM_MMRM=1
 VIDEO_ROOT := $(srctree)/techpack/video
+
+ifneq ($(CONFIG_ARCH_MONACO), y)
+KBUILD_CPPFLAGS += -DCONFIG_MSM_MMRM=1
+endif
 
 ifeq ($(CONFIG_ARCH_WAIPIO), y)
 include $(VIDEO_ROOT)/config/waipio_video.conf
@@ -25,6 +28,24 @@ ifeq ($(CONFIG_ARCH_PARROT), y)
 include $(VIDEO_ROOT)/config/parrot_video.conf
 LINUXINCLUDE    += -include $(VIDEO_ROOT)/config/parrot_video.h \
                    -I$(VIDEO_ROOT)/driver/platform/parrot/inc
+endif
+
+ifeq ($(CONFIG_ARCH_KHAJE), y)
+include $(VIDEO_ROOT)/config/khaje_video.conf
+LINUXINCLUDE    += -include $(VIDEO_ROOT)/config/khaje_video.h \
+                   -I$(VIDEO_ROOT)/driver/platform/khaje/inc
+endif
+
+ifeq ($(CONFIG_ARCH_RAVELIN), y)
+include $(VIDEO_ROOT)/config/ravelin_video.conf
+LINUXINCLUDE    += -include $(VIDEO_ROOT)/config/ravelin_video.h \
+                   -I$(VIDEO_ROOT)/driver/platform/ravelin/inc
+endif
+
+ifeq ($(CONFIG_ARCH_MONACO), y)
+include $(VIDEO_ROOT)/config/monaco_video.conf
+LINUXINCLUDE    += -include $(VIDEO_ROOT)/config/monaco_video.h \
+                   -I$(VIDEO_ROOT)/driver/platform/monaco/inc
 endif
 
 LINUXINCLUDE    += -I$(VIDEO_ROOT)/driver/vidc/inc \
@@ -52,6 +73,18 @@ ifeq ($(CONFIG_MSM_VIDC_PARROT), y)
 msm_video-objs += driver/platform/parrot/src/msm_vidc_parrot.o
 endif
 
+ifeq ($(CONFIG_MSM_VIDC_KHAJE), y)
+msm_video-objs += driver/platform/khaje/src/msm_vidc_khaje.o
+endif
+
+ifeq ($(CONFIG_MSM_VIDC_RAVELIN), y)
+msm_video-objs += driver/platform/ravelin/src/msm_vidc_ravelin.o
+endif
+
+ifeq ($(CONFIG_MSM_VIDC_MONACO), y)
+msm_video-objs += driver/platform/monaco/src/msm_vidc_monaco.o
+endif
+
 ifeq ($(CONFIG_MSM_VIDC_IRIS2), y)
 LINUXINCLUDE   += -I$(VIDEO_ROOT)/driver/variant/iris2/inc
 msm_video-objs += driver/variant/iris2/src/msm_vidc_buffer_iris2.o \
@@ -66,6 +99,13 @@ LINUXINCLUDE   += -I$(VIDEO_ROOT)/driver/variant/iris2/inc
 msm_video-objs += driver/variant/iris2/src/msm_vidc_buffer_iris2.o \
                   driver/variant/iris2/src/msm_vidc_power_iris2.o \
                   driver/variant/iris2/src/msm_vidc_iris2.o
+endif
+
+ifeq ($(CONFIG_MSM_VIDC_AR50LT), y)
+LINUXINCLUDE    += -I$(VIDEO_ROOT)/driver/variant/ar50lt/inc
+msm_video-objs += driver/variant/ar50lt/src/msm_vidc_buffer_ar50lt.o \
+                  driver/variant/ar50lt/src/msm_vidc_power_ar50lt.o \
+                  driver/variant/ar50lt/src/msm_vidc_ar50lt.o
 endif
 
 msm_video-objs += driver/vidc/src/msm_vidc_v4l2.o \
