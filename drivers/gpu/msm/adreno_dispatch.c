@@ -1566,13 +1566,15 @@ static void adreno_fault_header(struct kgsl_device *device,
 	const char *type = fault & ADRENO_GMU_FAULT ? "gmu" : "gpu";
 
 	if (!gx_on) {
-		if (drawobj != NULL)
+		if (drawobj != NULL) {
 			pr_fault(device, drawobj,
-				"%s fault ctx %d ctx_type %s ts %d and GX is OFF\n",
+				"%s fault ctx %u ctx_type %s ts %u and GX is OFF\n",
 				type, drawobj->context->id,
 				kgsl_context_type(drawctxt->type),
 				drawobj->timestamp);
-		else
+			pr_fault(device, drawobj, "cmdline: %s\n",
+					drawctxt->base.proc_priv->cmdline);
+		} else
 			dev_err(device->dev, "RB[%d] : %s fault and GX is OFF\n",
 				id, type);
 
@@ -1599,11 +1601,14 @@ static void adreno_fault_header(struct kgsl_device *device,
 			ib2base, ib2sz, drawctxt->rb->id);
 
 		pr_fault(device, drawobj,
-			"%s fault ctx %d ctx_type %s ts %d status %8.8X rb %4.4x/%4.4x ib1 %16.16llX/%4.4x ib2 %16.16llX/%4.4x\n",
+			"%s fault ctx %u ctx_type %s ts %u status %8.8X rb %4.4x/%4.4x ib1 %16.16llX/%4.4x ib2 %16.16llX/%4.4x\n",
 			type, drawobj->context->id,
 			kgsl_context_type(drawctxt->type),
 			drawobj->timestamp, status,
 			rptr, wptr, ib1base, ib1sz, ib2base, ib2sz);
+
+		pr_fault(device, drawobj, "cmdline: %s\n",
+				drawctxt->base.proc_priv->cmdline);
 
 		if (rb != NULL)
 			pr_fault(device, drawobj,
@@ -1801,7 +1806,7 @@ static void process_cmdobj_fault(struct kgsl_device *device,
 
 	/* If we get here then all the policies failed */
 
-	pr_context(device, drawobj->context, "gpu %s ctx %d ts %d\n",
+	pr_context(device, drawobj->context, "gpu %s ctx %d ts %u\n",
 		state, drawobj->context->id, drawobj->timestamp);
 
 	/* Mark the context as failed and invalidate it */
@@ -1907,7 +1912,7 @@ replay:
 
 		if (ret) {
 			pr_context(device, replay[i]->base.context,
-				"gpu reset failed ctx %d ts %d\n",
+				"gpu reset failed ctx %u ts %u\n",
 				replay[i]->base.context->id,
 				replay[i]->base.timestamp);
 
@@ -1932,7 +1937,7 @@ static void do_header_and_snapshot(struct kgsl_device *device, int fault,
 	/* Always dump the snapshot on a non-drawobj failure */
 	if (cmdobj == NULL) {
 		adreno_fault_header(device, rb, NULL, fault);
-		kgsl_device_snapshot(device, NULL, fault & ADRENO_GMU_FAULT);
+		kgsl_device_snapshot(device, NULL, NULL, fault & ADRENO_GMU_FAULT);
 		return;
 	}
 
@@ -1944,7 +1949,7 @@ static void do_header_and_snapshot(struct kgsl_device *device, int fault,
 	adreno_fault_header(device, rb, cmdobj, fault);
 
 	if (!(drawobj->context->flags & KGSL_CONTEXT_NO_SNAPSHOT))
-		kgsl_device_snapshot(device, drawobj->context,
+		kgsl_device_snapshot(device, drawobj->context, NULL,
 					fault & ADRENO_GMU_FAULT);
 }
 
@@ -2165,7 +2170,7 @@ static void _print_recovery(struct kgsl_device *device,
 	struct kgsl_drawobj *drawobj = DRAWOBJ(cmdobj);
 
 	pr_context(device, drawobj->context,
-		"gpu %s ctx %d ts %d policy %lX\n",
+		"gpu %s ctx %u ts %u policy %lX\n",
 		_ft_type(nr), drawobj->context->id, drawobj->timestamp,
 		cmdobj->fault_recovery);
 }
@@ -2300,7 +2305,7 @@ static void _adreno_dispatch_check_timeout(struct adreno_device *adreno_dev,
 	if (drawobj->context->flags & KGSL_CONTEXT_NO_FAULT_TOLERANCE)
 		return;
 
-	pr_context(device, drawobj->context, "gpu timeout ctx %d ts %d\n",
+	pr_context(device, drawobj->context, "gpu timeout ctx %u ts %u\n",
 		drawobj->context->id, drawobj->timestamp);
 
 	adreno_set_gpu_fault(adreno_dev, ADRENO_TIMEOUT_FAULT);
@@ -2761,6 +2766,8 @@ static struct attribute *dispatcher_attrs[] = {
 	NULL,
 };
 
+ATTRIBUTE_GROUPS(dispatcher);
+
 static ssize_t dispatcher_sysfs_show(struct kobject *kobj,
 				   struct attribute *attr, char *buf)
 {
@@ -2795,7 +2802,7 @@ static const struct sysfs_ops dispatcher_sysfs_ops = {
 
 static struct kobj_type ktype_dispatcher = {
 	.sysfs_ops = &dispatcher_sysfs_ops,
-	.default_attrs = dispatcher_attrs,
+	.default_groups = dispatcher_groups,
 };
 
 static const struct adreno_dispatch_ops swsched_ops = {
@@ -2832,7 +2839,7 @@ int adreno_dispatcher_init(struct adreno_device *adreno_dev)
 		return PTR_ERR(dispatcher->worker);
 	}
 
-	sysfs_create_files(&device->dev->kobj, _dispatch_attr_list);
+	WARN_ON(sysfs_create_files(&device->dev->kobj, _dispatch_attr_list));
 
 	mutex_init(&dispatcher->mutex);
 

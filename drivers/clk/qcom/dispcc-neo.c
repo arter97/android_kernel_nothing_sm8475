@@ -21,6 +21,8 @@
 #include "reset.h"
 #include "vdd-level.h"
 
+#define DISP_CC_MISC_CMD        0xF000
+
 static DEFINE_VDD_REGULATORS(vdd_mm, VDD_NOMINAL + 1, 1, vdd_corner);
 static DEFINE_VDD_REGULATORS(vdd_mxa, VDD_NOMINAL + 1, 1, vdd_corner);
 
@@ -1692,7 +1694,6 @@ static struct clk_branch disp_cc_mdss_rscc_ahb_clk = {
 	.clkr = {
 		.enable_reg = 0xc00c,
 		.enable_mask = BIT(0),
-		.flags = QCOM_CLK_IS_CRITICAL,
 		.hw.init = &(struct clk_init_data){
 			.name = "disp_cc_mdss_rscc_ahb_clk",
 			.parent_hws = (const struct clk_hw*[]){
@@ -1711,7 +1712,6 @@ static struct clk_branch disp_cc_mdss_rscc_vsync_clk = {
 	.clkr = {
 		.enable_reg = 0xc008,
 		.enable_mask = BIT(0),
-		.flags = QCOM_CLK_IS_CRITICAL,
 		.hw.init = &(struct clk_init_data){
 			.name = "disp_cc_mdss_rscc_vsync_clk",
 			.parent_hws = (const struct clk_hw*[]){
@@ -1912,6 +1912,9 @@ static int disp_cc_neo_probe(struct platform_device *pdev)
 
 	clk_lucid_ole_pll_configure(&disp_cc_pll0, regmap, &disp_cc_pll0_config);
 	clk_lucid_ole_pll_configure(&disp_cc_pll1, regmap, &disp_cc_pll1_config);
+
+	/* Enable clock gating for MDP clocks */
+	regmap_update_bits(regmap, DISP_CC_MISC_CMD, 0x10, 0x10);
 
 	/*
 	 * Keep clocks always enabled:

@@ -73,6 +73,14 @@ enum qmi_ts_sensor {
 	QMI_TS_SUB2_SCG_FR1_CC,
 	QMI_TS_SUB2_SCG_FR2_CC,
 	QMI_TS_NSP_ISENSE_TRIM,
+	QMI_TS_SDR0_PA,
+	QMI_TS_SDR1_PA,
+	QMI_TS_MODEM_CFG,
+	QMI_TS_LTE_CC,
+	QMI_TS_MCG_FR1_CC,
+	QMI_TS_MCG_FR2_CC,
+	QMI_TS_SCG_FR1_CC,
+	QMI_TS_SCG_FR2_CC,
 	QMI_TS_MAX_NR
 };
 
@@ -141,6 +149,14 @@ static char sensor_clients[QMI_TS_MAX_NR][QMI_CLIENT_NAME_LENGTH] = {
 	{"sub2_scg_fr1_cc"},
 	{"sub2_scg_fr2_cc"},
 	{"isense_trim"},
+	{"sdr0_pa"},
+	{"sdr1_pa"},
+	{"modem_cfg"},
+	{"lte_cc"},
+	{"mcg_fr1_cc"},
+	{"mcg_fr2_cc"},
+	{"scg_fr1_cc"},
+	{"scg_fr2_cc"},
 };
 
 #endif /* __QMI_SENSORS_H__ */

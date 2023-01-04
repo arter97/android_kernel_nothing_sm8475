@@ -10,6 +10,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/pm_wakeup.h>
 #include <linux/skbuff.h>
 #include <linux/sizes.h>
 #include <linux/socket.h>
@@ -27,6 +28,9 @@
 #define GHVST_PROTO_VER_1 1
 
 #define MAX_PKT_SZ  SZ_64K
+
+/* Heuristic timeout to hold ws for user to read from socket */
+#define GHVST_SKB_WAKEUP_MS 500
 
 /* list of ghvst devices */
 static LIST_HEAD(ghvst_devs);
@@ -122,6 +126,9 @@ struct ghvst_cb {
 
 	u8 type;
 };
+
+/* global wakeup source to hold for client's to read from socket */
+static struct wakeup_source *sock_ws;
 
 static int ghvst_socket_init(struct vsock_sock *vsk, struct vsock_sock *psk)
 {
@@ -323,6 +330,9 @@ static int ghvst_dgram_post(struct gh_transport_device *gdev)
 		goto err;
 	}
 
+	/* heuristic timeout for clients to read packet from socket */
+	pm_wakeup_ws_event(sock_ws, GHVST_SKB_WAKEUP_MS, true);
+
 	sock_put(sk_vsock(vsk));
 	return 0;
 
@@ -393,17 +403,29 @@ static void ghvst_process_msg(struct gh_transport_device *gdev,
 		    hdr.type != GHVST_TYPE_DATA) {
 			pr_err("%s: Incorrect info ver:%d; type:%d\n",
 			       __func__, hdr.version, hdr.type);
-			reset_buf(gbuf);
-			mutex_unlock(&gbuf->lock);
-			return;
+			goto out;
+		}
+		/* Checked the data size in pkg header */
+		if (hdr.size > MAX_PKT_SZ - sizeof(hdr)) {
+			pr_err("%s: Incorrect received header size:%d\n",
+			       __func__, hdr.size);
+			goto out;
 		}
 		gbuf->len = sizeof(hdr) + hdr.size;
 		gbuf->hdr_received = true;
+		/* Check gbuf->len size, can not be smaller than gbuf->copied*/
+		if (gbuf->len < gbuf->copied) {
+			pr_err("%s: Incorrect guf size: len=%d, copied=%d\n",
+			       __func__, gbuf->len, gbuf->copied);
+			goto out;
+		}
 		gbuf->remaining = gbuf->len - gbuf->copied;
 		check_rx_complete(gdev);
 		mutex_unlock(&gbuf->lock);
 		return;
 	}
+out:
+	reset_buf(gbuf);
 	mutex_unlock(&gbuf->lock);
 }
 
@@ -433,7 +455,15 @@ static int ghvst_msgq_recv(void *data)
 		if (size <= 0)
 			continue;
 
+		/* Keep awake when there's data to be handled.
+		 * Here, ghvst_transport can only ensure recv-thread stays awake
+		 * when processing data from MsgQ. It can't cover the process of
+		 * the MsgQ recv (gh_msgq_recv), which means that,
+		 * theoretically, "suspend/sleep" still could happen
+		 */
+		pm_stay_awake(gdev->dev);
 		ghvst_process_msg(gdev, buf, size);
+		pm_relax(gdev->dev);
 	}
 	kfree(buf);
 	return 0;
@@ -790,6 +820,8 @@ static int gunyah_transport_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+	sock_ws = wakeup_source_register(NULL, "ghvst_sock_ws");
+
 	down_write(&ghvst_devs_lock);
 	list_add(&gdev->item, &ghvst_devs);
 	up_write(&ghvst_devs_lock);
@@ -808,6 +840,8 @@ static int gunyah_transport_remove(struct platform_device *pdev)
 
 	if (gdev->rx_thread)
 		kthread_stop(gdev->rx_thread);
+
+	wakeup_source_unregister(sock_ws);
 
 	return 0;
 }

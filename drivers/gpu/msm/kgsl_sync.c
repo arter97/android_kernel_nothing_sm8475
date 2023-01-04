@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2019, 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/file.h>
 #include <linux/slab.h>
+#include <linux/soc/qcom/msm_hw_fence.h>
 #include <linux/sync_file.h>
 
 #include "kgsl_device.h"
@@ -63,6 +65,9 @@ static struct kgsl_sync_fence *kgsl_sync_fence_create(
 static void kgsl_sync_fence_release(struct dma_fence *fence)
 {
 	struct kgsl_sync_fence *kfence = (struct kgsl_sync_fence *)fence;
+
+	if (test_bit(MSM_HW_FENCE_FLAG_ENABLED_BIT, &fence->flags))
+		msm_hw_fence_destroy(kfence->hw_fence_handle, fence);
 
 	kgsl_sync_timeline_put(kfence->parent);
 	kfree(kfence);
@@ -174,6 +179,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	struct kgsl_sync_fence *kfence = NULL;
 	int ret = -EINVAL;
 	unsigned int cur;
+	bool retired = false;
 
 	priv.fence_fd = -1;
 
@@ -211,7 +217,9 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 
 	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED, &cur);
 
-	if (timestamp_cmp(cur, timestamp) >= 0) {
+	retired = timestamp_cmp(cur, timestamp) >= 0;
+
+	if (retired) {
 		ret = 0;
 		kgsl_sync_timeline_signal(context->ktimeline, cur);
 	} else {
@@ -225,6 +233,9 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 		goto out;
 	}
 	fd_install(priv.fence_fd, kfence->sync_file->file);
+
+	if (!retired)
+		device->ftbl->create_hw_fence(device, kfence);
 
 out:
 	kgsl_context_put(context);
@@ -324,7 +335,7 @@ int kgsl_sync_timeline_create(struct kgsl_context *context)
 
 	kref_init(&ktimeline->kref);
 	snprintf(ktimeline->name, sizeof(ktimeline->name),
-		"%s_%d-%.15s(%d)-%.15s(%d)",
+		"%s_%u-%.15s(%d)-%.15s(%d)",
 		context->device->name, context->id,
 		current->group_leader->comm, current->group_leader->pid,
 		current->comm, current->pid);
@@ -414,26 +425,41 @@ static void kgsl_sync_fence_callback(struct dma_fence *fence,
 {
 	struct kgsl_sync_fence_cb *kcb = (struct kgsl_sync_fence_cb *)cb;
 
-	/*
-	 * If the callback is marked for cancellation in a separate thread,
-	 * let the other thread do the cleanup.
-	 */
-	if (kcb->func(kcb->priv)) {
-		dma_fence_put(kcb->fence);
-		kfree(kcb);
-	}
+	kcb->func(kcb->priv);
 }
 
-static void kgsl_get_fence_names(struct dma_fence *fence,
-	struct event_fence_info *info_ptr)
+bool is_kgsl_fence(struct dma_fence *f)
+{
+	if (f->ops == &kgsl_sync_fence_ops)
+		return true;
+
+	return false;
+}
+
+static void kgsl_count_hw_fences(struct kgsl_drawobj_sync_event *event, struct dma_fence *fence)
+{
+	/*
+	 * Even one sw-only fence in this sync object means we can't send this
+	 * sync object to the hardware
+	 */
+	if (event->syncobj->flags & KGSL_SYNCOBJ_SW)
+		return;
+
+	if (!test_bit(MSM_HW_FENCE_FLAG_ENABLED_BIT, &fence->flags))
+		event->syncobj->flags |= KGSL_SYNCOBJ_SW;
+	else
+		event->syncobj->num_hw_fence++;
+
+}
+
+static void kgsl_get_fence_info(struct dma_fence *fence,
+	struct event_fence_info *info_ptr, void *priv)
 {
 	unsigned int num_fences;
 	struct dma_fence **fences;
 	struct dma_fence_array *array;
+	struct kgsl_drawobj_sync_event *event = priv;
 	int i;
-
-	if (!info_ptr)
-		return;
 
 	array = to_dma_fence_array(fence);
 
@@ -445,10 +471,13 @@ static void kgsl_get_fence_names(struct dma_fence *fence,
 		fences = &fence;
 	}
 
+	if (!info_ptr)
+		goto count;
+
 	info_ptr->fences = kcalloc(num_fences, sizeof(struct fence_info),
 			GFP_KERNEL);
 	if (info_ptr->fences == NULL)
-		return;
+		goto count;
 
 	info_ptr->num_fences = num_fences;
 
@@ -467,7 +496,14 @@ static void kgsl_get_fence_names(struct dma_fence *fence,
 			f->ops->fence_value_str(f, fi->name + len,
 				sizeof(fi->name) - len);
 		}
+
+		kgsl_count_hw_fences(event, f);
 	}
+
+	return;
+count:
+	for (i = 0; i < num_fences; i++)
+		kgsl_count_hw_fences(event, fences[i]);
 }
 
 struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
@@ -492,7 +528,7 @@ struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
 	kcb->priv = priv;
 	kcb->func = func;
 
-	kgsl_get_fence_names(fence, info_ptr);
+	kgsl_get_fence_info(fence, info_ptr, priv);
 
 	/* if status then error or signaled */
 	status = dma_fence_add_callback(fence, &kcb->fence_cb,
@@ -511,23 +547,14 @@ struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
 }
 
 /*
- * Cancel the fence async callback and do the cleanup. The caller must make
- * sure that the callback (if run before cancelling) returns false, so that
- * no other thread frees the pointer.
+ * Cancel the fence async callback.
  */
 void kgsl_sync_fence_async_cancel(struct kgsl_sync_fence_cb *kcb)
 {
 	if (kcb == NULL)
 		return;
 
-	/*
-	 * After fence_remove_callback() returns, the fence callback is
-	 * either not called at all, or completed without freeing kcb.
-	 * This thread can then put the fence refcount and free kcb.
-	 */
 	dma_fence_remove_callback(kcb->fence, &kcb->fence_cb);
-	dma_fence_put(kcb->fence);
-	kfree(kcb);
 }
 
 struct kgsl_syncsource {

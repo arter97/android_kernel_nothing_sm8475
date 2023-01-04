@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __ADRENO_GEN7_GMU_H
 #define __ADRENO_GEN7_GMU_H
@@ -55,6 +56,10 @@ struct gen7_gmu_device {
 	/** @num_clks: Number of entries in the @clks array */
 	int num_clks;
 	unsigned int idle_level;
+	/** @freqs: Array of GMU frequencies */
+	u32 freqs[GMU_MAX_PWRLEVELS];
+	/** @vlvls: Array of GMU voltage levels */
+	u32 vlvls[GMU_MAX_PWRLEVELS];
 	struct kgsl_mailbox mailbox;
 	/** @gmu_globals: Array to store gmu global buffers */
 	struct kgsl_memdesc gmu_globals[GMU_KERNEL_ENTRIES];
@@ -82,7 +87,7 @@ struct gen7_gmu_device {
 	struct kobject log_kobj;
 	/*
 	 * @perf_ddr_bw: The lowest ddr bandwidth that puts CX at a corner at
-	 * which GMU can run at 500 Mhz.
+	 * which GMU can run at higher frequency.
 	 */
 	u32 perf_ddr_bw;
 	/** @rdpm_cx_virt: Pointer where the RDPM CX block is mapped */
@@ -91,6 +96,17 @@ struct gen7_gmu_device {
 	void __iomem *rdpm_mx_virt;
 	/** @num_oob_perfcntr: Number of active oob_perfcntr requests */
 	u32 num_oob_perfcntr;
+	/** @gdsc_nb: Notifier block for cx gdsc regulator */
+	struct notifier_block gdsc_nb;
+	/** @gdsc_gate: Completion to signal cx gdsc collapse status */
+	struct completion gdsc_gate;
+};
+
+struct gmu_mem_type_desc {
+	/** @memdesc: Pointer to the memory descriptor */
+	struct kgsl_memdesc *memdesc;
+	/** @type: Type of the memory descriptor */
+	u32 type;
 };
 
 /* Helper function to get to gen7 gmu device from adreno device */
@@ -100,35 +116,76 @@ struct gen7_gmu_device *to_gen7_gmu(struct adreno_device *adreno_dev);
 struct adreno_device *gen7_gmu_to_adreno(struct gen7_gmu_device *gmu);
 
 /**
- * gen7_reserve_gmu_kernel_block() - Allocate a gmu buffer
+ * gen7_reserve_gmu_kernel_block() - Allocate a global gmu buffer
  * @gmu: Pointer to the gen7 gmu device
  * @addr: Desired gmu virtual address
  * @size: Size of the buffer in bytes
  * @vma_id: Target gmu vma where this buffer should be mapped
+ * @va_align: Alignment as a power of two(2^n) bytes for the GMU VA
  *
- * This function allocates a buffer and maps it in
+ * This function allocates a global gmu buffer and maps it in
  * the desired gmu vma
  *
  * Return: Pointer to the memory descriptor or error pointer on failure
  */
 struct kgsl_memdesc *gen7_reserve_gmu_kernel_block(struct gen7_gmu_device *gmu,
-		u32 addr, u32 size, u32 vma_id);
+		u32 addr, u32 size, u32 vma_id, u32 va_align);
 
 /**
  * gen7_reserve_gmu_kernel_block_fixed() - Maps phyical resource address to gmu
- * @gmu: Pointer to the a6xx gmu device
+ * @gmu: Pointer to the gen7 gmu device
  * @addr: Desired gmu virtual address
  * @size: Size of the buffer in bytes
  * @vma_id: Target gmu vma where this buffer should be mapped
  * @resource: Name of the resource to get the size and address to allocate
  * @attrs: Attributes for the mapping
+ * @va_align: Alignment as a power of two(2^n) bytes for the GMU VA
  *
  * This function maps the physcial resource address to desired gmu vma
  *
  * Return: Pointer to the memory descriptor or error pointer on failure
  */
 struct kgsl_memdesc *gen7_reserve_gmu_kernel_block_fixed(struct gen7_gmu_device *gmu,
-	u32 addr, u32 size, u32 vma_id, const char *resource, int attrs);
+	u32 addr, u32 size, u32 vma_id, const char *resource, int attrs, u32 va_align);
+
+/**
+ * gen7_alloc_gmu_kernel_block() - Allocate a gmu buffer
+ * @gmu: Pointer to the gen7 gmu device
+ * @md: Pointer to the memdesc
+ * @size: Size of the buffer in bytes
+ * @vma_id: Target gmu vma where this buffer should be mapped
+ * @attrs: Attributes for the mapping
+ *
+ * This function allocates a buffer and maps it in the desired gmu vma
+ *
+ * Return: 0 on success or error code on failure
+ */
+int gen7_alloc_gmu_kernel_block(struct gen7_gmu_device *gmu,
+	struct kgsl_memdesc *md, u32 size, u32 vma_id, int attrs);
+
+/**
+ * gen7_gmu_import_buffer() - Import a gmu buffer
+ * @gmu: Pointer to the gen7 gmu device
+ * @vma_id: Target gmu vma where this buffer should be mapped
+ * @md: Pointer to the memdesc to be mapped
+ * @size: Size of the buffer in bytes
+ * @attrs: Attributes for the mapping
+ *
+ * This function imports and maps a buffer to a gmu vma
+ *
+ * Return: 0 on success or error code on failure
+ */
+int gen7_gmu_import_buffer(struct gen7_gmu_device *gmu, u32 vma_id,
+			struct kgsl_memdesc *md, u32 size, u32 attrs);
+
+/**
+ * gen7_free_gmu_block() - Free a gmu buffer
+ * @gmu: Pointer to the gen7 gmu device
+ * @md: Pointer to the memdesc that is to be freed
+ *
+ * This function frees a gmu block allocated by gen7_reserve_gmu_kernel_block()
+ */
+void gen7_free_gmu_block(struct gen7_gmu_device *gmu, struct kgsl_memdesc *md);
 
 /**
  * gen7_build_rpmh_tables - Build the rpmh tables
@@ -148,17 +205,6 @@ int gen7_build_rpmh_tables(struct adreno_device *adreno_dev);
  * is on or off
  */
 bool gen7_gmu_gx_is_on(struct adreno_device *adreno_dev);
-
-/**
- * gen7_gmu_device_snapshot - GEN7 GMU snapshot function
- * @device: Device being snapshotted
- * @snapshot: Pointer to the snapshot instance
- *
- * This is where all of the GEN7 GMU specific bits and pieces are grabbed
- * into the snapshot memory
- */
-void gen7_gmu_device_snapshot(struct kgsl_device *device,
-		struct kgsl_snapshot *snapshot);
 
 /**
  * gen7_gmu_device_probe - GEN7 GMU snapshot function
@@ -423,6 +469,12 @@ int gen7_gmu_enable_clks(struct adreno_device *adreno_dev);
 int gen7_gmu_enable_gdsc(struct adreno_device *adreno_dev);
 
 /**
+ * gen7_gmu_disable_gdsc - Disable gmu gdsc
+ * @adreno_dev: Pointer to the adreno device
+ */
+void gen7_gmu_disable_gdsc(struct adreno_device *adreno_dev);
+
+/**
  * gen7_gmu_handle_watchdog - Handle watchdog interrupt
  * @adreno_dev: Pointer to the adreno device
  */
@@ -440,5 +492,17 @@ void gen7_gmu_send_nmi(struct adreno_device *adreno_dev, bool force);
  * @adreno_dev: Pointer to the adreno device
  */
 int gen7_gmu_add_to_minidump(struct adreno_device *adreno_dev);
+
+/**
+ * gen7_snapshot_gmu_mem - Snapshot a GMU memory descriptor
+ * @device: Pointer to the kgsl device
+ * @buf: Destination snapshot buffer
+ * @remain: Remaining size of the snapshot buffer
+ * @priv: Opaque handle
+ *
+ * Return: Number of bytes written to snapshot buffer
+ */
+size_t gen7_snapshot_gmu_mem(struct kgsl_device *device,
+	u8 *buf, size_t remain, void *priv);
 
 #endif

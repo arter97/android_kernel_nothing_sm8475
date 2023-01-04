@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "smcinvoke: %s: " fmt, __func__
@@ -29,11 +30,13 @@
 #include <asm/cacheflush.h>
 #include <soc/qcom/qseecomi.h>
 #include <linux/qtee_shmbridge.h>
-#include "smcinvoke_object.h"
+#include <soc/qcom/smcinvoke_object.h>
 #include <misc/qseecom_kernel.h>
+#include <soc/qcom/IClientEnv.h>
 
 #define CREATE_TRACE_POINTS
 #include "trace_smcinvoke.h"
+
 
 #define SMCINVOKE_DEV				"smcinvoke"
 #define SMCINVOKE_TZ_ROOT_OBJ			1
@@ -263,7 +266,7 @@ struct smcinvoke_mem_obj {
 	uint64_t p_addr;
 	size_t p_addr_len;
 	struct list_head list;
-	bool bridge_created_by_others;
+	bool is_smcinvoke_created_shmbridge;
 	uint64_t shmbridge_handle;
 };
 
@@ -372,7 +375,7 @@ static uint32_t next_mem_map_obj_id_locked(void)
 static inline void free_mem_obj_locked(struct smcinvoke_mem_obj *mem_obj)
 {
 	int ret = 0;
-	bool is_bridge_created_by_others = mem_obj->bridge_created_by_others;
+	bool is_bridge_created = mem_obj->is_smcinvoke_created_shmbridge;
 	struct dma_buf *dmabuf_to_free = mem_obj->dma_buf;
 	uint64_t shmbridge_handle = mem_obj->shmbridge_handle;
 
@@ -381,7 +384,7 @@ static inline void free_mem_obj_locked(struct smcinvoke_mem_obj *mem_obj)
 	mem_obj = NULL;
 	mutex_unlock(&g_smcinvoke_lock);
 
-	if (!is_bridge_created_by_others)
+	if (is_bridge_created)
 		ret = qtee_shmbridge_deregister(shmbridge_handle);
 	if (ret)
 		pr_err("Error:%d delete bridge failed leaking memory 0x%x\n",
@@ -624,15 +627,13 @@ static uint16_t get_server_id(int cb_server_fd)
 	struct smcinvoke_file_data *svr_cxt = NULL;
 	struct file *tmp_filp = fget(cb_server_fd);
 
-	if (!tmp_filp)
+	if (!tmp_filp || !FILE_IS_REMOTE_OBJ(tmp_filp))
 		return server_id;
 
 	svr_cxt = tmp_filp->private_data;
 	if (svr_cxt && svr_cxt->context_type == SMCINVOKE_OBJ_TYPE_SERVER)
 		server_id = svr_cxt->server_id;
-
-	if (tmp_filp)
-		fput(tmp_filp);
+	fput(tmp_filp);
 
 	return server_id;
 }
@@ -847,15 +848,16 @@ static int smcinvoke_create_bridge(struct smcinvoke_mem_obj *mem_obj)
 	ret = qtee_shmbridge_register(phys, size, vmid_list, perms_list, nelems,
 			tz_perm, &mem_obj->shmbridge_handle);
 
-	if (ret && ret != -EEXIST) {
+	if (ret == 0) {
+		/* In case of ret=0/success handle has to be freed in memobj release */
+		mem_obj->is_smcinvoke_created_shmbridge = true;
+	} else if (ret == -EEXIST) {
+		ret = 0;
+		goto exit;
+	} else {
 		pr_err("creation of shm bridge for mem_region_id %d failed ret %d\n",
 				mem_obj->mem_region_id, ret);
 		goto exit;
-	}
-
-	if (ret == -EEXIST) {
-		mem_obj->bridge_created_by_others = true;
-		ret = 0;
 	}
 
 	trace_smcinvoke_create_bridge(mem_obj->shmbridge_handle, mem_obj->mem_region_id);
@@ -1042,8 +1044,14 @@ static int invoke_cmd_handler(int cmd, phys_addr_t in_paddr, size_t in_buf_len,
 		break;
 
 	case SMCINVOKE_CB_RSP_CMD:
+		if (legacy_smc_call)
+			qtee_shmbridge_flush_shm_buf(out_shm);
 		ret = qcom_scm_invoke_callback_response(virt_to_phys(out_buf), out_buf_len,
 				result, response_type, data);
+		if (legacy_smc_call) {
+			qtee_shmbridge_inv_shm_buf(in_shm);
+			qtee_shmbridge_inv_shm_buf(out_shm);
+		}
 		break;
 
 	default:
@@ -1150,7 +1158,7 @@ static void process_tzcb_req(void *buf, size_t buf_len, struct file **arr_filp)
 	timeout_jiff = msecs_to_jiffies(1000);
 
 	while (cbobj_retries < CBOBJ_MAX_RETRIES) {
-		ret = wait_event_interruptible_timeout(srvr_info->rsp_wait_q,
+		ret = wait_event_timeout(srvr_info->rsp_wait_q,
 				(cb_txn->state == SMCINVOKE_REQ_PROCESSED) ||
 				(srvr_info->state == SMCINVOKE_SERVER_STATE_DEFUNCT),
 				timeout_jiff);
@@ -1942,6 +1950,14 @@ static long process_invoke_req(struct file *filp, unsigned int cmd,
 	}
 	if (req.argsize != sizeof(union smcinvoke_arg)) {
 		pr_err("arguments size for invoke req is invalid\n");
+		return -EINVAL;
+	}
+
+	if (context_type == SMCINVOKE_OBJ_TYPE_TZ_OBJ &&
+		tzobj->tzhandle == SMCINVOKE_TZ_ROOT_OBJ &&
+		(req.op == IClientEnv_OP_notifyDomainChange ||
+		req.op == IClientEnv_OP_registerWithCredentials)) {
+		pr_err("invalid rootenv op\n");
 		return -EINVAL;
 	}
 

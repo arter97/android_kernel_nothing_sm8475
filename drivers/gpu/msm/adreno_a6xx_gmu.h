@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __ADRENO_A6XX_GMU_H
 #define __ADRENO_A6XX_GMU_H
@@ -55,6 +56,10 @@ struct a6xx_gmu_device {
 	/** @num_clks: Number of entries in the @clks array */
 	int num_clks;
 	unsigned int idle_level;
+	/** @freqs: Array of GMU frequencies */
+	u32 freqs[GMU_MAX_PWRLEVELS];
+	/** @vlvls: Array of GMU voltage levels */
+	u32 vlvls[GMU_MAX_PWRLEVELS];
 	struct kgsl_mailbox mailbox;
 	bool preallocations;
 	/** @gmu_globals: Array to store gmu global buffers */
@@ -87,11 +92,15 @@ struct a6xx_gmu_device {
 	struct kobject log_kobj;
 	/*
 	 * @perf_ddr_bw: The lowest ddr bandwidth that puts CX at a corner at
-	 * which GMU can run at 500 Mhz.
+	 * which GMU can run at higher frequency.
 	 */
 	u32 perf_ddr_bw;
 	/** @num_oob_perfcntr: Number of active oob_perfcntr requests */
 	u32 num_oob_perfcntr;
+	/** @gdsc_nb: Notifier block for cx gdsc regulator */
+	struct notifier_block gdsc_nb;
+	/** @gdsc_gate: Completion to signal cx gdsc collapse status */
+	struct completion gdsc_gate;
 };
 
 /* Helper function to get to a6xx gmu device from adreno device */
@@ -106,6 +115,7 @@ struct adreno_device *a6xx_gmu_to_adreno(struct a6xx_gmu_device *gmu);
  * @addr: Desired gmu virtual address
  * @size: Size of the buffer in bytes
  * @vma_id: Target gmu vma where this bufer should be mapped
+ * @va_align: Alignment as a power of two(2^n) bytes for the GMU VA
  *
  * This function allocates a buffer and maps it in
  * the desired gmu vma
@@ -113,7 +123,7 @@ struct adreno_device *a6xx_gmu_to_adreno(struct a6xx_gmu_device *gmu);
  * Return: Pointer to the memory descriptor or error pointer on failure
  */
 struct kgsl_memdesc *reserve_gmu_kernel_block(struct a6xx_gmu_device *gmu,
-	u32 addr, u32 size, u32 vma_id);
+	u32 addr, u32 size, u32 vma_id, u32 va_align);
 
 /**
  * reserve_gmu_kernel_block_fixed() - Maps phyical resource address to gmu
@@ -123,13 +133,14 @@ struct kgsl_memdesc *reserve_gmu_kernel_block(struct a6xx_gmu_device *gmu,
  * @vma_id: Target gmu vma where this buffer should be mapped
  * @resource: Name of the resource to get the size and address to allocate
  * @attrs: Attributes for the mapping
+ * @va_align: Alignment as a power of two(2^n) bytes for the GMU VA
  *
  * This function maps the physcial resource address to desired gmu vma
  *
  * Return: Pointer to the memory descriptor or error pointer on failure
  */
 struct kgsl_memdesc *reserve_gmu_kernel_block_fixed(struct a6xx_gmu_device *gmu,
-	u32 addr, u32 size, u32 vma_id, const char *resource, int attrs);
+	u32 addr, u32 size, u32 vma_id, const char *resource, int attrs, u32 va_align);
 
 /**
  * a6xx_build_rpmh_tables - Build the rpmh tables
@@ -243,12 +254,18 @@ int a6xx_gmu_memory_init(struct adreno_device *adreno_dev);
 void a6xx_gmu_aop_send_acd_state(struct a6xx_gmu_device *gmu, bool flag);
 
 /**
- * a6xx_gmu_enable_clocks - Enable gmu clocks
+ * a6xx_gmu_enable_gdsc - Enable gmu gdsc
  * @adreno_dev: Pointer to the adreno device
  *
  * Return: 0 on success or negative error on failure
  */
 int a6xx_gmu_enable_gdsc(struct adreno_device *adreno_dev);
+
+/**
+ * a6xx_gmu_disable_gdsc - Disable gmu gdsc
+ * @adreno_dev: Pointer to the adreno device
+ */
+void a6xx_gmu_disable_gdsc(struct adreno_device *adreno_dev);
 
 /**
  * a6xx_gmu_load_fw - Load gmu firmware

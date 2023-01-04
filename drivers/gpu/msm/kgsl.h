@@ -46,8 +46,10 @@
 #define KGSL_MEMSTORE_SIZE	((int)(PAGE_SIZE * 8))
 #define KGSL_MEMSTORE_GLOBAL	(0)
 #define KGSL_PRIORITY_MAX_RB_LEVELS 4
+#define KGSL_LPAC_RB_ID		KGSL_PRIORITY_MAX_RB_LEVELS
+/* Subtract one for LPAC */
 #define KGSL_MEMSTORE_MAX	(KGSL_MEMSTORE_SIZE / \
-	sizeof(struct kgsl_devmemstore) - 1 - KGSL_PRIORITY_MAX_RB_LEVELS)
+	sizeof(struct kgsl_devmemstore) - 2 - KGSL_PRIORITY_MAX_RB_LEVELS)
 #define KGSL_MAX_CONTEXTS_PER_PROC 200
 
 #define MEMSTORE_RB_OFFSET(rb, field)	\
@@ -104,7 +106,7 @@ static inline void KGSL_STATS_ADD(uint64_t size, atomic_long_t *stat,
 		atomic_long_set(max, ret);
 }
 
-#define KGSL_MAX_NUMIBS 100000
+#define KGSL_MAX_NUMIBS 2000
 #define KGSL_MAX_SYNCPOINTS 32
 
 struct kgsl_device;
@@ -204,6 +206,8 @@ struct kgsl_memdesc_ops {
 #define KGSL_MEMDESC_RECLAIMED BIT(11)
 /* Skip reclaim of the memdesc pages */
 #define KGSL_MEMDESC_SKIP_RECLAIM BIT(12)
+/* The memdesc is mapped as iomem */
+#define KGSL_MEMDESC_IOMEM BIT(13)
 
 /**
  * struct kgsl_memdesc - GPU memory object descriptor
@@ -516,7 +520,7 @@ void kgsl_core_exit(void);
 static inline bool kgsl_gpuaddr_in_memdesc(const struct kgsl_memdesc *memdesc,
 				uint64_t gpuaddr, uint64_t size)
 {
-	if (!memdesc)
+	if (IS_ERR_OR_NULL(memdesc))
 		return false;
 
 	/* set a minimum size to search for */

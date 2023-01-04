@@ -781,6 +781,14 @@ static int a6xx_gpu_boot(struct adreno_device *adreno_dev)
 		goto err_oob_clear;
 	}
 
+	/*
+	 * At this point it is safe to assume that we recovered. Setting
+	 * this field allows us to take a new snapshot for the next failure
+	 * if we are prioritizing the first unrecoverable snapshot.
+	 */
+	if (device->snapshot)
+		device->snapshot->recovered = true;
+
 	/* Start the dispatcher */
 	adreno_dispatcher_start(device);
 
@@ -1120,6 +1128,9 @@ no_gx_power:
 
 	if (!IS_ERR_OR_NULL(adreno_dev->gpuhtw_llc_slice))
 		llcc_slice_deactivate(adreno_dev->gpuhtw_llc_slice);
+
+	if (!IS_ERR_OR_NULL(adreno_dev->gpumv_llc_slice))
+		llcc_slice_deactivate(adreno_dev->gpumv_llc_slice);
 
 	clear_bit(RGMU_PRIV_GPU_STARTED, &rgmu->flags);
 

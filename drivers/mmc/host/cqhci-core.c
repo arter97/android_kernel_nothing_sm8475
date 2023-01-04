@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2015, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -20,6 +21,9 @@
 #include "cqhci.h"
 #include "cqhci-crypto.h"
 #include "cqhci-crypto-qti.h"
+#if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
+#include "sdhci-msm-scaling.h"
+#endif
 
 #define DCMD_SLOT 31
 #define NUM_SLOTS 32
@@ -573,6 +577,10 @@ static void cqhci_post_req(struct mmc_host *host, struct mmc_request *mrq)
 {
 	struct mmc_data *data = mrq->data;
 
+#if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
+	sdhci_msm_mmc_cqe_clk_scaling_stop_busy(host, mrq);
+#endif
+
 	if (data) {
 		dma_unmap_sg(mmc_dev(host), data->sg, data->sg_len,
 			     (data->flags & MMC_DATA_READ) ?
@@ -596,6 +604,10 @@ static int cqhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		pr_err("%s: cqhci: not enabled\n", mmc_hostname(mmc));
 		return -EINVAL;
 	}
+
+#if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
+	sdhci_msm_mmc_cqe_clk_scaling_start_busy(mmc, mrq);
+#endif
 
 	/* First request after resume has to re-enable */
 	if (!cq_host->activated)
@@ -813,14 +825,20 @@ irqreturn_t cqhci_irq(struct mmc_host *mmc, u32 intmask, int cmd_error,
 	struct cqhci_host *cq_host = mmc->cqe_private;
 
 	status = cqhci_readl(cq_host, CQHCI_IS);
-	cqhci_writel(cq_host, status, CQHCI_IS);
 
 	pr_debug("%s: cqhci: IRQ status: 0x%08x\n", mmc_hostname(mmc), status);
 
 	if ((status & (CQHCI_IS_RED | CQHCI_IS_GCE | CQHCI_IS_ICCE)) ||
-	    cmd_error || data_error)
+	    cmd_error || data_error) {
+		pr_err("%s: cqhci: error IRQ status: 0x%08x cmd error %d data error %d\n",
+			mmc_hostname(mmc), status, cmd_error, data_error);
+		cqhci_dumpregs(cq_host);
+		cqhci_writel(cq_host, status, CQHCI_IS);
 		cqhci_error_irq(mmc, status, cmd_error, data_error);
-
+	} else {
+		/* Clear interrupt */
+		cqhci_writel(cq_host, status, CQHCI_IS);
+	}
 	if (status & CQHCI_IS_TCC) {
 		/* read TCN and complete the request */
 		comp_status = cqhci_readl(cq_host, CQHCI_TCN);

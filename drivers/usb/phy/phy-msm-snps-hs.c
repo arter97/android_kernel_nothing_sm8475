@@ -91,6 +91,9 @@
 #define TXVREFTUNE0_MASK			0xF
 #define PARAM_OVRD_MASK			0xFF
 
+#define USB2_PHY_USB_PHY_PWRDOWN_CTRL		(0xa4)
+#define PWRDOWN_B				BIT(0)
+
 #define DPSE_INTR_HIGH			BIT(0)
 
 #define USB_HSPHY_3P3_VOL_MIN			3050000 /* uV */
@@ -102,6 +105,7 @@
 #define USB_HSPHY_1P8_VOL_MAX			1800000 /* uV */
 #define USB_HSPHY_1P8_HPM_LOAD			19000	/* uA */
 
+#define USB2PHY_REFGEN_HPM_LOAD			1200000  /* uA */
 #define USB_HSPHY_VDD_HPM_LOAD			30000	/* uA */
 
 enum port_state {
@@ -130,12 +134,16 @@ struct msm_hsphy {
 
 	struct clk		*ref_clk_src;
 	struct clk		*cfg_ahb_clk;
+	struct clk		*ref_clk;
 	struct reset_control	*phy_reset;
 
 	struct regulator	*vdd;
 	struct regulator	*vdda33;
 	struct regulator	*vdda18;
+	struct regulator        *refgen;
 	int			vdd_levels[3]; /* none, low, high */
+	int			refgen_levels[3]; /* 0, REFGEN_VOL_MIN, REFGEN_VOL_MAX */
+	int			vdda18_max_uA;
 
 	bool			clocks_enabled;
 	bool			power_enabled;
@@ -181,6 +189,9 @@ static void msm_hsphy_enable_clocks(struct msm_hsphy *phy, bool on)
 	if (!phy->clocks_enabled && on) {
 		clk_prepare_enable(phy->ref_clk_src);
 
+		if (phy->ref_clk)
+			clk_prepare_enable(phy->ref_clk);
+
 		if (phy->cfg_ahb_clk)
 			clk_prepare_enable(phy->cfg_ahb_clk);
 
@@ -188,6 +199,10 @@ static void msm_hsphy_enable_clocks(struct msm_hsphy *phy, bool on)
 	}
 
 	if (phy->clocks_enabled && !on) {
+
+		if (phy->ref_clk)
+			clk_disable_unprepare(phy->ref_clk);
+
 		if (phy->cfg_ahb_clk)
 			clk_disable_unprepare(phy->cfg_ahb_clk);
 
@@ -209,8 +224,12 @@ static int msm_hsphy_enable_power(struct msm_hsphy *phy, bool on)
 		return 0;
 	}
 
-	if (!on)
-		goto disable_vdda33;
+	if (!on) {
+		if (phy->refgen)
+			goto disable_refgen;
+		else
+			goto disable_vdda33;
+	}
 
 	ret = regulator_set_load(phy->vdd, USB_HSPHY_VDD_HPM_LOAD);
 	if (ret < 0) {
@@ -231,7 +250,7 @@ static int msm_hsphy_enable_power(struct msm_hsphy *phy, bool on)
 		goto unconfig_vdd;
 	}
 
-	ret = regulator_set_load(phy->vdda18, USB_HSPHY_1P8_HPM_LOAD);
+	ret = regulator_set_load(phy->vdda18, phy->vdda18_max_uA);
 	if (ret < 0) {
 		dev_err(phy->phy.dev, "Unable to set HPM of vdda18:%d\n", ret);
 		goto disable_vdd;
@@ -271,10 +290,48 @@ static int msm_hsphy_enable_power(struct msm_hsphy *phy, bool on)
 		goto unset_vdd33;
 	}
 
+	if (phy->refgen) {
+		ret = regulator_set_load(phy->refgen, USB2PHY_REFGEN_HPM_LOAD);
+		if (ret < 0) {
+			dev_err(phy->phy.dev, "Unable to set HPM of refgen:%d\n", ret);
+			goto disable_vdda33;
+		}
+
+		ret = regulator_set_voltage(phy->refgen, phy->refgen_levels[1],
+						phy->refgen_levels[2]);
+		if (ret) {
+			dev_err(phy->phy.dev,
+					"Unable to set voltage for refgen:%d\n", ret);
+			goto put_refgen_lpm;
+		}
+
+		ret = regulator_enable(phy->refgen);
+		if (ret) {
+			dev_err(phy->phy.dev, "Unable to enable refgen:%d\n", ret);
+			goto unset_refgen;
+		}
+	}
+
 	phy->power_enabled = true;
 
 	pr_debug("%s(): HSUSB PHY's regulators are turned ON.\n", __func__);
 	return ret;
+
+disable_refgen:
+	ret = regulator_disable(phy->refgen);
+	if (ret)
+		dev_err(phy->phy.dev, "Unable to disable refgen:%d\n", ret);
+
+unset_refgen:
+	ret = regulator_set_voltage(phy->refgen, phy->refgen_levels[0], phy->refgen_levels[2]);
+	if (ret)
+		dev_err(phy->phy.dev,
+				"Unable to set (0) voltage for refgen:%d\n", ret);
+
+put_refgen_lpm:
+	ret = regulator_set_load(phy->refgen, 0);
+	if (ret < 0)
+		dev_err(phy->phy.dev, "Unable to set (0) HPM of refgen\n");
 
 disable_vdda33:
 	ret = regulator_disable(phy->vdda33);
@@ -403,7 +460,21 @@ static int msm_hsphy_init(struct usb_phy *uphy)
 				qcom_scm_io_writel(phy->eud_reg, 0x0);
 				phy->re_enable_eud = true;
 			} else {
+				msm_hsphy_enable_clocks(phy, true);
 				ret = msm_hsphy_enable_power(phy, true);
+				/* On some targets 3.3V LDO which acts as EUD power
+				 * up (which in turn reset the USB PHY) is shared
+				 * with EMMC so that it won't be turned off even
+				 * though we remove our vote as part of disconnect
+				 * so power up this regulator is actually not
+				 * resetting the PHY next time when cable is
+				 * connected. So we explicitly bring
+				 * it out of power down state by writing
+				 * to POWER DOWN register,powering on the EUD
+				 * will bring EUD as well as phy out of reset state.
+				 */
+				msm_usb_write_readback(phy->base,
+					USB2_PHY_USB_PHY_PWRDOWN_CTRL, PWRDOWN_B, 1);
 				return ret;
 			}
 		}
@@ -535,7 +606,15 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 
 suspend:
 	if (suspend) { /* Bus suspend */
-		if (phy->cable_connected) {
+		/*
+		 * The HUB class drivers calls usb_phy_notify_disconnect() upon a device
+		 * disconnect. Consider a scenario where a USB device is disconnected without
+		 * detaching the OTG cable. phy->cable_connected is marked false due to above
+		 * mentioned call path. Now, while entering low power mode (host bus suspend),
+		 * we come here and turn off regulators thinking no cable is connected. Prevent
+		 * this by not turning off regulators while in host mode.
+		 */
+		if (phy->cable_connected || (phy->phy.flags & PHY_HOST_MODE)) {
 			/* Enable auto-resume functionality during host mode
 			 * bus suspend with some FS/HS peripheral connected.
 			 */
@@ -722,6 +801,7 @@ static int msm_hsphy_dpdm_regulator_enable(struct regulator_dev *rdev)
 
 	if (phy->eud_enable_reg && readl_relaxed(phy->eud_enable_reg)) {
 		dev_err(phy->phy.dev, "eud is enabled\n");
+		phy->dpdm_enable = true;
 		return 0;
 	}
 
@@ -752,11 +832,20 @@ static int msm_hsphy_dpdm_regulator_enable(struct regulator_dev *rdev)
 
 static int msm_hsphy_dpdm_regulator_disable(struct regulator_dev *rdev)
 {
-	int ret = 0;
+	int ret = 0, val = 0;
 	struct msm_hsphy *phy = rdev_get_drvdata(rdev);
 
 	dev_dbg(phy->phy.dev, "%s dpdm_enable:%d\n",
 				__func__, phy->dpdm_enable);
+
+	if (phy->eud_enable_reg) {
+		val = readl_relaxed(phy->eud_enable_reg);
+		if (val & EUD_EN2) {
+			dev_err(phy->phy.dev, "eud is enabled\n");
+			phy->dpdm_enable = false;
+			return 0;
+		}
+	}
 
 	mutex_lock(&phy->phy_lock);
 	if (phy->dpdm_enable) {
@@ -1127,20 +1216,22 @@ static void msm_hsphy_port_state_work(struct work_struct *w)
 
 		status = msm_hsphy_chg_det_status(phy, STATE_DCD);
 
-		if (!status) {
+		/*
+		 * Floating or non compliant charger which pull D+ all the time
+		 * will cause DCD timeout and end up being detected as SDP. This
+		 * is an acceptable behavior compared to false negative of
+		 * slower insertion of SDP/CDP detection
+		 */
+		if (!status || phy->dcd_timeout >= CHG_DCD_TIMEOUT_MSEC) {
+			dev_dbg(phy->phy.dev, "DCD status=%d timeout=%d\n",
+							status, phy->dcd_timeout);
 			msm_hsphy_chg_det_disable_seq(phy, STATE_DCD);
 			msm_hsphy_chg_det_enable_seq(phy, STATE_PRIMARY);
 			phy->port_state = PORT_PRIMARY_IN_PROGRESS;
 			delay = CHG_PRIMARY_DET_TIME_MSEC;
-		} else if (phy->dcd_timeout < CHG_DCD_TIMEOUT_MSEC) {
+		} else {
 			delay = CHG_DCD_POLL_TIME_MSEC;
 			phy->dcd_timeout += delay;
-		} else {
-			msm_hsphy_notify_charger(phy,
-						POWER_SUPPLY_TYPE_USB_DCP);
-			msm_hsphy_chg_det_disable_seq(phy, STATE_DCD);
-			msm_hsphy_unprepare_chg_det(phy);
-			phy->port_state = PORT_CHG_DET_DONE;
 		}
 
 		break;
@@ -1169,6 +1260,7 @@ static void msm_hsphy_port_state_work(struct work_struct *w)
 			msm_hsphy_unprepare_chg_det(phy);
 			msm_hsphy_notify_charger(phy, POWER_SUPPLY_TYPE_USB);
 			msm_hsphy_notify_extcon(phy, EXTCON_USB, 1);
+			dev_info(phy->phy.dev, "Connected to SDP\n");
 			phy->port_state = PORT_CHG_DET_DONE;
 		}
 		break;
@@ -1187,10 +1279,16 @@ static void msm_hsphy_port_state_work(struct work_struct *w)
 		if (status) {
 			msm_hsphy_notify_charger(phy,
 						POWER_SUPPLY_TYPE_USB_DCP);
+			dev_info(phy->phy.dev, "Connected to DCP\n");
 		} else {
 			msm_hsphy_notify_charger(phy,
 						POWER_SUPPLY_TYPE_USB_CDP);
 			msm_hsphy_notify_extcon(phy, EXTCON_USB, 1);
+			/*
+			 * Drive a pulse on DP to ensure proper CDP detection
+			 */
+			dev_info(phy->phy.dev, "Connected to CDP, pull DP up\n");
+			usb_phy_drive_dp_pulse(&phy->phy);
 		}
 		/*
 		 * Fall through to check if cable got disconnected
@@ -1255,6 +1353,39 @@ static int msm_hsphy_extcon_register(struct msm_hsphy *phy)
 			EXTCON_PROP_USB_TYPEC_POLARITY);
 	extcon_set_property_capability(phy->usb_extcon, EXTCON_USB_HOST,
 			EXTCON_PROP_USB_SS);
+	return 0;
+}
+
+static int usb2_get_regulators(struct msm_hsphy *phy)
+{
+	struct device *dev = phy->phy.dev;
+
+	phy->refgen = NULL;
+
+	phy->vdd = devm_regulator_get(dev, "vdd");
+	if (IS_ERR(phy->vdd)) {
+		dev_err(dev, "unable to get vdd supply\n");
+		return PTR_ERR(phy->vdd);
+	}
+
+	phy->vdda33 = devm_regulator_get(dev, "vdda33");
+	if (IS_ERR(phy->vdda33)) {
+		dev_err(dev, "unable to get vdda33 supply\n");
+		return PTR_ERR(phy->vdda33);
+	}
+
+	phy->vdda18 = devm_regulator_get(dev, "vdda18");
+	if (IS_ERR(phy->vdda18)) {
+		dev_err(dev, "unable to get vdda18 supply\n");
+		return PTR_ERR(phy->vdda18);
+	}
+
+	if (of_property_read_bool(dev->of_node, "refgen-supply")) {
+		phy->refgen = devm_regulator_get_optional(dev, "refgen");
+		if (IS_ERR(phy->refgen))
+			dev_err(dev, "unable to get refgen supply\n");
+	}
+
 	return 0;
 }
 
@@ -1323,7 +1454,12 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 		ret = PTR_ERR(phy->ref_clk_src);
 		return ret;
 	}
-
+	phy->ref_clk = devm_clk_get_optional(dev, "ref_clk");
+	if (IS_ERR(phy->ref_clk)) {
+		dev_dbg(dev, "clk get failed for ref_clk\n");
+		ret = PTR_ERR(phy->ref_clk);
+		return ret;
+	}
 	if (of_property_match_string(pdev->dev.of_node,
 				"clock-names", "cfg_ahb_clk") >= 0) {
 		phy->cfg_ahb_clk = devm_clk_get(dev, "cfg_ahb_clk");
@@ -1368,6 +1504,18 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 		}
 	}
 
+	     /*
+	      * Some targets use PMOS LDOs, while others use NMOS LDOs,
+	      * but there is no support for NMOS LDOs whose load current threshold
+	      * for entering HPM is 30mA, which is greater than 19mA.
+	      * As a result of this property being passed in dt, the value of
+	      * USB_HSPHY_1P8_HPM_LOAD will be modified to meet the requirements.
+	      */
+
+	if (of_property_read_s32(dev->of_node, "qcom,vdd18-max-load-uA",
+			&phy->vdda18_max_uA) || !phy->vdda18_max_uA)
+		phy->vdda18_max_uA = USB_HSPHY_1P8_HPM_LOAD;
+
 	ret = of_property_read_u32_array(dev->of_node, "qcom,vdd-voltage-level",
 					 (u32 *) phy->vdd_levels,
 					 ARRAY_SIZE(phy->vdd_levels));
@@ -1376,27 +1524,15 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 		goto err_ret;
 	}
 
+	ret = of_property_read_u32_array(dev->of_node, "qcom,refgen-voltage-level",
+					(u32 *) phy->refgen_levels,
+					ARRAY_SIZE(phy->refgen_levels));
+	if (ret)
+		dev_err(dev, "error reading qcom,refgen-voltage-level property\n");
 
-	phy->vdd = devm_regulator_get(dev, "vdd");
-	if (IS_ERR(phy->vdd)) {
-		dev_err(dev, "unable to get vdd supply\n");
-		ret = PTR_ERR(phy->vdd);
-		goto err_ret;
-	}
-
-	phy->vdda33 = devm_regulator_get(dev, "vdda33");
-	if (IS_ERR(phy->vdda33)) {
-		dev_err(dev, "unable to get vdda33 supply\n");
-		ret = PTR_ERR(phy->vdda33);
-		goto err_ret;
-	}
-
-	phy->vdda18 = devm_regulator_get(dev, "vdda18");
-	if (IS_ERR(phy->vdda18)) {
-		dev_err(dev, "unable to get vdda18 supply\n");
-		ret = PTR_ERR(phy->vdda18);
-		goto err_ret;
-	}
+	ret = usb2_get_regulators(phy);
+	if (ret)
+		return ret;
 
 	mutex_init(&phy->phy_lock);
 	platform_set_drvdata(pdev, phy);
@@ -1450,8 +1586,11 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 	 * kernel boot till USB phy driver is initialized based on cable status,
 	 * keep LDOs on here.
 	 */
-	if (phy->eud_enable_reg && readl_relaxed(phy->eud_enable_reg))
+	if (phy->eud_enable_reg && readl_relaxed(phy->eud_enable_reg)) {
+		msm_hsphy_enable_clocks(phy, true);
 		msm_hsphy_enable_power(phy, true);
+	}
+
 	return 0;
 
 err_ret:

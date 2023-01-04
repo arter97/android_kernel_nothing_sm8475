@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2019, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /*
@@ -2370,6 +2371,12 @@ send_message_err:
 		mutex_unlock(&ch->shared_sync_lock);
 	}
 
+	/* close pm awake window after spcom server response */
+	if (ch->is_server) {
+		__pm_relax(spcom_dev->ws);
+		spcom_pr_dbg("ch[%s]:pm_relax() called for server, after tx\n",
+			     ch->name);
+	}
 	mutex_unlock(&ch->lock);
 	memset(tx_buf, 0, tx_buf_size);
 	kfree(tx_buf);
@@ -2898,15 +2905,13 @@ static int spcom_ioctl_handle_get_message(struct spcom_ioctl_message *arg, void 
 	ch_name = arg->ch_name;
 	if (!is_valid_ch_name(ch_name)) {
 		spcom_pr_err("invalid channel name\n");
-		ret = -EINVAL;
-		goto get_message_out;
+		return -EINVAL;
 	}
 
 	/* DEVICE_NAME name is reserved for control channel */
 	if (is_control_channel_name(ch_name)) {
 		spcom_pr_err("cannot send message on management channel\n", ch_name);
-		ret = -EFAULT;
-		goto get_message_out;
+		return -EFAULT;
 	}
 
 	ch = spcom_find_channel_by_name(ch_name);
@@ -2982,13 +2987,21 @@ static int spcom_ioctl_handle_get_message(struct spcom_ioctl_message *arg, void 
 
 get_message_out:
 
-	if (ch && ch->active_pid == current_pid()) {
+	if (ch->active_pid == current_pid()) {
 		ch->active_pid = 0;
 		mutex_unlock(&ch->shared_sync_lock);
 	}
 
 	kfree(rx_buf);
 
+	/* close pm awake window for spcom client get response */
+	mutex_lock(&ch->lock);
+	if (!ch->is_server) {
+		__pm_relax(spcom_dev->ws);
+		spcom_pr_dbg("ch[%s]:pm_relax() called for server, after tx\n",
+			     ch->name);
+	}
+	mutex_unlock(&ch->lock);
 	return ret;
 }
 

@@ -24,6 +24,8 @@ struct a6xx_hwsched_hfi {
 	struct kgsl_memdesc *big_ib;
 	/** @big_ib_recurring: GMU buffer to hold big recurring IBs */
 	struct kgsl_memdesc *big_ib_recurring;
+	/** @msg_mutex: Mutex for accessing the msgq */
+	struct mutex msgq_mutex;
 };
 
 struct kgsl_drawobj_cmd;
@@ -110,17 +112,17 @@ int a6xx_hwsched_counter_inline_enable(struct adreno_device *adreno_dev,
 int a6xx_hfi_send_cmd_async(struct adreno_device *adreno_dev, void *data);
 
 /**
- * a6xx_hwsched_submit_cmdobj - Dispatch IBs to dispatch queues
+ * a6xx_hwsched_submit_drawobj - Dispatch IBs to dispatch queues
  * @adreno_dev: Pointer to adreno device structure
- * @cmdobj: The command object which needs to be submitted
+ * @drawobj: The command draw object which needs to be submitted
  *
  * This function is used to register the context if needed and submit
  * IBs to the hfi dispatch queues.
 
  * Return: 0 on success and negative error on failure
  */
-int a6xx_hwsched_submit_cmdobj(struct adreno_device *adreno_dev,
-	struct kgsl_drawobj_cmd *cmdobj);
+int a6xx_hwsched_submit_drawobj(struct adreno_device *adreno_dev,
+	struct kgsl_drawobj *drawobj);
 
 /**
  * a6xx_hwsched_context_detach - Unregister a context with GMU

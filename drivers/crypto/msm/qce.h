@@ -54,9 +54,9 @@
 #define QCE_CLK_DISABLE_FIRST		3
 #define QCE_BW_REQUEST_RESET_FIRST	4
 
-/* interconnect average and peak bw for crypto device */
-#define CRYPTO_AVG_BW			393600
-#define CRYPTO_PEAK_BW			393600
+/* default average and peak bw for crypto device */
+#define CRYPTO_AVG_BW			384
+#define CRYPTO_PEAK_BW			384
 
 typedef void (*qce_comp_func_ptr_t)(void *areq,
 		unsigned char *icv, unsigned char *iv, int ret);
@@ -104,6 +104,19 @@ enum qce_req_op_enum {
 	QCE_REQ_LAST
 };
 
+/* Offload operation type */
+enum qce_offload_op_enum {
+	QCE_OFFLOAD_NONE = 0, /* kernel pipe */
+	QCE_OFFLOAD_HLOS_HLOS = 1,
+	QCE_OFFLOAD_HLOS_CPB = 2,
+	QCE_OFFLOAD_CPB_HLOS = 3,
+	QCE_OFFLOAD_HLOS_CPB_1,
+	QCE_OFFLOAD_HLOS_CPB_2,
+	QCE_OFFLOAD_HLOS_CPB_3,
+	QCE_OFFLOAD_HLOS_CPB_4,
+	QCE_OFFLOAD_OPER_LAST
+};
+
 /* Algorithms/features supported in CE HW engine */
 struct ce_hw_support {
 	bool sha1_hmac_20; /* Supports 20 bytes of HMAC key*/
@@ -146,6 +159,7 @@ struct qce_sha_req {
 	unsigned int size;		/* data length in bytes */
 	void *areq;
 	unsigned int  flags;
+	int current_req_info;
 };
 
 struct qce_req {
@@ -167,10 +181,17 @@ struct qce_req {
 	unsigned int encklen;		/* cipher key length */
 	unsigned char *iv;		/* initialization vector */
 	unsigned int ivsize;		/* initialization vector size*/
+	unsigned int iv_ctr_size;	/* iv increment counter size*/
 	unsigned int cryptlen;		/* data length */
 	unsigned int use_pmem;		/* is source of data PMEM allocated? */
 	struct qcedev_pmem_info *pmem;	/* pointer to pmem_info structure*/
 	unsigned int  flags;
+	enum qce_offload_op_enum offload_op;	/* Offload usecase */
+	bool is_pattern_valid;		/* Is pattern setting required */
+	unsigned int pattern_info;	/* Pattern info for offload operation */
+	unsigned int block_offset;	/* partial first block for AES CTR */
+	bool is_copy_op;		/* copy buffers without crypto ops */
+	int current_req_info;
 };
 
 struct qce_pm_table {
@@ -191,5 +212,9 @@ int qce_disable_clk(void *handle);
 void qce_get_driver_stats(void *handle);
 void qce_clear_driver_stats(void *handle);
 void qce_dump_req(void *handle);
-
+void qce_get_crypto_status(void *handle, unsigned int *s1, unsigned int *s2,
+			   unsigned int *s3, unsigned int *s4,
+			   unsigned int *s5);
+int qce_manage_timeout(void *handle, int req_info);
+int qce_set_irqs(void *handle, bool enable);
 #endif /* __CRYPTO_MSM_QCE_H */

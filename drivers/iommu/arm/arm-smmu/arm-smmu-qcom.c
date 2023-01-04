@@ -380,11 +380,11 @@ static const struct arm_smmu_impl qcom_smmu_impl = {
 #define TBU_DBG_TIMEOUT_US		100
 
 
-#define TCU_TESTBUS_SEL_ALL		0x7
-#define TBU_TESTBUS_SEL_ALL		0x7f
+#define TCU_TESTBUS_SEL_ALL		0xf
+#define TBU_TESTBUS_SEL_ALL		0xff
 
 /* QTB constants */
-#define QTB_DBG_TIMEOUT_US		100
+#define QTB_DBG_TIMEOUT_US		500
 
 #define QTB_SWID_LOW			0x0
 
@@ -1404,17 +1404,18 @@ static struct qsmmuv500_tbu_device *qtb500_impl_init(struct qsmmuv500_tbu_device
 {
 	int ret;
 	struct qtb500_device *qtb;
+	struct device *dev = tbu->dev;
 
-	qtb = devm_krealloc(tbu->dev, tbu, sizeof(*qtb), GFP_KERNEL);
+	qtb = devm_krealloc(dev, tbu, sizeof(*qtb), GFP_KERNEL);
 	if (!qtb)
 		return ERR_PTR(-ENOMEM);
 
-	ret = of_property_read_u32(tbu->dev->of_node, "qcom,num-qtb-ports", &qtb->num_ports);
+	ret = of_property_read_u32(dev->of_node, "qcom,num-qtb-ports", &qtb->num_ports);
 	if (ret)
 		return ERR_PTR(ret);
 
 	qtb->tbu.impl = &qtb500_impl;
-	qtb->no_halt = of_property_read_bool(tbu->dev->of_node, "qcom,no-qtb-atos-halt");
+	qtb->no_halt = of_property_read_bool(dev->of_node, "qcom,no-qtb-atos-halt");
 
 	return &qtb->tbu;
 }
@@ -1848,17 +1849,9 @@ static void qsmmuv500_tlb_sync_timeout(struct arm_smmu_device *smmu)
 				    ret);
 		goto out;
 	}
-
-	ret = qcom_scm_io_readl((unsigned long)(smmu->phys_addr +
-				ARM_SMMU_MMU2QSS_AND_SAFE_WAIT_CNTR),
-				&sync_inv_progress);
-	if (ret) {
-		dev_err_ratelimited(smmu->dev,
-				    "SCM read of TBU sync/inv prog fails: %d\n",
-				    ret);
-		goto out;
-	}
-
+	sync_inv_progress = arm_smmu_readl(smmu,
+				      0,
+				      ARM_SMMU_MMU2QSS_AND_SAFE_WAIT_CNTR);
 	if (tbu_pwr_status) {
 		if (tbu_sync_pending)
 			tbu_ids = tbu_pwr_status & ~tbu_sync_acked;

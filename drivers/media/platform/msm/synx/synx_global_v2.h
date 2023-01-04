@@ -38,17 +38,19 @@ enum synx_core_id {
 
 #define SYNX_HANDLE_INDEX_MASK         ((1UL<<SYNX_HANDLE_INDEX_BITS)-1)
 
+#define SHRD_MEM_DUMP_NUM_BMAP_WORDS   10
+#define NUM_CHAR_BIT                   8
+
 /* spin lock timeout (ms) */
 #define SYNX_HWSPIN_TIMEOUT            500
 #define SYNX_HWSPIN_ID                 10
-
-#define SYNX_HWSPIN_BITMAP             0
 
 /* internal signal states */
 #define SYNX_STATE_INVALID             0
 #define SYNX_STATE_ACTIVE              1
 #define SYNX_STATE_SIGNALED_ERROR      3
 #define SYNX_STATE_SIGNALED_EXTERNAL   5
+#define SYNX_STATE_SIGNALED_SSR        6
 
 /**
  * struct synx_global_coredata - Synx global object, used for book keeping
@@ -176,6 +178,16 @@ int synx_global_get_subscribed_cores(u32 idx, bool *cores);
 int synx_global_set_subscribed_core(u32 idx, enum synx_core_id id);
 
 /**
+ * synx_global_clear_subscribed_core - Clear core as a subscriber core on global entry
+ *
+ * @param idx : Global entry index
+ * @param id  : Core to be added as subscriber
+ *
+ * @return SYNX_SUCCESS on success. Negative error on failure.
+ */
+int synx_global_clear_subscribed_core(u32 idx, enum synx_core_id id);
+
+/**
  * synx_global_get_status - Get status of the global entry
  *
  * @param idx : Global entry index
@@ -253,5 +265,30 @@ int synx_global_get_parents(u32 idx, u32 *parents);
  * @return SYNX_SUCCESS on success. Negative error on failure.
  */
 int synx_global_merge(u32 *idx_list, u32 num_list, u32 p_idx);
+
+/**
+ * synx_global_recover - Recover handles subscribed by specific core
+ *
+ * @param id : Core ID to clean up
+ *
+ * @return SYNX_SUCCESS on success. Negative error on failure.
+ */
+int synx_global_recover(enum synx_core_id id);
+
+/**
+ * synx_global_clean_cdsp_mem - Release handles created/used by CDSP
+ *
+ * @return SYNX_SUCCESS on success. Negative error on failure.
+ */
+int synx_global_clean_cdsp_mem(void);
+
+/**
+ * synx_global_dump_shared_memory - Prints the top entries of
+ * bitmap and table in global shared memory.
+ *
+ * @return SYNX_SUCCESS on success. Negative error on failure.
+ */
+
+int synx_global_dump_shared_memory(void);
 
 #endif /* __SYNX_SHARED_MEM_H__ */
