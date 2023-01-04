@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -1834,6 +1835,7 @@ int ipa_drop_stats_init(void)
 {
 	u32 reg_idx;
 	u32 mask, pipe_bitmask[IPA_EP_ARR_SIZE] = {0};
+	int client_type;
 
 	mask = ipa_hw_stats_get_ep_bit_n_idx(
 		IPA_CLIENT_USB_CONS,
@@ -1849,8 +1851,11 @@ int ipa_drop_stats_init(void)
 
 	if (ipa3_ctx->platform_type == IPA_PLAT_TYPE_MDM) {
 		if (ipa3_ctx->ipa_wdi3_2g_holb_timeout) {
+			client_type = ipa3_ctx->is_dual_pine_config ?
+					IPA_CLIENT_WLAN4_CONS :
+					IPA_CLIENT_WLAN2_CONS1;
 			mask = ipa_hw_stats_get_ep_bit_n_idx(
-				IPA_CLIENT_WLAN2_CONS1,
+				client_type,
 				&reg_idx);
 			pipe_bitmask[reg_idx] |= mask;
 		}
@@ -1890,7 +1895,7 @@ int ipa_init_drop_stats(u32 *pipe_bitmask)
 	struct ipahal_imm_cmd_pyld *drop_mask_pyld[IPAHAL_IPA5_PIPE_REG_NUM] =
 		{0};
 	struct ipahal_imm_cmd_pyld *coal_cmd_pyld = NULL;
-	struct ipa3_desc desc[IPA_INIT_DROP_STATS_MAX_CMD_NUM] = { {0} };
+	struct ipa3_desc *desc = NULL;
 	struct ipa_hw_stats_drop tmp_drop;
 	dma_addr_t dma_address;
 	int ret, i;
@@ -1901,6 +1906,12 @@ int ipa_init_drop_stats(u32 *pipe_bitmask)
 
 	if (!pipe_bitmask)
 		return -EPERM;
+
+	desc = kzalloc(sizeof(*desc) * IPA_INIT_DROP_STATS_MAX_CMD_NUM, GFP_KERNEL);
+	if (!desc) {
+		IPAERR("failed to allocate memory\n");
+		return -ENOMEM;
+	}
 
 	/* check if IPA has enough space for # of pipes drop stats enabled*/
 	memset(&tmp_drop, 0, sizeof(tmp_drop));
@@ -1913,7 +1924,8 @@ int ipa_init_drop_stats(u32 *pipe_bitmask)
 		&tmp_drop.init, false);
 	if (!pyld) {
 		IPAERR("failed to generate pyld\n");
-		return -EPERM;
+		ret = -EPERM;
+		goto fail_free_desc;
 	}
 
 	if (pyld->len > IPA_MEM_PART(stats_drop_size)) {
@@ -2067,6 +2079,8 @@ unmap:
 	dma_unmap_single(ipa3_ctx->pdev, dma_address, pyld->len, DMA_TO_DEVICE);
 destroy_init_pyld:
 	ipahal_destroy_stats_init_pyld(pyld);
+fail_free_desc:
+		kfree(desc);
 	return ret;
 }
 
@@ -2646,7 +2660,8 @@ static ssize_t ipa_debugfs_print_drop_stats(struct file *file,
 			nbytes += scnprintf(dbg_buff + nbytes,
 				IPA_MAX_MSG_LEN - nbytes,
 				"IPA_CLIENT_WLAN2_HIGHSPEED_CONS:\n");
-		} else if(i == IPA_CLIENT_WLAN2_CONS1) {
+		} else if(i == IPA_CLIENT_WLAN2_CONS1 ||
+				i == IPA_CLIENT_WLAN4_CONS) {
 			nbytes += scnprintf(dbg_buff + nbytes,
 				IPA_MAX_MSG_LEN - nbytes,
 				" IPA_CLIENT_WLAN2_LOWSPEED_CONS:\n");

@@ -42,6 +42,7 @@
 #include <linux/rmnet_ipa_fd_ioctl.h>
 #include <linux/ipa_fmwk.h>
 #include "ipa_uc_holb_monitor.h"
+#include <soc/qcom/minidump.h>
 
 #define IPA_DEV_NAME_MAX_LEN 15
 #define DRV_NAME "ipa"
@@ -138,6 +139,15 @@ enum {
 
 #define IPA_WDI2_OVER_GSI() (ipa3_ctx->ipa_wdi2_over_gsi \
 		&& (ipa_get_wdi_version() == IPA_WDI_2))
+
+#define WLAN_IPA_CONNECT_EVENT(m) (m == WLAN_STA_CONNECT || \
+	m == WLAN_AP_CONNECT || \
+	m == WLAN_CLIENT_CONNECT_EX || \
+	m == WLAN_CLIENT_CONNECT)
+
+#define WLAN_IPA_DISCONNECT_EVENT(m) (m == WLAN_STA_DISCONNECT || \
+	m == WLAN_AP_DISCONNECT || \
+	m == WLAN_CLIENT_DISCONNECT)
 
 #define IPADBG(fmt, args...) \
 	do { \
@@ -326,10 +336,20 @@ enum {
 #define IPA_WDI_CE2_RING_RES           17
 #define IPA_WDI_CE2_DB_RES             18
 #define IPA_WDI_TX2_DB_RES             19
-#define IPA_WDI_MAX_RES                20
+#define IPA_WDI_RX3_RING_RES           20
+#define IPA_WDI_RX3_RING_RP_RES        21
+#define IPA_WDI_RX3_COMP_RING_RES      22
+#define IPA_WDI_RX3_COMP_RING_WP_RES   23
+#define IPA_WDI_RX4_RING_RES           24
+#define IPA_WDI_RX4_RING_RP_RES        25
+#define IPA_WDI_RX4_COMP_RING_RES      26
+#define IPA_WDI_RX4_COMP_RING_WP_RES   27
+#define IPA_WDI_MAX_RES                28
 
 #define IPA_WDI3_TX2_DIR 4
 #define IPA_WDI3_RX2_DIR 5
+#define IPA_WDI3_RX3_DIR 6
+#define IPA_WDI3_RX4_DIR 7
 
 /* use QMAP header reserved bit to identify tethered traffic */
 #define IPA_QMAP_TETH_BIT (1 << 30)
@@ -580,6 +600,7 @@ enum ipa_icc_path {
 	IPA_ICC_LLCC_TO_EBIL,
 	IPA_ICC_IPA_TO_IMEM,
 	IPA_ICC_APSS_TO_IPA,
+	IPA_ICC_IPACOREMASTER_TO_IPACORESLAVE,
 	IPA_ICC_PATH_MAX,
 };
 
@@ -1101,6 +1122,8 @@ struct ipa3_ep_context {
 	u32 qmi_request_sent;
 	u32 eot_in_poll_err;
 	bool ep_delay_set;
+	bool ast_update;
+	void (*ast_notify)(void *client_priv, unsigned long data);
 
 	/* sys MUST be the last element of this struct */
 	struct ipa3_sys_context *sys;
@@ -2141,6 +2164,13 @@ enum ipa_per_usb_enum_type_e {
 	IPA_PER_USB_ENUM_TYPE_MAX
 };
 
+#if IS_ENABLED(CONFIG_QCOM_VA_MINIDUMP)
+struct ipa_minidump_data {
+	struct list_head entry;
+	struct va_md_entry data;
+};
+#endif
+
 /**
  * struct ipa3_context - IPA context
  * @cdev: cdev context
@@ -2240,6 +2270,7 @@ enum ipa_per_usb_enum_type_e {
  * @mhi_evid_limits: MHI event rings start and end ids
  *  finished initializing. Example of use - IOCTLs to /dev/ipa
  * @flt_rt_counters: the counters usage info for flt rt stats
+ * @is_eth_double_vlan_mode: double_vlan enabled for eth ifaces
  * @wdi3_ctx: IPA wdi3 context
  * @gsi_info: channel/protocol info for GSI offloading uC stats
  * @app_vote: holds userspace application clock vote count
@@ -2260,7 +2291,9 @@ enum ipa_per_usb_enum_type_e {
  * @eth_info: ethernet client mapping
  * @max_num_smmu_cb: number of smmu s1 cb supported
  * @non_hash_flt_lcl_sys_switch: number of times non-hash flt table moved
- * mhi_ctrl_state: state of mhi ctrl pipes
+ * @mhi_ctrl_state: state of mhi ctrl pipes
+ * @is_mhi_coal_set: indicate if mhi coal pipe is connected/set
+ * @mhi_lock: lock to protect above mhi states
  * @per_stats_smem_pa: Peripheral stats physical address to be passed to Q6
  * @per_stats_smem_va: Peripheral stats virtual address to update stats from Apps
  */
@@ -2331,6 +2364,8 @@ struct ipa3_context {
 	struct mutex msg_lock;
 	struct list_head msg_wlan_client_list;
 	struct mutex msg_wlan_client_lock;
+	struct list_head msg_lan_list;
+	struct mutex msg_lan_lock;
 	wait_queue_head_t msg_waitq;
 	enum ipa_hw_type ipa_hw_type;
 	u8 hw_type_index;
@@ -2414,6 +2449,7 @@ struct ipa3_context {
 	int num_ipa_cne_evt_req;
 	struct mutex ipa_cne_evt_lock;
 	bool vlan_mode_iface[IPA_VLAN_IF_MAX];
+	bool is_eth_double_vlan_mode;
 	bool wdi_over_pcie;
 	u32 entire_ipa_block_size;
 	bool do_register_collection_on_crash;
@@ -2503,6 +2539,8 @@ struct ipa3_context {
 	bool buff_below_thresh_for_def_pipe_notified;
 	bool buff_below_thresh_for_coal_pipe_notified;
 	u8 mhi_ctrl_state;
+	bool is_mhi_coal_set;
+	struct mutex mhi_lock;
 	struct ipa_mem_buffer uc_act_tbl;
 	bool uc_act_tbl_valid;
 	struct mutex act_tbl_lock;
@@ -2513,6 +2551,15 @@ struct ipa3_context {
 	void *per_stats_smem_va;
 	u32 ipa_max_napi_sort_page_thrshld;
 	u32 page_wq_reschd_time;
+	struct list_head minidump_list_head;
+	bool is_dual_pine_config;
+	struct workqueue_struct *collect_recycle_stats_wq;
+	struct ipa_lnx_pipe_page_recycling_stats recycle_stats;
+	struct ipa3_page_recycle_stats prev_coal_recycle_stats;
+	struct ipa3_page_recycle_stats prev_default_recycle_stats;
+	struct ipa3_page_recycle_stats prev_low_lat_data_recycle_stats;
+	struct mutex recycle_stats_collection_lock;
+	struct mutex ssr_lock;
 };
 
 struct ipa3_plat_drv_res {
@@ -2595,6 +2642,7 @@ struct ipa3_plat_drv_res {
 	bool use_pm_wrapper;
 	bool use_tput_est_ep;
 	bool ulso_wa;
+	bool is_dual_pine_config;
 };
 
 /**
@@ -3023,6 +3071,7 @@ int ipa3_allocate_nat_table(
 	struct ipa_ioc_nat_ipv6ct_table_alloc *table_alloc);
 int ipa3_allocate_ipv6ct_table(
 	struct ipa_ioc_nat_ipv6ct_table_alloc *table_alloc);
+int ipa3_nat_cleanup_cmd(void);
 int ipa3_nat_get_sram_info(struct ipa_nat_in_sram_info *info_ptr);
 int ipa3_app_clk_vote(enum ipa_app_clock_vote_type vote_type);
 
@@ -3032,6 +3081,8 @@ int ipa3_app_clk_vote(enum ipa_app_clock_vote_type vote_type);
 int ipa3_send_msg(struct ipa_msg_meta *meta, void *buff,
 		  ipa_msg_free_fn callback);
 int ipa3_resend_wlan_msg(void);
+int ipa3_resend_lan_msg(void);
+int ipa3_resend_driver_msg(void);
 int ipa3_register_pull_msg(struct ipa_msg_meta *meta, ipa_msg_pull_fn callback);
 int ipa3_deregister_pull_msg(struct ipa_msg_meta *meta);
 
@@ -3481,6 +3532,7 @@ struct ipa_smmu_cb_ctx *ipa3_get_smmu_ctx(enum ipa_smmu_cb_type);
 struct iommu_domain *ipa3_get_smmu_domain(void);
 struct iommu_domain *ipa3_get_uc_smmu_domain(void);
 struct iommu_domain *ipa3_get_wlan_smmu_domain(void);
+struct device *ipa3_get_wlan_device(void);
 struct iommu_domain *ipa3_get_wlan1_smmu_domain(void);
 struct iommu_domain *ipa3_get_eth_smmu_domain(void);
 struct iommu_domain *ipa3_get_eth1_smmu_domain(void);
@@ -3746,8 +3798,12 @@ int ipa3_send_eogre_info(
 
 /* update mhi ctrl pipe state */
 void ipa3_update_mhi_ctrl_state(u8 state, bool set);
-/* Send MHI endpoint info to modem using QMI indication message */
-int ipa_send_mhi_endp_ind_to_modem(void);
+/* Send ctrl MHI endpoint info to modem using QMI indication message */
+int ipa_send_mhi_ctrl_endp_ind_to_modem(void);
+#ifdef IPA_CLIENT_MHI_COAL_CONS
+/* Send coal MHI endpoint info to modem using QMI indication message */
+int ipa_send_mhi_coal_endp_ind_to_modem(bool check_if_modem_is_up);
+#endif
 
 /*
  * To pass macsec mapping to the IPACM

@@ -1950,7 +1950,12 @@ static int ipahal_cp_proc_ctx_to_hw_buff_v3(enum ipa_hdr_proc_type type,
 			ctx->hdr_add.hdr_addr_hi = 0;
 		ctx->eogre_params.tlv.type = IPA_PROC_CTX_TLV_TYPE_PROC_CMD;
 		ctx->eogre_params.tlv.length = 1;
+#ifdef IPA_FLT_EXT_MPLS_GRE_GENERAL
+		ctx->eogre_params.tlv.value = (eogre_params->hdr_add_param.is_mpls) ?
+			IPA_HDR_UCP_MPLSoGRE_HEADER_ADD : IPA_HDR_UCP_EoGRE_HEADER_ADD;
+#else
 		ctx->eogre_params.tlv.value = IPA_HDR_UCP_EoGRE_HEADER_ADD;
+#endif
 		ctx->eogre_params.eogre_params.eth_hdr_retained =
 			eogre_params->hdr_add_param.eth_hdr_retained;
 		ctx->eogre_params.eogre_params.input_ip_version =
@@ -1959,6 +1964,12 @@ static int ipahal_cp_proc_ctx_to_hw_buff_v3(enum ipa_hdr_proc_type type,
 			eogre_params->hdr_add_param.output_ip_version;
 		ctx->eogre_params.eogre_params.second_pass =
 			eogre_params->hdr_add_param.second_pass;
+#ifdef IPA_FLT_EXT_MPLS_GRE_GENERAL
+		ctx->eogre_params.eogre_params.is_mpls =
+			eogre_params->hdr_add_param.is_mpls;
+		ctx->eogre_params.eogre_params.tag_remove_len =
+			eogre_params->hdr_add_param.tag_remove_len;
+#endif
 		IPAHAL_DBG("command id %d\n", ctx->eogre_params.tlv.value);
 		IPAHAL_DBG("eth_hdr_retained %d input_ip_version %d output_ip_version %d second_pass %d\n",
 			eogre_params->hdr_add_param.eth_hdr_retained,
@@ -1986,7 +1997,18 @@ static int ipahal_cp_proc_ctx_to_hw_buff_v3(enum ipa_hdr_proc_type type,
 			ctx->hdr_add.hdr_addr_hi = 0;
 		ctx->eogre_params.tlv.type = IPA_PROC_CTX_TLV_TYPE_PROC_CMD;
 		ctx->eogre_params.tlv.length = 1;
+#ifdef IPA_FLT_EXT_MPLS_GRE_GENERAL
+		ctx->eogre_params.tlv.value = (eogre_params->hdr_remove_param.is_mpls) ?
+			IPA_HDR_UCP_MPLSoGRE_HEADER_REMOVE : IPA_HDR_UCP_EoGRE_HEADER_REMOVE;
+		ctx->eogre_params.eogre_params.outer_ip_version =
+			eogre_params->hdr_remove_param.outer_ip_version;
+		ctx->eogre_params.eogre_params.is_mpls =
+			eogre_params->hdr_remove_param.is_mpls;
+		ctx->eogre_params.eogre_params.tag_add_len =
+			eogre_params->hdr_remove_param.tag_add_len;
+#else
 		ctx->eogre_params.tlv.value = IPA_HDR_UCP_EoGRE_HEADER_REMOVE;
+#endif
 		ctx->eogre_params.eogre_params.hdr_len_remove =
 			eogre_params->hdr_remove_param.hdr_len_remove;
 		ctx->end.type = IPA_PROC_CTX_TLV_TYPE_END;
@@ -2306,7 +2328,7 @@ int ipahal_init(enum ipa_hw_type ipa_hw_type, void __iomem *base,
 
 	/* create an IPC buffer for the registers dump */
 	ipahal_ctx->regdumpbuf = ipc_log_context_create(IPAHAL_IPC_LOG_PAGES,
-		"ipa_regs", 0);
+		"ipa_regs", MINIDUMP_MASK);
 	if (ipahal_ctx->regdumpbuf == NULL)
 		IPAHAL_ERR("failed to create IPA regdump log, continue...\n");
 

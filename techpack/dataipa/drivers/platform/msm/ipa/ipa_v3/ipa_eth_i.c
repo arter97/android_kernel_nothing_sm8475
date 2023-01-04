@@ -995,6 +995,9 @@ int ipa3_eth_connect(
 	ep->cfg.nat.nat_en = IPA_CLIENT_IS_PROD(client_type) ?
 		IPA_SRC_NAT : IPA_BYPASS_NAT;
 	ep->cfg.hdr.hdr_len = vlan_mode ? VLAN_ETH_HLEN : ETH_HLEN;
+	/* add support for double-vlan eth pdu */
+	if (vlan_mode && ipa3_ctx->is_eth_double_vlan_mode)
+		ep->cfg.hdr.hdr_len = VLAN_ETH_HLEN + VLAN_HLEN; /* 22 if double vlan */
 	ep->cfg.mode.mode = IPA_BASIC;
 	if (IPA_CLIENT_IS_CONS(client_type)) {
 		ep->cfg.aggr.aggr_en = IPA_ENABLE_AGGR;
@@ -1222,7 +1225,7 @@ int ipa3_eth_connect(
 	id = (pipe->dir == IPA_ETH_PIPE_DIR_TX) ? 1 : 0;
 
 	/* start uC gsi dbg stats monitor */
-	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5) {
+	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5 && ipa3_ctx->ipa_hw_type != IPA_HW_v5_2) {
 		ipa3_ctx->gsi_info[prot].ch_id_info[id].ch_id
 			= ep->gsi_chan_hdl;
 		ipa3_ctx->gsi_info[prot].ch_id_info[id].dir
@@ -1274,7 +1277,7 @@ int ipa3_eth_connect(
 
 config_uc_fail:
 	/* stop uC gsi dbg stats monitor */
-	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5) {
+	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5 && ipa3_ctx->ipa_hw_type != IPA_HW_v5_2) {
 		ipa3_ctx->gsi_info[prot].ch_id_info[id].ch_id
 			= 0xff;
 		ipa3_ctx->gsi_info[prot].ch_id_info[id].dir
@@ -1334,7 +1337,7 @@ int ipa3_eth_disconnect(
 
 	id = (pipe->dir == IPA_ETH_PIPE_DIR_TX) ? 1 : 0;
 	/* stop uC gsi dbg stats monitor */
-	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5) {
+	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5 && ipa3_ctx->ipa_hw_type != IPA_HW_v5_2) {
 		ipa3_ctx->gsi_info[prot].ch_id_info[id].ch_id
 			= 0xff;
 		ipa3_ctx->gsi_info[prot].ch_id_info[id].dir
@@ -1384,7 +1387,7 @@ int ipa3_eth_disconnect(
 	memset(ep, 0, sizeof(struct ipa3_ep_context));
 	IPADBG("client (ep: %d) disconnected\n", ep_idx);
 
-	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5)
+	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5 && ipa3_ctx->ipa_hw_type != IPA_HW_v5_2)
 		ipa3_uc_debug_stats_dealloc(prot);
 	if (IPA_CLIENT_IS_PROD(client_type))
 		ipa3_delete_dflt_flt_rules(ep_idx);

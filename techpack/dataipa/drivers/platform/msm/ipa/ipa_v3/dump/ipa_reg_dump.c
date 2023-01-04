@@ -1075,15 +1075,25 @@ static void out_dword(
  */
 void ipa_save_gsi_ver(void)
 {
+	u32 gsi_fw_ver = 0;
+
 	if (!ipa3_ctx->do_register_collection_on_crash)
 		return;
 
 	if (ipa3_ctx->ipa_hw_type < IPA_HW_v5_0)
-		ipa_reg_save.gsi.fw_ver =
+		gsi_fw_ver =
 		IPA_READ_1xVECTOR_REG(IPA_GSI_TOP_GSI_INST_RAM_n, 0);
 	if (ipa3_ctx->ipa_hw_type == IPA_HW_v5_0)
-		ipa_reg_save.gsi.fw_ver =
+		gsi_fw_ver =
 		IPA_READ_1xVECTOR_REG(IPA_GSI_TOP_GSI_INST_RAM_n, 64);
+
+	ipa_reg_save.gsi.fw_ver.raw_version = gsi_fw_ver;
+	ipa_reg_save.gsi.fw_ver.hw_version = (gsi_fw_ver & GSI_INST_RAM_FW_VER_HW_MASK) >>
+					GSI_INST_RAM_FW_VER_HW_SHIFT;
+	ipa_reg_save.gsi.fw_ver.flavor = (gsi_fw_ver & GSI_INST_RAM_FW_VER_FLAVOR_MASK) >>
+					GSI_INST_RAM_FW_VER_FLAVOR_SHIFT;
+	ipa_reg_save.gsi.fw_ver.fw_version = (gsi_fw_ver & GSI_INST_RAM_FW_VER_FW_MASK) >>
+					GSI_INST_RAM_FW_VER_FW_SHIFT;
 }
 
 /*
@@ -1839,7 +1849,9 @@ static void ipa_hal_save_regs_save_ipa_testbus(void)
 int ipa_reg_save_init(u32 value)
 {
 	u32 i, num_regs = ARRAY_SIZE(ipa_regs_to_save_array);
-
+#if IS_ENABLED(CONFIG_QCOM_VA_MINIDUMP)
+	struct ipa_minidump_data *mini_dump;
+#endif
 	if (!ipa3_ctx->do_register_collection_on_crash)
 		return 0;
 
@@ -1927,7 +1939,16 @@ int ipa_reg_save_init(u32 value)
 			goto alloc_fail2;
 		}
 	}
-
+#if IS_ENABLED(CONFIG_QCOM_VA_MINIDUMP)
+	/*Adding ipa_reg_save pointer to minidump list*/
+	mini_dump = (struct ipa_minidump_data *)kzalloc(sizeof(struct ipa_minidump_data), GFP_KERNEL);
+	if (mini_dump != NULL) {
+		strlcpy(mini_dump->data.owner, "ipa_reg_save", sizeof(mini_dump->data.owner));
+		mini_dump->data.vaddr = (unsigned long)&ipa_reg_save;
+		mini_dump->data.size = sizeof(ipa_reg_save);
+		list_add(&mini_dump->entry, &ipa3_ctx->minidump_list_head);
+	}
+#endif
 	return 0;
 
 alloc_fail2:

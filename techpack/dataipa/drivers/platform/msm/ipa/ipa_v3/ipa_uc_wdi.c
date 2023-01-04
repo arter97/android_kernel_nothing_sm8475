@@ -946,9 +946,15 @@ void ipa3_release_wdi3_gsi_smmu_mappings(u8 dir)
 	} else if (dir == IPA_WDI3_RX_DIR) {
 		start = IPA_WDI_RX_RING_RES;
                 end = IPA_WDI_RX_COMP_RING_WP_RES;
-	} else {
-		 start = IPA_WDI_RX2_RING_RES;
+	} else if (dir == IPA_WDI3_RX2_DIR) {
+		start = IPA_WDI_RX2_RING_RES;
                 end = IPA_WDI_RX2_COMP_RING_WP_RES;
+	} else if (dir == IPA_WDI3_RX3_DIR) {
+		start = IPA_WDI_RX3_RING_RES;
+                end = IPA_WDI_RX3_COMP_RING_WP_RES;
+	} else {
+		 start = IPA_WDI_RX4_RING_RES;
+                end = IPA_WDI_RX4_COMP_RING_WP_RES;
 	}
 
 	for (i = start; i <= end; i++) {
@@ -1010,6 +1016,10 @@ int ipa_create_gsi_smmu_mapping(int res_idx, bool wlan_smmu_en,
 		case IPA_WDI_RX2_COMP_RING_WP_RES:
 		case IPA_WDI_CE2_DB_RES:
 		case IPA_WDI_TX2_DB_RES:
+		case IPA_WDI_RX3_RING_RP_RES:
+		case IPA_WDI_RX3_COMP_RING_WP_RES:
+		case IPA_WDI_RX4_RING_RP_RES:
+		case IPA_WDI_RX4_COMP_RING_WP_RES:
 
 			if (ipa_create_ap_smmu_mapping_pa(pa, len,
 				((res_idx == IPA_WDI_CE_DB_RES) ||
@@ -1031,6 +1041,10 @@ int ipa_create_gsi_smmu_mapping(int res_idx, bool wlan_smmu_en,
 		case IPA_WDI_RX2_COMP_RING_RES:
 		case IPA_WDI_TX2_RING_RES:
 		case IPA_WDI_CE2_RING_RES:
+		case IPA_WDI_RX3_RING_RES:
+		case IPA_WDI_RX3_COMP_RING_RES:
+		case IPA_WDI_RX4_RING_RES:
+		case IPA_WDI_RX4_COMP_RING_RES:
 
 			if (ipa_create_ap_smmu_mapping_sgt(sgt, iova)) {
 				IPAERR("Fail to create mapping res %d\n",
@@ -1592,7 +1606,7 @@ int ipa3_connect_gsi_wdi_pipe(struct ipa_wdi_in_params *in,
 
 	num_ring_ele = ep->gsi_mem_info.evt_ring_len/gsi_evt_ring_props.re_size;
 	IPAERR("UPDATE_RI_MODERATION_THRESHOLD: %d\n", num_ring_ele);
-	if (ipa3_ctx->ipa_hw_type < IPA_HW_v4_7) {
+	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5) {
 		if (IPA_CLIENT_IS_PROD(in->sys.client)) {
 			is_txr_rn_db_pcie_addr =
 			in->smmu_enabled ?
@@ -1606,10 +1620,10 @@ int ipa3_connect_gsi_wdi_pipe(struct ipa_wdi_in_params *in,
 					(in->u.ul.rdy_ring_rp_pa &
 						0xFFFFF00000000) >> 32;
 			} else {
-				IPADBG("smmu eabled\n");
-				gsi_scratch.wdi.wifi_rx_ri_addr_low =
+				IPADBG("smmu enabled\n");
+				gsi_scratch.wdi2_new.wifi_rx_ri_addr_low =
 					wifi_rx_ri_addr & 0xFFFFFFFF;
-				gsi_scratch.wdi.wifi_rx_ri_addr_high =
+				gsi_scratch.wdi2_new.wifi_rx_ri_addr_high =
 					(wifi_rx_ri_addr & 0xFFFFF00000000) >> 32;
 			}
 
@@ -1650,24 +1664,6 @@ int ipa3_connect_gsi_wdi_pipe(struct ipa_wdi_in_params *in,
 				gsi_scratch.wdi2_new.wifi_rx_ri_addr_high |
 				(1 << 8));
 
-			gsi_scratch.wdi.wdi_rx_vdev_id = 0xff;
-			gsi_scratch.wdi.wdi_rx_fw_desc = 0xff;
-			gsi_scratch.wdi.endp_metadatareg_offset =
-						ipahal_get_reg_mn_ofst(
-						IPA_ENDP_INIT_HDR_METADATA_n, 0,
-								ipa_ep_idx)/4;
-			gsi_scratch.wdi.qmap_id = 0;
-		}
-		gsi_scratch.wdi.update_ri_moderation_threshold =
-			min(UPDATE_RI_MODERATION_THRESHOLD, num_ring_ele);
-		gsi_scratch.wdi.update_ri_moderation_counter = 0;
-		gsi_scratch.wdi.wdi_rx_tre_proc_in_progress = 0;
-	} else {
-		if (IPA_CLIENT_IS_PROD(in->sys.client)) {
-			gsi_scratch.wdi2_new.wifi_rx_ri_addr_low =
-				wifi_rx_ri_addr & 0xFFFFFFFF;
-			gsi_scratch.wdi2_new.wifi_rx_ri_addr_high =
-				(wifi_rx_ri_addr & 0xFFFFF00000000) >> 32;
 			gsi_scratch.wdi2_new.wdi_rx_vdev_id = 0xff;
 			gsi_scratch.wdi2_new.wdi_rx_fw_desc = 0xff;
 			gsi_scratch.wdi2_new.endp_metadatareg_offset =
@@ -1680,6 +1676,24 @@ int ipa3_connect_gsi_wdi_pipe(struct ipa_wdi_in_params *in,
 			min(UPDATE_RI_MODERATION_THRESHOLD, num_ring_ele);
 		gsi_scratch.wdi2_new.update_ri_moderation_counter = 0;
 		gsi_scratch.wdi2_new.wdi_rx_tre_proc_in_progress = 0;
+	} else {
+		if (IPA_CLIENT_IS_PROD(in->sys.client)) {
+			gsi_scratch.wdi.wifi_rx_ri_addr_low =
+				wifi_rx_ri_addr & 0xFFFFFFFF;
+			gsi_scratch.wdi.wifi_rx_ri_addr_high =
+				(wifi_rx_ri_addr & 0xFFFFF00000000) >> 32;
+			gsi_scratch.wdi.wdi_rx_vdev_id = 0xff;
+			gsi_scratch.wdi.wdi_rx_fw_desc = 0xff;
+			gsi_scratch.wdi.endp_metadatareg_offset =
+						ipahal_get_reg_mn_ofst(
+						IPA_ENDP_INIT_HDR_METADATA_n, 0,
+								ipa_ep_idx)/4;
+			gsi_scratch.wdi.qmap_id = 0;
+		}
+		gsi_scratch.wdi.update_ri_moderation_threshold =
+			min(UPDATE_RI_MODERATION_THRESHOLD, num_ring_ele);
+		gsi_scratch.wdi.update_ri_moderation_counter = 0;
+		gsi_scratch.wdi.wdi_rx_tre_proc_in_progress = 0;
 	}
 
 	result = gsi_write_channel_scratch(ep->gsi_chan_hdl,
@@ -2307,7 +2321,8 @@ int ipa3_disconnect_gsi_wdi_pipe(u32 clnt_hdl)
 		IPADBG("uc_wdi_ctx.stats_notify already null\n");
 	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5 &&
 		ipa3_ctx->ipa_hw_type != IPA_HW_v4_7 &&
-		ipa3_ctx->ipa_hw_type != IPA_HW_v4_11)
+		ipa3_ctx->ipa_hw_type != IPA_HW_v4_11 &&
+		ipa3_ctx->ipa_hw_type != IPA_HW_v5_2)
 		ipa3_uc_debug_stats_dealloc(IPA_HW_PROTOCOL_WDI);
 	IPADBG("client (ep: %d) disconnected\n", clnt_hdl);
 
@@ -2712,7 +2727,8 @@ int ipa3_resume_gsi_wdi_pipe(u32 clnt_hdl)
 	/* start uC gsi dbg stats monitor */
 	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5 &&
 		ipa3_ctx->ipa_hw_type != IPA_HW_v4_7 &&
-		ipa3_ctx->ipa_hw_type != IPA_HW_v4_11) {
+		ipa3_ctx->ipa_hw_type != IPA_HW_v4_11 &&
+		ipa3_ctx->ipa_hw_type != IPA_HW_v5_2) {
 		if (IPA_CLIENT_IS_PROD(ep->client)) {
 			pcmd_t->ch_id_info[0].ch_id
 				= ep->gsi_chan_hdl;
@@ -2901,7 +2917,8 @@ retry_gsi_stop:
 	/* stop uC gsi dbg stats monitor */
 	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5 &&
 		ipa3_ctx->ipa_hw_type != IPA_HW_v4_7 &&
-		ipa3_ctx->ipa_hw_type != IPA_HW_v4_11) {
+		ipa3_ctx->ipa_hw_type != IPA_HW_v4_11 &&
+		ipa3_ctx->ipa_hw_type != IPA_HW_v5_2) {
 		if (IPA_CLIENT_IS_PROD(ep->client)) {
 			pcmd_t->ch_id_info[0].ch_id
 				= 0xff;
@@ -3086,7 +3103,7 @@ int ipa3_write_qmapid_gsi_wdi_pipe(u32 clnt_hdl, u8 qmap_id)
 	ep = &ipa3_ctx->ep[clnt_hdl];
 	IPA_ACTIVE_CLIENTS_INC_EP(ipa3_get_client_mapping(clnt_hdl));
 
-	if (ipa3_ctx->ipa_hw_type < IPA_HW_v4_7) {
+	if (ipa3_ctx->ipa_hw_type < IPA_HW_v4_5) {
 		memset(&gsi_scratch3, 0, sizeof(gsi_scratch3));
 		gsi_scratch3.wdi.qmap_id = qmap_id;
 		gsi_scratch3.wdi.endp_metadatareg_offset =

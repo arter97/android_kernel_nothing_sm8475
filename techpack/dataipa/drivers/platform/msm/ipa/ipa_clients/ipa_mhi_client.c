@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
+ *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -59,8 +61,8 @@
 #define IPA_MHI_SUSPEND_SLEEP_MIN 900
 #define IPA_MHI_SUSPEND_SLEEP_MAX 1100
 
-#define IPA_MHI_MAX_UL_CHANNELS 2
-#define IPA_MHI_MAX_DL_CHANNELS 4
+#define IPA_MHI_MAX_UL_CHANNELS 3  //3 out channels below
+#define IPA_MHI_MAX_DL_CHANNELS 6  //4 in channels + QDSS + COAL
 
 /* bit #40 in address should be asserted for MHI transfers over pcie */
 #define IPA_MHI_CLIENT_HOST_ADDR_COND(addr) \
@@ -70,6 +72,7 @@
 #define IPA_MHI_CLIENT_IP_HW_0_IN 101
 #define IPA_MHI_CLIENT_ADPL_IN 102
 #define IPA_MHI_CLIENT_IP_HW_QDSS 103
+#define IPA_MHI_CLIENT_IP_HW_COAL 104
 #define IPA_MHI_CLIENT_IP_HW_1_OUT 105
 #define IPA_MHI_CLIENT_IP_HW_1_IN 106
 #define IPA_MHI_CLIENT_QMAP_FLOW_CTRL_OUT 109
@@ -779,7 +782,16 @@ static struct ipa_mhi_channel_ctx *ipa_mhi_get_channel_context(
 
 	channels[ch_idx].valid = true;
 	channels[ch_idx].id = channel_id;
-	channels[ch_idx].index = ipa_mhi_client_ctx->total_channels++;
+#ifdef IPA_CLIENT_MHI_COAL_CONS
+	/* For COAL CONS and default consumer pipe using same event ring
+	 * so not required to increment the event ring count.
+	 */
+	if (client == IPA_CLIENT_MHI_COAL_CONS)
+		channels[ch_idx].index = ipa_mhi_client_ctx->total_channels;
+	else
+#endif
+		channels[ch_idx].index = ipa_mhi_client_ctx->total_channels++;
+
 	channels[ch_idx].client = client;
 	channels[ch_idx].state = IPA_HW_MHI_CHANNEL_STATE_INVALID;
 
@@ -1219,6 +1231,11 @@ static enum ipa_client_type ipa3_mhi_get_client_by_chid(u32 chid)
 	case IPA_MHI_CLIENT_IP_HW_QDSS:
 		client = IPA_CLIENT_MHI_QDSS_CONS;
 		break;
+#ifdef IPA_CLIENT_MHI_COAL_CONS
+	case IPA_MHI_CLIENT_IP_HW_COAL:
+		client = IPA_CLIENT_MHI_COAL_CONS;
+		break;
+#endif
 	case IPA_MHI_CLIENT_IP_HW_0_OUT:
 		client = IPA_CLIENT_MHI_PROD;
 		break;
@@ -1385,6 +1402,16 @@ static int ipa_mhi_connect_pipe_internal(struct ipa_mhi_connect_params *in, u32 
 	else if (in->sys.client == IPA_CLIENT_MHI_LOW_LAT_CONS)
 		ipa3_update_mhi_ctrl_state(IPA_MHI_CTRL_DL_SETUP, true);
 
+#ifdef IPA_CLIENT_MHI_COAL_CONS
+	if (in->sys.client == IPA_CLIENT_MHI_COAL_CONS)
+	{
+		mutex_lock(&ipa3_ctx->lock);
+		ipa3_ctx->is_mhi_coal_set = true;
+		mutex_unlock(&ipa3_ctx->lock);
+		ipa_send_mhi_coal_endp_ind_to_modem(true);
+	}
+#endif
+
 	mutex_unlock(&mhi_client_general_mutex);
 
 	if (!in->sys.keep_ipa_awake)
@@ -1445,6 +1472,16 @@ static int ipa_mhi_disconnect_pipe_internal(u32 clnt_hdl)
 		ipa3_update_mhi_ctrl_state(IPA_MHI_CTRL_UL_SETUP, false);
 	else if (client == IPA_CLIENT_MHI_LOW_LAT_CONS)
 		ipa3_update_mhi_ctrl_state(IPA_MHI_CTRL_DL_SETUP, false);
+
+#ifdef IPA_CLIENT_MHI_COAL_CONS
+	if (client == IPA_CLIENT_MHI_COAL_CONS)
+	{
+		mutex_lock(&ipa3_ctx->lock);
+		ipa3_ctx->is_mhi_coal_set = false;
+		mutex_unlock(&ipa3_ctx->lock);
+	}
+#endif
+
 	IPA_ACTIVE_CLIENTS_INC_EP(client);
 
 	res = ipa_mhi_reset_channel(channel, false);
@@ -1482,7 +1519,8 @@ static int ipa_mhi_suspend_channels(struct ipa_mhi_channel_ctx *channels,
 	int res;
 
 	IPA_MHI_FUNC_ENTRY();
-	for (i = 0; i < max_channels; i++) {
+	/* have to suspend channel backwards for coalescing channel */
+	for (i = max_channels - 1; i >= 0; i--) {
 		if (!channels[i].valid)
 			continue;
 		if (channels[i].state !=
@@ -2047,7 +2085,8 @@ static int  ipa_mhi_destroy_channels(struct ipa_mhi_channel_ctx *channels,
 	int i, res;
 	u32 clnt_hdl;
 
-	for (i = 0; i < num_of_channels; i++) {
+	/* have to destroy backward for coalescing channels */
+	for (i = num_of_channels - 1; i >= 0; i--) {
 		channel = &channels[i];
 		if (!channel->valid)
 			continue;

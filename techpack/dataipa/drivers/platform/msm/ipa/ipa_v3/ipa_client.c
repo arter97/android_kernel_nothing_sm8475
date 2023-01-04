@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <asm/barrier.h>
@@ -25,7 +26,7 @@
 #define IPA_POLL_FOR_EMPTINESS_SLEEP_USEC 20
 #define IPA_CHANNEL_STOP_IN_PROC_TO_MSEC 5
 #define IPA_CHANNEL_STOP_IN_PROC_SLEEP_USEC 200
-
+#define IPA_MAX_HOLB_TMR_VAL (4294967296 - 1)
 /* xfer_rsc_idx should be 7 bits */
 #define IPA_XFER_RSC_IDX_MAX 127
 
@@ -75,11 +76,27 @@ int ipa3_enable_data_path(u32 clnt_hdl)
 				 ep->client == IPA_CLIENT_USB_CONS)) {
 			holb_cfg.en = IPA_HOLB_TMR_EN;
 			holb_cfg.tmr_val = IPA_HOLB_TMR_VAL_4_5;
+		} else if (ipa3_ctx->ipa_hw_type == IPA_HW_v3_0 &&
+				ep->client == IPA_CLIENT_USB_CONS) {
+			holb_cfg.en = IPA_HOLB_TMR_EN;
+			holb_cfg.tmr_val = IPA_MAX_HOLB_TMR_VAL;
 		} else if (ipa3_ctx->ipa_hw_type >= IPA_HW_v5_1 &&
 			ipa3_ctx->platform_type == IPA_PLAT_TYPE_APQ &&
 			ep->client == IPA_CLIENT_USB_CONS) {
 			holb_cfg.en = IPA_HOLB_TMR_EN;
 			holb_cfg.tmr_val = IPA_HOLB_TMR_VAL_4_5;
+		} else if ((ipa3_ctx->ipa_hw_type == IPA_HW_v4_5) &&
+				(ep->client == IPA_CLIENT_USB_CONS)) {
+			holb_cfg.tmr_val = IPA_HOLB_TMR_VAL_4_5;
+			holb_cfg.en = IPA_HOLB_TMR_EN;
+		} else if ((ipa3_ctx->ipa_hw_type == IPA_HW_v5_0) &&
+				(ep->client == IPA_CLIENT_USB_CONS)) {
+			holb_cfg.tmr_val = IPA_HOLB_TMR_VAL_4_5;
+			holb_cfg.en = IPA_HOLB_TMR_EN;
+		} else if ((ipa3_ctx->ipa_hw_type >= IPA_HW_v5_2) &&
+				(ep->client == IPA_CLIENT_USB_CONS)) {
+			holb_cfg.tmr_val = IPA_HOLB_TMR_VAL_4_5;
+			holb_cfg.en = IPA_HOLB_TMR_EN;
 		} else {
 			holb_cfg.en = IPA_HOLB_TMR_DIS;
 			holb_cfg.tmr_val = 0;
@@ -300,7 +317,8 @@ static void ipa3_start_gsi_debug_monitor(u32 clnt_hdl)
 	/* start uC gsi dbg stats monitor */
 	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5 &&
 		ipa3_ctx->ipa_hw_type != IPA_HW_v4_7 &&
-		ipa3_ctx->ipa_hw_type != IPA_HW_v4_11) {
+		ipa3_ctx->ipa_hw_type != IPA_HW_v4_11 &&
+		ipa3_ctx->ipa_hw_type != IPA_HW_v5_2) {
 		switch (client_type) {
 		case IPA_CLIENT_MHI_PRIME_TETH_PROD:
 			gsi_info = &ipa3_ctx->gsi_info[IPA_HW_PROTOCOL_MHIP];
@@ -2122,14 +2140,44 @@ int ipa3_get_rtk_gsi_stats(struct ipa_uc_dbg_ring_stats *stats)
 {
 	int i;
 	u64 low, high;
-
+	struct IpaHwRingStats_t *ring = NULL;
+	struct ipa3_uc_dbg_stats *ctx_stats = NULL;
 	if (!ipa3_ctx->rtk_ctx.dbg_stats.uc_dbg_stats_mmio)
 		return -EINVAL;
 
 	IPA_ACTIVE_CLIENTS_INC_SIMPLE();
+
+	ctx_stats = &ipa3_ctx->rtk_ctx.dbg_stats;
 	for (i = 0; i < MAX_RTK_CHANNELS; i++) {
-		ipa3_get_gsi_ring_stats(&stats->u.rtk[i].commStats,
-			&ipa3_ctx->rtk_ctx.dbg_stats, i);
+
+		ring = &stats->u.rtk[i].commStats;
+
+		ring->ringFull = ioread32(
+			ctx_stats->uc_dbg_stats_mmio
+			+ i * IPA3_UC_DEBUG_STATS_RTK_OFF +
+			IPA3_UC_DEBUG_STATS_RINGFULL_OFF);
+
+		ring->ringEmpty = ioread32(
+			ctx_stats->uc_dbg_stats_mmio
+			+ i * IPA3_UC_DEBUG_STATS_RTK_OFF +
+			IPA3_UC_DEBUG_STATS_RINGEMPTY_OFF);
+
+		ring->ringUsageHigh = ioread32(
+			ctx_stats->uc_dbg_stats_mmio
+			+ i * IPA3_UC_DEBUG_STATS_RTK_OFF +
+			IPA3_UC_DEBUG_STATS_RINGUSAGEHIGH_OFF);
+
+		ring->ringUsageLow = ioread32(
+			ctx_stats->uc_dbg_stats_mmio
+			+ i * IPA3_UC_DEBUG_STATS_RTK_OFF +
+			IPA3_UC_DEBUG_STATS_RINGUSAGELOW_OFF);
+
+		ring->RingUtilCount = ioread32(
+			ctx_stats->uc_dbg_stats_mmio
+			+ i * IPA3_UC_DEBUG_STATS_RTK_OFF +
+			IPA3_UC_DEBUG_STATS_RINGUTILCOUNT_OFF);
+
+
 		stats->u.rtk[i].trCount = ioread32(
 			ipa3_ctx->rtk_ctx.dbg_stats.uc_dbg_stats_mmio
 			+ i * IPA3_UC_DEBUG_STATS_RTK_OFF +

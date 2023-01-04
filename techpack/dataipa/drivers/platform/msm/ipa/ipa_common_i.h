@@ -185,6 +185,7 @@ do {\
 #define STR_RNDIS_IFACE "rndis"
 #define STR_ECM_IFACE "ecm"
 
+#define MINIDUMP_MASK 0x10000
 /**
  * qmap_hdr -
  * @next_hdr: 1 - there is a qmap extension header, 0 - opposite
@@ -603,16 +604,17 @@ void ipa3_ntn_uc_dereg_rdyCB(void);
 
 int ipa3_conn_wdi3_pipes(struct ipa_wdi_conn_in_params *in,
 	struct ipa_wdi_conn_out_params *out,
-	ipa_wdi_meter_notifier_cb wdi_notify);
+	ipa_wdi_meter_notifier_cb wdi_notify,
+	bool ast_update);
 
 int ipa3_disconn_wdi3_pipes(int ipa_ep_idx_tx, int ipa_ep_idx_rx,
-	int ipa_ep_idx_tx1);
+	int ipa_ep_idx_tx1, int ipa_ep_idx_rx1);
 
 int ipa3_enable_wdi3_pipes(int ipa_ep_idx_tx, int ipa_ep_idx_rx,
-	int ipa_ep_idx_tx1);
+	int ipa_ep_idx_tx1, int ipa_ep_idx_rx1);
 
 int ipa3_disable_wdi3_pipes(int ipa_ep_idx_tx, int ipa_ep_idx_rx,
-	int ipa_ep_idx_tx1);
+	int ipa_ep_idx_tx1, int ipa_ep_idx_rx1);
 
 const char *ipa_get_version_string(enum ipa_hw_type ver);
 int ipa3_start_gsi_channel(u32 clnt_hdl);

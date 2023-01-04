@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifdef CONFIG_DEBUG_FS
@@ -101,6 +102,7 @@ const char *ipa3_event_name[IPA_EVENT_MAX_NUM] = {
 	__stringify(IPA_IPPT_SW_FLT_EVENT),
 	__stringify(IPA_MACSEC_ADD_EVENT),
 	__stringify(IPA_MACSEC_DEL_EVENT),
+	__stringify(IPA_DONE_RESTORE_EVENT),
 };
 
 const char *ipa3_hdr_l2_type_name[] = {
@@ -1587,6 +1589,11 @@ static ssize_t ipa3_read_odlstats(struct file *file, char __user *ubuf,
 	int nbytes;
 	int cnt = 0;
 
+	if (!ipa3_odl_ctx) {
+                IPADBG("ODL stats not supported\n");
+                return 0;
+	}
+
 	nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
 			"ODL received pkt =%u\n"
 			"ODL processed pkt to DIAG=%u\n"
@@ -2655,42 +2662,94 @@ static ssize_t ipa3_read_wdi3_gsi_stats(struct file *file,
 		goto done;
 	}
 	if (!ipa3_get_wdi3_gsi_stats(&stats)) {
-		nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
-			"TX ringFull=%u\n"
-			"TX ringEmpty=%u\n"
-			"TX ringUsageHigh=%u\n"
-			"TX ringUsageLow=%u\n"
-			"TX RingUtilCount=%u\n",
-			stats.u.ring[1].ringFull,
-			stats.u.ring[1].ringEmpty,
-			stats.u.ring[1].ringUsageHigh,
-			stats.u.ring[1].ringUsageLow,
-			stats.u.ring[1].RingUtilCount);
-		cnt += nbytes;
-		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
-			"TX1 ringFull=%u\n"
-			"TX1 ringEmpty=%u\n"
-			"TX1 ringUsageHigh=%u\n"
-			"TX1 ringUsageLow=%u\n"
-			"TX1 RingUtilCount=%u\n",
-			stats.u.ring[2].ringFull,
-			stats.u.ring[2].ringEmpty,
-			stats.u.ring[2].ringUsageHigh,
-			stats.u.ring[2].ringUsageLow,
-			stats.u.ring[2].RingUtilCount);
-		cnt += nbytes;
-		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
-			"RX ringFull=%u\n"
-			"RX ringEmpty=%u\n"
-			"RX ringUsageHigh=%u\n"
-			"RX ringUsageLow=%u\n"
-			"RX RingUtilCount=%u\n",
-			stats.u.ring[0].ringFull,
-			stats.u.ring[0].ringEmpty,
-			stats.u.ring[0].ringUsageHigh,
-			stats.u.ring[0].ringUsageLow,
-			stats.u.ring[0].RingUtilCount);
-		cnt += nbytes;
+		if (ipa3_ctx->is_dual_pine_config) {
+			nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
+				"Pine_5G/6G TX ringFull=%u\n"
+				"Pine_5G/6G TX ringEmpty=%u\n"
+				"Pine_5G/6G TX ringUsageHigh=%u\n"
+				"Pine_5G/6G TX ringUsageLow=%u\n"
+				"Pine_5G/6G TX RingUtilCount=%u\n",
+				stats.u.ring[1].ringFull,
+				stats.u.ring[1].ringEmpty,
+				stats.u.ring[1].ringUsageHigh,
+				stats.u.ring[1].ringUsageLow,
+				stats.u.ring[1].RingUtilCount);
+				cnt += nbytes;
+				nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+				"Pine_2G TX ringFull=%u\n"
+				"Pine_2G TX ringEmpty=%u\n"
+				"Pine_2G TX ringUsageHigh=%u\n"
+				"Pine_2G TX ringUsageLow=%u\n"
+				"Pine_2G TX RingUtilCount=%u\n",
+				stats.u.ring[2].ringFull,
+				stats.u.ring[2].ringEmpty,
+				stats.u.ring[2].ringUsageHigh,
+				stats.u.ring[2].ringUsageLow,
+				stats.u.ring[2].RingUtilCount);
+			cnt += nbytes;
+			nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+				"Pine_5G/6G RX ringFull=%u\n"
+				"Pine_5G/6G RX ringEmpty=%u\n"
+				"Pine_5G/6G RX ringUsageHigh=%u\n"
+				"Pine_5G/6G RX ringUsageLow=%u\n"
+				"Pine_5G/6G RX RingUtilCount=%u\n",
+				stats.u.ring[0].ringFull,
+				stats.u.ring[0].ringEmpty,
+				stats.u.ring[0].ringUsageHigh,
+				stats.u.ring[0].ringUsageLow,
+				stats.u.ring[0].RingUtilCount);
+			cnt += nbytes;
+			nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+				"Pine_2G RX ringFull=%u\n"
+				"Pine_2G RX ringEmpty=%u\n"
+				"Pine_2G RX ringUsageHigh=%u\n"
+				"Pine_2G RX ringUsageLow=%u\n"
+				"Pine_2G RX RingUtilCount=%u\n",
+				stats.u.ring[3].ringFull,
+				stats.u.ring[3].ringEmpty,
+				stats.u.ring[3].ringUsageHigh,
+				stats.u.ring[3].ringUsageLow,
+				stats.u.ring[3].RingUtilCount);
+			cnt += nbytes;
+		}
+		else {
+			nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
+				"TX ringFull=%u\n"
+				"TX ringEmpty=%u\n"
+				"TX ringUsageHigh=%u\n"
+				"TX ringUsageLow=%u\n"
+				"TX RingUtilCount=%u\n",
+				stats.u.ring[1].ringFull,
+				stats.u.ring[1].ringEmpty,
+				stats.u.ring[1].ringUsageHigh,
+				stats.u.ring[1].ringUsageLow,
+				stats.u.ring[1].RingUtilCount);
+			cnt += nbytes;
+			nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+				"TX1 ringFull=%u\n"
+				"TX1 ringEmpty=%u\n"
+				"TX1 ringUsageHigh=%u\n"
+				"TX1 ringUsageLow=%u\n"
+				"TX1 RingUtilCount=%u\n",
+				stats.u.ring[2].ringFull,
+				stats.u.ring[2].ringEmpty,
+				stats.u.ring[2].ringUsageHigh,
+				stats.u.ring[2].ringUsageLow,
+				stats.u.ring[2].RingUtilCount);
+			cnt += nbytes;
+			nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+				"RX ringFull=%u\n"
+				"RX ringEmpty=%u\n"
+				"RX ringUsageHigh=%u\n"
+				"RX ringUsageLow=%u\n"
+				"RX RingUtilCount=%u\n",
+				stats.u.ring[0].ringFull,
+				stats.u.ring[0].ringEmpty,
+				stats.u.ring[0].ringUsageHigh,
+				stats.u.ring[0].ringUsageLow,
+				stats.u.ring[0].RingUtilCount);
+			cnt += nbytes;
+		}
 	} else {
 		nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
 				"Fail to read WDI GSI stats\n");
@@ -3008,7 +3067,7 @@ static ssize_t ipa3_enable_ipc_low(struct file *file,
 		if (!ipa_ipc_low_buff) {
 			ipa_ipc_low_buff =
 				ipc_log_context_create(IPA_IPC_LOG_PAGES,
-					"ipa_low", 0);
+					"ipa_low", MINIDUMP_MASK);
 		}
 			if (ipa_ipc_low_buff == NULL)
 				IPADBG("failed to get logbuf_low\n");
