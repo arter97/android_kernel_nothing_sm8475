@@ -60,9 +60,6 @@
 #define IO_TLB_MIN_SLABS ((1<<20) >> IO_TLB_SHIFT)
 
 enum swiotlb_force swiotlb_force;
-#ifdef CONFIG_SWIOTLB_NONLINEAR
-EXPORT_SYMBOL(swiotlb_force);
-#endif
 
 /*
  * Used to do a quick range check in swiotlb_tbl_unmap_single and
@@ -70,12 +67,6 @@ EXPORT_SYMBOL(swiotlb_force);
  * API.
  */
 phys_addr_t io_tlb_start, io_tlb_end;
-#ifdef CONFIG_SWIOTLB_NONLINEAR
-EXPORT_SYMBOL(io_tlb_start);
-EXPORT_SYMBOL(io_tlb_end);
-
-static char *io_tlb_vstart;
-#endif
 
 /*
  * The number of IO TLB blocks (in groups of 64) between io_tlb_start and
@@ -343,12 +334,16 @@ static void swiotlb_cleanup(void)
 	max_segment = 0;
 }
 
-static int
-_swiotlb_late_init_with_tbl(char *tlb, unsigned long nslabs)
+int
+swiotlb_late_init_with_tbl(char *tlb, unsigned long nslabs)
 {
 	unsigned long i, bytes;
 
 	bytes = nslabs << IO_TLB_SHIFT;
+
+	io_tlb_nslabs = nslabs;
+	io_tlb_start = virt_to_phys(tlb);
+	io_tlb_end = io_tlb_start + bytes;
 
 	set_memory_decrypted((unsigned long)tlb, bytes >> PAGE_SHIFT);
 	memset(tlb, 0, bytes);
@@ -394,39 +389,6 @@ cleanup3:
 	return -ENOMEM;
 }
 
-int
-swiotlb_late_init_with_tbl(char *tlb, unsigned long nslabs)
-{
-	unsigned long bytes;
-
-	bytes = nslabs << IO_TLB_SHIFT;
-	io_tlb_nslabs = nslabs;
-	io_tlb_start = virt_to_phys(tlb);
-	io_tlb_end = io_tlb_start + bytes;
-
-	return _swiotlb_late_init_with_tbl(tlb, nslabs);
-}
-
-#ifdef CONFIG_SWIOTLB_NONLINEAR
-int swiotlb_late_init_with_tblpaddr(char *tlb,
-			phys_addr_t tlb_paddr, unsigned long nslabs)
-{
-	unsigned long bytes;
-
-	if (io_tlb_start)
-		return -EBUSY;
-
-	bytes = nslabs << IO_TLB_SHIFT;
-	io_tlb_nslabs = nslabs;
-	io_tlb_start = tlb_paddr;
-	io_tlb_vstart = tlb;
-	io_tlb_end = io_tlb_start + bytes;
-
-	return _swiotlb_late_init_with_tbl(tlb, nslabs);
-}
-EXPORT_SYMBOL(swiotlb_late_init_with_tblpaddr);
-#endif	/* CONFIG_SWIOTLB_NONLINEAR */
-
 void __init swiotlb_exit(void)
 {
 	if (!io_tlb_orig_addr)
@@ -450,17 +412,6 @@ void __init swiotlb_exit(void)
 	swiotlb_cleanup();
 }
 
-#ifdef CONFIG_SWIOTLB_NONLINEAR
-static inline unsigned char *
-swiotlb_phys_to_virt(phys_addr_t tlb_addr)
-{
-	return (unsigned char *)(io_tlb_vstart + (tlb_addr - io_tlb_start));
-}
-
-#else
-#define swiotlb_phys_to_virt phys_to_virt
-#endif
-
 /*
  * Bounce: copy the swiotlb buffer from or back to the original dma location
  */
@@ -468,7 +419,7 @@ static void swiotlb_bounce(phys_addr_t orig_addr, phys_addr_t tlb_addr,
 			   size_t size, enum dma_data_direction dir)
 {
 	unsigned long pfn = PFN_DOWN(orig_addr);
-	unsigned char *vaddr = swiotlb_phys_to_virt(tlb_addr);
+	unsigned char *vaddr = phys_to_virt(tlb_addr);
 
 	if (PageHighMem(pfn_to_page(pfn))) {
 		/* The buffer does not have a mapping.  Map it in and copy */
@@ -713,9 +664,6 @@ void swiotlb_tbl_unmap_single(struct device *hwdev, phys_addr_t tlb_addr,
 	io_tlb_used -= nslots;
 	spin_unlock_irqrestore(&io_tlb_lock, flags);
 }
-#ifdef CONFIG_SWIOTLB_NONLINEAR
-EXPORT_SYMBOL(swiotlb_tbl_unmap_single);
-#endif
 
 void swiotlb_tbl_sync_single(struct device *hwdev, phys_addr_t tlb_addr,
 			     size_t size, enum dma_data_direction dir,
@@ -783,9 +731,6 @@ dma_addr_t swiotlb_map(struct device *dev, phys_addr_t paddr, size_t size,
 		arch_sync_dma_for_device(swiotlb_addr, size, dir);
 	return dma_addr;
 }
-#ifdef CONFIG_SWIOTLB_NONLINEAR
-EXPORT_SYMBOL(swiotlb_map);
-#endif
 
 size_t swiotlb_max_mapping_size(struct device *dev)
 {
