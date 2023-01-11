@@ -100,6 +100,8 @@
 #define HFI_VALUE_LOG_STREAM_ENABLE	119
 #define HFI_VALUE_PREEMPT_COUNT		120
 #define HFI_VALUE_CONTEXT_QUEUE		121
+#define HFI_VALUE_RB_GPU_QOS		123
+#define HFI_VALUE_RB_IB_RULE		124
 
 #define HFI_VALUE_GLOBAL_TOKEN		0xFFFFFFFF
 
@@ -274,7 +276,7 @@ static const char * const hfi_memkind_strings[] = {
 /* Host can access */
 #define HFI_MEMFLAG_HOST_ACC		BIT(8)
 
-/* Host initializes the buffer */
+/* Host initializes(zero-init) the buffer */
 #define HFI_MEMFLAG_HOST_INIT		BIT(9)
 
 /* Gfx buffer needs to be secure */
@@ -401,7 +403,7 @@ struct hfi_queue_table {
 	(((id) & 0xFF) | (((prio) & 0xFF) << 8) | \
 	(((rtype) & 0xFF) << 16) | (((stype) & 0xFF) << 24))
 
-#define HFI_RSP_TIMEOUT 100 /* msec */
+#define HFI_RSP_TIMEOUT 1000 /* msec */
 
 #define HFI_IRQ_MSGQ_MASK BIT(0)
 
@@ -440,6 +442,7 @@ struct hfi_queue_table {
 #define H2F_MSG_ISSUE_RECURRING_CMD	141
 #define F2H_MSG_CONTEXT_BAD		150
 #define H2F_MSG_HW_FENCE_INFO		151
+#define H2F_MSG_ISSUE_SYNCOBJ		152
 
 enum gmu_ret_type {
 	GMU_SUCCESS = 0,
@@ -741,6 +744,11 @@ struct hfi_ts_notify_cmd {
 #define CMDBATCH_RECURRING_STOP   BIT(19)
 
 
+/* This indicates that the SYNCOBJ is kgsl output fence */
+#define GMU_SYNCOBJ_KGSL_FENCE  BIT(0)
+/* This indicates that the SYNCOBJ is already retired */
+#define GMU_SYNCOBJ_RETIRED     BIT(1)
+
 /* F2H */
 struct hfi_ts_retire_cmd {
 	u32 hdr;
@@ -814,6 +822,20 @@ struct hfi_submit_cmd {
 	u32 profile_gpuaddr_hi;
 	u32 numibs;
 	u32 big_ib_gmu_va;
+} __packed;
+
+struct hfi_syncobj {
+	u64 ctxt_id;
+	u64 seq_no;
+	u64 flags;
+} __packed;
+
+struct hfi_submit_syncobj {
+	u32 hdr;
+	u32 version;
+	u32 flags;
+	u32 timestamp;
+	u32 num_syncobj;
 } __packed;
 
 struct hfi_log_block {
@@ -1053,4 +1075,20 @@ static inline u32 hfi_get_gmu_va_alignment(u32 va_align)
 	return (va_align > ilog2(SZ_4K)) ? (1 << va_align) : SZ_4K;
 }
 
+/**
+ * adreno_hwsched_wait_ack_completion - Wait for HFI ack asynchronously
+ * adreno_dev: Pointer to the adreno device
+ * dev: Pointer to the device structure
+ * ack: Pointer to the pending ack
+ * process_msgq: Function pointer to the msgq processing function
+ *
+ * This function waits for the completion structure, which gets signaled asynchronously. In case
+ * there is a timeout, process the msgq one last time. If the ack is present, log an error and move
+ * on. If the ack isn't present, log an error, take a snapshot and return -ETIMEDOUT.
+ *
+ * Return: 0 on success and -ETIMEDOUT on failure
+ */
+int adreno_hwsched_wait_ack_completion(struct adreno_device *adreno_dev,
+	struct device *dev, struct pending_cmd *ack,
+	void (*process_msgq)(struct adreno_device *adreno_dev));
 #endif
