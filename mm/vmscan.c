@@ -3942,6 +3942,10 @@ done:
 	return true;
 }
 
+/******************************************************************************
+ *                          working set protection
+ ******************************************************************************/
+
 static bool lruvec_is_sizable(struct lruvec *lruvec, struct scan_control *sc)
 {
 	int gen, type, zone;
