@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_REQ_MGR_UTIL_API_H_
@@ -80,6 +81,17 @@ struct cam_create_dev_hdl {
 	void *ops;
 	void *priv;
 };
+
+/**
+ * cam_handle_validate() - validate session/device handle
+ * @session_hdl: handle for a session
+ * @handle: handle for a session/device
+ *
+ * cam_req_mgr_core and KMD drivers use this function to
+ * validate session/device handle. Returns 0 on success,
+ * -EINVAL on failure.
+ */
+int cam_handle_validate(int32_t session_hdl, int32_t handle);
 
 /**
  * cam_create_session_hdl() - create a session handle

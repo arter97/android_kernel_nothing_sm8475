@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/ratelimit.h>
@@ -1453,7 +1453,7 @@ static int cam_tfe_bus_acquire_tfe_out(void *priv, void *acquire_args,
 
 	rsrc_node->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 	out_acquire_args->rsrc_node = rsrc_node;
-
+	out_acquire_args->comp_grp_id = comp_grp_id;
 	return rc;
 
 release_wm:
@@ -1828,12 +1828,13 @@ static int cam_tfe_bus_bufdone_bottom_half(
 	struct cam_tfe_bus_priv            *bus_priv,
 	struct cam_tfe_irq_evt_payload *evt_payload)
 {
-	struct cam_tfe_bus_common_data     *common_data;
-	struct cam_tfe_bus_tfe_out_data    *out_rsrc_data;
-	struct cam_isp_hw_event_info        evt_info;
-	struct cam_isp_resource_node       *out_rsrc = NULL;
-	struct cam_tfe_bus_comp_grp_data   *comp_rsrc_data;
-	uint32_t i, j;
+	struct cam_tfe_bus_common_data        *common_data;
+	struct cam_tfe_bus_tfe_out_data       *out_rsrc_data;
+	struct cam_isp_hw_event_info           evt_info;
+	struct cam_isp_resource_node          *out_rsrc = NULL;
+	struct cam_tfe_bus_comp_grp_data      *comp_rsrc_data;
+	struct cam_isp_hw_bufdone_event_info   bufdone_evt_info = {0};
+	uint32_t i;
 
 	common_data = &bus_priv->common_data;
 
@@ -1848,25 +1849,28 @@ static int cam_tfe_bus_bufdone_bottom_half(
 		if (evt_payload->bus_irq_val[0] &
 			BIT(comp_rsrc_data->comp_grp_id +
 			bus_priv->common_data.comp_done_shift)) {
-			for (j = 0; j < comp_rsrc_data->acquire_dev_cnt; j++) {
-				out_rsrc = comp_rsrc_data->out_rsrc[j];
-				out_rsrc_data = out_rsrc->res_priv;
-				evt_info.res_type = out_rsrc->res_type;
-				evt_info.hw_idx = out_rsrc->hw_intf->hw_idx;
-				evt_info.res_id = out_rsrc->res_id;
-				evt_info.reg_val =
-					cam_tfe_bus_get_last_consumed_addr(
-						out_rsrc_data->bus_priv,
-						out_rsrc_data->out_id);
+			out_rsrc = comp_rsrc_data->out_rsrc[0];
+			out_rsrc_data = out_rsrc->res_priv;
+			evt_info.res_type = out_rsrc->res_type;
+			evt_info.hw_idx = out_rsrc->hw_intf->hw_idx;
+			evt_info.res_id = out_rsrc->res_id;
+			bufdone_evt_info.res_id = out_rsrc->res_id;
+			bufdone_evt_info.comp_grp_id = comp_rsrc_data->comp_grp_id;
+			bufdone_evt_info.last_consumed_addr =
+				cam_tfe_bus_get_last_consumed_addr(
+					out_rsrc_data->bus_priv,
+					out_rsrc_data->out_id);
+			evt_info.event_data = (void *)&bufdone_evt_info;
+
+			if (out_rsrc_data->event_cb)
 				out_rsrc_data->event_cb(out_rsrc_data->priv,
 					CAM_ISP_HW_EVENT_DONE,
 					(void *)&evt_info);
-			}
-
-			evt_payload->bus_irq_val[0] &=
-				~BIT(comp_rsrc_data->comp_grp_id +
-				bus_priv->common_data.comp_done_shift);
 		}
+
+		evt_payload->bus_irq_val[0] &=
+			~BIT(comp_rsrc_data->comp_grp_id +
+			bus_priv->common_data.comp_done_shift);
 	}
 
 	return 0;
