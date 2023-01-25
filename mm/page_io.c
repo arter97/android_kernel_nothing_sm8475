@@ -51,10 +51,9 @@ void end_swap_bio_write(struct bio *bio)
 	bio_put(bio);
 }
 
-static void end_swap_bio_read(struct bio *bio)
+static void __end_swap_bio_read(struct bio *bio)
 {
 	struct page *page = bio_first_page_all(bio);
-	struct task_struct *waiter = bio->bi_private;
 
 	if (bio->bi_status) {
 		SetPageError(page);
@@ -62,18 +61,16 @@ static void end_swap_bio_read(struct bio *bio)
 		pr_alert_ratelimited("Read-error on swap-device (%u:%u:%llu)\n",
 				     MAJOR(bio_dev(bio)), MINOR(bio_dev(bio)),
 				     (unsigned long long)bio->bi_iter.bi_sector);
-		goto out;
+	} else {
+		SetPageUptodate(page);
 	}
-
-	SetPageUptodate(page);
-out:
 	unlock_page(page);
-	WRITE_ONCE(bio->bi_private, NULL);
+}
+
+static void end_swap_bio_read(struct bio *bio)
+{
+	__end_swap_bio_read(bio);
 	bio_put(bio);
-	if (waiter) {
-		blk_wake_io_task(waiter);
-		put_task_struct(waiter);
-	}
 }
 
 int generic_swapfile_activate(struct swap_info_struct *sis,
@@ -369,24 +366,52 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
 	return 0;
 }
 
-static int swap_readpage_bdev(struct page *page, bool synchronous,
+static void swap_readpage_bdev_sync(struct page *page,
+		struct swap_info_struct *sis)
+{
+	struct bio_vec bv;
+	struct bio bio;
+
+	if ((sis->flags & SWP_SYNCHRONOUS_IO) &&
+	    !bdev_read_page(sis->bdev, swap_page_sector(page), page)) {
+		trace_android_vh_count_pswpin(sis);
+		count_vm_event(PSWPIN);
+		return;
+	}
+
+	bio_init(&bio, &bv, 1);
+	bio_set_dev(&bio, sis->bdev);
+	bio.bi_opf = REQ_OP_READ | REQ_HIPRI;
+	bio.bi_iter.bi_sector = swap_page_sector(page);
+	bio_add_page(&bio, page, thp_size(page), 0);
+
+	/*
+	 * Keep this task valid during swap readpage because the oom killer may
+	 * attempt to access it in the page fault retry time check.
+	 */
+	get_task_struct(current);
+
+	trace_android_vh_count_pswpin(sis);
+	count_vm_event(PSWPIN);
+
+	submit_bio_wait(&bio);
+	__end_swap_bio_read(&bio);
+	put_task_struct(current);
+}
+
+static void swap_readpage_bdev_async(struct page *page,
 		struct swap_info_struct *sis)
 {
 	struct bio *bio;
-	blk_qc_t qc;
 	struct gendisk *disk;
-	int ret = 0;
 
-	if (sis->flags & SWP_SYNCHRONOUS_IO) {
-		ret = bdev_read_page(sis->bdev, swap_page_sector(page), page);
-		if (!ret) {
-			trace_android_vh_count_pswpin(sis);
-			count_vm_event(PSWPIN);
-			return ret;
-		}
+	if ((sis->flags & SWP_SYNCHRONOUS_IO) &&
+	    !bdev_read_page(sis->bdev, swap_page_sector(page), page)) {
+		trace_android_vh_count_pswpin(sis);
+		count_vm_event(PSWPIN);
+		return;
 	}
 
-	ret = 0;
 	bio = bio_alloc(GFP_KERNEL, 1);
 	bio_set_dev(bio, sis->bdev);
 	bio->bi_opf = REQ_OP_READ;
@@ -399,27 +424,9 @@ static int swap_readpage_bdev(struct page *page, bool synchronous,
 	 * Keep this task valid during swap readpage because the oom killer may
 	 * attempt to access it in the page fault retry time check.
 	 */
-	if (synchronous) {
-		bio->bi_opf |= REQ_HIPRI;
-		get_task_struct(current);
-		bio->bi_private = current;
-	}
 	trace_android_vh_count_pswpin(sis);
 	count_vm_event(PSWPIN);
-	bio_get(bio);
-	qc = submit_bio(bio);
-	while (synchronous) {
-		set_current_state(TASK_UNINTERRUPTIBLE);
-		if (!READ_ONCE(bio->bi_private))
-			break;
-
-		if (!blk_poll(disk->queue, qc, true))
-			blk_io_schedule();
-	}
-	__set_current_state(TASK_RUNNING);
-	bio_put(bio);
-
-	return ret;
+	submit_bio(bio);
 }
 
 int swap_readpage(struct page *page, bool synchronous)
@@ -451,8 +458,10 @@ int swap_readpage(struct page *page, bool synchronous)
 			trace_android_vh_count_pswpin(sis);
 			count_vm_event(PSWPIN);
 		}
+	} else if (synchronous) {
+		swap_readpage_bdev_sync(page, sis);
 	} else {
-		ret = swap_readpage_bdev(page, synchronous, sis);
+		swap_readpage_bdev_async(page, sis);
 	}
 
 	psi_memstall_leave(&pflags);
