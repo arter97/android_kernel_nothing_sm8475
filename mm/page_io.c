@@ -27,7 +27,7 @@
 #include <linux/sched/task.h>
 #include <trace/hooks/mm.h>
 
-void end_swap_bio_write(struct bio *bio)
+static void __end_swap_bio_write(struct bio *bio)
 {
 	struct page *page = bio_first_page_all(bio);
 
@@ -48,6 +48,11 @@ void end_swap_bio_write(struct bio *bio)
 		ClearPageReclaim(page);
 	}
 	end_page_writeback(page);
+}
+
+void end_swap_bio_write(struct bio *bio)
+{
+	__end_swap_bio_write(bio);
 	bio_put(bio);
 }
 
@@ -334,20 +339,35 @@ static int swap_writepage_fs(struct page *page, struct writeback_control *wbc)
 	return ret;
 }
 
-static int swap_writepage_bdev(struct page *page,
+static void swap_writepage_bdev_sync(struct page *page,
+		struct writeback_control *wbc, struct swap_info_struct *sis)
+{
+	struct bio_vec bv;
+	struct bio bio;
+	bool skip = false;
+
+	bio_init(&bio, &bv, 1);
+	bio_set_dev(&bio, sis->bdev);
+	bio.bi_iter.bi_sector = swap_page_sector(page);
+	bio.bi_opf = REQ_OP_WRITE | REQ_SWAP | wbc_to_write_flags(wbc);
+	bio_add_page(&bio, page, thp_size(page), 0);
+
+	bio_associate_blkg_from_page(&bio, page);
+	trace_android_vh_count_swpout_vm_event(sis, page, &skip);
+	if (!skip)
+		count_swpout_vm_event(page);
+	set_page_writeback(page);
+	unlock_page(page);
+
+	submit_bio_wait(&bio);
+	__end_swap_bio_write(&bio);
+}
+
+static void swap_writepage_bdev_async(struct page *page,
 		struct writeback_control *wbc, struct swap_info_struct *sis)
 {
 	struct bio *bio;
-	int ret;
 	bool skip = false;
-
-	ret = bdev_write_page(sis->bdev, swap_page_sector(page), page, wbc);
-	if (!ret) {
-		trace_android_vh_count_swpout_vm_event(sis, page, &skip);
-		if (!skip)
-			count_swpout_vm_event(page);
-		return 0;
-	}
 
 	bio = bio_alloc(GFP_NOIO, 1);
 	bio_set_dev(bio, sis->bdev);
@@ -363,8 +383,6 @@ static int swap_writepage_bdev(struct page *page,
 	set_page_writeback(page);
 	unlock_page(page);
 	submit_bio(bio);
-
-	return 0;
 }
 
 int __swap_writepage(struct page *page, struct writeback_control *wbc)
@@ -374,8 +392,12 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc)
 	VM_BUG_ON_PAGE(!PageSwapCache(page), page);
 	if (data_race(sis->flags & SWP_FS_OPS))
 		return swap_writepage_fs(page, wbc);
+	else if (sis->flags & SWP_SYNCHRONOUS_IO)
+		swap_writepage_bdev_sync(page, wbc, sis);
 	else
-		return swap_writepage_bdev(page, wbc, sis);
+		swap_writepage_bdev_async(page, wbc, sis);
+
+	return 0;
 }
 
 static void swap_readpage_bdev_sync(struct page *page,
@@ -383,13 +405,6 @@ static void swap_readpage_bdev_sync(struct page *page,
 {
 	struct bio_vec bv;
 	struct bio bio;
-
-	if ((sis->flags & SWP_SYNCHRONOUS_IO) &&
-	    !bdev_read_page(sis->bdev, swap_page_sector(page), page)) {
-		trace_android_vh_count_pswpin(sis);
-		count_vm_event(PSWPIN);
-		return;
-	}
 
 	bio_init(&bio, &bv, 1);
 	bio_set_dev(&bio, sis->bdev);
@@ -416,13 +431,6 @@ static void swap_readpage_bdev_async(struct page *page,
 {
 	struct bio *bio;
 	struct gendisk *disk;
-
-	if ((sis->flags & SWP_SYNCHRONOUS_IO) &&
-	    !bdev_read_page(sis->bdev, swap_page_sector(page), page)) {
-		trace_android_vh_count_pswpin(sis);
-		count_vm_event(PSWPIN);
-		return;
-	}
 
 	bio = bio_alloc(GFP_KERNEL, 1);
 	bio_set_dev(bio, sis->bdev);
@@ -470,7 +478,7 @@ int swap_readpage(struct page *page, bool synchronous)
 			trace_android_vh_count_pswpin(sis);
 			count_vm_event(PSWPIN);
 		}
-	} else if (synchronous) {
+	} else if (synchronous || (sis->flags & SWP_SYNCHRONOUS_IO)) {
 		swap_readpage_bdev_sync(page, sis);
 	} else {
 		swap_readpage_bdev_async(page, sis);
