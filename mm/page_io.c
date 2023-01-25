@@ -388,50 +388,20 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
 	return 0;
 }
 
-int swap_readpage(struct page *page, bool synchronous)
+static int swap_readpage_bdev(struct page *page, bool synchronous,
+		struct swap_info_struct *sis)
 {
 	struct bio *bio;
-	int ret = 0;
-	struct swap_info_struct *sis = page_swap_info(page);
 	blk_qc_t qc;
 	struct gendisk *disk;
-	unsigned long pflags;
-
-	VM_BUG_ON_PAGE(!PageSwapCache(page) && !synchronous, page);
-	VM_BUG_ON_PAGE(!PageLocked(page), page);
-	VM_BUG_ON_PAGE(PageUptodate(page), page);
-
-	/*
-	 * Count submission time as memory stall. When the device is congested,
-	 * or the submitting cgroup IO-throttled, submission can be a
-	 * significant part of overall IO time.
-	 */
-	psi_memstall_enter(&pflags);
-
-	if (frontswap_load(page) == 0) {
-		SetPageUptodate(page);
-		unlock_page(page);
-		goto out;
-	}
-
-	if (data_race(sis->flags & SWP_FS_OPS)) {
-		struct file *swap_file = sis->swap_file;
-		struct address_space *mapping = swap_file->f_mapping;
-
-		ret = mapping->a_ops->readpage(swap_file, page);
-		if (!ret) {
-			trace_android_vh_count_pswpin(sis);
-			count_vm_event(PSWPIN);
-		}
-		goto out;
-	}
+	int ret = 0;
 
 	if (sis->flags & SWP_SYNCHRONOUS_IO) {
 		ret = bdev_read_page(sis->bdev, swap_page_sector(page), page);
 		if (!ret) {
 			trace_android_vh_count_pswpin(sis);
 			count_vm_event(PSWPIN);
-			goto out;
+			return ret;
 		}
 	}
 
@@ -440,7 +410,7 @@ int swap_readpage(struct page *page, bool synchronous)
 	if (bio == NULL) {
 		unlock_page(page);
 		ret = -ENOMEM;
-		goto out;
+		return ret;
 	}
 	disk = bio->bi_disk;
 	/*
@@ -468,7 +438,42 @@ int swap_readpage(struct page *page, bool synchronous)
 	__set_current_state(TASK_RUNNING);
 	bio_put(bio);
 
-out:
+	return ret;
+}
+
+int swap_readpage(struct page *page, bool synchronous)
+{
+	int ret = 0;
+	struct swap_info_struct *sis = page_swap_info(page);
+	unsigned long pflags;
+
+	VM_BUG_ON_PAGE(!PageSwapCache(page) && !synchronous, page);
+	VM_BUG_ON_PAGE(!PageLocked(page), page);
+	VM_BUG_ON_PAGE(PageUptodate(page), page);
+
+	/*
+	 * Count submission time as memory stall. When the device is congested,
+	 * or the submitting cgroup IO-throttled, submission can be a
+	 * significant part of overall IO time.
+	 */
+	psi_memstall_enter(&pflags);
+
+	if (frontswap_load(page) == 0) {
+		SetPageUptodate(page);
+		unlock_page(page);
+	} else if (data_race(sis->flags & SWP_FS_OPS)) {
+		struct file *swap_file = sis->swap_file;
+		struct address_space *mapping = swap_file->f_mapping;
+
+		ret = mapping->a_ops->readpage(swap_file, page);
+		if (!ret) {
+			trace_android_vh_count_pswpin(sis);
+			count_vm_event(PSWPIN);
+		}
+	} else {
+		ret = swap_readpage_bdev(page, synchronous, sis);
+	}
+
 	psi_memstall_leave(&pflags);
 	return ret;
 }
