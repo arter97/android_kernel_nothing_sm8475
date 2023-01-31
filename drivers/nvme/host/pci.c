@@ -7,6 +7,7 @@
 #include <linux/acpi.h>
 #include <linux/aer.h>
 #include <linux/async.h>
+#include <linux/delay.h>
 #include <linux/blkdev.h>
 #include <linux/blk-mq.h>
 #include <linux/blk-mq-pci.h>
@@ -2941,7 +2942,10 @@ static int nvme_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	pci_set_drvdata(pdev, dev);
 
 	nvme_reset_ctrl(&dev->ctrl);
-	async_schedule(nvme_async_probe, dev);
+	nvme_async_probe(dev, 0);
+
+	msleep(1000);
+
 	return 0;
 
 out_release_prp_pools:
