@@ -2,6 +2,9 @@
 /*
  * /proc/bootconfig - Extra boot configuration
  */
+
+#define pr_fmt(fmt) "bootconfig: " fmt
+
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/printk.h>
@@ -9,6 +12,17 @@
 #include <linux/seq_file.h>
 #include <linux/bootconfig.h>
 #include <linux/slab.h>
+
+bool boot_using_nvme;
+EXPORT_SYMBOL(boot_using_nvme);
+
+static int __init cmdline_parse_boot_using_nvme(char *p)
+{
+	pr_info("booting from NVMe\n");
+	boot_using_nvme = true;
+	return 0;
+}
+early_param("boot_using_nvme", cmdline_parse_boot_using_nvme);
 
 static char *saved_boot_config;
 
@@ -29,6 +43,7 @@ static int __init copy_xbc_key_value_list(char *dst, size_t size)
 	char *key, *end = dst + size;
 	const char *val;
 	char q;
+	static const char nvme_dev[] = "soc/1c08000.qcom,pcie";
 	int ret = 0;
 
 	key = kzalloc(XBC_KEYLEN_MAX, GFP_KERNEL);
@@ -46,6 +61,17 @@ static int __init copy_xbc_key_value_list(char *dst, size_t size)
 		vnode = xbc_node_get_child(leaf);
 		if (vnode) {
 			xbc_array_for_each_value(vnode, val) {
+				if (boot_using_nvme && strstr(val, ".ufshc")) {
+					if (!strncmp(val, "soc/", 4)) {
+						// Replace "soc/.ufshc"
+						pr_info("replacing \"%s\" = \"%s\" to \"%s\"\n", key, val, nvme_dev);
+						val = nvme_dev;
+					} else {
+						// Replace ".ufshc"
+						pr_info("replacing \"%s\" = \"%s\" to \"%s\"\n", key, val, nvme_dev + 4);
+						val = nvme_dev + 4;
+					}
+				}
 				if (strchr(val, '"'))
 					q = '\'';
 				else
