@@ -6485,6 +6485,7 @@ static int msm_pcie_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	int rc_idx = -1, size;
+	int i;
 	struct msm_pcie_dev_t *pcie_dev;
 	struct device_node *of_node;
 
@@ -6859,16 +6860,24 @@ static int msm_pcie_probe(struct platform_device *pdev)
 	}
 #endif
 
-	ret = msm_pcie_enumerate(rc_idx);
-	if (ret)
-		PCIE_ERR(pcie_dev,
-			"PCIe: RC%d is not enabled during bootup; it will be enumerated upon client request.\n",
-			pcie_dev->rc_idx);
-	else
-		PCIE_ERR(pcie_dev, "RC%d is enabled in bootup\n",
-			pcie_dev->rc_idx);
+	for (i = 0; i < 20; i++) {
+		ret = msm_pcie_enumerate(rc_idx);
+		if (ret) {
+			PCIE_ERR(pcie_dev,
+				"PCIe: RC%d is not enabled during bootup; it will be enumerated upon client request.\n",
+				pcie_dev->rc_idx);
+			if (pcie_dev->rc_idx == 0)
+				break;
+		} else {
+			PCIE_ERR(pcie_dev, "RC%d is enabled in bootup (%dth try)\n",
+				pcie_dev->rc_idx, i + 1);
+			break;
+		}
+		msleep(1000);
+	}
+	msleep(1000);
 
-	PCIE_DBG(pcie_dev, "PCIe probed %s\n", dev_name(&pdev->dev));
+	PCIE_INFO(pcie_dev, "PCIe probed %s\n", dev_name(&pdev->dev));
 
 	mutex_unlock(&pcie_drv.drv_lock);
 	return 0;
