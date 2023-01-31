@@ -6481,6 +6481,9 @@ static int msm_pcie_i2c_ctrl_init(struct msm_pcie_dev_t *pcie_dev)
 		return 0;
 }
 
+bool msm_pcie_probed;
+EXPORT_SYMBOL(msm_pcie_probed);
+
 static int msm_pcie_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -6878,6 +6881,7 @@ static int msm_pcie_probe(struct platform_device *pdev)
 	msleep(1000);
 
 	PCIE_INFO(pcie_dev, "PCIe probed %s\n", dev_name(&pdev->dev));
+	WRITE_ONCE(msm_pcie_probed, true);
 
 	mutex_unlock(&pcie_drv.drv_lock);
 	return 0;

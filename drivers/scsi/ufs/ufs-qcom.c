@@ -5050,6 +5050,9 @@ static int ufs_qcom_read_boot_config(struct platform_device *pdev)
 	return is_bootdevice_ufs;
 }
 
+extern bool msm_pcie_probed;
+extern bool boot_using_nvme;
+
 /**
  * ufs_qcom_probe - probe routine of the driver
  * @pdev: pointer to Platform device handle
@@ -5061,6 +5064,11 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 	int err = 0;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
+
+	if (boot_using_nvme && !READ_ONCE(msm_pcie_probed)) {
+		dev_warn(dev, "msm-pcie is not probed yet, deferring\n");
+		return -EPROBE_DEFER;
+	}
 
 	if (!ufs_qcom_read_boot_config(pdev)) {
 		dev_err(dev, "UFS is not boot dev.\n");
