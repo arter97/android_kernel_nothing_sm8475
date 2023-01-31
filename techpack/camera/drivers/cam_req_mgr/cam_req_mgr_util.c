@@ -83,6 +83,45 @@ int cam_req_mgr_util_deinit(void)
 	return 0;
 }
 
+int cam_handle_validate(int32_t session_hdl, int32_t handle)
+{
+	int idx, rc = 0;
+
+	spin_lock_bh(&hdl_tbl_lock);
+	if (!hdl_tbl) {
+		CAM_ERR(CAM_CRM, "Hdl tbl is NULL");
+		rc = -EINVAL;
+		goto out;
+	}
+
+	idx = CAM_REQ_MGR_GET_HDL_IDX(handle);
+	if (idx < 0 || idx >= CAM_REQ_MGR_MAX_HANDLES_V2) {
+		CAM_ERR(CAM_CRM, "Invalid index:%d for handle: 0x%x", idx, handle);
+		rc = -EINVAL;
+		goto out;
+	}
+
+	if (hdl_tbl->hdl[idx].state != HDL_ACTIVE) {
+		CAM_ERR(CAM_CRM, "Invalid state:%d", hdl_tbl->hdl[idx].state);
+		rc = -EINVAL;
+		goto out;
+	}
+
+	if (hdl_tbl->hdl[idx].session_hdl != session_hdl ||
+		hdl_tbl->hdl[idx].hdl_value != handle) {
+		CAM_ERR(CAM_CRM, "Expected session_hdl: 0x%x, Actual Session_hdl: 0x%x",
+			hdl_tbl->hdl[idx].session_hdl, session_hdl);
+		CAM_ERR(CAM_CRM, "Expected handle: 0x%x, Actual handle: 0x%x",
+			hdl_tbl->hdl[idx].hdl_value, handle);
+		rc = -EINVAL;
+		goto out;
+	}
+
+out:
+	spin_unlock_bh(&hdl_tbl_lock);
+	return rc;
+}
+
 int cam_req_mgr_util_free_hdls(void)
 {
 	int i = 0;
