@@ -43,9 +43,6 @@ static inline int _gh_hcall(const gh_hcall_fnid_t hcall_num,
 		  "+r"(_x5), "+r"(_x6), "+r"(_x7)
 		: [num] "i" (hcall_num), [_x18] "r"(&_x18)
 		: "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17",
-#if !IS_ENABLED(CONFIG_SHADOW_CALL_STACK)
-		  "x18",
-#endif
 		  "memory"
 		);
 
