@@ -128,7 +128,7 @@ static int f2fs_begin_enable_verity(struct file *filp)
 	if (f2fs_verity_in_progress(inode))
 		return -EBUSY;
 
-	if (f2fs_is_atomic_file(inode) || f2fs_is_volatile_file(inode))
+	if (f2fs_is_atomic_file(inode))
 		return -EOPNOTSUPP;
 
 	/*
@@ -136,7 +136,7 @@ static int f2fs_begin_enable_verity(struct file *filp)
 	 * here and not rely on ->open() doing it.  This must be done before
 	 * evicting the inline data.
 	 */
-	err = dquot_initialize(inode);
+	err = f2fs_dquot_initialize(inode);
 	if (err)
 		return err;
 
@@ -245,6 +245,8 @@ static int f2fs_get_verity_descriptor(struct inode *inode, void *buf,
 	if (pos + size < pos || pos + size > inode->i_sb->s_maxbytes ||
 	    pos < f2fs_verity_metadata_pos(inode) || size > INT_MAX) {
 		f2fs_warn(F2FS_I_SB(inode), "invalid verity xattr");
+		f2fs_handle_error(F2FS_I_SB(inode),
+				ERROR_CORRUPTED_VERITY_XATTR);
 		return -EFSCORRUPTED;
 	}
 	if (buf_size) {
@@ -261,14 +263,13 @@ static struct page *f2fs_read_merkle_tree_page(struct inode *inode,
 					       pgoff_t index,
 					       unsigned long num_ra_pages)
 {
+	DEFINE_READAHEAD(ractl, NULL, inode->i_mapping, index);
 	struct page *page;
 
 	index += f2fs_verity_metadata_pos(inode) >> PAGE_SHIFT;
 
 	page = find_get_page_flags(inode->i_mapping, index, FGP_ACCESSED);
 	if (!page || !PageUptodate(page)) {
-		DEFINE_READAHEAD(ractl, NULL, inode->i_mapping, index);
-
 		if (page)
 			put_page(page);
 		else if (num_ra_pages > 1)

@@ -20,6 +20,11 @@
 
 #define FSCRYPT_FILE_NONCE_SIZE	16
 
+/*
+ * Minimum size of an fscrypt master key.  Note: a longer key will be required
+ * if ciphers with a 256-bit security strength are used.  This is just the
+ * absolute minimum, which applies when only 128-bit encryption is used.
+ */
 #define FSCRYPT_MIN_KEY_SIZE	16
 
 #define FSCRYPT_MAX_HW_WRAPPED_KEY_SIZE	128
@@ -181,7 +186,7 @@ struct fscrypt_symlink_data {
 struct fscrypt_prepared_key {
 	struct crypto_skcipher *tfm;
 #ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
-	struct fscrypt_blk_crypto_key *blk_key;
+	struct blk_crypto_key *blk_key;
 #endif
 };
 
@@ -222,7 +227,7 @@ struct fscrypt_info {
 	 * will be NULL if the master key was found in a process-subscribed
 	 * keyring rather than in the filesystem-level keyring.
 	 */
-	struct key *ci_master_key;
+	struct fscrypt_master_key *ci_master_key;
 
 	/*
 	 * Link in list of inodes that were unlocked with the master key.
@@ -347,7 +352,8 @@ int fscrypt_prepare_inline_crypt_key(struct fscrypt_prepared_key *prep_key,
 				     bool is_hw_wrapped,
 				     const struct fscrypt_info *ci);
 
-void fscrypt_destroy_inline_crypt_key(struct fscrypt_prepared_key *prep_key);
+void fscrypt_destroy_inline_crypt_key(struct super_block *sb,
+				      struct fscrypt_prepared_key *prep_key);
 
 extern int fscrypt_derive_raw_secret(struct super_block *sb,
 				     const u8 *wrapped_key,
@@ -401,7 +407,8 @@ fscrypt_prepare_inline_crypt_key(struct fscrypt_prepared_key *prep_key,
 }
 
 static inline void
-fscrypt_destroy_inline_crypt_key(struct fscrypt_prepared_key *prep_key)
+fscrypt_destroy_inline_crypt_key(struct super_block *sb,
+				 struct fscrypt_prepared_key *prep_key)
 {
 }
 
@@ -437,7 +444,11 @@ struct fscrypt_master_key_secret {
 	 */
 	struct fscrypt_hkdf	hkdf;
 
-	/* Size of the raw key in bytes.  Set even if ->raw isn't set. */
+	/*
+	 * Size of the raw key in bytes.  This remains set even if ->raw was
+	 * zeroized due to no longer being needed.  I.e. we still remember the
+	 * size of the key even if we don't need to remember the key itself.
+	 */
 	u32			size;
 
 	/* True if the key in ->raw is a hardware-wrapped key. */
@@ -462,6 +473,40 @@ struct fscrypt_master_key_secret {
 struct fscrypt_master_key {
 
 	/*
+	 * Back-pointer to the super_block of the filesystem to which this
+	 * master key has been added.  Only valid if ->mk_active_refs > 0.
+	 */
+	struct super_block			*mk_sb;
+
+	/*
+	 * Link in ->mk_sb->s_master_keys->key_hashtable.
+	 * Only valid if ->mk_active_refs > 0.
+	 */
+	struct hlist_node			mk_node;
+
+	/* Semaphore that protects ->mk_secret and ->mk_users */
+	struct rw_semaphore			mk_sem;
+
+	/*
+	 * Active and structural reference counts.  An active ref guarantees
+	 * that the struct continues to exist, continues to be in the keyring
+	 * ->mk_sb->s_master_keys, and that any embedded subkeys (e.g.
+	 * ->mk_direct_keys) that have been prepared continue to exist.
+	 * A structural ref only guarantees that the struct continues to exist.
+	 *
+	 * There is one active ref associated with ->mk_secret being present,
+	 * and one active ref for each inode in ->mk_decrypted_inodes.
+	 *
+	 * There is one structural ref associated with the active refcount being
+	 * nonzero.  Finding a key in the keyring also takes a structural ref,
+	 * which is then held temporarily while the key is operated on.
+	 */
+	refcount_t				mk_active_refs;
+	refcount_t				mk_struct_refs;
+
+	struct rcu_head				mk_rcu_head;
+
+	/*
 	 * The secret key material.  After FS_IOC_REMOVE_ENCRYPTION_KEY is
 	 * executed, this is wiped and no new inodes can be unlocked with this
 	 * key; however, there may still be inodes in ->mk_decrypted_inodes
@@ -469,7 +514,10 @@ struct fscrypt_master_key {
 	 * FS_IOC_REMOVE_ENCRYPTION_KEY can be retried, or
 	 * FS_IOC_ADD_ENCRYPTION_KEY can add the secret again.
 	 *
-	 * Locking: protected by this master key's key->sem.
+	 * While ->mk_secret is present, one ref in ->mk_active_refs is held.
+	 *
+	 * Locking: protected by ->mk_sem.  The manipulation of ->mk_active_refs
+	 *	    associated with this field is protected by ->mk_sem as well.
 	 */
 	struct fscrypt_master_key_secret	mk_secret;
 
@@ -490,21 +538,11 @@ struct fscrypt_master_key {
 	 *
 	 * This is NULL for v1 policy keys; those can only be added by root.
 	 *
-	 * Locking: in addition to this keyring's own semaphore, this is
-	 * protected by this master key's key->sem, so we can do atomic
-	 * search+insert.  It can also be searched without taking any locks, but
-	 * in that case the returned key may have already been removed.
+	 * Locking: protected by ->mk_sem.  (We don't just rely on the keyrings
+	 * subsystem semaphore ->mk_users->sem, as we need support for atomic
+	 * search+insert along with proper synchronization with ->mk_secret.)
 	 */
 	struct key		*mk_users;
-
-	/*
-	 * Length of ->mk_decrypted_inodes, plus one if mk_secret is present.
-	 * Once this goes to 0, the master key is removed from ->s_master_keys.
-	 * The 'struct fscrypt_master_key' will continue to live as long as the
-	 * 'struct key' whose payload it is, but we won't let this reference
-	 * count rise again.
-	 */
-	refcount_t		mk_refcount;
 
 	/*
 	 * List of inodes that were unlocked using this key.  This allows the
@@ -531,10 +569,10 @@ static inline bool
 is_master_key_secret_present(const struct fscrypt_master_key_secret *secret)
 {
 	/*
-	 * The READ_ONCE() is only necessary for fscrypt_drop_inode() and
-	 * fscrypt_key_describe().  These run in atomic context, so they can't
-	 * take the key semaphore and thus 'secret' can change concurrently
-	 * which would be a data race.  But they only need to know whether the
+	 * The READ_ONCE() is only necessary for fscrypt_drop_inode().
+	 * fscrypt_drop_inode() runs in atomic context, so it can't take the key
+	 * semaphore and thus 'secret' can change concurrently which would be a
+	 * data race.  But fscrypt_drop_inode() only need to know whether the
 	 * secret *was* present at the time of check, so READ_ONCE() suffices.
 	 */
 	return READ_ONCE(secret->size) != 0;
@@ -563,7 +601,11 @@ static inline int master_key_spec_len(const struct fscrypt_key_specifier *spec)
 	return 0;
 }
 
-struct key *
+void fscrypt_put_master_key(struct fscrypt_master_key *mk);
+
+void fscrypt_put_master_key_activeref(struct fscrypt_master_key *mk);
+
+struct fscrypt_master_key *
 fscrypt_find_master_key(struct super_block *sb,
 			const struct fscrypt_key_specifier *mk_spec);
 
@@ -593,7 +635,8 @@ int fscrypt_prepare_key(struct fscrypt_prepared_key *prep_key,
 			const u8 *raw_key, unsigned int raw_key_size,
 			bool is_hw_wrapped, const struct fscrypt_info *ci);
 
-void fscrypt_destroy_prepared_key(struct fscrypt_prepared_key *prep_key);
+void fscrypt_destroy_prepared_key(struct super_block *sb,
+				  struct fscrypt_prepared_key *prep_key);
 
 int fscrypt_set_per_file_enc_key(struct fscrypt_info *ci, const u8 *raw_key);
 
