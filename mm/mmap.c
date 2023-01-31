@@ -180,17 +180,7 @@ static void __free_vma(struct vm_area_struct *vma)
 #ifdef CONFIG_SPECULATIVE_PAGE_FAULT
 void put_vma(struct vm_area_struct *vma)
 {
-	int ref_count = atomic_dec_return(&vma->vm_ref_count);
-
-	/*
-	 * Implicit smp_mb due to atomic_dec_return.
-	 *
-	 * If this is the last reference, wake up the mremap waiter
-	 * (if any).
-	 */
-	if (ref_count == 1 && unlikely(atomic_read(&vma_user_waiters) > 0))
-		wake_up(&vma_users_wait);
-	else if (ref_count <= 0)
+	if (atomic_dec_and_test(&vma->vm_ref_count))
 		__free_vma(vma);
 }
 #else
@@ -1933,7 +1923,7 @@ unsigned long mmap_region(struct file *file, unsigned long addr,
 	if (!arch_validate_flags(vma->vm_flags)) {
 		error = -EINVAL;
 		if (file)
-			goto unmap_and_free_vma;
+			goto close_and_free_vma;
 		else
 			goto free_vma;
 	}
@@ -1982,6 +1972,9 @@ out:
 
 	return addr;
 
+close_and_free_vma:
+	if (vma->vm_ops && vma->vm_ops->close)
+		vma->vm_ops->close(vma);
 unmap_and_free_vma:
 	vma->vm_file = NULL;
 	fput(file);
