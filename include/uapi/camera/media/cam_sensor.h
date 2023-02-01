@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_SENSOR_H__
@@ -19,6 +19,8 @@
 
 #define SKEW_CAL_MASK             BIT(1)
 #define PREAMBLE_PATTEN_CAL_MASK  BIT(2)
+
+#define CAM_SENSOR_GET_QUERY_CAP_V2
 
 enum camera_sensor_cmd_type {
 	CAMERA_SENSOR_CMD_TYPE_INVALID,
@@ -836,6 +838,32 @@ struct cam_flash_query_cap_info {
 	__u32    max_current_flash[CAM_FLASH_MAX_LED_TRIGGERS];
 	__u32    max_duration_flash[CAM_FLASH_MAX_LED_TRIGGERS];
 	__u32    max_current_torch[CAM_FLASH_MAX_LED_TRIGGERS];
+} __attribute__ ((packed));
+
+/**
+ * struct cam_flash_query_cap_v2  :  capabilities info for flash
+ *
+ * @version             :  Version to indicate the change
+ * @slot_info           :  Indicates about the slotId or cell Index
+ * @max_current_flash   :  max supported current for flash
+ * @max_duration_flash  :  max flash turn on duration
+ * @max_current_torch   :  max supported current for torch
+ * @flash_type          :  Flag to indicate flash type (i2c/pmic)
+ * @num_valid_params    :  Number of valid params to pass
+ * @param_mask          :  Param mask for the params passed
+ * @params              :  Array to contain future parameters
+ *
+ */
+struct cam_flash_query_cap_info_v2 {
+	__u32    version;
+	__u32    slot_info;
+	__u32    max_current_flash[CAM_FLASH_MAX_LED_TRIGGERS];
+	__u32    max_duration_flash[CAM_FLASH_MAX_LED_TRIGGERS];
+	__u32    max_current_torch[CAM_FLASH_MAX_LED_TRIGGERS];
+	__u32    flash_type;
+	__u32    num_valid_params;
+	__u32    param_mask;
+	__u32    params[3];
 } __attribute__ ((packed));
 
 #endif
