@@ -567,9 +567,11 @@ enum phy_ch_width wlan_sap_get_concurrent_bw(struct wlan_objmgr_pdev *pdev,
 {
 	enum hw_mode_bandwidth sta_ch_width;
 	enum phy_ch_width sta_chan_width = CH_WIDTH_20MHZ;
-	bool sta_present, is_con_chan_dfs = false, is_con_sta_indoor = false;
+	bool scc_sta_present, is_con_chan_dfs = false;
+	bool is_con_sta_indoor = false;
 	uint8_t sta_vdev_id;
 	uint8_t sta_sap_scc_on_dfs_chnl;
+	uint8_t sta_count = 0;
 	bool is_hw_dbs_capable = false;
 
 	if (WLAN_REG_IS_24GHZ_CH_FREQ(con_ch_freq))
@@ -578,11 +580,18 @@ enum phy_ch_width wlan_sap_get_concurrent_bw(struct wlan_objmgr_pdev *pdev,
 	if (wlan_reg_is_6ghz_chan_freq(con_ch_freq))
 		return channel_width;
 
-	sta_present = policy_mgr_is_sta_present_on_freq(psoc,
-							&sta_vdev_id,
-							con_ch_freq,
-							&sta_ch_width);
-	if (sta_present) {
+	/* sta_count is to check if there is STA present on any other
+	 * channel freq irrespective of concurrent channel.
+	 */
+	sta_count = policy_mgr_mode_specific_connection_count(
+							psoc,
+							PM_STA_MODE,
+							NULL);
+	scc_sta_present = policy_mgr_is_sta_present_on_freq(psoc,
+							    &sta_vdev_id,
+							    con_ch_freq,
+							    &sta_ch_width);
+	if (scc_sta_present) {
 		sta_chan_width = policy_mgr_get_ch_width(sta_ch_width);
 		sap_debug("sta_chan_width:%d, channel_width:%d",
 			  sta_chan_width, channel_width);
@@ -596,8 +605,9 @@ enum phy_ch_width wlan_sap_get_concurrent_bw(struct wlan_objmgr_pdev *pdev,
 
 	policy_mgr_get_sta_sap_scc_on_dfs_chnl(psoc, &sta_sap_scc_on_dfs_chnl);
 	is_hw_dbs_capable = policy_mgr_is_hw_dbs_capable(psoc);
-	sap_debug("sta_sap_scc_on_dfs_chnl:%d, is_hw_dbs_capable:%d",
-		  sta_sap_scc_on_dfs_chnl, is_hw_dbs_capable);
+	sap_debug("sta_sap_scc_on_dfs_chnl:%d, is_hw_dbs_capable:%d, sta_count:%d, scc_sta_present:%d",
+		  sta_sap_scc_on_dfs_chnl,
+		  is_hw_dbs_capable, sta_count, scc_sta_present);
 
 	if (!is_hw_dbs_capable)
 		goto dfs_master_mode_check;
@@ -618,15 +628,17 @@ enum phy_ch_width wlan_sap_get_concurrent_bw(struct wlan_objmgr_pdev *pdev,
 	} else {
 		/* Handle "DBS + active channel" concurrency/standalone SAP */
 		sap_debug("STA + SAP/GO or standalone SAP on active channel");
-		if (sta_present)
+		if (scc_sta_present)
 			return  QDF_MAX(sta_chan_width, CH_WIDTH_80MHZ);
+		else if (sta_count)
+			return  QDF_MIN(channel_width, CH_WIDTH_80MHZ);
 		return channel_width;
 	}
 
 dfs_master_mode_check:
 	/* Handle "DBS/non-DBS + dfs channels" concurrency */
 	if (sta_sap_scc_on_dfs_chnl == PM_STA_SAP_ON_DFS_MASTER_MODE_FLEX) {
-		if (sta_present) {
+		if (scc_sta_present) {
 			sap_debug("STA+SAP/GO: limit the SAP channel width");
 			return QDF_MIN(sta_chan_width, channel_width);
 		}
@@ -635,7 +647,7 @@ dfs_master_mode_check:
 		return channel_width;
 	} else if (sta_sap_scc_on_dfs_chnl ==
 		   PM_STA_SAP_ON_DFS_MASTER_MODE_DISABLED) {
-		if (sta_present) {
+		if (scc_sta_present) {
 			sap_debug("STA present: Limit the SAP channel width");
 			channel_width = QDF_MIN(sta_chan_width, channel_width);
 			return channel_width;
@@ -653,7 +665,7 @@ dfs_master_mode_check:
 	 * sta_sap_scc_on_dfs_chnl = 0, not allow STA+SAP SCC on DFS.
 	 * Limit SAP to 80Mhz if STA present.
 	 */
-	if (sta_present) {
+	if (sta_count) {
 		sap_debug("STA present, Limit SAP/GO to 80Mhz");
 		return QDF_MIN(channel_width, CH_WIDTH_80MHZ);
 	}
