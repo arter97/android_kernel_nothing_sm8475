@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2010-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __KGSL_PWRCTRL_H
 #define __KGSL_PWRCTRL_H
@@ -12,7 +12,7 @@
 /*****************************************************************************
  * power flags
  ****************************************************************************/
-#define KGSL_MAX_CLKS 18
+#define KGSL_MAX_CLKS 19
 
 #define KGSL_MAX_PWRLEVELS 16
 
@@ -169,6 +169,12 @@ struct kgsl_pwrctrl {
 	ktime_t last_stat_updated;
 	/** @nb_max: Notifier block for DEV_PM_QOS_MAX_FREQUENCY */
 	struct notifier_block nb_max;
+	/** @cur_dcvs_buslevel: Current bus level decided by bus DCVS */
+	u32 cur_dcvs_buslevel;
+	/** @rt_bus_hint: IB level hint for real time clients i.e. RB-0 */
+	u32 rt_bus_hint;
+	/** @rt_bus_hint_active: Boolean flag to indicate if RT bus hint is active */
+	bool rt_bus_hint_active;
 };
 
 int kgsl_pwrctrl_init(struct kgsl_device *device);
