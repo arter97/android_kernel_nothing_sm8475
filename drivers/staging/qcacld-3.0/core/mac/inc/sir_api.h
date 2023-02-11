@@ -78,7 +78,7 @@ struct mac_context;
 
 typedef uint8_t tSirIpv4Addr[QDF_IPV4_ADDR_SIZE];
 
-#define SIR_VERSION_STRING_LEN 1024
+#define SIR_VERSION_STRING_LEN 256
 typedef uint8_t tSirVersionString[SIR_VERSION_STRING_LEN];
 
 /* Periodic Tx pattern offload feature */
