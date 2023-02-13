@@ -3101,8 +3101,9 @@ static void ufs_qcom_parse_irq_affinity(struct ufs_hba *hba)
 		}
 	}
 	/* If device includes perf mask, enable dynamic irq affinity feature */
-	if (host->perf_mask.bits[0])
-		host->irq_affinity_support = true;
+	//if (host->perf_mask.bits[0])
+	//	host->irq_affinity_support = true;
+	// Disable it by default
 }
 
 static void ufs_qcom_parse_pm_level(struct ufs_hba *hba)
