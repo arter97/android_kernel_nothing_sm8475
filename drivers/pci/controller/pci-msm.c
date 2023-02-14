@@ -6481,6 +6481,7 @@ static int msm_pcie_i2c_ctrl_init(struct msm_pcie_dev_t *pcie_dev)
 		return 0;
 }
 
+extern bool boot_using_nvme;
 bool msm_pcie_probed;
 EXPORT_SYMBOL(msm_pcie_probed);
 
@@ -6853,15 +6854,13 @@ static int msm_pcie_probe(struct platform_device *pdev)
 			pcie_dev->bdf_count = 0;
 	}
 
-#if 0
-	if (pcie_dev->boot_option & MSM_PCIE_NO_PROBE_ENUMERATION) {
+	if (!boot_using_nvme && pcie_dev->boot_option & MSM_PCIE_NO_PROBE_ENUMERATION) {
 		PCIE_DBG(pcie_dev,
 			"PCIe: RC%d will be enumerated by client or endpoint.\n",
 			pcie_dev->rc_idx);
 		mutex_unlock(&pcie_drv.drv_lock);
 		return 0;
 	}
-#endif
 
 	for (i = 0; i < 20; i++) {
 		ret = msm_pcie_enumerate(rc_idx);
