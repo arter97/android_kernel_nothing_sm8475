@@ -9,6 +9,7 @@
 
 #include <linux/tracepoint.h>
 #include <trace/hooks/vendor_hooks.h>
+#include <linux/cpufreq.h>
 
 #ifdef __GENKSYMS__
 struct thermal_zone_device;

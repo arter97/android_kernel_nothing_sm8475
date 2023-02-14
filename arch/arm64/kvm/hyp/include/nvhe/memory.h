@@ -2,23 +2,28 @@
 #ifndef __KVM_HYP_MEMORY_H
 #define __KVM_HYP_MEMORY_H
 
+#include <asm/kvm_mmu.h>
 #include <asm/page.h>
 
 #include <linux/types.h>
 
-struct hyp_pool;
+/*
+ * Accesses to struct hyp_page flags must be serialized by the host stage-2
+ * page-table lock due to the lack of atomics at EL2.
+ */
+#define HOST_PAGE_NEED_POISONING	BIT(0)
+#define HOST_PAGE_PENDING_RECLAIM	BIT(1)
+
 struct hyp_page {
-	unsigned int refcount;
-	unsigned int order;
-	struct hyp_pool *pool;
-	struct list_head node;
+	unsigned short refcount;
+	u8 order;
+	u8 flags;
 };
 
 extern s64 hyp_physvirt_offset;
 extern u64 __hyp_vmemmap;
 #define hyp_vmemmap ((struct hyp_page *)__hyp_vmemmap)
 
-#define __hyp_pa(virt)	((phys_addr_t)(virt) + hyp_physvirt_offset)
 #define __hyp_va(phys)	((void *)((phys_addr_t)(phys) - hyp_physvirt_offset))
 
 static inline void *hyp_phys_to_virt(phys_addr_t phys)
@@ -49,4 +54,27 @@ static inline int hyp_page_count(void *addr)
 	return p->refcount;
 }
 
+static inline void hyp_page_ref_inc(struct hyp_page *p)
+{
+	BUG_ON(p->refcount == USHRT_MAX);
+	p->refcount++;
+}
+
+static inline void hyp_page_ref_dec(struct hyp_page *p)
+{
+	BUG_ON(!p->refcount);
+	p->refcount--;
+}
+
+static inline int hyp_page_ref_dec_and_test(struct hyp_page *p)
+{
+	hyp_page_ref_dec(p);
+	return (p->refcount == 0);
+}
+
+static inline void hyp_set_page_refcounted(struct hyp_page *p)
+{
+	BUG_ON(p->refcount);
+	p->refcount = 1;
+}
 #endif /* __KVM_HYP_MEMORY_H */

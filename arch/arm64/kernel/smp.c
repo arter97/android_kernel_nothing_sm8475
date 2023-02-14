@@ -127,7 +127,9 @@ int __cpu_up(unsigned int cpu, struct task_struct *idle)
 	secondary_data.task = idle;
 	secondary_data.stack = task_stack_page(idle) + THREAD_SIZE;
 	update_cpu_boot_status(CPU_MMU_OFF);
-	__flush_dcache_area(&secondary_data, sizeof(secondary_data));
+	dcache_clean_inval_poc((unsigned long)&secondary_data,
+			    (unsigned long)&secondary_data +
+				    sizeof(secondary_data));
 
 	/* Now bring the CPU into our world */
 	ret = boot_secondary(cpu, idle);
@@ -148,7 +150,9 @@ int __cpu_up(unsigned int cpu, struct task_struct *idle)
 	pr_crit("CPU%u: failed to come online\n", cpu);
 	secondary_data.task = NULL;
 	secondary_data.stack = NULL;
-	__flush_dcache_area(&secondary_data, sizeof(secondary_data));
+	dcache_clean_inval_poc((unsigned long)&secondary_data,
+			    (unsigned long)&secondary_data +
+				    sizeof(secondary_data));
 	status = READ_ONCE(secondary_data.status);
 	if (status == CPU_MMU_OFF)
 		status = READ_ONCE(__early_cpu_boot_status);
@@ -911,7 +915,7 @@ static void do_handle_IPI(int ipinr)
 		break;
 
 	case IPI_CPU_STOP:
-		trace_android_vh_ipi_stop_rcuidle(get_irq_regs());
+		trace_android_vh_ipi_stop(get_irq_regs());
 		local_cpu_stop();
 		break;
 
@@ -1141,7 +1145,8 @@ bool cpus_are_stuck_in_kernel(void)
 {
 	bool smp_spin_tables = (num_possible_cpus() > 1 && !have_cpu_die());
 
-	return !!cpus_stuck_in_kernel || smp_spin_tables;
+	return !!cpus_stuck_in_kernel || smp_spin_tables ||
+		is_protected_kvm_enabled();
 }
 
 int nr_ipi_get(void)
