@@ -176,6 +176,32 @@ inherit_comp:
 	}
 }
 
+/*
+ * Set file's temperature for hot/cold data separation
+ */
+static void set_file_temperature(struct f2fs_sb_info *sbi, struct inode *inode,
+		const unsigned char *name)
+{
+	__u8 (*extlist)[F2FS_EXTENSION_LEN] = sbi->raw_super->extension_list;
+	int i, cold_count, hot_count;
+
+	f2fs_down_read(&sbi->sb_lock);
+	cold_count = le32_to_cpu(sbi->raw_super->extension_count);
+	hot_count = sbi->raw_super->hot_ext_count;
+	for (i = 0; i < cold_count + hot_count; i++)
+		if (is_extension_exist(name, extlist[i], true))
+			break;
+	f2fs_up_read(&sbi->sb_lock);
+
+	if (i == cold_count + hot_count)
+		return;
+
+	if (i < cold_count)
+		file_set_cold(inode);
+	else
+		file_set_hot(inode);
+}
+
 static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode,
 						const char *name)
 {
@@ -257,8 +283,6 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode,
 	}
 	F2FS_I(inode)->i_inline_xattr_size = xattr_size;
 
-	f2fs_init_extent_tree(inode, NULL);
-
 	F2FS_I(inode)->i_flags =
 		f2fs_mask_flags(mode, F2FS_I(dir)->i_flags & F2FS_FL_INHERITED);
 
@@ -275,11 +299,16 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode,
 	if (test_opt(sbi, INLINE_DATA) && f2fs_may_inline_data(inode))
 		set_inode_flag(inode, FI_INLINE_DATA);
 
+	if (name && !test_opt(sbi, DISABLE_EXT_IDENTIFY))
+		set_file_temperature(sbi, inode, name);
+
 	stat_inc_inline_xattr(inode);
 	stat_inc_inline_inode(inode);
 	stat_inc_inline_dir(inode);
 
 	f2fs_set_inode_flags(inode);
+
+	f2fs_init_extent_tree(inode);
 
 	trace_f2fs_new_inode(inode, 0);
 	return inode;
@@ -303,36 +332,6 @@ fail_drop:
 	return ERR_PTR(err);
 }
 
-/*
- * Set file's temperature for hot/cold data separation
- */
-static inline void set_file_temperature(struct f2fs_sb_info *sbi, struct inode *inode,
-		const unsigned char *name)
-{
-	__u8 (*extlist)[F2FS_EXTENSION_LEN] = sbi->raw_super->extension_list;
-	int i, cold_count, hot_count;
-
-	f2fs_down_read(&sbi->sb_lock);
-
-	cold_count = le32_to_cpu(sbi->raw_super->extension_count);
-	hot_count = sbi->raw_super->hot_ext_count;
-
-	for (i = 0; i < cold_count + hot_count; i++) {
-		if (is_extension_exist(name, extlist[i], true))
-			break;
-	}
-
-	f2fs_up_read(&sbi->sb_lock);
-
-	if (i == cold_count + hot_count)
-		return;
-
-	if (i < cold_count)
-		file_set_cold(inode);
-	else
-		file_set_hot(inode);
-}
-
 static int f2fs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 						bool excl)
 {
@@ -353,9 +352,6 @@ static int f2fs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 	inode = f2fs_new_inode(dir, mode, dentry->d_name.name);
 	if (IS_ERR(inode))
 		return PTR_ERR(inode);
-
-	if (!test_opt(sbi, DISABLE_EXT_IDENTIFY))
-		set_file_temperature(sbi, inode, dentry->d_name.name);
 
 	inode->i_op = &f2fs_file_inode_operations;
 	inode->i_fop = &f2fs_file_operations;
@@ -629,6 +625,8 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
 		goto fail;
 	}
 	f2fs_delete_entry(de, page, dir, inode);
+	f2fs_unlock_op(sbi);
+
 #ifdef CONFIG_UNICODE
 	/* VFS negative dentries are incompatible with Encoding and
 	 * Case-insensitiveness. Eventually we'll want avoid
@@ -639,8 +637,6 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
 	if (IS_CASEFOLDED(dir))
 		d_invalidate(dentry);
 #endif
-	f2fs_unlock_op(sbi);
-
 	if (IS_DIRSYNC(dir))
 		f2fs_sync_fs(sbi->sb, 1);
 fail:
