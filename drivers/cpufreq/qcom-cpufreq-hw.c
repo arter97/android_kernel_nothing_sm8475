@@ -11,7 +11,6 @@
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/msm_rtb.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
@@ -229,7 +228,7 @@ u64 qcom_cpufreq_get_cpu_cycle_counter(int cpu)
 
 	offset = CYCLE_CNTR_OFFSET(cpu, policy->related_cpus,
 					accumulative_counter);
-	val = readl_relaxed_no_log(policy->driver_data +
+	val = readl_relaxed(policy->driver_data +
 				    offsets[REG_CYCLE_CNTR] + offset);
 
 	if (val < cpu_counter->prev_cycle_counter) {
