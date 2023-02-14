@@ -101,6 +101,7 @@ static struct kgsl_iommu_pt *to_iommu_pt(struct kgsl_pagetable *pagetable)
 static u32 get_llcc_flags(struct iommu_domain *domain,
 		struct kgsl_memdesc *memdesc)
 {
+#if 0
 	struct adreno_device *adreno_dev =
 		ADRENO_DEVICE(KGSL_MMU_DEVICE(memdesc->pagetable->mmu));
 
@@ -113,6 +114,7 @@ static u32 get_llcc_flags(struct iommu_domain *domain,
 	 */
 	if (adreno_is_a621(adreno_dev))
 		return IOMMU_USE_UPSTREAM_HINT;
+#endif
 
 	if (_iommu_domain_check_bool(domain, DOMAIN_ATTR_USE_LLC_NWA))
 		return IOMMU_USE_LLC_NWA;
