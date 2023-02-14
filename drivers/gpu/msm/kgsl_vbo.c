@@ -101,9 +101,6 @@ static void kgsl_memdesc_remove_range(struct kgsl_mem_entry *target,
 		 */
 		if (!entry || range->entry->id == entry->id) {
 			interval_tree_remove(node, &memdesc->ranges);
-			trace_kgsl_mem_remove_bind_range(target,
-				range->range.start, range->entry,
-				bind_range_len(range));
 
 			kgsl_mmu_unmap_range(memdesc->pagetable,
 				memdesc, range->range.start, bind_range_len(range));
@@ -149,9 +146,6 @@ static int kgsl_memdesc_add_range(struct kgsl_mem_entry *target,
 		cur = bind_to_range(node);
 		next = interval_tree_iter_next(node, start, last);
 
-		trace_kgsl_mem_remove_bind_range(target, cur->range.start,
-			cur->entry, bind_range_len(cur));
-
 		interval_tree_remove(node, &memdesc->ranges);
 
 		if (start <= cur->range.start) {
@@ -164,9 +158,6 @@ static int kgsl_memdesc_add_range(struct kgsl_mem_entry *target,
 			cur->range.start = last + 1;
 			/* And put it back into the tree */
 			interval_tree_insert(node, &memdesc->ranges);
-
-			trace_kgsl_mem_add_bind_range(target,
-				cur->range.start, cur->entry, bind_range_len(cur));
 		} else {
 			if (last < cur->range.last) {
 				struct kgsl_memdesc_bind_range *temp;
@@ -182,25 +173,16 @@ static int kgsl_memdesc_add_range(struct kgsl_mem_entry *target,
 
 				interval_tree_insert(&temp->range,
 					&memdesc->ranges);
-
-				trace_kgsl_mem_add_bind_range(target,
-					temp->range.start,
-					temp->entry, bind_range_len(temp));
 			}
 
 			cur->range.last = start - 1;
 			interval_tree_insert(node, &memdesc->ranges);
-
-			trace_kgsl_mem_add_bind_range(target, cur->range.start,
-				cur->entry, bind_range_len(cur));
 		}
 	}
 
 	/* Add the new range */
 	interval_tree_insert(&range->range, &memdesc->ranges);
 
-	trace_kgsl_mem_add_bind_range(target, range->range.start,
-		range->entry, bind_range_len(range));
 	mutex_unlock(&memdesc->ranges_lock);
 
 	return kgsl_mmu_map_child(memdesc->pagetable, memdesc, start,

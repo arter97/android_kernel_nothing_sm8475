@@ -18,6 +18,7 @@
 #include "kgsl_trace.h"
 #include "kgsl_util.h"
 
+#if 0
 static size_t adreno_hwsched_snapshot_rb(struct kgsl_device *device, u8 *buf,
 	size_t remain, void *priv)
 {
@@ -331,6 +332,7 @@ void gen7_hwsched_snapshot(struct adreno_device *adreno_dev,
 	idr_for_each(&device->context_idr, snapshot_context_queue, snapshot);
 	read_unlock(&device->context_lock);
 }
+#endif
 
 static int gen7_hwsched_gmu_first_boot(struct adreno_device *adreno_dev)
 {
@@ -629,14 +631,6 @@ static int gen7_hwsched_gpu_boot(struct adreno_device *adreno_dev)
 		gen7_disable_gpu_irq(adreno_dev);
 		goto err;
 	}
-
-	/*
-	 * At this point it is safe to assume that we recovered. Setting
-	 * this field allows us to take a new snapshot for the next failure
-	 * if we are prioritizing the first unrecoverable snapshot.
-	 */
-	if (device->snapshot)
-		device->snapshot->recovered = true;
 
 	device->reset_counter++;
 err:
@@ -1106,8 +1100,6 @@ static void scale_gmu_frequency(struct adreno_device *adreno_dev, int buslevel)
 	}
 
 	gen7_rdpm_cx_freq_update(gmu, freq / 1000);
-
-	trace_kgsl_gmu_pwrlevel(freq, prev_freq);
 
 	prev_freq = freq;
 }

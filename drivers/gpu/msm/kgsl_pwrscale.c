@@ -672,7 +672,6 @@ static int thermal_max_notifier_call(struct notifier_block *nb, unsigned long va
 	if (level == pwr->thermal_pwrlevel)
 		return NOTIFY_OK;
 
-	trace_kgsl_thermal_constraint(max_freq);
 	pwr->thermal_pwrlevel = level;
 
 	mutex_lock(&device->mutex);

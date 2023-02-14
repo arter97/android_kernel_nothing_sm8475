@@ -6,6 +6,7 @@
 
 #include <linux/interconnect.h>
 #include <linux/of.h>
+#include <linux/slab.h>
 #include <soc/qcom/of_common.h>
 
 #include "kgsl_bus.h"

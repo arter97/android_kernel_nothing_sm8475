@@ -15,39 +15,14 @@
 struct dentry *kgsl_debugfs_dir, *mempools_debugfs;
 static struct dentry *proc_d_debugfs;
 
-static void kgsl_qdss_gfx_register_probe(struct kgsl_device *device)
-{
-	struct resource *res;
-
-	res = platform_get_resource_byname(device->pdev, IORESOURCE_MEM,
-							"qdss_gfx");
-
-	if (res == NULL)
-		return;
-
-	device->qdss_gfx_virt = devm_ioremap(&device->pdev->dev, res->start,
-							resource_size(res));
-
-	if (device->qdss_gfx_virt == NULL)
-		dev_warn(device->dev, "qdss_gfx ioremap failed\n");
-}
-
 static int _isdb_set(void *data, u64 val)
 {
-	struct kgsl_device *device = data;
-
-	if (device->qdss_gfx_virt == NULL)
-		kgsl_qdss_gfx_register_probe(device);
-
-	device->set_isdb_breakpoint = val ? true : false;
 	return 0;
 }
 
 static int _isdb_get(void *data, u64 *val)
 {
-	struct kgsl_device *device = data;
-
-	*val = device->set_isdb_breakpoint ? 1 : 0;
+	*val = 0;
 	return 0;
 }
 

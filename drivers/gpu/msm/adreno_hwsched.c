@@ -8,6 +8,7 @@
 #include <linux/soc/qcom/msm_hw_fence.h>
 
 #include "adreno.h"
+#include "adreno_gen7.h"
 #include "adreno_hfi.h"
 #include "adreno_snapshot.h"
 #include "adreno_sysfs.h"
@@ -615,9 +616,6 @@ static int hwsched_sendcmds(struct adreno_device *adreno_dev,
 		if (is_cmdobj(drawobj) || is_marker_skip(drawobj)) {
 			cmdobj = CMDOBJ(drawobj);
 			context = drawobj->context;
-			trace_adreno_cmdbatch_ready(context->id,
-				context->priority, drawobj->timestamp,
-				cmdobj->requeue_cnt);
 		}
 		ret = hwsched_sendcmd(adreno_dev, drawobj);
 
@@ -1132,9 +1130,6 @@ void adreno_hwsched_retire_cmdobj(struct adreno_hwsched *hwsched,
 		kgsl_memdesc_unmap(&entry->memdesc);
 	}
 
-	trace_adreno_cmdbatch_done(drawobj->context->id,
-		drawobj->context->priority, drawobj->timestamp);
-
 	if (hwsched->big_cmdobj == cmdobj) {
 		hwsched->big_cmdobj = NULL;
 		kgsl_drawobj_put(drawobj);
@@ -1158,7 +1153,6 @@ static bool drawobj_retired(struct adreno_device *adreno_dev,
 		if (timestamp_cmp(drawobj->timestamp, hdr->sync_obj_ts) > 0)
 			return false;
 
-		trace_adreno_syncobj_retired(drawobj->context->id, drawobj->timestamp);
 		kgsl_drawobj_destroy(drawobj);
 		return true;
 	}
@@ -1391,7 +1385,6 @@ static bool drawobj_replay(struct adreno_device *adreno_dev,
 		if (kgsl_drawobj_events_pending(SYNCOBJ(drawobj)))
 			return true;
 
-		trace_adreno_syncobj_retired(drawobj->context->id, drawobj->timestamp);
 		kgsl_drawobj_destroy(drawobj);
 		return false;
 	}
@@ -2159,6 +2152,7 @@ int adreno_hwsched_init(struct adreno_device *adreno_dev,
 	return 0;
 }
 
+#if 0
 void adreno_hwsched_parse_fault_cmdobj(struct adreno_device *adreno_dev,
 	struct kgsl_snapshot *snapshot)
 {
@@ -2199,6 +2193,7 @@ void adreno_hwsched_parse_fault_cmdobj(struct adreno_device *adreno_dev,
 		}
 	}
 }
+#endif
 
 static int unregister_context(int id, void *ptr, void *data)
 {

@@ -43,18 +43,12 @@ DEFINE_DEBUGFS_ATTRIBUTE(_isdb_fops, _isdb_get, _isdb_set, "%llu\n");
 
 static int _ctxt_record_size_set(void *data, u64 val)
 {
-	struct kgsl_device *device = data;
-
-	device->snapshot_ctxt_record_size = val;
-
 	return 0;
 }
 
 static int _ctxt_record_size_get(void *data, u64 *val)
 {
-	struct kgsl_device *device = data;
-
-	*val = device->snapshot_ctxt_record_size;
+	*val = 0;
 	return 0;
 }
 

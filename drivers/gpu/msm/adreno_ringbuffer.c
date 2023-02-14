@@ -31,8 +31,6 @@ void adreno_get_submit_time(struct adreno_device *adreno_dev,
 {
 	const struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 	unsigned long flags;
-	struct adreno_context *drawctxt = rb->drawctxt_active;
-	struct kgsl_context *context = &drawctxt->base;
 
 	if (!time)
 		return;

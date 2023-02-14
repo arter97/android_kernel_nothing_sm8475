@@ -35,6 +35,7 @@
 #include "kgsl_mmu.h"
 #include "kgsl_pool.h"
 #include "kgsl_reclaim.h"
+#include "kgsl_sharedmem.h"
 #include "kgsl_sync.h"
 #include "kgsl_sysfs.h"
 #include "kgsl_trace.h"

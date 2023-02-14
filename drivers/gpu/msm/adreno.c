@@ -25,6 +25,7 @@
 #include "adreno_a3xx.h"
 #include "adreno_a5xx.h"
 #include "adreno_a6xx.h"
+#include "adreno_gen7.h"
 #include "adreno_compat.h"
 #include "adreno_pm4types.h"
 #include "adreno_trace.h"
@@ -1129,7 +1130,7 @@ static void adreno_regmap_op_preaccess(struct kgsl_regmap_region *region)
 	 * incase GPU is in SLUMBER state. So we can safely ignore the
 	 * kgsl_pre_hwaccess().
 	 */
-	if (!device->snapshot_atomic && !in_interrupt())
+	if (!in_interrupt())
 		kgsl_pre_hwaccess(device);
 }
 
@@ -1198,7 +1199,6 @@ int adreno_device_probe(struct platform_device *pdev,
 	struct device *dev = &pdev->dev;
 	unsigned int priv = 0;
 	int status;
-	u32 size;
 
 	/* Initialize the adreno device structure */
 	adreno_setup_device(adreno_dev);
@@ -1313,19 +1313,6 @@ int adreno_device_probe(struct platform_device *pdev,
 		kgsl_device_platform_remove(device);
 		goto err_remove_llcc;
 	}
-
-	/* Initialize the snapshot engine */
-	size = adreno_dev->gpucore->snapshot_size;
-
-	/*
-	 * Use a default size if one wasn't specified, but print a warning so
-	 * the developer knows to fix it
-	 */
-
-	if (WARN(!size, "The snapshot size was not specified in the gpucore\n"))
-		size = SZ_1M;
-
-	kgsl_device_snapshot_probe(device, size);
 
 	adreno_debugfs_init(adreno_dev);
 	adreno_profile_init(adreno_dev);
@@ -1879,14 +1866,6 @@ static int _adreno_start(struct adreno_device *adreno_dev)
 	status = gpudev->rb_start(adreno_dev);
 	if (status)
 		goto error_pwr_off;
-
-	/*
-	 * At this point it is safe to assume that we recovered. Setting
-	 * this field allows us to take a new snapshot for the next failure
-	 * if we are prioritizing the first unrecoverable snapshot.
-	 */
-	if (device->snapshot)
-		device->snapshot->recovered = true;
 
 	/* Start the dispatcher */
 	adreno_dispatcher_start(device);
@@ -3356,7 +3335,6 @@ static const struct kgsl_functable adreno_functable = {
 	.ioctl = adreno_ioctl,
 	.compat_ioctl = adreno_compat_ioctl,
 	.power_stats = adreno_power_stats,
-	.snapshot = adreno_snapshot,
 	.drain_and_idle = adreno_drain_and_idle,
 	.device_private_create = adreno_device_private_create,
 	.device_private_destroy = adreno_device_private_destroy,

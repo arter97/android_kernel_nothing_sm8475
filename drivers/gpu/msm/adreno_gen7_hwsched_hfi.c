@@ -1133,7 +1133,6 @@ static void reset_hfi_mem_records(struct adreno_device *adreno_dev)
 static void reset_hfi_queues(struct adreno_device *adreno_dev)
 {
 	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
-	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct hfi_queue_table *tbl = gmu->hfi.hfi_mem->hostptr;
 	u32 i;
 
@@ -1144,17 +1143,8 @@ static void reset_hfi_queues(struct adreno_device *adreno_dev)
 		if (hdr->status == HFI_QUEUE_STATUS_DISABLED)
 			continue;
 
-		if (hdr->read_index != hdr->write_index) {
-			/* Don't capture snapshot again in reset path */
-			if (!device->snapshot || device->snapshot->recovered) {
-				dev_err(&gmu->pdev->dev,
-				"HFI queue[%d] is not empty before close: rd=%d,wt=%d\n",
-					i, hdr->read_index, hdr->write_index);
-
-				gmu_core_fault_snapshot(device);
-			}
+		if (hdr->read_index != hdr->write_index)
 			hdr->read_index = hdr->write_index;
-		}
 	}
 }
 
@@ -1925,7 +1915,6 @@ int gen7_gmu_context_queue_write(struct adreno_device *adreno_dev,
 	u32 i, write, empty_space;
 	u32 size = MSG_HDR_GET_SIZE(*msg);
 	u32 align_size = ALIGN(size, SZ_4);
-	u32 id = MSG_HDR_GET_ID(*msg);
 	struct kgsl_drawobj_cmd *cmdobj = NULL;
 
 	empty_space = (hdr->write_index >= hdr->read_index) ?
@@ -1951,13 +1940,8 @@ int gen7_gmu_context_queue_write(struct adreno_device *adreno_dev,
 	/* Ensure packet is written out before proceeding */
 	wmb();
 
-	if (drawobj->type & SYNCOBJ_TYPE) {
-		struct kgsl_drawobj_sync *syncobj = SYNCOBJ(drawobj);
-
-		trace_adreno_syncobj_submitted(drawobj->context->id, drawobj->timestamp,
-			syncobj->numsyncs, gen7_read_alwayson(adreno_dev));
+	if (drawobj->type & SYNCOBJ_TYPE)
 		goto done;
-	}
 
 	cmdobj = CMDOBJ(drawobj);
 
@@ -2088,9 +2072,6 @@ static int _submit_hw_fence(struct adreno_device *adreno_dev,
 				obj->ctxt_id = fences[j]->context;
 				obj->seq_no =  fences[j]->seqno;
 			}
-			trace_adreno_input_hw_fence(drawobj->context->id, obj->ctxt_id,
-				obj->seq_no, obj->flags, fences[j]->ops->get_timeline_name ?
-				fences[j]->ops->get_timeline_name(fences[j]) : "unknown");
 
 			obj++;
 		}
@@ -2279,7 +2260,6 @@ static int gen7_hfi_dispatch_queue_write(struct adreno_device *adreno_dev, u32 q
 	u32 i, write, empty_space;
 	u32 size = MSG_HDR_GET_SIZE(*msg);
 	u32 align_size = ALIGN(size, SZ_4);
-	u32 id = MSG_HDR_GET_ID(*msg);
 
 	if (hdr->status == HFI_QUEUE_STATUS_DISABLED)
 		return -EINVAL;

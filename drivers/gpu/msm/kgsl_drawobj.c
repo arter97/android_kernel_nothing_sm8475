@@ -27,6 +27,7 @@
 #include "kgsl_device.h"
 #include "kgsl_drawobj.h"
 #include "kgsl_eventlog.h"
+#include "kgsl_sharedmem.h"
 #include "kgsl_sync.h"
 #include "kgsl_timeline.h"
 #include "kgsl_trace.h"
@@ -167,10 +168,6 @@ static void syncobj_timer(struct timer_list *t)
 	dev_err(device->dev,
 		"kgsl: possible gpu syncpoint deadlock for context %u timestamp %u\n",
 		drawobj->context->id, drawobj->timestamp);
-
-	set_bit(ADRENO_CONTEXT_FENCE_LOG, &drawobj->context->priv);
-	kgsl_context_dump(drawobj->context);
-	clear_bit(ADRENO_CONTEXT_FENCE_LOG, &drawobj->context->priv);
 
 	dev_err(device->dev, "      pending events:\n");
 

@@ -82,7 +82,6 @@ struct kgsl_device_private;
 struct kgsl_context;
 struct kgsl_power_stats;
 struct kgsl_event;
-struct kgsl_snapshot;
 struct kgsl_sync_fence;
 
 struct kgsl_functable {
@@ -109,9 +108,6 @@ struct kgsl_functable {
 		uint32_t count, uint32_t *timestamp);
 	void (*power_stats)(struct kgsl_device *device,
 		struct kgsl_power_stats *stats);
-	void (*snapshot)(struct kgsl_device *device,
-		struct kgsl_snapshot *snapshot, struct kgsl_context *context,
-		struct kgsl_context *context_lpac);
 	/** @drain_and_idle: Drain the GPU and wait for it to idle */
 	int (*drain_and_idle)(struct kgsl_device *device);
 	struct kgsl_device_private * (*device_private_create)(void);
@@ -246,6 +242,7 @@ struct kgsl_device {
 	struct idr context_idr;
 	rwlock_t context_lock;
 
+#if 0
 	struct {
 		void *ptr;
 		dma_addr_t dma_handle;
@@ -274,6 +271,7 @@ struct kgsl_device {
 	u64 snapshot_ctxt_record_size;
 
 	struct kobject snapshot_kobj;
+#endif
 
 	struct kgsl_pwrscale pwrscale;
 
@@ -524,6 +522,7 @@ struct kgsl_device_private {
 	struct kgsl_process_private *process_priv;
 };
 
+#if 0
 /**
  * struct kgsl_snapshot - details for a specific snapshot instance
  * @ib1base: Active IB1 base address at the time of fault
@@ -597,6 +596,7 @@ struct kgsl_snapshot_object {
 	struct kgsl_mem_entry *entry;
 	struct list_head node;
 };
+#endif
 
 struct kgsl_device *kgsl_get_device(int dev_idx);
 
@@ -657,20 +657,11 @@ void kgsl_device_platform_remove(struct kgsl_device *device);
 
 const char *kgsl_pwrstate_to_str(unsigned int state);
 
-/**
- * kgsl_device_snapshot_probe - add resources for the device GPU snapshot
- * @device: The device to initialize
- * @size: The size of the static region to allocate
- *
- * Allocate memory for a GPU snapshot for the specified device,
- * and create the sysfs files to manage it
- */
-void kgsl_device_snapshot_probe(struct kgsl_device *device, u32 size);
-
-void kgsl_device_snapshot(struct kgsl_device *device,
+static inline void kgsl_device_snapshot_probe(struct kgsl_device *device, u32 size) {}
+static inline void kgsl_device_snapshot(struct kgsl_device *device,
 			struct kgsl_context *context, struct kgsl_context *context_lpac,
-			bool gmu_fault);
-void kgsl_device_snapshot_close(struct kgsl_device *device);
+			bool gmu_fault) {}
+static inline void kgsl_device_snapshot_close(struct kgsl_device *device) {}
 
 void kgsl_events_init(void);
 void kgsl_events_exit(void);
@@ -932,6 +923,7 @@ void kgsl_process_private_put(struct kgsl_process_private *private);
 
 struct kgsl_process_private *kgsl_process_private_find(pid_t pid);
 
+#if 0
 /*
  * A helper macro to print out "not enough memory functions" - this
  * makes it easy to standardize the messages as well as cut down on
@@ -975,6 +967,7 @@ void kgsl_snapshot_add_section(struct kgsl_device *device, u16 id,
 	struct kgsl_snapshot *snapshot,
 	size_t (*func)(struct kgsl_device *, u8 *, size_t, void *),
 	void *priv);
+#endif
 
 /**
  * kgsl_of_property_read_ddrtype - Get property from devicetree based on
