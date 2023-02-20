@@ -238,7 +238,9 @@ policy_mgr_get_pcl_concurrent_connetions(struct wlan_objmgr_psoc *psoc,
 	if (!has_same_band && vdev_id_with_diff_band != WLAN_INVALID_VDEV_ID) {
 		policy_mgr_debug("vdev_ids[%d]: %d",
 				 num_related, vdev_id_with_diff_band);
-		vdev_ids[num_related++] = vdev_id_with_diff_band;
+
+		if (num_related < vdev_ids_size)
+			vdev_ids[num_related++] = vdev_id_with_diff_band;
 	}
 
 out:
@@ -289,7 +291,7 @@ QDF_STATUS policy_mgr_get_pcl_for_vdev_id(struct wlan_objmgr_psoc *psoc,
 	id_num = policy_mgr_get_pcl_concurrent_connetions(psoc, mode,
 							  vdev_id, ids,
 							  QDF_ARRAY_SIZE(ids));
-	if (!id_num) {
+	if (!id_num || id_num > MAX_NUMBER_OF_CONC_CONNECTIONS) {
 		status = QDF_STATUS_E_FAILURE;
 		goto out;
 	}
