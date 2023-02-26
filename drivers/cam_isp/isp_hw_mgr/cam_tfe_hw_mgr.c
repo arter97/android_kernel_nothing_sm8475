@@ -2208,6 +2208,8 @@ free_res:
 free_cdm:
 	cam_cdm_release(tfe_ctx->cdm_handle);
 free_ctx:
+	kfree(tfe_ctx->tfe_bus_comp_grp);
+	tfe_ctx->tfe_bus_comp_grp = NULL;
 	cam_tfe_hw_mgr_put_ctx(&tfe_hw_mgr->free_ctx_list, &tfe_ctx);
 	if (in_port) {
 		for (i = 0; i < acquire_hw_info->num_inputs; i++) {
@@ -2218,9 +2220,6 @@ free_ctx:
 		kfree(in_port);
 		in_port = NULL;
 	}
-
-	kfree(tfe_ctx->tfe_bus_comp_grp);
-	tfe_ctx->tfe_bus_comp_grp = NULL;
 err:
 	/* Dump all the current acquired HW */
 	cam_tfe_hw_mgr_dump_all_ctx();

@@ -3135,6 +3135,25 @@ static int __cam_isp_ctx_epoch_in_bubble_applied(
 	CAM_DBG(CAM_ISP, "move request %lld to active list(cnt = %d) ctx %u",
 		req->request_id, ctx_isp->active_req_cnt);
 
+	/*
+	 * Handle the deferred buf done after moving
+	 * the bubble req to active req list.
+	 */
+	__cam_isp_ctx_handle_deferred_buf_done_in_bubble(
+		ctx_isp, req);
+
+	if (!req_isp->bubble_detected) {
+		req = list_first_entry(&ctx->pending_req_list, struct cam_ctx_request,
+			list);
+		req_isp->bubble_detected = true;
+		req_isp->reapply_type = CAM_CONFIG_REAPPLY_IO;
+		req_isp->cdm_reset_before_apply = false;
+		atomic_set(&ctx_isp->process_bubble, 1);
+		list_del_init(&req->list);
+		list_add_tail(&req->list, &ctx->active_req_list);
+		ctx_isp->active_req_cnt++;
+	}
+
 	if (!req_isp->bubble_report) {
 		if (req->request_id > ctx_isp->reported_req_id) {
 			request_id = req->request_id;
