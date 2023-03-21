@@ -1294,15 +1294,10 @@ static void use_bio(struct dm_buffer *b, int rw, sector_t sector,
 {
 	struct bio *bio;
 	char *ptr;
-	unsigned vec_size, len;
+	unsigned int len;
 
-	vec_size = b->c->block_size >> PAGE_SHIFT;
-	if (unlikely(b->c->sectors_per_block_bits < PAGE_SHIFT - SECTOR_SHIFT))
-		vec_size += 2;
-
-	bio = bio_kmalloc(GFP_NOWAIT | __GFP_NORETRY | __GFP_NOWARN, vec_size);
+	bio = bio_kmalloc(GFP_NOWAIT | __GFP_NORETRY | __GFP_NOWARN, 1);
 	if (!bio) {
-dmio:
 		use_dmio(b, rw, sector, n_sectors, offset);
 		return;
 	}
@@ -1316,17 +1311,7 @@ dmio:
 	ptr = (char *)b->data + offset;
 	len = n_sectors << SECTOR_SHIFT;
 
-	do {
-		unsigned this_step = min((unsigned)(PAGE_SIZE - offset_in_page(ptr)), len);
-		if (!bio_add_page(bio, virt_to_page(ptr), this_step,
-				  offset_in_page(ptr))) {
-			bio_put(bio);
-			goto dmio;
-		}
-
-		len -= this_step;
-		ptr += this_step;
-	} while (len > 0);
+	__bio_add_page(bio, virt_to_page(ptr), len, offset_in_page(ptr));
 
 	submit_bio(bio);
 }
