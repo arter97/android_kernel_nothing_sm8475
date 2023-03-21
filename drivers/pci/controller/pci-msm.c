@@ -5113,8 +5113,8 @@ static irqreturn_t handle_aer_irq(int irq, void *data)
 		PCIE_DBG2(dev,
 			  "PCIe: %s Error from Endpoint: %02x:%02x.%01x\n",
 			  i ? "Uncorrectable" : "Correctable",
-			  ep_src_bdf >> 24, ep_src_bdf >> 19 & 0x1f,
-			  ep_src_bdf >> 16 & 0x07);
+			  busnr, ep_src_bdf >> 3 & 0x1f,
+			  ep_src_bdf & 0x07);
 
 		aer_cap = pci_find_ext_capability(pcidev, PCI_EXT_CAP_ID_ERR);
 		if (!aer_cap) {
@@ -6869,7 +6869,9 @@ static int __maybe_unused msm_pcie_pm_resume_noirq(struct device *dev)
 		if (rc) {
 			PCIE_ERR(pcie_dev, "PCIe: fail to enable GDSC-CORE for RC%d (%s)\n",
 					pcie_dev->rc_idx, pcie_dev->pdev->name);
-					return rc;
+			msm_pcie_vreg_deinit_analog_rails(pcie_dev);
+			mutex_unlock(&pcie_dev->recovery_lock);
+			return rc;
 		}
 
 		/* switch pipe clock source after gdsc-core is turned on */
@@ -6882,6 +6884,11 @@ static int __maybe_unused msm_pcie_pm_resume_noirq(struct device *dev)
 			PCIE_ERR(pcie_dev,
 				"PCIe: RC%d: failed to set ICC path vote. ret %d\n",
 				pcie_dev->rc_idx, rc);
+			if (pcie_dev->pipe_clk_ext_src && pcie_dev->pipe_clk_mux)
+				clk_set_parent(pcie_dev->pipe_clk_ext_src, pcie_dev->pipe_clk_mux);
+			regulator_disable(pcie_dev->gdsc_core);
+			msm_pcie_vreg_deinit_analog_rails(pcie_dev);
+			mutex_unlock(&pcie_dev->recovery_lock);
 			return rc;
 		}
 
@@ -8290,7 +8297,7 @@ int msm_pcie_deregister_event(struct msm_pcie_register_event *reg)
 				 node) {
 		if (reg_itr->user == reg->user) {
 			list_del(&reg->node);
-			spin_unlock(&pcie_dev->evt_reg_list_lock);
+			spin_unlock_irqrestore(&pcie_dev->evt_reg_list_lock, flags);
 			PCIE_DBG(pcie_dev,
 				 "PCIe: RC%d: Event deregistered for BDF 0x%04x\n",
 				 pcie_dev->rc_idx,

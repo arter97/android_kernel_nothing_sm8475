@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <uapi/linux/sched/types.h>
@@ -338,6 +338,8 @@ static void kgsl_destroy_ion(struct kgsl_memdesc *memdesc)
 
 	if (metadata != NULL) {
 		remove_dmabuf_list(metadata);
+		dma_buf_unmap_attachment(metadata->attach, metadata->table,
+			DMA_BIDIRECTIONAL);
 		dma_buf_detach(metadata->dmabuf, metadata->attach);
 		dma_buf_put(metadata->dmabuf);
 		kfree(metadata);
@@ -3173,7 +3175,7 @@ static int kgsl_setup_dma_buf(struct kgsl_device *device,
 {
 	int ret = 0;
 	struct scatterlist *s;
-	struct sg_table *sg_table;
+	struct sg_table *sg_table = NULL;
 	struct dma_buf_attachment *attach = NULL;
 	struct kgsl_dma_buf_meta *metadata;
 
@@ -3215,8 +3217,6 @@ static int kgsl_setup_dma_buf(struct kgsl_device *device,
 		goto out;
 	}
 
-	dma_buf_unmap_attachment(attach, sg_table, DMA_BIDIRECTIONAL);
-
 	metadata->table = sg_table;
 	entry->priv_data = metadata;
 	entry->memdesc.sgt = sg_table;
@@ -3239,6 +3239,9 @@ static int kgsl_setup_dma_buf(struct kgsl_device *device,
 
 out:
 	if (ret) {
+		if (!IS_ERR_OR_NULL(sg_table))
+			dma_buf_unmap_attachment(attach, sg_table, DMA_BIDIRECTIONAL);
+
 		if (!IS_ERR_OR_NULL(attach))
 			dma_buf_detach(dmabuf, attach);
 
@@ -4938,16 +4941,9 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 		goto error_pwrctrl_close;
 	}
 
-	/* This can return -EPROBE_DEFER */
-	status = kgsl_mmu_probe(device);
-	if (status != 0)
-		goto error_pwrctrl_close;
-
 	status = kgsl_reclaim_init();
-	if (status) {
-		kgsl_mmu_close(device);
+	if (status)
 		goto error_pwrctrl_close;
-	}
 
 	rwlock_init(&device->context_lock);
 	spin_lock_init(&device->submit_lock);
@@ -4994,8 +4990,6 @@ void kgsl_device_platform_remove(struct kgsl_device *device)
 	kgsl_device_events_remove(device);
 
 	kgsl_free_globals(device);
-
-	kgsl_mmu_close(device);
 
 	kgsl_pwrctrl_close(device);
 
