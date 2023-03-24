@@ -1884,6 +1884,11 @@ _conditional_srcs = {
             "core/hdd/src/wlan_hdd_sysfs_thermal_cfg.c",
         ],
     },
+    "CONFIG_WLAN_SYSFS_BITRATES": {
+        True: [
+            "core/hdd/src/wlan_hdd_sysfs_bitrates.c",
+        ],
+    },
     "CONFIG_WLAN_TRACEPOINTS": {
         True: [
             "cmn/qdf/linux/src/qdf_tracepoint.c",

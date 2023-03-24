@@ -241,6 +241,11 @@ config WLAN_SYSFS_WLAN_DBG
 	bool "Enable sysfs wlan debug feature"
 	default n
 
+config WLAN_SYSFS_BITRATES
+	bool "enable WLAN_SYSFS_BITRATES"
+	depends on WLAN_SYSFS
+	default n
+
 config WLAN_SYSFS_SCAN_CFG
 	bool "Enable sysfs wlan scan configuration feature"
 	default n
