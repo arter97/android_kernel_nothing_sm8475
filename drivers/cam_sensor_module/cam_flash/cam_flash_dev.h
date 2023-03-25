@@ -49,6 +49,7 @@
 #define CAM_FLASH_PACKET_OPCODE_SET_OPS              1
 #define CAM_FLASH_PACKET_OPCODE_NON_REALTIME_SET_OPS 2
 #define CAM_FLASH_PACKET_OPCODE_STREAM_OFF           3
+#define CAM_FLASH_PACKET_OPCODE_INIT_FIRE            4
 
 struct cam_flash_ctrl;
 

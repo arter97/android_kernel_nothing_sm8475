@@ -88,6 +88,10 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 			rc = -EFAULT;
 			goto release_mutex;
 		}
+		if (fctrl->func_tbl.power_ops == cam_flash_pmic_power_ops) {
+			if (fctrl->func_tbl.power_ops(fctrl, true))
+				CAM_WARN(CAM_FLASH, "Power up Failed");
+		}
 		fctrl->flash_state = CAM_FLASH_STATE_ACQUIRE;
 
 		CAM_INFO(CAM_FLASH, "CAM_ACQUIRE_DEV for dev_hdl: 0x%x",
@@ -556,6 +560,11 @@ static int cam_flash_component_bind(struct device *dev,
 		fctrl->func_tbl.parser = cam_flash_pmic_pkt_parser;
 		fctrl->func_tbl.apply_setting = cam_flash_pmic_apply_setting;
 		fctrl->func_tbl.power_ops = NULL;
+#if IS_REACHABLE(CONFIG_LEDS_QPNP_FLASH_V2)
+		CAM_DBG(CAM_FLASH, "PMIC power_ops");
+		fctrl->is_regulator_enabled = false;
+		fctrl->func_tbl.power_ops = cam_flash_pmic_power_ops;
+#endif
 		fctrl->func_tbl.flush_req = cam_flash_pmic_flush_request;
 	}
 
@@ -737,6 +746,7 @@ static int cam_flash_i2c_component_bind(struct device *dev,
 
 	fctrl->func_tbl.parser = cam_flash_i2c_pkt_parser;
 	fctrl->func_tbl.apply_setting = cam_flash_i2c_apply_setting;
+	fctrl->is_regulator_enabled = false;
 	fctrl->func_tbl.power_ops = cam_flash_i2c_power_ops;
 	fctrl->func_tbl.flush_req = cam_flash_i2c_flush_request;
 
