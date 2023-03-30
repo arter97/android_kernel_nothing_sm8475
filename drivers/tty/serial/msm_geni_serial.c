@@ -1251,6 +1251,9 @@ static void msm_geni_serial_console_write(struct console *co, const char *s,
 	bool is_irq_masked;
 	int irq_en;
 
+	if (!con_enabled)
+		return;
+
 	/* Max 1 port supported as of now */
 	WARN_ON(co->index < 0 || co->index >= GENI_UART_CONS_PORTS);
 
@@ -3899,11 +3902,6 @@ static int msm_geni_serial_probe(struct platform_device *pdev)
 
 	dev_port->is_console = is_console;
 	dev_port->port_state = UART_PORT_CLOSED_SHUTDOWN;
-	if (drv->cons && !con_enabled) {
-		dev_err(&pdev->dev, "%s, Console Disabled\n", __func__);
-		platform_set_drvdata(pdev, dev_port);
-		return 0;
-	}
 
 	uport = &dev_port->uport;
 
@@ -4021,8 +4019,6 @@ static int msm_geni_serial_remove(struct platform_device *pdev)
 	/* Platform driver is registered for console and when console
 	 * is disabled from cmdline simply return success.
 	 */
-	if (port->is_console && !con_enabled)
-		return 0;
 	if (port->wakeup_irq > 0)
 		destroy_workqueue(port->wakeup_irq_wq);
 	if (!uart_console(&port->uport)) {
@@ -4210,9 +4206,7 @@ static int msm_geni_serial_sys_suspend(struct device *dev)
 	/* Platform driver is registered for console and when console
 	 * is disabled from cmdline simply return success.
 	 */
-	if (port->is_console && !con_enabled) {
-		return 0;
-	} else if (uart_console(uport) || port->pm_auto_suspend_disable) {
+	if (uart_console(uport) || port->pm_auto_suspend_disable) {
 		IPC_LOG_MSG(port->console_log, "%s start\n", __func__);
 		uart_suspend_port((struct uart_driver *)uport->private_data,
 					uport);
@@ -4363,18 +4357,15 @@ static int __init msm_geni_serial_init(void)
 	if (ret)
 		return ret;
 
-	if (con_enabled) {
-		ret = console_register(&msm_geni_console_driver);
-		if (ret) {
-			uart_unregister_driver(&msm_geni_serial_hs_driver);
-			return ret;
-		}
+	ret = console_register(&msm_geni_console_driver);
+	if (ret) {
+		uart_unregister_driver(&msm_geni_serial_hs_driver);
+		return ret;
 	}
 
 	ret = platform_driver_register(&msm_geni_serial_platform_driver);
 	if (ret) {
-		if (con_enabled)
-			console_unregister(&msm_geni_console_driver);
+		console_unregister(&msm_geni_console_driver);
 		uart_unregister_driver(&msm_geni_serial_hs_driver);
 		return ret;
 	}
