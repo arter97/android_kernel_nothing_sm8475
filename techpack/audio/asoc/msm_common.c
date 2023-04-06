@@ -220,34 +220,6 @@ done:
 	return ret;
 }
 
-static void check_userspace_service_state(struct snd_soc_pcm_runtime *rtd,
-						struct msm_common_pdata *pdata)
-{
-	uint32_t i;
-
-	dev_info(rtd->card->dev,"%s: pcm_id %d state %d\n", __func__,
-			rtd->num, pdata->aud_dev_state[rtd->num]);
-
-	mutex_lock(&pdata->aud_dev_lock);
-	if (pdata->aud_dev_state[rtd->num] == DEVICE_ENABLE) {
-		dev_info(rtd->card->dev, "%s userspace service crashed\n",
-				__func__);
-		/*Reset the state as sysfs node wont be triggred*/
-		pdata->aud_dev_state[rtd->num] = DEVICE_DISABLE;
-		for (i = 0; i < pdata->num_aud_devs; i++) {
-			if (pdata->aud_dev_state[i] == DEVICE_ENABLE)
-				goto exit;
-		}
-		/*Issue close all graph cmd to DSP*/
-		spf_core_apm_close_all();
-		/*unmap all dma mapped buffers*/
-		msm_audio_ion_crash_handler();
-	}
-exit:
-	mutex_unlock(&pdata->aud_dev_lock);
-	return;
-}
-
 static int get_mi2s_tdm_auxpcm_intf_index(const char *stream_name)
 {
 
@@ -551,8 +523,6 @@ void msm_common_snd_shutdown(struct snd_pcm_substream *substream)
 		dev_err(card->dev, "%s: pdata is NULL\n", __func__);
 		return;
 	}
-
-	check_userspace_service_state(rtd, pdata);
 
 	if (index >= 0) {
 		mutex_lock(&pdata->lock[index]);
