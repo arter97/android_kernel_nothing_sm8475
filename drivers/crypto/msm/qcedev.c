@@ -338,8 +338,9 @@ static void req_done(unsigned long data)
 	areq = podev->active_command;
 	podev->active_command = NULL;
 
-	if (areq && !areq->timed_out) {
-		complete(&areq->complete);
+	if (areq) {
+		if (!areq->timed_out)
+			complete(&areq->complete);
 		areq->state = QCEDEV_REQ_DONE;
 	}
 	/* Look through queued requests and wake up the corresponding thread */
@@ -865,7 +866,7 @@ static int submit_req(struct qcedev_async_req *qcedev_areq,
 			return 0;
 		}
 
-		tasklet_schedule(&podev->done_tasklet);
+		req_done((unsigned long) podev);
 		if (qcedev_areq->offload_cipher_op_req.err !=
 						QCEDEV_OFFLOAD_NO_ERROR)
 			return 0;
@@ -2712,8 +2713,11 @@ static int qcedev_remove(struct platform_device *pdev)
 	podev = platform_get_drvdata(pdev);
 	if (!podev)
 		return 0;
+
+	qcedev_ce_high_bw_req(podev, true);
 	if (podev->qce)
 		qce_close(podev->qce);
+	qcedev_ce_high_bw_req(podev, false);
 
 	if (podev->icc_path)
 		icc_put(podev->icc_path);

@@ -14,10 +14,8 @@
 #include "adreno_a6xx_hwsched.h"
 #include "adreno_hfi.h"
 #include "adreno_snapshot.h"
-#include "kgsl_bus.h"
 #include "kgsl_device.h"
 #include "kgsl_trace.h"
-#include "kgsl_util.h"
 
 static size_t adreno_hwsched_snapshot_rb(struct kgsl_device *device, u8 *buf,
 	size_t remain, void *priv)
@@ -1034,8 +1032,6 @@ static int a6xx_hwsched_bus_set(struct adreno_device *adreno_dev, int buslevel,
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	int ret = 0;
 
-	kgsl_icc_set_tag(pwr, buslevel);
-
 	if (buslevel != pwr->cur_buslevel) {
 		ret = a6xx_hwsched_dcvs_set(adreno_dev, INVALID_DCVS_IDX,
 				buslevel);
@@ -1240,26 +1236,74 @@ int a6xx_hwsched_add_to_minidump(struct adreno_device *adreno_dev)
 					struct a6xx_device, adreno_dev);
 	struct a6xx_hwsched_device *a6xx_hwsched = container_of(a6xx_dev,
 					struct a6xx_hwsched_device, a6xx_dev);
-	int ret;
+	struct a6xx_hwsched_hfi *hw_hfi = &a6xx_hwsched->hwsched_hfi;
+	int ret, i;
 
 	ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev, KGSL_HWSCHED_DEVICE,
 			(void *)(a6xx_hwsched), sizeof(struct a6xx_hwsched_device));
 	if (ret)
 		return ret;
 
-	ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev, KGSL_GMU_LOG_ENTRY,
-			a6xx_dev->gmu.gmu_log->hostptr, a6xx_dev->gmu.gmu_log->size);
-	if (ret)
-		return ret;
+	if (a6xx_dev->gmu.gmu_log) {
+		ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev,
+					KGSL_GMU_LOG_ENTRY,
+					a6xx_dev->gmu.gmu_log->hostptr,
+					a6xx_dev->gmu.gmu_log->size);
+		if (ret)
+			return ret;
+	}
 
-	ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev, KGSL_HFIMEM_ENTRY,
-			a6xx_dev->gmu.hfi.hfi_mem->hostptr, a6xx_dev->gmu.hfi.hfi_mem->size);
-	if (ret)
-		return ret;
+	if (a6xx_dev->gmu.hfi.hfi_mem) {
+		ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev,
+					KGSL_HFIMEM_ENTRY,
+					a6xx_dev->gmu.hfi.hfi_mem->hostptr,
+					a6xx_dev->gmu.hfi.hfi_mem->size);
+		if (ret)
+			return ret;
+	}
 
-	if (adreno_is_a630(adreno_dev) || adreno_is_a615_family(adreno_dev))
-		ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev, KGSL_GMU_DUMPMEM_ENTRY,
-				a6xx_dev->gmu.dump_mem->hostptr, a6xx_dev->gmu.dump_mem->size);
+	if ((adreno_is_a630(adreno_dev) || adreno_is_a615_family(adreno_dev)) &&
+			a6xx_dev->gmu.dump_mem) {
+		ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev,
+					KGSL_GMU_DUMPMEM_ENTRY,
+					a6xx_dev->gmu.dump_mem->hostptr,
+					a6xx_dev->gmu.dump_mem->size);
+		if (ret)
+			return ret;
+	}
+
+	/* Dump HFI hwsched global mem alloc entries */
+	for (i = 0; i < hw_hfi->mem_alloc_entries; i++) {
+		struct hfi_mem_alloc_entry *entry = &hw_hfi->mem_alloc_table[i];
+		char hfi_minidump_str[MAX_VA_MINIDUMP_STR_LEN] = {0};
+		u32 rb_id = 0;
+
+		if (!hfi_get_minidump_string(entry->desc.mem_kind,
+					&hfi_minidump_str[0],
+					sizeof(hfi_minidump_str), &rb_id)) {
+			ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev,
+						hfi_minidump_str,
+						entry->md->hostptr,
+						entry->md->size);
+			if (ret)
+				return ret;
+		}
+	}
+
+	if (hw_hfi->big_ib) {
+		ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev,
+					KGSL_HFI_BIG_IB_ENTRY,
+					hw_hfi->big_ib->hostptr,
+					hw_hfi->big_ib->size);
+		if (ret)
+			return ret;
+	}
+
+	if (hw_hfi->big_ib_recurring)
+		ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev,
+					KGSL_HFI_BIG_IB_REC_ENTRY,
+					hw_hfi->big_ib_recurring->hostptr,
+					hw_hfi->big_ib_recurring->size);
 
 	return ret;
 }

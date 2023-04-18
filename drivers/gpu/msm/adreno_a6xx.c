@@ -375,6 +375,11 @@ static void a6xx_hwcg_set(struct adreno_device *adreno_dev, bool on)
 		kgsl_regrmw(device, A6XX_UCHE_GBIF_GX_CONFIG, GENMASK(18, 16),
 				FIELD_PREP(GENMASK(18, 16), 0));
 
+	/* Recommended to always disable GBIF_CX_CONFIG for gen6_3_26_0*/
+	if (adreno_is_gen6_3_26_0(adreno_dev))
+		kgsl_regrmw(device, A6XX_GBIF_CX_CONFIG, GENMASK(18, 16),
+				FIELD_PREP(GENMASK(18, 16), 0));
+
 	if (value == __get_rbbm_clock_cntl_on(adreno_dev) && on)
 		return;
 
@@ -1389,10 +1394,9 @@ static int a6xx_clear_pending_transactions(struct adreno_device *adreno_dev)
 			A6XX_GBIF_GX_HALT_MASK);
 	}
 
-	if (ret)
-		return ret;
+	ret |= a6xx_halt_gbif(adreno_dev);
 
-	return a6xx_halt_gbif(adreno_dev);
+	return ret;
 }
 
 /**
@@ -1408,9 +1412,12 @@ static int a6xx_reset(struct adreno_device *adreno_dev)
 	int ret;
 	unsigned long flags = device->pwrctrl.ctrl_flags;
 
-	ret = a6xx_clear_pending_transactions(adreno_dev);
-	if (ret)
-		return ret;
+	/*
+	 * There is a chance that GPU reset can be successful even
+	 * if GBIF is stuck before reset. Hence do not check for the
+	 * return type.
+	 */
+	a6xx_clear_pending_transactions(adreno_dev);
 
 	/* Clear ctrl_flags to ensure clocks and regulators are turned off */
 	device->pwrctrl.ctrl_flags = 0;
