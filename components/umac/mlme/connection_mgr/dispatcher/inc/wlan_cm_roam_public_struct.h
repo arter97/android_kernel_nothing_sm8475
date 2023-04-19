@@ -494,6 +494,9 @@ struct owe_transition_mode_info {
  * @lost_link_rssi: lost link RSSI
  * @roam_sync_frame_ind: roam sync frame ind
  * @roam_band_bitmask: This allows the driver to roam within this band
+ * @roam_invoke_source: roam invoke source
+ * @roam_invoke_bssid: mac address used for roam invoke
+ * @is_forced_roaming: bool value indicating if its forced roaming
  */
 struct rso_config {
 #ifdef WLAN_FEATURE_HOST_ROAM
@@ -540,6 +543,9 @@ struct rso_config {
 	int32_t lost_link_rssi;
 	struct roam_synch_frame_ind roam_sync_frame_ind;
 	uint32_t roam_band_bitmask;
+	enum wlan_cm_source roam_invoke_source;
+	struct qdf_mac_addr roam_invoke_bssid;
+	bool is_forced_roaming;
 };
 
 /**
@@ -1281,6 +1287,7 @@ struct wlan_roam_fils_params {
  * @vdev_id: vdev id
  * @dwell_time_passive: dwell time in msec on passive channels
  * @dwell_time_active: dwell time in msec on active channels
+ * @min_dwell_time_6ghz: minimum dwell time in msec for 6 GHz channel
  * @burst_duration: Burst duration time in msec
  * @min_rest_time: min time in msec on the BSS channel,only valid if atleast
  * one VDEV is active
@@ -1311,6 +1318,7 @@ struct wlan_roam_scan_params {
 	uint32_t vdev_id;
 	uint32_t dwell_time_passive;
 	uint32_t dwell_time_active;
+	uint32_t min_dwell_time_6ghz;
 	uint32_t burst_duration;
 	uint32_t min_rest_time;
 	uint32_t max_rest_time;

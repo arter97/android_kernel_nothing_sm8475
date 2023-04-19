@@ -12068,13 +12068,11 @@ QDF_STATUS sme_soc_set_antenna_mode(mac_handle_t mac_handle,
 /**
  * sme_set_peer_authorized() - call peer authorized callback
  * @peer_addr: peer mac address
- * @auth_cb: auth callback
  * @vdev_id: vdev id
  *
  * Return: QDF Status
  */
 QDF_STATUS sme_set_peer_authorized(uint8_t *peer_addr,
-				   sme_peer_authorized_fp auth_cb,
 				   uint32_t vdev_id)
 {
 	void *wma_handle;
@@ -12083,7 +12081,6 @@ QDF_STATUS sme_set_peer_authorized(uint8_t *peer_addr,
 	if (!wma_handle)
 		return QDF_STATUS_E_FAILURE;
 
-	wma_set_peer_authorized_cb(wma_handle, auth_cb);
 	return wma_set_peer_param(wma_handle, peer_addr, WMI_PEER_AUTHORIZE,
 				  1, vdev_id);
 }
@@ -15200,6 +15197,24 @@ sme_get_roam_scan_stats(mac_handle_t mac_handle,
 	return status;
 }
 
+#ifdef WLAN_FEATURE_11BE
+static inline bool sme_is_phy_mode_11be(eCsrPhyMode phy_mode)
+{
+	if (phy_mode == eCSR_DOT11_MODE_AUTO ||
+	    CSR_IS_DOT11_PHY_MODE_11BE(phy_mode) ||
+	    CSR_IS_DOT11_PHY_MODE_11BE_ONLY(phy_mode)) {
+		return true;
+	}
+
+	return false;
+}
+#else
+static inline bool sme_is_phy_mode_11be(eCsrPhyMode phy_mode)
+{
+	return false;
+}
+#endif
+
 void sme_update_score_config(mac_handle_t mac_handle, eCsrPhyMode phy_mode,
 			     uint8_t num_rf_chains)
 {
@@ -15217,15 +15232,13 @@ void sme_update_score_config(mac_handle_t mac_handle, eCsrPhyMode phy_mode,
 
 	config.vdev_nss_24g = vdev_ini_cfg.rx_nss[NSS_CHAINS_BAND_2GHZ];
 	config.vdev_nss_5g = vdev_ini_cfg.rx_nss[NSS_CHAINS_BAND_5GHZ];
-#ifdef WLAN_FEATURE_11BE
-	if (phy_mode == eCSR_DOT11_MODE_AUTO ||
-	    CSR_IS_DOT11_PHY_MODE_11BE(phy_mode) ||
-	    CSR_IS_DOT11_PHY_MODE_11BE_ONLY(phy_mode)) {
+
+	if (sme_is_phy_mode_11be(phy_mode))
 		config.eht_cap = 1;
-		config.he_cap = 1;
-	}
-#endif
-	if (phy_mode == eCSR_DOT11_MODE_11ax ||
+
+	if (config.eht_cap ||
+	    phy_mode == eCSR_DOT11_MODE_AUTO ||
+	    phy_mode == eCSR_DOT11_MODE_11ax ||
 	    phy_mode == eCSR_DOT11_MODE_11ax_ONLY)
 		config.he_cap = 1;
 
@@ -16262,25 +16275,4 @@ p2p_self_peer_create:
 }
 #endif
 
-#ifdef WLAN_FEATURE_ROAM_OFFLOAD
-void sme_roam_events_register_callback(mac_handle_t mac_handle,
-				       void (*roam_rt_stats_cb)(
-				hdd_handle_t hdd_handle, uint8_t idx,
-				struct roam_stats_event *roam_stats))
-{
-	struct mac_context *mac = MAC_CONTEXT(mac_handle);
-
-	if (!mac) {
-		sme_err("Invalid mac context");
-		return;
-	}
-
-	mac->sme.roam_rt_stats_cb = roam_rt_stats_cb;
-}
-
-void sme_roam_events_deregister_callback(mac_handle_t mac_handle)
-{
-	sme_roam_events_register_callback(mac_handle, NULL);
-}
-#endif
 

@@ -292,8 +292,8 @@ pkt_capture_process_tx_data(void *soc, void *log_data, u_int16_t vdev_id,
 	/* nss not available */
 	pktcapture_hdr.nss = 0;
 	pktcapture_hdr.rssi_comb = tx_comp_status.ack_frame_rssi;
-	/* rate not available */
-	pktcapture_hdr.rate = 0;
+	/* update rate from available mcs */
+	pktcapture_hdr.rate = tx_comp_status.mcs;
 	pktcapture_hdr.stbc = tx_comp_status.stbc;
 	pktcapture_hdr.sgi = tx_comp_status.sgi;
 	pktcapture_hdr.ldpc = tx_comp_status.ldpc;
@@ -1390,7 +1390,10 @@ QDF_STATUS pkt_capture_set_filter(struct pkt_capture_frame_filter frame_filter,
 					      WLAN_MLME_CFG_BEACON_INTERVAL,
 					      &bcn_interval);
 
-		if (bcn_interval) {
+		if (bcn_interval &&
+		    (vdev_priv->frame_filter.connected_beacon_interval >
+		    bcn_interval || vdev_priv->
+		    frame_filter.connected_beacon_interval == 0)) {
 			nth_beacon_value =
 				vdev_priv->
 				frame_filter.connected_beacon_interval /
@@ -1404,6 +1407,11 @@ QDF_STATUS pkt_capture_set_filter(struct pkt_capture_frame_filter frame_filter,
 				pkt_capture_err("send beacon interval fail");
 				return status;
 			}
+		} else {
+			pkt_capture_debug(
+			"Failed to set beacon interval %d, it should be >= %d",
+			vdev_priv->frame_filter.connected_beacon_interval,
+			bcn_interval);
 		}
 	}
 	return QDF_STATUS_SUCCESS;

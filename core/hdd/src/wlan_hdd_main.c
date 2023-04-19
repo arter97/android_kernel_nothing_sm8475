@@ -415,6 +415,7 @@ static const struct category_info cinfo[MAX_SUPPORTED_CATEGORY] = {
 	[QDF_MODULE_ID_GPIO] = {QDF_TRACE_LEVEL_ALL},
 	[QDF_MODULE_ID_MLO] = {QDF_TRACE_LEVEL_ALL},
 	[QDF_MODULE_ID_TWT] = {QDF_TRACE_LEVEL_ALL},
+	[QDF_MODULE_ID_COAP] = {QDF_TRACE_LEVEL_ALL},
 };
 
 struct notifier_block hdd_netdev_notifier;
@@ -7617,7 +7618,6 @@ static void hdd_init_completion(struct hdd_adapter *adapter)
 {
 	init_completion(&adapter->disconnect_comp_var);
 	init_completion(&adapter->linkup_event_var);
-	init_completion(&adapter->sta_authorized_event);
 	init_completion(&adapter->offchannel_tx_event);
 	init_completion(&adapter->tx_action_cnf_event);
 	init_completion(&adapter->lfr_fw_status.disable_lfr_event);
@@ -9321,6 +9321,19 @@ QDF_STATUS hdd_add_adapter_front(struct hdd_context *hdd_ctx,
 	qdf_spin_unlock_bh(&hdd_ctx->hdd_adapter_lock);
 
 	return status;
+}
+
+void hdd_validate_next_adapter(struct hdd_adapter **curr,
+			       struct hdd_adapter **next,
+			       wlan_net_dev_ref_dbgid dbg_id)
+{
+	if (!*curr || !*next || *curr != *next)
+		return;
+
+	hdd_err("Validation failed");
+	hdd_adapter_dev_put_debug(*curr, dbg_id);
+	*curr = NULL;
+	*next = NULL;
 }
 
 QDF_STATUS hdd_adapter_iterate(hdd_adapter_iterate_cb cb, void *context)
@@ -15052,6 +15065,7 @@ static int hdd_features_init(struct hdd_context *hdd_ctx)
 	mac_handle_t mac_handle;
 	bool b_cts2self, is_imps_enabled;
 	bool rf_test_mode;
+	bool std_6ghz_conn_policy;
 
 	hdd_enter();
 
@@ -15152,6 +15166,17 @@ static int hdd_features_init(struct hdd_context *hdd_ctx)
 		wlan_cm_set_6ghz_key_mgmt_mask(hdd_ctx->psoc,
 					       DEFAULT_KEYMGMT_6G_MASK);
 	}
+
+	status = ucfg_mlme_is_standard_6ghz_conn_policy_enabled(hdd_ctx->psoc,
+							&std_6ghz_conn_policy);
+
+	if (!QDF_IS_STATUS_SUCCESS(status)) {
+		hdd_err("Get 6ghz standard connection policy failed");
+		return QDF_STATUS_E_FAILURE;
+	}
+	if (std_6ghz_conn_policy)
+		wlan_cm_set_standard_6ghz_conn_policy(hdd_ctx->psoc, true);
+
 	hdd_thermal_stats_cmd_init(hdd_ctx);
 	sme_set_cal_failure_event_cb(hdd_ctx->mac_handle,
 				     hdd_cal_fail_send_event);
@@ -16627,9 +16652,6 @@ int hdd_register_cb(struct hdd_context *hdd_ctx)
 	sme_stats_ext2_register_callback(mac_handle,
 					wlan_hdd_cfg80211_stats_ext2_callback);
 
-	sme_roam_events_register_callback(mac_handle,
-					wlan_hdd_cfg80211_roam_events_callback);
-
 	sme_multi_client_ll_rsp_register_callback(mac_handle,
 					hdd_latency_level_event_handler_cb);
 
@@ -16747,7 +16769,6 @@ void hdd_deregister_cb(struct hdd_context *hdd_ctx)
 		hdd_err("Failed to de-register data stall detect event callback");
 	hdd_thermal_unregister_callbacks(hdd_ctx);
 	sme_deregister_oem_data_rsp_callback(mac_handle);
-	sme_roam_events_deregister_callback(mac_handle);
 	sme_multi_client_ll_rsp_deregister_callback(mac_handle);
 
 	hdd_exit();
