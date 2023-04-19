@@ -1198,6 +1198,7 @@ __qdf_nbuf_set_rx_cksum(struct sk_buff *skb, qdf_nbuf_rx_cksum_t *cksum)
 		break;
 	case QDF_NBUF_RX_CKSUM_TCP_UDP_UNNECESSARY:
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
+		skb->csum_level = cksum->csum_level;
 		break;
 	case QDF_NBUF_RX_CKSUM_TCP_UDP_HW:
 		skb->ip_summed = CHECKSUM_PARTIAL;
@@ -4700,7 +4701,9 @@ qdf_nbuf_update_radiotap_eht_flags(struct mon_rx_status *rx_status,
 	put_unaligned_le32(rx_status->eht_data[5], &rtap_buf[rtap_len]);
 	rtap_len += 4;
 
-	for (user = 0; user < rx_status->num_eht_user_info_valid; user++) {
+	for (user = 0; user < EHT_USER_INFO_LEN &&
+	     rx_status->num_eht_user_info_valid &&
+	     user < rx_status->num_eht_user_info_valid; user++) {
 		put_unaligned_le32(rx_status->eht_user_info[user],
 				   &rtap_buf[rtap_len]);
 		rtap_len += 4;

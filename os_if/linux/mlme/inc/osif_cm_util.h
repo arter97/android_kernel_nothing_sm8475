@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -27,6 +28,9 @@
 #include <qca_vendor.h>
 #include "wlan_cm_ucfg_api.h"
 #include "wlan_cm_public_struct.h"
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+#include "wlan_cm_roam_public_struct.h"
+#endif
 #ifdef CONN_MGR_ADV_FEATURE
 #include <cdp_txrx_mob_def.h>
 #endif
@@ -234,26 +238,36 @@ typedef QDF_STATUS
  * osif_cm_unlink_bss() - function to unlink bss from kernel and scan database
  * on connect timeouts reasons
  * @vdev: vdev pointer
- * @osif_priv: Pointer to vdev osif priv
  * @bssid: bssid to flush
- * @ssid: optional ssid to flush
- * @ssid_len: optional ssid length
  *
  * This function flush the bss from scan db of kernel and driver matching the
- * bssid. ssid is optional to pass to match the bss.
+ * bssid.
  *
  * Return: void
  */
 void osif_cm_unlink_bss(struct wlan_objmgr_vdev *vdev,
-			struct vdev_osif_priv *osif_priv,
-			struct qdf_mac_addr *bssid,
-			uint8_t *ssid, uint8_t ssid_len);
+			struct qdf_mac_addr *bssid);
 #else
 static inline
 void osif_cm_unlink_bss(struct wlan_objmgr_vdev *vdev,
-			struct vdev_osif_priv *osif_priv,
-			struct qdf_mac_addr *bssid,
-			uint8_t *ssid, uint8_t ssid_len) {}
+			struct qdf_mac_addr *bssid) {}
+#endif
+
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+/**
+ * typedef osif_cm_roam_rt_stats_cb: Callback to send roam
+ * stats event
+ * @roam_stats: roam_stats_event pointer
+ * @idx: TLV idx for roam stats event
+ *
+ * This callback sends roam_stats_event to userspace
+ *
+ * Context: Any context.
+ * Return: void
+ */
+typedef void
+	(*osif_cm_roam_rt_stats_cb)(struct roam_stats_event *roam_stats,
+				    uint8_t idx);
 #endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
@@ -302,6 +316,7 @@ typedef QDF_STATUS
  * actions on napi serialization
  * @save_gtk_cb : callback to legacy module to save gtk
  * @set_hlp_data_cb: callback to legacy module to save hlp data
+ * @roam_rt_stats_event_cb: callback to send roam stats to userspace
  * @ft_preauth_complete_cb: callback to legacy module to send fast
  * transition event
  * @cckm_preauth_complete_cb: callback to legacy module to send cckm
@@ -317,6 +332,9 @@ struct osif_cm_ops {
 #endif
 #ifdef WLAN_FEATURE_FILS_SK
 	osif_cm_set_hlp_data_cb set_hlp_data_cb;
+#endif
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+	osif_cm_roam_rt_stats_cb roam_rt_stats_event_cb;
 #endif
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 	osif_cm_ft_preauth_complete_cb ft_preauth_complete_cb;
