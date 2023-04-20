@@ -650,7 +650,6 @@ static void avc_insert(u32 ssid, u32 tsid, u16 tclass,
 	trace_android_vh_selinux_avc_insert(node);
 found:
 	spin_unlock_irqrestore(lock, flag);
-	return;
 }
 
 /**
