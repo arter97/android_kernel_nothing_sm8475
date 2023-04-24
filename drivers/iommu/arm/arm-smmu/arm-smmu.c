@@ -1458,6 +1458,11 @@ static void arm_smmu_qcom_tlb_add_inv(void *cookie)
 	unsigned long flags;
 
 	spin_lock_irqsave(&smmu_domain->iotlb_gather_lock, flags);
+	if (smmu_domain->skip_tlb_management) {
+		smmu_domain->deferred_flush = false;
+		spin_unlock_irqrestore(&smmu_domain->iotlb_gather_lock, flags);
+		return;
+	}
 	smmu_domain->deferred_flush = true;
 	spin_unlock_irqrestore(&smmu_domain->iotlb_gather_lock, flags);
 }
@@ -1465,6 +1470,15 @@ static void arm_smmu_qcom_tlb_add_inv(void *cookie)
 static void arm_smmu_qcom_tlb_sync(void *cookie)
 {
 	struct arm_smmu_domain *smmu_domain = cookie;
+	unsigned long flags;
+
+	spin_lock_irqsave(&smmu_domain->iotlb_gather_lock, flags);
+	if (smmu_domain->skip_tlb_management) {
+		smmu_domain->deferred_flush = false;
+		spin_unlock_irqrestore(&smmu_domain->iotlb_gather_lock, flags);
+		return;
+	}
+	spin_unlock_irqrestore(&smmu_domain->iotlb_gather_lock, flags);
 
 	arm_smmu_rpm_get(smmu_domain->smmu);
 	__arm_smmu_flush_iotlb_all(&smmu_domain->domain, false);
@@ -2531,6 +2545,15 @@ static void arm_smmu_flush_iotlb_all(struct iommu_domain *domain)
 {
 	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
+	unsigned long flags;
+
+	spin_lock_irqsave(&smmu_domain->iotlb_gather_lock, flags);
+	if (smmu_domain->skip_tlb_management) {
+		smmu_domain->deferred_flush = false;
+		spin_unlock_irqrestore(&smmu_domain->iotlb_gather_lock, flags);
+		return;
+	}
+	spin_unlock_irqrestore(&smmu_domain->iotlb_gather_lock, flags);
 
 	if (smmu_domain->flush_ops) {
 		arm_smmu_rpm_get(smmu);
@@ -2560,8 +2583,10 @@ static void __arm_smmu_flush_iotlb_all(struct iommu_domain *domain, bool force)
 	 * 1) GPU - old implementation uses upstream io-pgtable-arm.c
 	 * 2) fastmap
 	 * once these users have gone away, force parameter can be removed.
+	 *
+	 * Also return, If skip_tlb_management is set.
 	 */
-	if (!force && !smmu_domain->deferred_flush) {
+	if (smmu_domain->skip_tlb_management || (!force && !smmu_domain->deferred_flush)) {
 		spin_unlock_irqrestore(&smmu_domain->iotlb_gather_lock, flags);
 		return;
 	}
@@ -3311,11 +3336,23 @@ static int arm_smmu_get_asid_nr(struct iommu_domain *domain)
 	return ret;
 }
 
+static void  arm_smmu_skip_tlb_management(struct iommu_domain *domain,
+					bool skip)
+{
+	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
+	unsigned long flags;
+
+	spin_lock_irqsave(&smmu_domain->iotlb_gather_lock, flags);
+	smmu_domain->skip_tlb_management = skip;
+	spin_unlock_irqrestore(&smmu_domain->iotlb_gather_lock, flags);
+}
+
 static struct qcom_iommu_ops arm_smmu_ops = {
 	.iova_to_phys_hard = arm_smmu_iova_to_phys_hard,
 	.sid_switch		= arm_smmu_sid_switch,
 	.get_fault_ids		= arm_smmu_get_fault_ids,
 	.get_asid_nr		= arm_smmu_get_asid_nr,
+	.skip_tlb_management	= arm_smmu_skip_tlb_management,
 
 	.iommu_ops = {
 		.capable		= arm_smmu_capable,

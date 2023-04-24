@@ -94,6 +94,7 @@ struct qcom_iommu_ops {
 	int (*get_fault_ids)(struct iommu_domain *domain,
 			struct qcom_iommu_fault_ids *ids);
 	int (*get_asid_nr)(struct iommu_domain *domain);
+	void (*skip_tlb_management)(struct iommu_domain *domain, bool skip);
 	struct iommu_ops iommu_ops;
 };
 #define to_qcom_iommu_ops(x) (container_of(x, struct qcom_iommu_ops, iommu_ops))
@@ -115,6 +116,8 @@ phys_addr_t qcom_iommu_iova_to_phys_hard(struct iommu_domain *domain,
 				    struct qcom_iommu_atos_txn *txn);
 
 int qcom_iommu_sid_switch(struct device *dev, enum sid_switch_direction dir);
+
+int qcom_skip_tlb_management(struct device *dev, bool skip);
 
 extern int qcom_iommu_get_fault_ids(struct iommu_domain *domain,
 				struct qcom_iommu_fault_ids *f_ids);

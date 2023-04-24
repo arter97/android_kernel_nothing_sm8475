@@ -530,6 +530,8 @@ struct arm_smmu_domain {
 	 * runtime power management should be disabled.
 	 */
 	bool				rpm_always_on;
+	/* skip tlb management. */
+	bool skip_tlb_management;
 
 #ifdef CONFIG_ARM_SMMU_CONTEXT_FAULT_RETRY
 	u64				prev_fault_address;
