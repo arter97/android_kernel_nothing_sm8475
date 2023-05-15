@@ -21,6 +21,11 @@
 #define PREAMBLE_PATTEN_CAL_MASK  BIT(2)
 
 #define CAM_SENSOR_GET_QUERY_CAP_V2
+/* Sensor Driver cmd buffer meta type */
+#define CAM_SENSOR_PACKET_GENERIC_BLOB             1
+
+/* Sensor Res Blob Type */
+#define CAM_SENSOR_GENERIC_BLOB_RES_INFO           0
 
 enum camera_sensor_cmd_type {
 	CAMERA_SENSOR_CMD_TYPE_INVALID,
@@ -100,6 +105,7 @@ enum cam_sensor_packet_opcodes {
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_PROBE_V2,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_UNLOCK,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_LOCK,
+	CAM_SENSOR_PACKET_OPCODE_SENSOR_RESCONFIG = 126,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_NOP = 127,
 };
 
@@ -865,5 +871,28 @@ struct cam_flash_query_cap_info_v2 {
 	__u32    param_mask;
 	__u32    params[3];
 } __attribute__ ((packed));
+
+/**
+ * struct cam_cmd_sensor_res_info - Contains sensor res info
+ *
+ * res_index is the key property, it specifies the
+ * combinations of other properties enclosed in this
+ * structure.
+ *
+ * @version           :Version to indicate the change
+ * @res_index         : Sensor resolution index
+ * @num_batched_frames: Number of batched frames
+ * @num_valid_params  : Number of valid params
+ * @valid_param_mask  : Valid param mask
+ * @params            : params
+ */
+struct cam_sensor_res_info {
+	__u32 version;
+	__u16 res_index;
+	__u16 num_batched_frames;
+	__u32 num_valid_params;
+	__u32 valid_param_mask;
+	__u16 params[4];
+} __attribute__((packed));
 
 #endif
