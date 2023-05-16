@@ -29,21 +29,6 @@ static inline int cmp_hashes(const struct fsverity_info *vi,
 	return -EBADMSG;
 }
 
-static bool data_is_zeroed(struct inode *inode, struct page *page,
-			   unsigned int len, unsigned int offset)
-{
-	void *virt = kmap_local_page(page);
-
-	if (memchr_inv(virt + offset, 0, len)) {
-		kunmap_local(virt);
-		fsverity_err(inode,
-			     "FILE CORRUPTED!  Data past EOF is not zeroed");
-		return false;
-	}
-	kunmap_local(virt);
-	return true;
-}
-
 /*
  * Returns true if the hash block with index @hblock_idx in the tree, located in
  * @hpage, has already been verified.
@@ -122,9 +107,7 @@ static bool is_hash_block_verified(struct fsverity_info *vi, struct page *hpage,
  */
 static bool
 verify_data_block(struct inode *inode, struct fsverity_info *vi,
-		  struct ahash_request *req, struct page *data_page,
-		  u64 data_pos, unsigned int dblock_offset_in_page,
-		  unsigned long max_ra_pages)
+		  const void *data, u64 data_pos, unsigned long max_ra_pages)
 {
 	const struct merkle_tree_params *params = &vi->tree_params;
 	const unsigned int hsize = params->digest_size;
@@ -136,11 +119,11 @@ verify_data_block(struct inode *inode, struct fsverity_info *vi,
 	struct {
 		/* Page containing the hash block */
 		struct page *page;
+		/* Mapped address of the hash block (will be within @page) */
+		void *addr;
 		/* Index of the hash block in the tree overall */
 		unsigned long index;
-		/* Byte offset of the hash block within @page */
-		unsigned int offset_in_page;
-		/* Byte offset of the wanted hash within @page */
+		/* Byte offset of the wanted hash relative to @addr */
 		unsigned int hoffset;
 	} hblocks[FS_VERITY_MAX_LEVELS];
 	/*
@@ -159,8 +142,12 @@ verify_data_block(struct inode *inode, struct fsverity_info *vi,
 		 * any part past EOF should be all zeroes.  Therefore, we need
 		 * to verify that any data blocks fully past EOF are all zeroes.
 		 */
-		return data_is_zeroed(inode, data_page, params->block_size,
-				      dblock_offset_in_page);
+		if (memchr_inv(data, 0, params->block_size)) {
+			fsverity_err(inode,
+				     "FILE CORRUPTED!  Data past EOF is not zeroed");
+			return false;
+		}
+		return true;
 	}
 
 	/*
@@ -175,6 +162,7 @@ verify_data_block(struct inode *inode, struct fsverity_info *vi,
 		unsigned int hblock_offset_in_page;
 		unsigned int hoffset;
 		struct page *hpage;
+		void *haddr;
 
 		/*
 		 * The index of the block in the current level; also the index
@@ -192,10 +180,9 @@ verify_data_block(struct inode *inode, struct fsverity_info *vi,
 		hblock_offset_in_page =
 			(hblock_idx << params->log_blocksize) & ~PAGE_MASK;
 
-		/* Byte offset of the hash within the page */
-		hoffset = hblock_offset_in_page +
-			  ((hidx << params->log_digestsize) &
-			   (params->block_size - 1));
+		/* Byte offset of the hash within the block */
+		hoffset = (hidx << params->log_digestsize) &
+			  (params->block_size - 1);
 
 		hpage = inode->i_sb->s_vop->read_merkle_tree_page(inode,
 				hpage_idx, level == 0 ? min(max_ra_pages,
@@ -207,15 +194,17 @@ verify_data_block(struct inode *inode, struct fsverity_info *vi,
 				     err, hpage_idx);
 			goto out;
 		}
+		haddr = kmap_local_page(hpage) + hblock_offset_in_page;
 		if (is_hash_block_verified(vi, hpage, hblock_idx)) {
-			memcpy_from_page(_want_hash, hpage, hoffset, hsize);
+			memcpy(_want_hash, haddr + hoffset, hsize);
 			want_hash = _want_hash;
+			kunmap_local(haddr);
 			put_page(hpage);
 			goto descend;
 		}
 		hblocks[level].page = hpage;
+		hblocks[level].addr = haddr;
 		hblocks[level].index = hblock_idx;
-		hblocks[level].offset_in_page = hblock_offset_in_page;
 		hblocks[level].hoffset = hoffset;
 		hidx = next_hidx;
 	}
@@ -225,13 +214,11 @@ descend:
 	/* Descend the tree verifying hash blocks. */
 	for (; level > 0; level--) {
 		struct page *hpage = hblocks[level - 1].page;
+		void *haddr = hblocks[level - 1].addr;
 		unsigned long hblock_idx = hblocks[level - 1].index;
-		unsigned int hblock_offset_in_page =
-			hblocks[level - 1].offset_in_page;
 		unsigned int hoffset = hblocks[level - 1].hoffset;
 
-		err = fsverity_hash_block(params, inode, req, hpage,
-					  hblock_offset_in_page, real_hash);
+		err = fsverity_hash_block(params, inode, haddr, real_hash);
 		if (err)
 			goto out;
 		err = cmp_hashes(vi, want_hash, real_hash, data_pos, level - 1);
@@ -246,30 +233,31 @@ descend:
 			set_bit(hblock_idx, vi->hash_block_verified);
 		else
 			SetPageChecked(hpage);
-		memcpy_from_page(_want_hash, hpage, hoffset, hsize);
+		memcpy(_want_hash, haddr + hoffset, hsize);
 		want_hash = _want_hash;
+		kunmap_local(haddr);
 		put_page(hpage);
 	}
 
 	/* Finally, verify the data block. */
-	err = fsverity_hash_block(params, inode, req, data_page,
-				  dblock_offset_in_page, real_hash);
+	err = fsverity_hash_block(params, inode, data, real_hash);
 	if (err)
 		goto out;
 	err = cmp_hashes(vi, want_hash, real_hash, data_pos, -1);
 out:
-	for (; level > 0; level--)
+	for (; level > 0; level--) {
+		kunmap_local(hblocks[level - 1].addr);
 		put_page(hblocks[level - 1].page);
-
+	}
 	return err == 0;
 }
 
 static bool
-verify_data_blocks(struct inode *inode, struct fsverity_info *vi,
-		   struct ahash_request *req, struct page *data_page,
+verify_data_blocks(struct inode *inode, struct page *data_page,
 		   unsigned int len, unsigned int offset,
 		   unsigned long max_ra_pages)
 {
+	struct fsverity_info *vi = inode->i_verity_info;
 	const unsigned int block_size = vi->tree_params.block_size;
 	u64 pos = (u64)data_page->index << PAGE_SHIFT;
 
@@ -278,8 +266,14 @@ verify_data_blocks(struct inode *inode, struct fsverity_info *vi,
 	if (WARN_ON_ONCE(!PageLocked(data_page) || PageUptodate(data_page)))
 		return false;
 	do {
-		if (!verify_data_block(inode, vi, req, data_page,
-				       pos + offset, offset, max_ra_pages))
+		void *data;
+		bool valid;
+
+		data = kmap_local_page(data_page);
+		valid = verify_data_block(inode, vi, data, pos + offset,
+					  max_ra_pages);
+		kunmap_local(data);
+		if (!valid)
 			return false;
 		offset += block_size;
 		len -= block_size;
@@ -302,19 +296,7 @@ verify_data_blocks(struct inode *inode, struct fsverity_info *vi,
 bool fsverity_verify_blocks(struct page *page, unsigned int len,
 			    unsigned int offset)
 {
-	struct inode *inode = page->mapping->host;
-	struct fsverity_info *vi = inode->i_verity_info;
-	struct ahash_request *req;
-	bool valid;
-
-	/* This allocation never fails, since it's mempool-backed. */
-	req = fsverity_alloc_hash_request(vi->tree_params.hash_alg, GFP_NOFS);
-
-	valid = verify_data_blocks(inode, vi, req, page, len, offset, 0);
-
-	fsverity_free_hash_request(vi->tree_params.hash_alg, req);
-
-	return valid;
+	return verify_data_blocks(page->mapping->host, page, len, offset, 0);
 }
 EXPORT_SYMBOL_GPL(fsverity_verify_blocks);
 
@@ -336,14 +318,9 @@ EXPORT_SYMBOL_GPL(fsverity_verify_blocks);
 void fsverity_verify_bio(struct bio *bio)
 {
 	struct inode *inode = bio_first_page_all(bio)->mapping->host;
-	struct fsverity_info *vi = inode->i_verity_info;
-	struct ahash_request *req;
 	struct bio_vec *bv;
 	struct bvec_iter_all iter_all;
 	unsigned long max_ra_pages = 0;
-
-	/* This allocation never fails, since it's mempool-backed. */
-	req = fsverity_alloc_hash_request(vi->tree_params.hash_alg, GFP_NOFS);
 
 	if (bio->bi_opf & REQ_RAHEAD) {
 		/*
@@ -359,14 +336,12 @@ void fsverity_verify_bio(struct bio *bio)
 	}
 
 	bio_for_each_segment_all(bv, bio, iter_all) {
-		if (!verify_data_blocks(inode, vi, req, bv->bv_page, bv->bv_len,
+		if (!verify_data_blocks(inode, bv->bv_page, bv->bv_len,
 					bv->bv_offset, max_ra_pages)) {
 			bio->bi_status = BLK_STS_IOERR;
 			break;
 		}
 	}
-
-	fsverity_free_hash_request(vi->tree_params.hash_alg, req);
 }
 EXPORT_SYMBOL_GPL(fsverity_verify_bio);
 #endif /* CONFIG_BLOCK */
