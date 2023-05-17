@@ -145,8 +145,10 @@ static void _retire_timestamp_only(struct kgsl_drawobj *drawobj)
 		KGSL_MEMSTORE_OFFSET(context->id, eoptimestamp),
 		drawobj->timestamp);
 
-	if (drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME)
+	if (drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME) {
 		atomic64_inc(&drawobj->context->proc_priv->frame_count);
+		atomic_inc(&drawobj->context->proc_priv->period.frames);
+	}
 
 	/* Retire pending GPU events for the object */
 	kgsl_process_event_group(device, &context->events);
@@ -1135,8 +1137,10 @@ void adreno_hwsched_retire_cmdobj(struct adreno_hwsched *hwsched,
 	struct kgsl_drawobj_profiling_buffer *profile_buffer;
 
 	drawobj = DRAWOBJ(cmdobj);
-	if (drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME)
+	if (drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME) {
 		atomic64_inc(&drawobj->context->proc_priv->frame_count);
+		atomic_inc(&drawobj->context->proc_priv->period.frames);
+	}
 
 	entry = cmdobj->profiling_buf_entry;
 	if (entry) {
@@ -1742,7 +1746,10 @@ static void adreno_hwsched_reset_and_snapshot_legacy(struct adreno_device *adren
 	}
 
 	if (!drawobj) {
-		kgsl_device_snapshot(device, NULL, NULL, fault & ADRENO_GMU_FAULT);
+		if (fault & ADRENO_GMU_FAULT)
+			gmu_core_fault_snapshot(device);
+		else
+			kgsl_device_snapshot(device, NULL, NULL, false);
 		goto done;
 	}
 
@@ -1816,7 +1823,10 @@ static void adreno_hwsched_reset_and_snapshot(struct adreno_device *adreno_dev, 
 		obj_lpac = get_active_cmdobj_lpac(adreno_dev);
 
 	if (!obj && !obj_lpac) {
-		kgsl_device_snapshot(device, NULL, NULL, fault & ADRENO_GMU_FAULT);
+		if (fault & ADRENO_GMU_FAULT)
+			gmu_core_fault_snapshot(device);
+		else
+			kgsl_device_snapshot(device, NULL, NULL, false);
 		goto done;
 	}
 
@@ -1849,10 +1859,10 @@ static void adreno_hwsched_reset_and_snapshot(struct adreno_device *adreno_dev, 
 
 	if (drawobj_lpac) {
 		force_retire_timestamp(device, drawobj_lpac);
-		if ((context_lpac->flags & KGSL_CONTEXT_INVALIDATE_ON_FAULT) ||
+		if (context_lpac && ((context_lpac->flags & KGSL_CONTEXT_INVALIDATE_ON_FAULT) ||
 			(context_lpac->flags & KGSL_CONTEXT_NO_FAULT_TOLERANCE) ||
 			(cmd->error == GMU_GPU_SW_HANG) ||
-			context_is_throttled(device, context_lpac))
+			context_is_throttled(device, context_lpac)))
 			adreno_drawctxt_set_guilty(device, context_lpac);
 		/*
 		 * Put back the reference which we incremented while trying to find

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -249,8 +249,10 @@ static void _retire_timestamp(struct kgsl_drawobj *drawobj)
 				context->id, drawobj->timestamp,
 				!!(drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME));
 
-	if (drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME)
+	if (drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME) {
 		atomic64_inc(&context->proc_priv->frame_count);
+		atomic_inc(&context->proc_priv->period.frames);
+	}
 
 	/*
 	 * For A3xx we still get the rptr from the CP_RB_RPTR instead of
@@ -1969,7 +1971,12 @@ static void do_header_and_snapshot(struct kgsl_device *device, int fault,
 	/* Always dump the snapshot on a non-drawobj failure */
 	if (cmdobj == NULL) {
 		adreno_fault_header(device, rb, NULL, fault);
-		kgsl_device_snapshot(device, NULL, NULL, fault & ADRENO_GMU_FAULT);
+
+		/* GMU snapshot will also pull a full device snapshot */
+		if (fault & ADRENO_GMU_FAULT)
+			gmu_core_fault_snapshot(device);
+		else
+			kgsl_device_snapshot(device, NULL, NULL, false);
 		return;
 	}
 
@@ -2256,8 +2263,10 @@ static void retire_cmdobj(struct adreno_device *adreno_dev,
 			       context->id, drawobj->timestamp,
 			       !!(drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME));
 
-	if (drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME)
+	if (drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME) {
 		atomic64_inc(&context->proc_priv->frame_count);
+		atomic_inc(&context->proc_priv->period.frames);
+	}
 
 	/*
 	 * For A3xx we still get the rptr from the CP_RB_RPTR instead of

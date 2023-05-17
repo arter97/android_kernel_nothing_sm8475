@@ -1228,26 +1228,34 @@ int gen7_gmu_parse_fw(struct adreno_device *adreno_dev)
 	int ret, offset = 0;
 	const char *gmufw_name = gen7_core->gmufw_name;
 
-	/* GMU fw already saved and verified so do nothing new */
-	if (gmu->fw_image)
-		return 0;
+	/*
+	 * If GMU fw already saved and verified, do nothing new.
+	 * Skip only request_firmware and allow preallocation to
+	 * ensure in scenario where GMU request firmware succeeded
+	 * but preallocation fails, we don't return early without
+	 * successful preallocations on next open call.
+	 */
+	if (!gmu->fw_image) {
 
-	if (gen7_core->gmufw_name == NULL)
-		return -EINVAL;
+		if (gen7_core->gmufw_name == NULL)
+			return -EINVAL;
 
-	ret = request_firmware(&gmu->fw_image, gmufw_name, &gmu->pdev->dev);
-	if (ret) {
-		if (gen7_core->gmufw_bak_name) {
-			gmufw_name = gen7_core->gmufw_bak_name;
-			ret = request_firmware(&gmu->fw_image, gmufw_name,
+		ret = request_firmware(&gmu->fw_image, gmufw_name,
 				&gmu->pdev->dev);
-		}
 		if (ret) {
-			dev_err(&gmu->pdev->dev,
-				"request_firmware (%s) failed: %d\n",
-				gmufw_name, ret);
+			if (gen7_core->gmufw_bak_name) {
+				gmufw_name = gen7_core->gmufw_bak_name;
+				ret = request_firmware(&gmu->fw_image, gmufw_name,
+					&gmu->pdev->dev);
+			}
 
-			return ret;
+			if (ret) {
+				dev_err(&gmu->pdev->dev,
+					"request_firmware (%s) failed: %d\n",
+					gmufw_name, ret);
+
+				return ret;
+			}
 		}
 	}
 
@@ -1555,9 +1563,9 @@ static unsigned int gen7_gmu_ifpc_show(struct kgsl_device *device)
 }
 
 /* Send an NMI to the GMU */
-void gen7_gmu_send_nmi(struct adreno_device *adreno_dev, bool force)
+void gen7_gmu_send_nmi(struct kgsl_device *device, bool force)
 {
-	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
 	u32 result;
 
@@ -1634,7 +1642,7 @@ static void gen7_gmu_cooperative_reset(struct kgsl_device *device)
 	 * If we dont get a snapshot ready from GMU, trigger NMI
 	 * and if we still timeout then we just continue with reset.
 	 */
-	gen7_gmu_send_nmi(adreno_dev, true);
+	gen7_gmu_send_nmi(device, true);
 
 	gmu_core_regread(device, GEN7_GMU_CM3_FW_INIT_RESULT, &result);
 	if ((result & 0x800) != 0x800)
@@ -1676,7 +1684,7 @@ void gen7_gmu_handle_watchdog(struct adreno_device *adreno_dev)
 	gmu_core_regwrite(device, GEN7_GMU_AO_HOST_INTERRUPT_MASK,
 			(mask | GMU_INT_WDOG_BITE));
 
-	gen7_gmu_send_nmi(adreno_dev, false);
+	gen7_gmu_send_nmi(device, false);
 
 	dev_err_ratelimited(&gmu->pdev->dev,
 			"GMU watchdog expired interrupt received\n");
@@ -2021,6 +2029,7 @@ static const struct gmu_dev_ops gen7_gmudev = {
 	.acd_set = gen7_gmu_acd_set,
 	.bcl_sid_set = gen7_bcl_sid_set,
 	.bcl_sid_get = gen7_bcl_sid_get,
+	.send_nmi = gen7_gmu_send_nmi,
 };
 
 static int gen7_gmu_bus_set(struct adreno_device *adreno_dev, int buslevel,

@@ -134,10 +134,14 @@ static void log_profiling_info(struct adreno_device *adreno_dev, u32 *rcvd)
 	struct hfi_ts_retire_cmd *cmd = (struct hfi_ts_retire_cmd *)rcvd;
 	struct kgsl_context *context;
 	struct retire_info info = {0};
+	struct a6xx_gmu_device *gmu = to_a6xx_gmu(adreno_dev);
+	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 
-	context = kgsl_context_get(KGSL_DEVICE(adreno_dev), cmd->ctxt_id);
+	context = kgsl_context_get(device, cmd->ctxt_id);
 	if (context == NULL)
 		return;
+
+	kgsl_proc_work_period_update(device, context->proc_priv, cmd->active);
 
 	info.timestamp = cmd->ts;
 	info.rb_id = adreno_get_level(context);
@@ -145,6 +149,10 @@ static void log_profiling_info(struct adreno_device *adreno_dev, u32 *rcvd)
 	info.submitted_to_rb = cmd->submitted_to_rb;
 	info.sop = cmd->sop;
 	info.eop = cmd->eop;
+	if (GMU_VER_MINOR(gmu->ver.hfi) < 4)
+		info.active = cmd->eop - cmd->sop;
+	else
+		info.active = cmd->active;
 	info.retired_on_gmu = cmd->retired_on_gmu;
 
 	trace_adreno_cmdbatch_retired(context, &info, 0, 0, 0);
@@ -1023,7 +1031,6 @@ static void reset_hfi_mem_records(struct adreno_device *adreno_dev)
 static void reset_hfi_queues(struct adreno_device *adreno_dev)
 {
 	struct a6xx_gmu_device *gmu = to_a6xx_gmu(adreno_dev);
-	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct hfi_queue_table *tbl = gmu->hfi.hfi_mem->hostptr;
 	u32 i;
 
@@ -1034,17 +1041,7 @@ static void reset_hfi_queues(struct adreno_device *adreno_dev)
 		if (hdr->status == HFI_QUEUE_STATUS_DISABLED)
 			continue;
 
-		if (hdr->read_index != hdr->write_index) {
-			/* Don't capture snapshot again in reset path */
-			if (!device->snapshot || device->snapshot->recovered) {
-				dev_err(&gmu->pdev->dev,
-				"HFI queue[%d] is not empty before close: rd=%d,wt=%d\n",
-					i, hdr->read_index, hdr->write_index);
-
-				gmu_core_fault_snapshot(device);
-			}
-			hdr->read_index = hdr->write_index;
-		}
+		hdr->read_index = hdr->write_index;
 	}
 }
 
@@ -1064,8 +1061,6 @@ void a6xx_hwsched_hfi_stop(struct adreno_device *adreno_dev)
 
 	/* Drain the debug queue before we reset HFI queues */
 	a6xx_hwsched_process_dbgq(adreno_dev, false);
-
-	reset_hfi_queues(adreno_dev);
 
 	kgsl_pwrctrl_axi(KGSL_DEVICE(adreno_dev), false);
 
@@ -1139,6 +1134,8 @@ int a6xx_hwsched_hfi_start(struct adreno_device *adreno_dev)
 	struct a6xx_gmu_device *gmu = to_a6xx_gmu(adreno_dev);
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	int ret;
+
+	reset_hfi_queues(adreno_dev);
 
 	ret = a6xx_gmu_hfi_start(adreno_dev);
 	if (ret)

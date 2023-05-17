@@ -615,6 +615,7 @@ struct fastrpc_mmap {
 	struct timespec64 map_end_time;
 	/* Mapping for fastrpc shell */
 	bool is_filemap;
+	unsigned int ctx_refs; /* Indicates reference count for context map */
 };
 
 enum fastrpc_perfkeys {
@@ -1305,6 +1306,8 @@ static int fastrpc_mmap_remove(struct fastrpc_file *fl, int fd, uintptr_t va,
 		if ((fd < 0 || map->fd == fd) && map->raddr == va &&
 			map->raddr + map->len == va + len &&
 			map->refs == 1 &&
+			/* Remove if only one reference map and no context map */
+			!map->ctx_refs &&
 			/* Skip unmap if it is fastrpc shell memory */
 			!map->is_filemap) {
 			match = map;
@@ -1345,7 +1348,7 @@ static void fastrpc_mmap_free(struct fastrpc_mmap *map, uint32_t flags)
 				map->flags == ADSP_MMAP_REMOTE_HEAP_ADDR) {
 		spin_lock_irqsave(&me->hlock, irq_flags);
 		map->refs--;
-		if (!map->refs)
+		if (!map->refs && !map->ctx_refs)
 			hlist_del_init(&map->hn);
 		spin_unlock_irqrestore(&me->hlock, irq_flags);
 		if (map->refs > 0) {
@@ -1356,7 +1359,7 @@ static void fastrpc_mmap_free(struct fastrpc_mmap *map, uint32_t flags)
 		}
 	} else {
 		map->refs--;
-		if (!map->refs)
+		if (!map->refs && !map->ctx_refs)
 			hlist_del_init(&map->hn);
 		if (map->refs > 0 && !flags)
 			return;
@@ -1495,6 +1498,7 @@ static int fastrpc_mmap_create(struct fastrpc_file *fl, int fd, struct dma_buf *
 	map->buf = buf;
 	map->frpc_md_index = -1;
 	map->is_filemap = false;
+	map->ctx_refs = 0;
 	ktime_get_real_ts64(&map->map_start_time);
 	if (mflags == ADSP_MMAP_HEAP_ADDR ||
 				mflags == ADSP_MMAP_REMOTE_HEAP_ADDR) {
@@ -2239,8 +2243,11 @@ static void context_free(struct smq_invoke_ctx *ctx)
 	spin_unlock(&ctx->fl->hlock);
 
 	mutex_lock(&ctx->fl->map_mutex);
-	for (i = 0; i < nbufs; ++i)
+	for (i = 0; i < nbufs; ++i) {
+		if (ctx->maps[i] && ctx->maps[i]->ctx_refs)
+			ctx->maps[i]->ctx_refs--;
 		fastrpc_mmap_free(ctx->maps[i], 0);
+	}
 	mutex_unlock(&ctx->fl->map_mutex);
 
 	fastrpc_buf_free(ctx->buf, 1);
@@ -2621,6 +2628,8 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 			err = fastrpc_mmap_create(ctx->fl, ctx->fds[i], NULL,
 					ctx->attrs[i], buf, len,
 					mflags, &ctx->maps[i]);
+		if (ctx->maps[i])
+			ctx->maps[i]->ctx_refs++;
 		mutex_unlock(&ctx->fl->map_mutex);
 		if (err)
 			goto bail;
@@ -2647,9 +2656,14 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 			err = fastrpc_mmap_create(ctx->fl, ctx->fds[i], NULL,
 					FASTRPC_ATTR_NOVA, 0, 0, dmaflags,
 					&ctx->maps[i]);
+		if (!err && ctx->maps[i])
+			ctx->maps[i]->ctx_refs++;
 		if (err) {
-			for (j = bufs; j < i; j++)
+			for (j = bufs; j < i; j++) {
+				if (ctx->maps[j] && ctx->maps[j]->ctx_refs)
+					ctx->maps[j]->ctx_refs--;
 				fastrpc_mmap_free(ctx->maps[j], 0);
+			}
 			mutex_unlock(&ctx->fl->map_mutex);
 			goto bail;
 		}
@@ -2978,6 +2992,8 @@ static int put_args(uint32_t kernel, struct smq_invoke_ctx *ctx,
 			}
 		} else {
 			mutex_lock(&ctx->fl->map_mutex);
+			if (ctx->maps[i]->ctx_refs)
+				ctx->maps[i]->ctx_refs--;
 			fastrpc_mmap_free(ctx->maps[i], 0);
 			mutex_unlock(&ctx->fl->map_mutex);
 			ctx->maps[i] = NULL;
@@ -2988,8 +3004,11 @@ static int put_args(uint32_t kernel, struct smq_invoke_ctx *ctx,
 		if (!fdlist[i])
 			break;
 		if (!fastrpc_mmap_find(ctx->fl, (int)fdlist[i], NULL, 0, 0,
-					0, 0, &mmap))
+					0, 0, &mmap)){
+			if (mmap && mmap->ctx_refs)
+				mmap->ctx_refs--;
 			fastrpc_mmap_free(mmap, 0);
+		}
 	}
 	mutex_unlock(&ctx->fl->map_mutex);
 	if (ctx->crc && crclist && rpra)
@@ -7470,6 +7489,27 @@ static void configure_secure_channels(uint32_t secure_domains)
 	}
 }
 
+static void configure_unsigned_support(uint32_t unsigned_support_domains)
+{
+	struct fastrpc_apps *me = &gfa;
+	int ii = 0, unsigned_support = 0;
+
+	/*
+	 * unsigned_support_domains contains the bitmask for unsigned support for subsystems
+	 *  Bit 0 - ADSP
+	 *  Bit 1 - MDSP
+	 *  Bit 2 - SLPI
+	 *  Bit 3 - CDSP
+	 */
+	for (ii = ADSP_DOMAIN_ID; ii <= CDSP_DOMAIN_ID; ++ii) {
+		unsigned_support = (unsigned_support_domains >> ii) & 0x01;
+
+		me->channel[ii].unsigned_support = unsigned_support;
+		ADSPRPC_INFO("domain %d configured for unsigned_support %d\n",
+			ii, unsigned_support);
+	}
+}
+
 /*
  * This function is used to create the service locator required for
  * registering for remote process restart (PDR) notifications if that
@@ -7520,6 +7560,7 @@ static int fastrpc_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int ret = 0;
 	uint32_t secure_domains = 0;
+	uint32_t unsigned_support_domains = 0;
 
 	if (of_device_is_compatible(dev->of_node,
 					"qcom,msm-fastrpc-compute")) {
@@ -7541,6 +7582,16 @@ static int fastrpc_probe(struct platform_device *pdev)
 				configure_secure_channels(secure_domains);
 			else
 				pr_info("adsprpc: unable to read the domain configuration from dts\n");
+		}
+		if (of_get_property(dev->of_node,
+			"qcom,unsigned-support-domains", NULL) != NULL) {
+			VERIFY(err, !of_property_read_u32(dev->of_node,
+					  "qcom,unsigned-support-domains",
+			      &unsigned_support_domains));
+			if (!err)
+				configure_unsigned_support(unsigned_support_domains);
+			else
+				pr_info("adsprpc: unable to read unsigned support domain configuration from dts\n");
 		}
 	}
 	if (of_device_is_compatible(dev->of_node,
