@@ -33,6 +33,8 @@ struct btfmslim *btfm_slim_drv_data;
 
 static int btfm_num_ports_open;
 
+static bool is_registered;
+
 int btfm_slim_write(struct btfmslim *btfmslim,
 		uint16_t reg, uint8_t reg_val, uint8_t pgd)
 {
@@ -511,7 +513,11 @@ static int btfm_slim_status(struct slim_device *sdev,
 	struct btfmslim *btfm_slim;
 	int ret = 0;
 	btfm_slim = dev_get_drvdata(dev);
-	ret = btfm_slim_register_codec(btfm_slim);
+	if (!is_registered) {
+		ret = btfm_slim_register_codec(btfm_slim);
+		if (ret == 0)
+			is_registered = true;
+	}
 	if (ret)
 		BTFMSLIM_ERR("error, registering slimbus codec failed");
 
@@ -544,6 +550,8 @@ static int btfm_slim_probe(struct slim_device *slim)
 	pr_info("%s: name = %s\n", __func__, dev_name(&slim->dev));
 	/*this as true during the probe then slimbus won't check for logical address*/
 	slim->is_laddr_valid = true;
+	is_registered = false;
+
 	dev_set_name(&slim->dev, "%s", "btfmslim_slave");
 	pr_info("%s: name = %s\n", __func__, dev_name(&slim->dev));
 
