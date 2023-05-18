@@ -6352,7 +6352,7 @@ static int __wlan_hdd_cfg80211_dump_survey(struct wiphy *wiphy,
 	bool filled = false;
 
 	if (idx > NUM_CHANNELS - 1)
-		return -EINVAL;
+		return -ENOENT;
 
 	hdd_ctx = WLAN_HDD_GET_CTX(adapter);
 	status = wlan_hdd_validate_context(hdd_ctx);
@@ -6380,7 +6380,7 @@ static int __wlan_hdd_cfg80211_dump_survey(struct wiphy *wiphy,
 	filled = wlan_hdd_update_survey_info(wiphy, adapter, survey, idx);
 
 	if (!filled)
-		return -ENONET;
+		return -ENOENT;
 
 	return 0;
 }

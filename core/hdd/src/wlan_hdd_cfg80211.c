@@ -24330,7 +24330,7 @@ static void wlan_hdd_chan_info_cb(struct scan_chan_info *info)
 	}
 
 	chan = hdd_ctx->chan_info;
-	for (idx = 0; idx < SIR_MAX_NUM_CHANNELS; idx++) {
+	for (idx = 0; idx < NUM_CHANNELS; idx++) {
 		if (chan[idx].freq == info->freq) {
 			hdd_update_chan_info(hdd_ctx, &chan[idx], info,
 				info->cmd_flag);
