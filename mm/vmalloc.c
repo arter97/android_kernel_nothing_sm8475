@@ -2211,7 +2211,7 @@ static void vb_free(unsigned long addr, unsigned long size)
 
 	spin_lock(&vb->lock);
 
-	/* Expand dirty range */
+	/* Expand the not yet TLB flushed dirty range */
 	vb->dirty_min = min(vb->dirty_min, offset);
 	vb->dirty_max = max(vb->dirty_max, offset + (1UL << order));
 
@@ -2249,7 +2249,7 @@ static void _vm_unmap_aliases(unsigned long start, unsigned long end, int flush)
 			 * space to be flushed.
 			 */
 			if (!purge_fragmented_block(vb, vbq, &purge_list) &&
-			    vb->dirty && vb->dirty != VMAP_BBMAP_BITS) {
+			    vb->dirty_max && vb->dirty != VMAP_BBMAP_BITS) {
 				unsigned long va_start = vb->va->va_start;
 				unsigned long s, e;
 
@@ -2258,6 +2258,10 @@ static void _vm_unmap_aliases(unsigned long start, unsigned long end, int flush)
 
 				start = min(s, start);
 				end   = max(e, end);
+
+				/* Prevent that this is flushed again */
+				vb->dirty_min = VMAP_BBMAP_BITS;
+				vb->dirty_max = 0;
 
 				flush = 1;
 			}
