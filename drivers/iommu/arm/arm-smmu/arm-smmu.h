@@ -294,7 +294,7 @@ enum arm_smmu_cbar_type {
 /* Maximum number of context banks per SMMU */
 #define ARM_SMMU_MAX_CBS		128
 
-#define TLB_LOOP_TIMEOUT		500000	/* 500ms */
+#define TLB_LOOP_TIMEOUT		2000000	/* 2s */
 #define TLB_SPIN_COUNT			10
 #define TLB_LOOP_INC_MAX		1000      /*1ms*/
 
