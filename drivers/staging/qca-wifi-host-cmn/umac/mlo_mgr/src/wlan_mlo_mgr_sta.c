@@ -983,7 +983,7 @@ static QDF_STATUS ml_activate_connect_req_sched_cb(struct scheduler_msg *msg)
 	}
 
 	sta_ctx = mlo_dev_ctx->sta_ctx;
-	if (!sta_ctx) {
+	if (!sta_ctx || !sta_ctx->connect_req) {
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 		return QDF_STATUS_E_INVAL;
 	}
