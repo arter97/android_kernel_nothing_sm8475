@@ -253,10 +253,11 @@ out:
 }
 
 static bool
-verify_data_blocks(struct inode *inode, struct page *data_page,
+verify_data_blocks(struct page *data_page,
 		   unsigned int len, unsigned int offset,
 		   unsigned long max_ra_pages)
 {
+	struct inode *inode = data_page->mapping->host;
 	struct fsverity_info *vi = inode->i_verity_info;
 	const unsigned int block_size = vi->tree_params.block_size;
 	u64 pos = (u64)data_page->index << PAGE_SHIFT;
@@ -296,7 +297,7 @@ verify_data_blocks(struct inode *inode, struct page *data_page,
 bool fsverity_verify_blocks(struct page *page, unsigned int len,
 			    unsigned int offset)
 {
-	return verify_data_blocks(page->mapping->host, page, len, offset, 0);
+	return verify_data_blocks(page, len, offset, 0);
 }
 EXPORT_SYMBOL_GPL(fsverity_verify_blocks);
 
@@ -317,7 +318,6 @@ EXPORT_SYMBOL_GPL(fsverity_verify_blocks);
  */
 void fsverity_verify_bio(struct bio *bio)
 {
-	struct inode *inode = bio_first_page_all(bio)->mapping->host;
 	struct bio_vec *bv;
 	struct bvec_iter_all iter_all;
 	unsigned long max_ra_pages = 0;
@@ -336,7 +336,7 @@ void fsverity_verify_bio(struct bio *bio)
 	}
 
 	bio_for_each_segment_all(bv, bio, iter_all) {
-		if (!verify_data_blocks(inode, bv->bv_page, bv->bv_len,
+		if (!verify_data_blocks(bv->bv_page, bv->bv_len,
 					bv->bv_offset, max_ra_pages)) {
 			bio->bi_status = BLK_STS_IOERR;
 			break;
