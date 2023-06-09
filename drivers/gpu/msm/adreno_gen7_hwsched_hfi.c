@@ -7,6 +7,7 @@
 #include <linux/dma-fence-array.h>
 #include <linux/iommu.h>
 #include <linux/sched/clock.h>
+#include <soc/qcom/msm_performance.h>
 
 #include "adreno.h"
 #include "adreno_gen7.h"
@@ -167,7 +168,10 @@ static void log_profiling_info(struct adreno_device *adreno_dev, u32 *rcvd)
 		info.active = cmd->active;
 	info.retired_on_gmu = cmd->retired_on_gmu;
 
-	kgsl_proc_work_period_update(device, context->proc_priv, info.active);
+	/* protected GPU work must not be reported */
+	if  (!(context->flags & KGSL_CONTEXT_SECURE))
+		kgsl_work_period_update(device, context->proc_priv->period,
+					     info.active);
 
 	trace_adreno_cmdbatch_retired(context, &info, 0, 0, 0);
 
@@ -1699,6 +1703,10 @@ static void gen7_add_profile_events(struct adreno_device *adreno_dev,
 
 	cmdobj->submit_ticks = time->ticks;
 
+	msm_perf_events_update(MSM_PERF_GFX, MSM_PERF_SUBMIT,
+		pid_nr(context->proc_priv->pid),
+		context->id, drawobj->timestamp,
+		!!(drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME));
 	trace_adreno_cmdbatch_submitted(drawobj, &info, time->ticks,
 		(unsigned long) time_in_s, time_in_ns / 1000, 0);
 
