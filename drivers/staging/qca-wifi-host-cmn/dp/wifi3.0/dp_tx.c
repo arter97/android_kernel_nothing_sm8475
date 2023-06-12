@@ -509,6 +509,8 @@ dp_tx_desc_release(struct dp_tx_desc_s *tx_desc, uint8_t desc_pool_id)
 					  tx_desc->msdu_ext_desc->me_buffer);
 
 		dp_tx_ext_desc_free(soc, tx_desc->msdu_ext_desc, desc_pool_id);
+
+		tx_desc->msdu_ext_desc = NULL;
 	}
 
 	if (tx_desc->flags & DP_TX_DESC_FLAG_TO_FW)
