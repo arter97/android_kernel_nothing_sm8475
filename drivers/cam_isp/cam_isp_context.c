@@ -137,6 +137,53 @@ static void *cam_isp_ctx_user_dump_events(
 	return addr;
 }
 
+static int __cam_isp_ctx_print_event_record(struct cam_isp_context *ctx_isp)
+{
+	int                                  i, j, rc = 0;
+	int                                  index;
+	uint32_t                             oldest_entry, num_entries;
+	uint64_t                             state_head;
+	struct cam_isp_context_event_record *record;
+	uint32_t                             len;
+	uint8_t                              buf[CAM_ISP_CONTEXT_DBG_BUF_LEN];
+	struct timespec64                    ts;
+	struct cam_context                  *ctx = ctx_isp->base;
+
+	for (i = 0; i < CAM_ISP_CTX_EVENT_MAX; i++) {
+		state_head = atomic64_read(&ctx_isp->event_record_head[i]);
+
+		if (state_head == -1) {
+			return 0;
+		} else if (state_head < CAM_ISP_CTX_EVENT_RECORD_MAX_ENTRIES) {
+			num_entries = state_head + 1;
+			oldest_entry = 0;
+		} else {
+			num_entries = CAM_ISP_CTX_EVENT_RECORD_MAX_ENTRIES;
+			div_u64_rem(state_head + 1,
+				CAM_ISP_CTX_EVENT_RECORD_MAX_ENTRIES,
+				&oldest_entry);
+		}
+
+		index = oldest_entry;
+		len = 0;
+		memset(buf, 0, CAM_ISP_CONTEXT_DBG_BUF_LEN);
+		for (j = 0; j < num_entries; j++) {
+
+			record = &ctx_isp->event_record[i][index];
+			ts = ktime_to_timespec64(record->timestamp);
+			len += scnprintf(buf + len, CAM_ISP_CONTEXT_DBG_BUF_LEN - len,
+				"%llu[%lld:%06lld] ", record->req_id, ts.tv_sec,
+				ts.tv_nsec / NSEC_PER_USEC);
+			index = (index + 1) %
+				CAM_ISP_CTX_EVENT_RECORD_MAX_ENTRIES;
+		}
+		if (len)
+			CAM_INFO(CAM_ISP, "Ctx:%d %s: %s",
+		ctx->ctx_id, __cam_isp_evt_val_to_type(i), buf);
+	}
+	return rc;
+}
+
 static int __cam_isp_ctx_dump_event_record(
 	struct cam_isp_context *ctx_isp,
 	struct cam_common_hw_dump_args *dump_args)
@@ -2733,7 +2780,6 @@ notify_only:
 
 		__cam_isp_ctx_send_sof_timestamp(ctx_isp, request_id,
 			CAM_REQ_MGR_SOF_EVENT_SUCCESS);
-
 		__cam_isp_ctx_update_state_monitor_array(ctx_isp,
 			CAM_ISP_STATE_CHANGE_TRIGGER_EPOCH,
 			request_id);
@@ -2802,8 +2848,8 @@ static int __cam_isp_ctx_sof_in_activated_state(
 	__cam_isp_ctx_update_state_monitor_array(ctx_isp,
 		CAM_ISP_STATE_CHANGE_TRIGGER_SOF, request_id);
 
-	CAM_DBG(CAM_ISP, "frame id: %lld time stamp:0x%llx, ctx %u",
-		ctx_isp->frame_id, ctx_isp->sof_timestamp_val, ctx->ctx_id);
+	CAM_DBG(CAM_ISP, "frame id: %lld time stamp:0x%llx, ctx %u request %llu",
+		ctx_isp->frame_id, ctx_isp->sof_timestamp_val, ctx->ctx_id, request_id);
 
 	return rc;
 }
@@ -4549,6 +4595,7 @@ hw_dump:
 	diff = ktime_us_delta(
 		req_isp->event_timestamp[CAM_ISP_CTX_EVENT_APPLY],
 		cur_time);
+	__cam_isp_ctx_print_event_record(ctx_isp);
 	if (diff < CAM_ISP_CTX_RESPONSE_TIME_THRESHOLD) {
 		CAM_INFO(CAM_ISP, "req %lld found no error",
 			req->request_id);
