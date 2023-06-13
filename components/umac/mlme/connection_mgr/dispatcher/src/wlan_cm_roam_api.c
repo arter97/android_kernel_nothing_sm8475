@@ -621,6 +621,10 @@ void wlan_cm_set_psk_pmk(struct wlan_objmgr_pdev *pdev,
 	if (psk_pmk)
 		qdf_mem_copy(rso_cfg->psk_pmk, psk_pmk, pmk_len);
 	rso_cfg->pmk_len = pmk_len;
+
+	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLME, QDF_TRACE_LEVEL_DEBUG,
+			   rso_cfg->psk_pmk, WLAN_MAX_PMK_DUMP_BYTES);
+
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_CM_ID);
 }
 
@@ -2608,7 +2612,7 @@ cm_roam_event_handler(struct roam_offload_roam_event *roam_event)
 		if (roam_event->rso_timer_stopped)
 			wlan_cm_rso_stop_continue_disconnect(roam_event->psoc,
 						roam_event->vdev_id, true);
-		/* fallthrough */
+		fallthrough;
 	case ROAM_REASON_INVALID:
 		cm_handle_roam_offload_events(roam_event);
 		break;
