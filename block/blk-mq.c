@@ -275,8 +275,24 @@ static inline bool blk_mq_need_time_stamp(struct request *rq)
 	return (rq->rq_flags & (RQF_IO_STAT | RQF_STATS)) || rq->q->elevator;
 }
 
+/* Set start and alloc time when the allocated request is actually used */
+static inline void blk_mq_rq_time_init(struct request *rq, u64 alloc_time_ns)
+{
+	if (blk_mq_need_time_stamp(rq))
+		rq->start_time_ns = ktime_get_ns();
+	else
+		rq->start_time_ns = 0;
+
+#ifdef CONFIG_BLK_RQ_ALLOC_TIME
+	if (blk_queue_rq_alloc_time(rq->q))
+		rq->alloc_time_ns = alloc_time_ns ?: rq->start_time_ns;
+	else
+		rq->alloc_time_ns = 0;
+#endif
+}
+
 static struct request *blk_mq_rq_ctx_init(struct blk_mq_alloc_data *data,
-		unsigned int tag, u64 alloc_time_ns)
+		unsigned int tag)
 {
 	struct blk_mq_tags *tags = blk_mq_tags_from_data(data);
 	struct request *rq = tags->static_rqs[tag];
@@ -304,9 +320,6 @@ static struct request *blk_mq_rq_ctx_init(struct blk_mq_alloc_data *data,
 	RB_CLEAR_NODE(&rq->rb_node);
 	rq->rq_disk = NULL;
 	rq->part = NULL;
-#ifdef CONFIG_BLK_RQ_ALLOC_TIME
-	rq->alloc_time_ns = alloc_time_ns;
-#endif
 	if (blk_mq_need_time_stamp(rq))
 		rq->start_time_ns = ktime_get_ns();
 	else
@@ -343,13 +356,11 @@ static struct request *blk_mq_rq_ctx_init(struct blk_mq_alloc_data *data,
 	}
 
 	data->hctx->queued++;
-	trace_android_vh_blk_rq_ctx_init(rq, tags, data, alloc_time_ns);
 	return rq;
 }
 
 static inline struct request *
-__blk_mq_alloc_requests_batch(struct blk_mq_alloc_data *data,
-		u64 alloc_time_ns)
+__blk_mq_alloc_requests_batch(struct blk_mq_alloc_data *data)
 {
 	unsigned int tag, tag_offset;
 	struct request *rq;
@@ -365,7 +376,7 @@ __blk_mq_alloc_requests_batch(struct blk_mq_alloc_data *data,
 			continue;
 		tag = tag_offset + i;
 		tags &= ~(1UL << i);
-		rq = blk_mq_rq_ctx_init(data, tag, alloc_time_ns);
+		rq = blk_mq_rq_ctx_init(data, tag);
 		rq_list_add(data->cached_rq, rq);
 		nr++;
 	}
@@ -413,9 +424,11 @@ retry:
 	 * Try batched alloc if we want more than 1 tag.
 	 */
 	if (data->nr_tags > 1) {
-		rq = __blk_mq_alloc_requests_batch(data, alloc_time_ns);
-		if (rq)
+		rq = __blk_mq_alloc_requests_batch(data);
+		if (rq) {
+			blk_mq_rq_time_init(rq, alloc_time_ns);
 			return rq;
+		}
 		data->nr_tags = 1;
 	}
 
@@ -438,7 +451,9 @@ retry:
 		goto retry;
 	}
 
-	return blk_mq_rq_ctx_init(data, tag, alloc_time_ns);
+	rq = blk_mq_rq_ctx_init(data, tag);
+	blk_mq_rq_time_init(rq, alloc_time_ns);
+	return rq;
 }
 
 struct request *blk_mq_alloc_request(struct request_queue *q, unsigned int op,
@@ -479,6 +494,7 @@ struct request *blk_mq_alloc_request_hctx(struct request_queue *q,
 		.cmd_flags	= op,
 		.nr_tags	= 1,
 	};
+	struct request *rq;
 	u64 alloc_time_ns = 0;
 	unsigned int cpu;
 	unsigned int tag;
@@ -525,7 +541,9 @@ struct request *blk_mq_alloc_request_hctx(struct request_queue *q,
 	tag = blk_mq_get_tag(&data);
 	if (tag == BLK_MQ_NO_TAG)
 		goto out_queue_exit;
-	return blk_mq_rq_ctx_init(&data, tag, alloc_time_ns);
+	rq = blk_mq_rq_ctx_init(&data, tag);
+	blk_mq_rq_time_init(rq, alloc_time_ns);
+	return rq;
 
 out_queue_exit:
 	blk_queue_exit(q);
@@ -2291,6 +2309,7 @@ blk_qc_t blk_mq_submit_bio(struct bio *bio)
 			goto queue_exit;
 		}
 	}
+	blk_mq_rq_time_init(rq, 0);
 
 	trace_block_getrq(q, bio, bio->bi_opf);
 
