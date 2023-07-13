@@ -895,4 +895,7 @@ struct cam_sensor_res_info {
 	__u16 params[4];
 } __attribute__((packed));
 
+#define VIDIOC_MSM_CCI_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 23, struct cam_cci_ctrl)
+
 #endif

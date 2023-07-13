@@ -11932,6 +11932,7 @@ static int cam_ife_mgr_dump(void *hw_mgr_priv, void *args)
 		CAM_ERR(CAM_ISP,
 			"Dump offset overshoot offset %zu buf_len %zu",
 			isp_hw_dump_args.offset, isp_hw_dump_args.buf_len);
+		cam_mem_put_cpu_buf(dump_args->buf_handle);
 		return -EINVAL;
 	}
 
@@ -11943,37 +11944,46 @@ static int cam_ife_mgr_dump(void *hw_mgr_priv, void *args)
 			hw_intf = ife_ctx->hw_mgr->csid_devices[hw_idx];
 			if (!hw_intf) {
 				CAM_ERR(CAM_ISP, "hw_intf null, returning rc...");
+				cam_mem_put_cpu_buf(dump_args->buf_handle);
 				return -EINVAL;
 			}
 			rc = hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
 				CAM_ISP_HW_USER_DUMP, &isp_hw_dump_args,
 				sizeof(struct cam_isp_hw_dump_args));
-			if (rc)
+			if (rc) {
+				cam_mem_put_cpu_buf(dump_args->buf_handle);
 				return rc;
+			}
 			break;
 		case CAM_ISP_HW_TYPE_VFE:
 			hw_intf = ife_ctx->hw_mgr->ife_devices[hw_idx]->hw_intf;
 			if (!hw_intf || !hw_intf->hw_priv) {
 				CAM_ERR(CAM_ISP, "hw_intf null, returning rc...");
+				cam_mem_put_cpu_buf(dump_args->buf_handle);
 				return -EINVAL;
 			}
 			rc = hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
 				CAM_ISP_HW_USER_DUMP, &isp_hw_dump_args,
 				sizeof(struct cam_isp_hw_dump_args));
-			if (rc)
+			if (rc) {
+				cam_mem_put_cpu_buf(dump_args->buf_handle);
 				return rc;
+			}
 			break;
 		case CAM_ISP_HW_TYPE_SFE:
 			hw_intf = ife_ctx->hw_mgr->sfe_devices[hw_idx]->hw_intf;
 			if (!hw_intf || !hw_intf->hw_priv) {
 				CAM_ERR(CAM_ISP, "hw_intf null, returning rc...");
+				cam_mem_put_cpu_buf(dump_args->buf_handle);
 				return -EINVAL;
 			}
 			rc = hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
 				CAM_ISP_HW_USER_DUMP, &isp_hw_dump_args,
 				sizeof(struct cam_isp_hw_dump_args));
-			if (rc)
+			if (rc) {
+				cam_mem_put_cpu_buf(dump_args->buf_handle);
 				return rc;
+			}
 			break;
 		default:
 			break;
@@ -11982,6 +11992,7 @@ static int cam_ife_mgr_dump(void *hw_mgr_priv, void *args)
 	}
 
 	dump_args->offset = isp_hw_dump_args.offset;
+	cam_mem_put_cpu_buf(dump_args->buf_handle);
 	return rc;
 }
 

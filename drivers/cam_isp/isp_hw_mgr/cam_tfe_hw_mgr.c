@@ -1746,6 +1746,7 @@ void cam_tfe_cam_cdm_callback(uint32_t handle, void *userdata,
 				ctx->last_submit_bl_cmd.cmd[i].input_len - 1);
 
 			cam_cdm_util_dump_cmd_buf(buf_start, buf_end);
+			cam_mem_put_cpu_buf(ctx->last_submit_bl_cmd.cmd[i].mem_handle);
 		}
 		if (ctx->packet != NULL)
 			cam_packet_dump_patch_info(ctx->packet,
@@ -3613,6 +3614,7 @@ static int cam_tfe_mgr_dump(void *hw_mgr_priv, void *args)
 	}
 	dump_args->offset = isp_hw_dump_args.offset;
 	CAM_DBG(CAM_ISP, "offset %u", dump_args->offset);
+	cam_mem_put_cpu_buf(dump_args->buf_handle);
 	return rc;
 }
 
@@ -3955,6 +3957,137 @@ static int cam_isp_tfe_blob_clock_update(
 	return rc;
 }
 
+static int cam_isp_tfe_blob_bw_limit_update(
+	uint32_t                                   blob_type,
+	struct cam_isp_generic_blob_info          *blob_info,
+	struct cam_isp_tfe_out_rsrc_bw_limiter_config *bw_limit_cfg,
+	struct cam_hw_prepare_update_args         *prepare,
+	enum cam_isp_hw_type                       hw_type)
+{
+	struct cam_isp_tfe_wm_bw_limiter_config   *wm_bw_limit_cfg;
+	struct cam_kmd_buf_info               *kmd_buf_info;
+	struct cam_tfe_hw_mgr_ctx             *ctx = NULL;
+	struct cam_isp_hw_mgr_res             *hw_mgr_res;
+	uint32_t                               res_id_out, i;
+	uint32_t                               total_used_bytes = 0;
+	uint32_t                               kmd_buf_remain_size;
+	uint32_t                              *cmd_buf_addr;
+	uint32_t                               bytes_used = 0;
+	int                                    num_ent, rc = 0;
+
+	ctx = prepare->ctxt_to_hw_map;
+
+	if ((prepare->num_hw_update_entries + 1) >=
+			prepare->max_hw_update_entries) {
+		CAM_ERR(CAM_ISP, "Insufficient HW entries: %d max: %d",
+			prepare->num_hw_update_entries,
+			prepare->max_hw_update_entries);
+		return -EINVAL;
+	}
+
+	kmd_buf_info = blob_info->kmd_buf_info;
+	for (i = 0; i < bw_limit_cfg->num_ports; i++) {
+		wm_bw_limit_cfg = &bw_limit_cfg->bw_limiter_config[i];
+		res_id_out = wm_bw_limit_cfg->res_type & 0xFF;
+
+		CAM_DBG(CAM_ISP, "%s BW limit config idx: %d port: 0x%x enable: %d [0x%x:0x%x]",
+			"TFE", i, wm_bw_limit_cfg->res_type, wm_bw_limit_cfg->enable_limiter,
+			wm_bw_limit_cfg->counter_limit[0], wm_bw_limit_cfg->counter_limit[1]);
+
+		if ((kmd_buf_info->used_bytes
+			+ total_used_bytes) < kmd_buf_info->size) {
+			kmd_buf_remain_size = kmd_buf_info->size -
+			(kmd_buf_info->used_bytes +
+			total_used_bytes);
+		} else {
+			CAM_ERR(CAM_ISP,
+				"No free kmd memory for base idx: %d",
+				blob_info->base_info->idx);
+			rc = -ENOMEM;
+			return rc;
+		}
+
+		cmd_buf_addr = kmd_buf_info->cpu_addr +
+			(kmd_buf_info->used_bytes / 4) +
+			(total_used_bytes / 4);
+
+		hw_mgr_res = &ctx->res_list_tfe_out[res_id_out];
+
+		rc = cam_isp_add_cmd_buf_update(
+			hw_mgr_res, blob_type,
+			CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG,
+			blob_info->base_info->idx,
+			(void *)cmd_buf_addr,
+			kmd_buf_remain_size,
+			(void *)wm_bw_limit_cfg,
+			&bytes_used);
+		if (rc < 0) {
+			CAM_ERR(CAM_ISP,
+				"Failed to update %s BW limiter config for res:0x%x enable:%d [0x%x:0x%x] base_idx:%d bytes_used:%u rc:%d",
+				"VFE", wm_bw_limit_cfg->res_type, wm_bw_limit_cfg->enable_limiter,
+				wm_bw_limit_cfg->counter_limit[0],
+				wm_bw_limit_cfg->counter_limit[1],
+				blob_info->base_info->idx, bytes_used, rc);
+			return rc;
+		}
+
+		total_used_bytes += bytes_used;
+	}
+
+	if (total_used_bytes) {
+		/* Update the HW entries */
+		num_ent = prepare->num_hw_update_entries;
+		prepare->hw_update_entries[num_ent].handle =
+			kmd_buf_info->handle;
+		prepare->hw_update_entries[num_ent].len = total_used_bytes;
+		prepare->hw_update_entries[num_ent].offset =
+			kmd_buf_info->offset;
+		num_ent++;
+		kmd_buf_info->used_bytes += total_used_bytes;
+		kmd_buf_info->offset     += total_used_bytes;
+		prepare->num_hw_update_entries = num_ent;
+	}
+	return rc;
+}
+
+static inline int cam_isp_tfe_validate_bw_limiter_blob(
+	uint32_t blob_size,
+	struct cam_isp_tfe_out_rsrc_bw_limiter_config *bw_limit_config)
+{
+	/* Check for blob version */
+	if (bw_limit_config->version != CAM_TFE_BW_LIMITER_CONFIG_V1) {
+		CAM_ERR(CAM_ISP, "Invalid Blob config version:%d", bw_limit_config->version);
+		return -EINVAL;
+	}
+	/* Check for number of out ports*/
+	if (bw_limit_config->num_ports > CAM_TFE_HW_OUT_RES_MAX) {
+		CAM_ERR(CAM_ISP, "Invalid num_ports:%u", bw_limit_config->num_ports);
+		return -EINVAL;
+	}
+	/* Check for integer overflow */
+	if (bw_limit_config->num_ports != 1) {
+		if (sizeof(struct cam_isp_tfe_wm_bw_limiter_config) > ((UINT_MAX -
+			sizeof(struct cam_isp_tfe_out_rsrc_bw_limiter_config)) /
+			(bw_limit_config->num_ports - 1))) {
+			CAM_ERR(CAM_ISP,
+				"Max size exceeded in bw limit config num_ports:%u size per port:%lu",
+				bw_limit_config->num_ports,
+				sizeof(struct cam_isp_tfe_wm_bw_limiter_config));
+			return -EINVAL;
+		}
+	}
+	if (blob_size < (sizeof(struct cam_isp_tfe_out_rsrc_bw_limiter_config) +
+		(bw_limit_config->num_ports - 1) *
+		sizeof(struct cam_isp_tfe_wm_bw_limiter_config))) {
+		CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
+			blob_size, sizeof(struct cam_isp_tfe_out_rsrc_bw_limiter_config)
+			+ (bw_limit_config->num_ports - 1) *
+			sizeof(struct cam_isp_tfe_wm_bw_limiter_config));
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static int cam_isp_tfe_packet_generic_blob_handler(void *user_data,
 	uint32_t blob_type, uint32_t blob_size, uint8_t *blob_data)
 {
@@ -4152,6 +4285,28 @@ static int cam_isp_tfe_packet_generic_blob_handler(void *user_data,
 			CAM_ERR(CAM_ISP, "Clock Update Failed");
 	}
 		break;
+	case CAM_ISP_TFE_GENERIC_BLOB_TYPE_BW_LIMITER_CFG: {
+		struct cam_isp_tfe_out_rsrc_bw_limiter_config *bw_limit_config;
+
+		if (blob_size <
+			sizeof(struct cam_isp_tfe_out_rsrc_bw_limiter_config)) {
+			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
+				blob_size,
+				sizeof(struct cam_isp_tfe_out_rsrc_bw_limiter_config));
+			return -EINVAL;
+		}
+
+		bw_limit_config = (struct cam_isp_tfe_out_rsrc_bw_limiter_config *)blob_data;
+		rc = cam_isp_tfe_validate_bw_limiter_blob(blob_size, bw_limit_config);
+		if (rc)
+			return rc;
+
+		rc = cam_isp_tfe_blob_bw_limit_update(blob_type, blob_info,
+			bw_limit_config, prepare, CAM_ISP_HW_TYPE_TFE);
+		if (rc)
+			CAM_ERR(CAM_ISP, "BW limit update failed for TFE rc: %d", rc);
+	}
+		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type %d", blob_type);
 		break;
@@ -4192,6 +4347,7 @@ static int cam_tfe_update_dual_config(
 		(cmd_desc->offset >=
 			(len - sizeof(struct cam_isp_tfe_dual_config)))) {
 		CAM_ERR(CAM_ISP, "not enough buffer provided");
+		cam_mem_put_cpu_buf(cmd_desc->mem_handle);
 		return -EINVAL;
 	}
 
@@ -4204,6 +4360,7 @@ static int cam_tfe_update_dual_config(
 		(remain_len -
 			offsetof(struct cam_isp_tfe_dual_config, stripes))) {
 		CAM_ERR(CAM_ISP, "not enough buffer for all the dual configs");
+		cam_mem_put_cpu_buf(cmd_desc->mem_handle);
 		return -EINVAL;
 	}
 
@@ -4265,6 +4422,7 @@ static int cam_tfe_update_dual_config(
 	}
 
 end:
+	cam_mem_put_cpu_buf(cmd_desc->mem_handle);
 	return rc;
 }
 
@@ -4913,7 +5071,6 @@ static void cam_tfe_mgr_dump_pf_data(
 outportlog:
 	cam_tfe_mgr_print_io_bufs(hw_mgr, *resource_type, packet,
 		ctx_found, ctx);
-
 
 }
 
