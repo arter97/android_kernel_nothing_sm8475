@@ -7120,6 +7120,8 @@ static __init int selinux_init(void)
 	cred_init_security();
 
 	default_noexec = !(VM_DATA_DEFAULT_FLAGS & VM_EXEC);
+	if (!default_noexec)
+		pr_notice("SELinux:  virtual memory is executable by default\n");
 
 	avc_init();
 
