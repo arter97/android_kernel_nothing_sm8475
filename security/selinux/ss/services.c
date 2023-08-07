@@ -98,7 +98,6 @@ static int selinux_set_mapping(struct policydb *pol,
 			       struct selinux_map *out_map)
 {
 	u16 i, j;
-	unsigned k;
 	bool print_unknown_handle = false;
 
 	/* Find number of classes in the input mapping */
@@ -118,6 +117,7 @@ static int selinux_set_mapping(struct policydb *pol,
 	while (map[j].name) {
 		const struct security_class_mapping *p_in = map + (j++);
 		struct selinux_mapping *p_out = out_map->mapping + j;
+		u16 k;
 
 		/* An empty class string skips ahead */
 		if (!strcmp(p_in->name, "")) {
