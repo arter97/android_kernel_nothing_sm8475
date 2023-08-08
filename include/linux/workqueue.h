@@ -132,6 +132,7 @@ struct rcu_work {
 };
 
 enum wq_affn_scope {
+	WQ_AFFN_DFL,			/* use system default */
 	WQ_AFFN_CPU,			/* one pod per CPU */
 	WQ_AFFN_SMT,			/* one pod poer SMT */
 	WQ_AFFN_CACHE,			/* one pod per LLC */
@@ -139,8 +140,6 @@ enum wq_affn_scope {
 	WQ_AFFN_SYSTEM,			/* one pod across the whole system */
 
 	WQ_AFFN_NR_TYPES,
-
-	WQ_AFFN_DFL = WQ_AFFN_CACHE,
 };
 
 /**
