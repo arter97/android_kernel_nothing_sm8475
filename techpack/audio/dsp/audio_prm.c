@@ -22,6 +22,7 @@
 #define TIMEOUT_MS 500
 #define MAX_RETRY_COUNT 3
 #define APM_READY_WAIT_DURATION 2
+#define GPR_SEND_PKT_APM_TIMEOUT_MS 0
 
 struct audio_prm {
 	struct gpr_device *adev;
@@ -101,7 +102,8 @@ static int prm_gpr_send_pkt(struct gpr_pkt *pkt, wait_queue_head_t *wait)
 			(gpr_get_q6_state() == GPR_SUBSYS_LOADED)) {
 		pr_info("%s: apm ready check not done\n", __func__);
 		retry = 0;
-		while (!spf_core_is_apm_ready() && retry < MAX_RETRY_COUNT) {
+		while (!spf_core_is_apm_ready(GPR_SEND_PKT_APM_TIMEOUT_MS) &&
+							retry < MAX_RETRY_COUNT) {
 			msleep(APM_READY_WAIT_DURATION);
 			++retry;
 		}
