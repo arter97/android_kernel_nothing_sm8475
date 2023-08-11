@@ -1,4 +1,5 @@
 /* Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,7 +15,7 @@
 #define __SPF_CORE_H__
 #include <ipc/gpr-lite.h>
 
-bool spf_core_is_apm_ready(void);
+bool spf_core_is_apm_ready(int timeout_ms);
 void spf_core_apm_close_all(void);
 
 #endif
