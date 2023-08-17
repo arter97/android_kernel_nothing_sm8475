@@ -963,11 +963,14 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_out_pixel(
 
 			tfe_out_res->hw_res[j] =
 				tfe_acquire.tfe_out.rsrc_node;
-			index = tfe_acquire.tfe_out.comp_grp_id;
-			comp_grp = &tfe_ctx->tfe_bus_comp_grp[index];
-			comp_grp->res_id[comp_grp->num_res] =
-				tfe_out_res->hw_res[j]->res_id;
-			comp_grp->num_res++;
+			if (j == CAM_ISP_HW_SPLIT_LEFT) {
+				index = tfe_acquire.tfe_out.comp_grp_id;
+				comp_grp = &tfe_ctx->tfe_bus_comp_grp[index];
+				comp_grp->res_id[comp_grp->num_res] =
+					tfe_out_res->hw_res[j]->res_id;
+				comp_grp->num_res++;
+			}
+
 			CAM_DBG(CAM_ISP, "resource type :0x%x res id:0x%x comp grp id:%d",
 				tfe_out_res->hw_res[j]->res_type,
 				tfe_out_res->hw_res[j]->res_id,
