@@ -284,7 +284,7 @@ int security_vm_enough_memory_mm(struct mm_struct *mm, long pages);
 int security_bprm_creds_for_exec(struct linux_binprm *bprm);
 int security_bprm_creds_from_file(struct linux_binprm *bprm, struct file *file);
 int security_bprm_check(struct linux_binprm *bprm);
-void security_bprm_committing_creds(struct linux_binprm *bprm);
+void security_bprm_committing_creds(const struct linux_binprm *bprm);
 void security_bprm_committed_creds(struct linux_binprm *bprm);
 int security_fs_context_dup(struct fs_context *fc, struct fs_context *src_fc);
 int security_fs_context_parse_param(struct fs_context *fc, struct fs_parameter *param);
@@ -600,7 +600,7 @@ static inline int security_bprm_check(struct linux_binprm *bprm)
 	return 0;
 }
 
-static inline void security_bprm_committing_creds(struct linux_binprm *bprm)
+static inline void security_bprm_committing_creds(const struct linux_binprm *bprm)
 {
 }
 

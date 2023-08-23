@@ -811,7 +811,7 @@ int security_bprm_check(struct linux_binprm *bprm)
 	return ima_bprm_check(bprm);
 }
 
-void security_bprm_committing_creds(struct linux_binprm *bprm)
+void security_bprm_committing_creds(const struct linux_binprm *bprm)
 {
 	call_void_hook(bprm_committing_creds, bprm);
 }
