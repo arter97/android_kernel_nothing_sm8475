@@ -748,7 +748,7 @@ int security_capable(const struct cred *cred,
 	return call_int_hook(capable, 0, cred, ns, cap, opts);
 }
 
-int security_quotactl(int cmds, int type, int id, struct super_block *sb)
+int security_quotactl(int cmds, int type, int id, const struct super_block *sb)
 {
 	return call_int_hook(quotactl, 0, cmds, type, id, sb);
 }
