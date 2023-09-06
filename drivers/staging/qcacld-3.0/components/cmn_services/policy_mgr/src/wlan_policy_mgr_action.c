@@ -2274,8 +2274,9 @@ static bool policy_mgr_valid_sta_channel_check(struct wlan_objmgr_psoc *psoc,
 	    wlan_reg_is_passive_or_disable_for_freq(
 	    pm_ctx->pdev, sta_ch_freq) ||
 	    (wlan_reg_is_freq_indoor(pm_ctx->pdev, sta_ch_freq) &&
-	    !sta_sap_scc_on_indoor_channel) ||
-	    !policy_mgr_is_safe_channel(psoc, sta_ch_freq)) {
+	     !sta_sap_scc_on_indoor_channel) ||
+	    (!policy_mgr_sta_sap_scc_on_lte_coex_chan(psoc) &&
+	     !policy_mgr_is_safe_channel(psoc, sta_ch_freq))) {
 		if (policy_mgr_is_hw_dbs_capable(psoc))
 			return true;
 		else
