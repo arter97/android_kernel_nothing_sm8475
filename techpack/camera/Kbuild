@@ -288,5 +288,5 @@ camera-$(CONFIG_SPECTRA_TFE) += \
 
 camera-y += drivers/camera_main.o
 
-obj-y += camera.o
+obj-m += camera.o
 BOARD_VENDOR_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/camera.ko

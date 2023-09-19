@@ -1,4 +1,4 @@
-obj-y += rmnet_sch.o
+obj-m += rmnet_sch.o
 ccflags-y := $(call cc-option,-Wno-misleading-indentation)
 rmnet_sch-y := \
         rmnet_sch_main.o \

@@ -55,7 +55,7 @@ LINUXINCLUDE    += -I$(VIDEO_ROOT)/driver/vidc/inc \
 USERINCLUDE     += -I$(VIDEO_ROOT)/include/uapi/vidc/media \
                    -I$(VIDEO_ROOT)/include/uapi/vidc
 
-obj-y += msm_video.o
+obj-m += msm_video.o
 
 ifeq ($(CONFIG_MSM_VIDC_WAIPIO), y)
 msm_video-objs += driver/platform/waipio/src/msm_vidc_waipio.o
