@@ -10,7 +10,7 @@ ifeq ($(CONFIG_ARCH_SDXLEMUR), y)
 ccflags-y       += -Wframe-larger-than=2048
 endif
 
-obj-y += rmnet_core.o
+obj-m += rmnet_core.o
 
 #core sources
 rmnet_core-y := \
@@ -37,7 +37,7 @@ rmnet_core-y += \
 	rmnet_ll_qmap.o
 
 ifneq (, $(filter y, $(CONFIG_ARCH_LAHAINA) $(CONFIG_ARCH_WAIPIO) $(CONFIG_ARCH_PARROT)))
-obj-y += rmnet_ctl.o
+obj-m += rmnet_ctl.o
 rmnet_ctl-y := \
 	rmnet_ctl_client.o \
 	rmnet_ctl_ipa.o

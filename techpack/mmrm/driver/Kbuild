@@ -1,7 +1,7 @@
 ifdef CONFIG_MSM_MMRM
 LINUXINCLUDE += -I$(MMRM_ROOT)/driver/src
 
-obj-y += msm-mmrm.o
+obj-m += msm-mmrm.o
 msm-mmrm-objs := src/msm_mmrm.o \
 				src/mmrm_internal.o \
 				src/mmrm_res_parse.o \
