@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -15,6 +15,7 @@
 #include <linux/rwsem.h>
 #include <linux/suspend.h>
 #include <linux/timer.h>
+#include <linux/thermal.h>
 #if IS_ENABLED(CONFIG_QCOM_MINIDUMP)
 #include <soc/qcom/minidump.h>
 #endif
@@ -57,6 +58,7 @@
 #define CNSS_CAL_DB_FILE_NAME "wlfw_cal_db.bin"
 #define CNSS_CAL_START_PROBE_WAIT_RETRY_MAX 100
 #define CNSS_CAL_START_PROBE_WAIT_MS	500
+#define CNSS_TIME_SYNC_PERIOD_INVALID	0xFFFFFFFF
 
 enum cnss_cal_db_op {
 	CNSS_CAL_DB_UPLOAD,
@@ -1060,7 +1062,9 @@ int cnss_idle_restart(struct device *dev)
 	ret = cnss_driver_event_post(plat_priv,
 				     CNSS_DRIVER_EVENT_IDLE_RESTART,
 				     CNSS_EVENT_SYNC_UNINTERRUPTIBLE, NULL);
-	if (ret)
+	if (ret == -EINTR && plat_priv->device_id != QCA6174_DEVICE_ID)
+		cnss_pr_err("Idle restart has been interrupted but device power up is still in progress");
+	else if (ret)
 		goto out;
 
 	if (plat_priv->device_id == QCA6174_DEVICE_ID) {
@@ -1595,18 +1599,29 @@ static void cnss_recovery_work_handler(struct work_struct *work)
 {
 }
 #else
-static void cnss_recovery_work_handler(struct work_struct *work)
+void cnss_recovery_handler(struct cnss_plat_data *plat_priv)
 {
 	int ret;
 
-	struct cnss_plat_data *plat_priv =
-		container_of(work, struct cnss_plat_data, recovery_work);
+	set_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state);
 
 	if (!plat_priv->recovery_enabled)
 		panic("subsys-restart: Resetting the SoC wlan crashed\n");
 
 	cnss_bus_dev_shutdown(plat_priv);
 	cnss_bus_dev_ramdump(plat_priv);
+
+	/* If recovery is triggered before Host driver registration,
+	 * avoid device power up because eventually device will be
+	 * power up as part of driver registration.
+	 */
+	if (!test_bit(CNSS_DRIVER_REGISTER, &plat_priv->driver_state) ||
+	    !test_bit(CNSS_DRIVER_REGISTERED, &plat_priv->driver_state)) {
+		cnss_pr_dbg("Host driver not registered yet, ignore Device Power Up, 0x%lx\n",
+			    plat_priv->driver_state);
+		return;
+	}
+
 	msleep(POWER_RESET_MIN_DELAY_MS);
 
 	ret = cnss_bus_dev_powerup(plat_priv);
@@ -1614,6 +1629,14 @@ static void cnss_recovery_work_handler(struct work_struct *work)
 		__pm_relax(plat_priv->recovery_ws);
 
 	return;
+}
+
+static void cnss_recovery_work_handler(struct work_struct *work)
+{
+	struct cnss_plat_data *plat_priv =
+		container_of(work, struct cnss_plat_data, recovery_work);
+
+	cnss_recovery_handler(plat_priv);
 }
 
 void cnss_device_crashed(struct device *dev)
@@ -1722,6 +1745,18 @@ self_recovery:
 	if (test_bit(LINK_DOWN_SELF_RECOVERY, &plat_priv->ctrl_params.quirks))
 		clear_bit(LINK_DOWN_SELF_RECOVERY,
 			  &plat_priv->ctrl_params.quirks);
+
+	/* If link down self recovery is triggered before Host driver
+	 * registration, avoid device power up because eventually device
+	 * will be power up as part of driver registration.
+	 */
+
+	if (!test_bit(CNSS_DRIVER_REGISTER, &plat_priv->driver_state) ||
+	    !test_bit(CNSS_DRIVER_REGISTERED, &plat_priv->driver_state)) {
+		cnss_pr_dbg("Host driver not registered yet, ignore Device Power Up, 0x%lx\n",
+			    plat_priv->driver_state);
+		return 0;
+	}
 
 	cnss_bus_dev_powerup(plat_priv);
 
@@ -3152,6 +3187,26 @@ static ssize_t time_sync_period_show(struct device *dev,
 			plat_priv->ctrl_params.time_sync_period);
 }
 
+/**
+ * cnss_get_min_time_sync_period_by_vote() - Get minimum time sync period
+ * @plat_priv: Platform data structure
+ *
+ * Result: return minimum time sync period present in vote from wlan and sys
+ */
+uint32_t cnss_get_min_time_sync_period_by_vote(struct cnss_plat_data *plat_priv)
+{
+	unsigned int i, min_time_sync_period = CNSS_TIME_SYNC_PERIOD_INVALID;
+	unsigned int time_sync_period;
+
+	for (i = 0; i < TIME_SYNC_VOTE_MAX; i++) {
+		time_sync_period = plat_priv->ctrl_params.time_sync_period_vote[i];
+		if (min_time_sync_period > time_sync_period)
+			min_time_sync_period = time_sync_period;
+	}
+
+	return min_time_sync_period;
+}
+
 static ssize_t time_sync_period_store(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count)
@@ -3167,11 +3222,93 @@ static ssize_t time_sync_period_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	if (time_sync_period >= CNSS_MIN_TIME_SYNC_PERIOD)
-		cnss_bus_update_time_sync_period(plat_priv, time_sync_period);
+	if (time_sync_period < CNSS_MIN_TIME_SYNC_PERIOD) {
+		cnss_pr_err("Invalid time sync value\n");
+		return -EINVAL;
+	}
+	plat_priv->ctrl_params.time_sync_period_vote[TIME_SYNC_VOTE_CNSS] =
+		time_sync_period;
+	time_sync_period = cnss_get_min_time_sync_period_by_vote(plat_priv);
+
+	if (time_sync_period == CNSS_TIME_SYNC_PERIOD_INVALID) {
+		cnss_pr_err("Invalid min time sync value\n");
+		return -EINVAL;
+	}
+
+	cnss_bus_update_time_sync_period(plat_priv, time_sync_period);
 
 	return count;
 }
+
+/**
+ * cnss_update_time_sync_period() - Set time sync period given by driver
+ * @dev: device structure
+ * @time_sync_period: time sync period value
+ *
+ * Update time sync period vote of driver and set minimum of time sync period
+ * from stored vote through wlan and sys config
+ * Result: return 0 for success, error in case of invalid value and no dev
+ */
+int cnss_update_time_sync_period(struct device *dev, uint32_t time_sync_period)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+
+	if (!plat_priv)
+		return -ENODEV;
+
+	if (time_sync_period < CNSS_MIN_TIME_SYNC_PERIOD) {
+		cnss_pr_err("Invalid time sync value\n");
+		return -EINVAL;
+	}
+
+	plat_priv->ctrl_params.time_sync_period_vote[TIME_SYNC_VOTE_WLAN] =
+		time_sync_period;
+	time_sync_period = cnss_get_min_time_sync_period_by_vote(plat_priv);
+
+	if (time_sync_period == CNSS_TIME_SYNC_PERIOD_INVALID) {
+		cnss_pr_err("Invalid min time sync value\n");
+		return -EINVAL;
+	}
+
+	cnss_bus_update_time_sync_period(plat_priv, time_sync_period);
+	return 0;
+}
+EXPORT_SYMBOL(cnss_update_time_sync_period);
+
+/**
+ * cnss_reset_time_sync_period() - Reset time sync period
+ * @dev: device structure
+ *
+ * Update time sync period vote of driver as invalid
+ * and reset minimum of time sync period from
+ * stored vote through wlan and sys config
+ * Result: return 0 for success, error in case of no dev
+ */
+int cnss_reset_time_sync_period(struct device *dev)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+	unsigned int time_sync_period = 0;
+
+	if (!plat_priv)
+		return -ENODEV;
+
+	/* Driver vote is set to invalid in case of reset
+	 * In this case, only vote valid to check is sys config
+	 */
+	plat_priv->ctrl_params.time_sync_period_vote[TIME_SYNC_VOTE_WLAN] =
+		CNSS_TIME_SYNC_PERIOD_INVALID;
+	time_sync_period = cnss_get_min_time_sync_period_by_vote(plat_priv);
+
+	if (time_sync_period == CNSS_TIME_SYNC_PERIOD_INVALID) {
+		cnss_pr_err("Invalid min time sync value\n");
+		return -EINVAL;
+	}
+
+	cnss_bus_update_time_sync_period(plat_priv, time_sync_period);
+
+	return 0;
+}
+EXPORT_SYMBOL(cnss_reset_time_sync_period);
 
 static ssize_t recovery_store(struct device *dev,
 			      struct device_attribute *attr,
@@ -3205,14 +3342,15 @@ static ssize_t shutdown_store(struct device *dev,
 {
 	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
 
+	cnss_pr_dbg("Received shutdown notification\n");
 	if (plat_priv) {
 		set_bit(CNSS_IN_REBOOT, &plat_priv->driver_state);
+		cnss_bus_update_status(plat_priv, CNSS_SYS_REBOOT);
 		del_timer(&plat_priv->fw_boot_timer);
 		complete_all(&plat_priv->power_up_complete);
 		complete_all(&plat_priv->cal_complete);
+		cnss_pr_dbg("Shutdown notification handled\n");
 	}
-
-	cnss_pr_dbg("Received shutdown notification\n");
 
 	return count;
 }
@@ -3453,6 +3591,7 @@ static int cnss_reboot_notifier(struct notifier_block *nb,
 		container_of(nb, struct cnss_plat_data, reboot_nb);
 
 	set_bit(CNSS_IN_REBOOT, &plat_priv->driver_state);
+	cnss_bus_update_status(plat_priv, CNSS_SYS_REBOOT);
 	del_timer(&plat_priv->fw_boot_timer);
 	complete_all(&plat_priv->power_up_complete);
 	complete_all(&plat_priv->cal_complete);
@@ -3531,6 +3670,15 @@ static void cnss_misc_deinit(struct cnss_plat_data *plat_priv)
 	wakeup_source_unregister(plat_priv->recovery_ws);
 	cnss_deinit_sol_gpio(plat_priv);
 	kfree(plat_priv->sram_dump);
+	kfree(plat_priv->on_chip_pmic_board_ids);
+}
+
+static void cnss_init_time_sync_period_default(struct cnss_plat_data *plat_priv)
+{
+	plat_priv->ctrl_params.time_sync_period_vote[TIME_SYNC_VOTE_WLAN] =
+		CNSS_TIME_SYNC_PERIOD_INVALID;
+	plat_priv->ctrl_params.time_sync_period_vote[TIME_SYNC_VOTE_CNSS] =
+		CNSS_TIME_SYNC_PERIOD_DEFAULT;
 }
 
 static void cnss_init_control_params(struct cnss_plat_data *plat_priv)
@@ -3546,6 +3694,7 @@ static void cnss_init_control_params(struct cnss_plat_data *plat_priv)
 	plat_priv->ctrl_params.qmi_timeout = CNSS_QMI_TIMEOUT_DEFAULT;
 	plat_priv->ctrl_params.bdf_type = CNSS_BDF_TYPE_DEFAULT;
 	plat_priv->ctrl_params.time_sync_period = CNSS_TIME_SYNC_PERIOD_DEFAULT;
+	cnss_init_time_sync_period_default(plat_priv);
 	/* Set adsp_pc_enabled default value to true as ADSP pc is always
 	 * enabled by default
 	 */
@@ -3640,6 +3789,193 @@ int cnss_set_wfc_mode(struct device *dev, struct cnss_wfc_cfg cfg)
 	return ret;
 }
 EXPORT_SYMBOL(cnss_set_wfc_mode);
+
+static int cnss_tcdev_get_max_state(struct thermal_cooling_device *tcdev,
+				    unsigned long *thermal_state)
+{
+	struct cnss_thermal_cdev *cnss_tcdev = NULL;
+
+	if (!tcdev || !tcdev->devdata) {
+		cnss_pr_err("tcdev or tcdev->devdata is null!\n");
+		return -EINVAL;
+	}
+
+	cnss_tcdev = tcdev->devdata;
+	*thermal_state = cnss_tcdev->max_thermal_state;
+
+	return 0;
+}
+
+static int cnss_tcdev_get_cur_state(struct thermal_cooling_device *tcdev,
+				    unsigned long *thermal_state)
+{
+	struct cnss_thermal_cdev *cnss_tcdev = NULL;
+
+	if (!tcdev || !tcdev->devdata) {
+		cnss_pr_err("tcdev or tcdev->devdata is null!\n");
+		return -EINVAL;
+	}
+
+	cnss_tcdev = tcdev->devdata;
+	*thermal_state = cnss_tcdev->curr_thermal_state;
+
+	return 0;
+}
+
+static int cnss_tcdev_set_cur_state(struct thermal_cooling_device *tcdev,
+				    unsigned long thermal_state)
+{
+	struct cnss_thermal_cdev *cnss_tcdev = NULL;
+	struct cnss_plat_data *plat_priv =  cnss_get_plat_priv(NULL);
+	int ret = 0;
+
+	if (!tcdev || !tcdev->devdata) {
+		cnss_pr_err("tcdev or tcdev->devdata is null!\n");
+		return -EINVAL;
+	}
+
+	cnss_tcdev = tcdev->devdata;
+
+	if (thermal_state > cnss_tcdev->max_thermal_state)
+		return -EINVAL;
+
+	cnss_pr_vdbg("Cooling device set current state: %ld,for cdev id %d",
+		     thermal_state, cnss_tcdev->tcdev_id);
+
+	mutex_lock(&plat_priv->tcdev_lock);
+	ret = cnss_bus_set_therm_cdev_state(plat_priv,
+					    thermal_state,
+					    cnss_tcdev->tcdev_id);
+	if (!ret)
+		cnss_tcdev->curr_thermal_state = thermal_state;
+	mutex_unlock(&plat_priv->tcdev_lock);
+	if (ret) {
+		cnss_pr_err("Setting Current Thermal State Failed: %d,for cdev id %d",
+			    ret, cnss_tcdev->tcdev_id);
+		return ret;
+	}
+
+	return 0;
+}
+
+static struct thermal_cooling_device_ops cnss_cooling_ops = {
+	.get_max_state = cnss_tcdev_get_max_state,
+	.get_cur_state = cnss_tcdev_get_cur_state,
+	.set_cur_state = cnss_tcdev_set_cur_state,
+};
+
+int cnss_thermal_cdev_register(struct device *dev, unsigned long max_state,
+			       int tcdev_id)
+{
+	struct cnss_plat_data *priv = cnss_get_plat_priv(NULL);
+	struct cnss_thermal_cdev *cnss_tcdev = NULL;
+	char cdev_node_name[THERMAL_NAME_LENGTH] = "";
+	struct device_node *dev_node;
+	int ret = 0;
+
+	if (!priv) {
+		cnss_pr_err("Platform driver is not initialized!\n");
+		return -ENODEV;
+	}
+
+	cnss_tcdev = kzalloc(sizeof(*cnss_tcdev), GFP_KERNEL);
+	if (!cnss_tcdev)
+		return -ENOMEM;
+
+	cnss_tcdev->tcdev_id = tcdev_id;
+	cnss_tcdev->max_thermal_state = max_state;
+
+	snprintf(cdev_node_name, THERMAL_NAME_LENGTH,
+		 "qcom,cnss_cdev%d", tcdev_id);
+
+	dev_node = of_find_node_by_name(NULL, cdev_node_name);
+	if (!dev_node) {
+		cnss_pr_err("Failed to get cooling device node\n");
+		kfree(cnss_tcdev);
+		return -EINVAL;
+	}
+
+	cnss_pr_dbg("tcdev node->name=%s\n", dev_node->name);
+
+	if (of_find_property(dev_node, "#cooling-cells", NULL)) {
+		cnss_tcdev->tcdev = thermal_of_cooling_device_register(dev_node,
+								       cdev_node_name,
+								       cnss_tcdev,
+								       &cnss_cooling_ops);
+		if (IS_ERR_OR_NULL(cnss_tcdev->tcdev)) {
+			ret = PTR_ERR(cnss_tcdev->tcdev);
+			cnss_pr_err("Cooling device register failed: %d, for cdev id %d\n",
+				    ret, cnss_tcdev->tcdev_id);
+			kfree(cnss_tcdev);
+		} else {
+			cnss_pr_dbg("Cooling device registered for cdev id %d",
+				    cnss_tcdev->tcdev_id);
+			mutex_lock(&priv->tcdev_lock);
+			list_add(&cnss_tcdev->tcdev_list,
+				 &priv->cnss_tcdev_list);
+			mutex_unlock(&priv->tcdev_lock);
+		}
+	} else {
+		cnss_pr_dbg("Cooling device registration not supported");
+		kfree(cnss_tcdev);
+		ret = -EOPNOTSUPP;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(cnss_thermal_cdev_register);
+
+void cnss_thermal_cdev_unregister(struct device *dev, int tcdev_id)
+{
+	struct cnss_plat_data *priv = cnss_get_plat_priv(NULL);
+	struct cnss_thermal_cdev *cnss_tcdev = NULL;
+
+	if (!priv) {
+		cnss_pr_err("Platform driver is not initialized!\n");
+		return;
+	}
+
+	mutex_lock(&priv->tcdev_lock);
+	while (!list_empty(&priv->cnss_tcdev_list)) {
+		cnss_tcdev = list_first_entry(&priv->cnss_tcdev_list,
+					      struct cnss_thermal_cdev,
+					      tcdev_list);
+		thermal_cooling_device_unregister(cnss_tcdev->tcdev);
+		list_del(&cnss_tcdev->tcdev_list);
+		kfree(cnss_tcdev);
+	}
+	mutex_unlock(&priv->tcdev_lock);
+}
+EXPORT_SYMBOL(cnss_thermal_cdev_unregister);
+
+int cnss_get_curr_therm_cdev_state(struct device *dev,
+				   unsigned long *thermal_state,
+				   int tcdev_id)
+{
+	struct cnss_plat_data *priv = cnss_get_plat_priv(NULL);
+	struct cnss_thermal_cdev *cnss_tcdev = NULL;
+
+	if (!priv) {
+		cnss_pr_err("Platform driver is not initialized!\n");
+		return -ENODEV;
+	}
+
+	mutex_lock(&priv->tcdev_lock);
+	list_for_each_entry(cnss_tcdev, &priv->cnss_tcdev_list, tcdev_list) {
+		if (cnss_tcdev->tcdev_id != tcdev_id)
+			continue;
+
+		*thermal_state = cnss_tcdev->curr_thermal_state;
+		mutex_unlock(&priv->tcdev_lock);
+		cnss_pr_dbg("Cooling device current state: %ld, for cdev id %d",
+			    cnss_tcdev->curr_thermal_state, tcdev_id);
+		return 0;
+	}
+	mutex_unlock(&priv->tcdev_lock);
+	cnss_pr_dbg("Cooling device ID not found: %d", tcdev_id);
+	return -EINVAL;
+}
+EXPORT_SYMBOL(cnss_get_curr_therm_cdev_state);
 
 static int cnss_probe(struct platform_device *plat_dev)
 {
@@ -3751,6 +4087,9 @@ retry:
 
 	cnss_register_coex_service(plat_priv);
 	cnss_register_ims_service(plat_priv);
+
+	mutex_init(&plat_priv->tcdev_lock);
+	INIT_LIST_HEAD(&plat_priv->cnss_tcdev_list);
 
 	ret = cnss_genl_init();
 	if (ret < 0)

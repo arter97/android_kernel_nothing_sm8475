@@ -1279,6 +1279,7 @@ int unregister_vmap_purge_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL_GPL(unregister_vmap_purge_notifier);
 
+bool lazy_vunmap_enable  __read_mostly = true;
 /*
  * lazy_max_pages is the maximum amount of virtual address space we gather up
  * before attempting to purge with a TLB flush.
@@ -1298,6 +1299,9 @@ EXPORT_SYMBOL_GPL(unregister_vmap_purge_notifier);
 static unsigned long lazy_max_pages(void)
 {
 	unsigned int log;
+
+	if (!lazy_vunmap_enable)
+		return 0;
 
 	log = fls(num_online_cpus());
 

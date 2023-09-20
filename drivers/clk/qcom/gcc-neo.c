@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -989,7 +989,7 @@ static struct clk_rcg2 gcc_sdcc1_apps_clk_src = {
 		.name = "gcc_sdcc1_apps_clk_src",
 		.parent_data = gcc_parent_data_6,
 		.num_parents = ARRAY_SIZE(gcc_parent_data_6),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_floor_ops,
 	},
 	.clkr.vdd_data = {
 		.vdd_classes = gcc_neo_regulators,
@@ -1019,7 +1019,7 @@ static struct clk_rcg2 gcc_sdcc1_ice_core_clk_src = {
 		.name = "gcc_sdcc1_ice_core_clk_src",
 		.parent_data = gcc_parent_data_7,
 		.num_parents = ARRAY_SIZE(gcc_parent_data_7),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_floor_ops,
 	},
 	.clkr.vdd_data = {
 		.vdd_classes = gcc_neo_regulators,
@@ -1178,6 +1178,7 @@ static struct clk_branch gcc_camera_hf_axi_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_camera_hf_axi_clk",
+			.flags = CLK_DONT_HOLD_STATE,
 			.ops = &clk_branch2_aon_ops,
 		},
 	},
@@ -1191,6 +1192,7 @@ static struct clk_branch gcc_camera_sf_axi_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_camera_sf_axi_clk",
+			.flags = CLK_DONT_HOLD_STATE,
 			.ops = &clk_branch2_aon_ops,
 		},
 	},
@@ -1755,6 +1757,7 @@ static struct clk_branch gcc_qmip_camera_nrt_ahb_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_qmip_camera_nrt_ahb_clk",
+			.flags = CLK_DONT_HOLD_STATE,
 			.ops = &clk_branch2_aon_ops,
 		},
 	},
@@ -1768,6 +1771,7 @@ static struct clk_branch gcc_qmip_camera_rt_ahb_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_qmip_camera_rt_ahb_clk",
+			.flags = CLK_DONT_HOLD_STATE,
 			.ops = &clk_branch2_aon_ops,
 		},
 	},

@@ -2192,15 +2192,6 @@ static inline int f2fs_down_read_trylock(struct f2fs_rwsem *sem)
 	return down_read_trylock(&sem->internal_rwsem);
 }
 
-#ifdef CONFIG_DEBUG_LOCK_ALLOC
-static inline void f2fs_down_read_nested(struct f2fs_rwsem *sem, int subclass)
-{
-	down_read_nested(&sem->internal_rwsem, subclass);
-}
-#else
-#define f2fs_down_read_nested(sem, subclass) f2fs_down_read(sem)
-#endif
-
 static inline void f2fs_up_read(struct f2fs_rwsem *sem)
 {
 	up_read(&sem->internal_rwsem);
@@ -2210,6 +2201,21 @@ static inline void f2fs_down_write(struct f2fs_rwsem *sem)
 {
 	down_write(&sem->internal_rwsem);
 }
+
+#ifdef CONFIG_DEBUG_LOCK_ALLOC
+static inline void f2fs_down_read_nested(struct f2fs_rwsem *sem, int subclass)
+{
+	down_read_nested(&sem->internal_rwsem, subclass);
+}
+
+static inline void f2fs_down_write_nested(struct f2fs_rwsem *sem, int subclass)
+{
+	down_write_nested(&sem->internal_rwsem, subclass);
+}
+#else
+#define f2fs_down_read_nested(sem, subclass) f2fs_down_read(sem)
+#define f2fs_down_write_nested(sem, subclass) f2fs_down_write(sem)
+#endif
 
 static inline int f2fs_down_write_trylock(struct f2fs_rwsem *sem)
 {
@@ -3854,7 +3860,7 @@ void f2fs_stop_gc_thread(struct f2fs_sb_info *sbi);
 block_t f2fs_start_bidx_of_node(unsigned int node_ofs, struct inode *inode);
 int f2fs_gc(struct f2fs_sb_info *sbi, struct f2fs_gc_control *gc_control);
 void f2fs_build_gc_manager(struct f2fs_sb_info *sbi);
-int f2fs_resize_fs(struct f2fs_sb_info *sbi, __u64 block_count);
+int f2fs_resize_fs(struct file *filp, __u64 block_count);
 int __init f2fs_create_garbage_collection_cache(void);
 void f2fs_destroy_garbage_collection_cache(void);
 

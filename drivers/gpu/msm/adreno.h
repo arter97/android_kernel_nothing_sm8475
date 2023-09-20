@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __ADRENO_H
 #define __ADRENO_H
@@ -28,8 +28,6 @@
 /* Used to inform CP where to save preemption counter data at the time of switch out */
 #define SET_PSEUDO_COUNTER 4
 
-/* Index to preemption scratch buffer to store KMD postamble */
-#define KMD_POSTAMBLE_IDX 100
 /* Index to preemption scratch buffer to store current QOS value */
 #define QOS_VALUE_IDX KGSL_PRIORITY_MAX_RB_LEVELS
 
@@ -414,6 +412,8 @@ struct adreno_power_ops {
 	/** @gpu_bus_set: Target specific function to set gpu bandwidth */
 	int (*gpu_bus_set)(struct adreno_device *adreno_dev, int bus_level,
 		u32 ab);
+	/** @register_gdsc_notifier: Target specific function to register gdsc notifier */
+	int (*register_gdsc_notifier)(struct adreno_device *adreno_dev);
 };
 
 /**
@@ -728,10 +728,14 @@ enum adreno_device_flags {
  * kernel profiling buffer
  * @started: Number of GPU ticks at start of the drawobj
  * @retired: Number of GPU ticks at the end of the drawobj
+ * @ctx_start: CP_ALWAYS_ON_CONTEXT tick at start of the drawobj
+ * @ctx_end: CP_ALWAYS_ON_CONTEXT tick at end of the drawobj
  */
 struct adreno_drawobj_profile_entry {
 	uint64_t started;
 	uint64_t retired;
+	uint64_t ctx_start;
+	uint64_t ctx_end;
 };
 
 #define ADRENO_DRAWOBJ_PROFILE_OFFSET(_index, _member) \
@@ -1079,6 +1083,12 @@ ADRENO_TARGET(gen7_0_1, ADRENO_REV_GEN7_0_1)
 ADRENO_TARGET(gen7_4_0, ADRENO_REV_GEN7_4_0)
 ADRENO_TARGET(gen7_3_0, ADRENO_REV_GEN7_3_0)
 ADRENO_TARGET(gen7_6_0, ADRENO_REV_GEN7_6_0)
+
+static inline int adreno_is_gen7_0_x_family(struct adreno_device *adreno_dev)
+{
+	return adreno_is_gen7_0_0(adreno_dev) || adreno_is_gen7_0_1(adreno_dev) ||
+		adreno_is_gen7_4_0(adreno_dev) || adreno_is_gen7_3_0(adreno_dev);
+}
 
 /*
  * adreno_checkreg_off() - Checks the validity of a register enum

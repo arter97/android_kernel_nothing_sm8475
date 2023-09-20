@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2021, Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/acpi.h>
@@ -2101,6 +2101,19 @@ static void ufs_qcom_override_pa_h8time(struct ufs_hba *hba)
 
 }
 
+static void ufs_qcom_override_pa_tx_hsg1_sync_len(struct ufs_hba *hba)
+{
+#define PA_TX_HSG1_SYNC_LENGTH 0x1552
+	int err;
+	int sync_len_val = 0x4A;
+
+	err = ufshcd_dme_peer_set(hba, UIC_ARG_MIB(PA_TX_HSG1_SYNC_LENGTH),
+				sync_len_val);
+	if (err)
+		dev_err(hba->dev, "Failed (%d) set PA_TX_HSG1_SYNC_LENGTH(%d)\n",
+				err, sync_len_val);
+}
+
 static inline bool
 ufshcd_is_valid_pm_lvl(enum ufs_pm_level lvl)
 {
@@ -2245,6 +2258,9 @@ static int ufs_qcom_apply_dev_quirks(struct ufs_hba *hba)
 
 	if (hba->dev_quirks & UFS_DEVICE_QUIRK_PA_HIBER8TIME)
 		ufs_qcom_override_pa_h8time(hba);
+
+	if (hba->dev_quirks & UFS_DEVICE_QUIRK_PA_TX_HSG1_SYNC_LENGTH)
+		ufs_qcom_override_pa_tx_hsg1_sync_len(hba);
 
 	ufshcd_parse_pm_levels(hba);
 
@@ -2801,13 +2817,13 @@ ufs_qcom_ioctl(struct scsi_device *dev, unsigned int cmd, void __user *buffer)
 	int err = 0;
 
 	BUG_ON(!hba);
-	if (!buffer) {
-		dev_err(hba->dev, "%s: User buffer is NULL!\n", __func__);
-		return -EINVAL;
-	}
 
 	switch (cmd) {
 	case UFS_IOCTL_QUERY:
+		if (!buffer) {
+			dev_err(hba->dev, "%s: User buffer is NULL!\n", __func__);
+			return -EINVAL;
+		}
 		pm_runtime_get_sync(hba->dev);
 		err = ufs_qcom_query_ioctl(hba,
 					   ufshcd_scsi_to_upiu_lun(dev->lun),
@@ -4477,7 +4493,8 @@ static void ufs_qcom_config_scaling_param(struct ufs_hba *hba,
 
 static struct ufs_dev_fix ufs_qcom_dev_fixups[] = {
 	UFS_FIX(UFS_VENDOR_SAMSUNG, UFS_ANY_MODEL,
-		UFS_DEVICE_QUIRK_PA_HIBER8TIME),
+		UFS_DEVICE_QUIRK_PA_HIBER8TIME |
+		UFS_DEVICE_QUIRK_PA_TX_HSG1_SYNC_LENGTH),
 	UFS_FIX(UFS_VENDOR_MICRON, UFS_ANY_MODEL,
 		UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM),
 	UFS_FIX(UFS_VENDOR_SKHYNIX, UFS_ANY_MODEL,

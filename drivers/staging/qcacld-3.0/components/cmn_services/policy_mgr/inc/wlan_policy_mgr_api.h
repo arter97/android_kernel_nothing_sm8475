@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1118,6 +1118,7 @@ policy_mgr_nan_sap_pre_enable_conc_check(struct wlan_objmgr_psoc *psoc,
  * @psoc:	PSOC object information
  * @mode:	connection mode
  * @ch_freq:	target channel frequency to switch
+ * @bw:	target channel bandwidth
  * @vdev_id:	vdev id of channel switch interface
  * @forced:	forced to chan switch.
  * @reason:	request reason of CSA
@@ -1137,8 +1138,17 @@ policy_mgr_nan_sap_pre_enable_conc_check(struct wlan_objmgr_psoc *psoc,
 bool
 policy_mgr_allow_concurrency_csa(struct wlan_objmgr_psoc *psoc,
 				 enum policy_mgr_con_mode mode,
-				 uint32_t ch_freq, uint32_t vdev_id,
-				 bool forced, enum sap_csa_reason_code reason);
+				 uint32_t ch_freq, enum hw_mode_bandwidth bw,
+				 uint32_t vdev_id, bool forced,
+				 enum sap_csa_reason_code reason);
+
+/**
+ * policy_mgr_get_bw() - Convert phy_ch_width to hw_mode_bandwidth.
+ * @chan_width: phy_ch_width
+ *
+ * Return: hw_mode_bandwidth
+ */
+enum hw_mode_bandwidth policy_mgr_get_bw(enum phy_ch_width chan_width);
 
 /**
  * policy_mgr_get_first_connection_pcl_table_index() - provides the
@@ -4347,4 +4357,18 @@ policy_mgr_is_conc_sap_present_on_sta_freq(struct wlan_objmgr_psoc *psoc,
  * Return: number of active connection on the specific frequency
  */
 uint32_t policy_mgr_get_connection_count_with_ch_freq(uint32_t ch_freq);
+
+/**
+ * policy_mgr_any_other_vdev_on_same_mac_as_freq() - Function to check
+ * whether more than one vdev are present on same mac or not
+ * @psoc: PSOC object
+ * @freq: Channel frequency
+ * @vdev_id: Vdev id
+ *
+ * Return: True if more than one vdev are present on same mac
+ *
+ */
+bool policy_mgr_any_other_vdev_on_same_mac_as_freq(
+				struct wlan_objmgr_psoc *psoc,
+				uint32_t freq, uint8_t vdev_id);
 #endif /* __WLAN_POLICY_MGR_API_H */

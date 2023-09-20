@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3961,6 +3961,39 @@ QDF_STATUS sme_neighbor_report_request(
 	}
 
 	return status;
+}
+
+void sme_register_ssr_on_pagefault_cb(mac_handle_t mac_handle,
+				      void (*hdd_ssr_on_pagefault_cb)(void))
+{
+	QDF_STATUS status;
+	struct mac_context *mac = MAC_CONTEXT(mac_handle);
+
+	SME_ENTER();
+
+	status = sme_acquire_global_lock(&mac->sme);
+	if (QDF_IS_STATUS_SUCCESS(status)) {
+		mac->sme.ssr_on_pagefault_cb = hdd_ssr_on_pagefault_cb;
+		sme_release_global_lock(&mac->sme);
+	}
+
+	SME_EXIT();
+}
+
+void sme_deregister_ssr_on_pagefault_cb(mac_handle_t mac_handle)
+{
+	QDF_STATUS status;
+	struct mac_context *mac = MAC_CONTEXT(mac_handle);
+
+	SME_ENTER();
+
+	status = sme_acquire_global_lock(&mac->sme);
+	if (QDF_IS_STATUS_SUCCESS(status)) {
+		mac->sme.ssr_on_pagefault_cb = NULL;
+		sme_release_global_lock(&mac->sme);
+	}
+
+	SME_EXIT();
 }
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
@@ -12035,13 +12068,11 @@ QDF_STATUS sme_soc_set_antenna_mode(mac_handle_t mac_handle,
 /**
  * sme_set_peer_authorized() - call peer authorized callback
  * @peer_addr: peer mac address
- * @auth_cb: auth callback
  * @vdev_id: vdev id
  *
  * Return: QDF Status
  */
 QDF_STATUS sme_set_peer_authorized(uint8_t *peer_addr,
-				   sme_peer_authorized_fp auth_cb,
 				   uint32_t vdev_id)
 {
 	void *wma_handle;
@@ -12050,7 +12081,6 @@ QDF_STATUS sme_set_peer_authorized(uint8_t *peer_addr,
 	if (!wma_handle)
 		return QDF_STATUS_E_FAILURE;
 
-	wma_set_peer_authorized_cb(wma_handle, auth_cb);
 	return wma_set_peer_param(wma_handle, peer_addr, WMI_PEER_AUTHORIZE,
 				  1, vdev_id);
 }
@@ -15167,6 +15197,24 @@ sme_get_roam_scan_stats(mac_handle_t mac_handle,
 	return status;
 }
 
+#ifdef WLAN_FEATURE_11BE
+static inline bool sme_is_phy_mode_11be(eCsrPhyMode phy_mode)
+{
+	if (phy_mode == eCSR_DOT11_MODE_AUTO ||
+	    CSR_IS_DOT11_PHY_MODE_11BE(phy_mode) ||
+	    CSR_IS_DOT11_PHY_MODE_11BE_ONLY(phy_mode)) {
+		return true;
+	}
+
+	return false;
+}
+#else
+static inline bool sme_is_phy_mode_11be(eCsrPhyMode phy_mode)
+{
+	return false;
+}
+#endif
+
 void sme_update_score_config(mac_handle_t mac_handle, eCsrPhyMode phy_mode,
 			     uint8_t num_rf_chains)
 {
@@ -15184,15 +15232,13 @@ void sme_update_score_config(mac_handle_t mac_handle, eCsrPhyMode phy_mode,
 
 	config.vdev_nss_24g = vdev_ini_cfg.rx_nss[NSS_CHAINS_BAND_2GHZ];
 	config.vdev_nss_5g = vdev_ini_cfg.rx_nss[NSS_CHAINS_BAND_5GHZ];
-#ifdef WLAN_FEATURE_11BE
-	if (phy_mode == eCSR_DOT11_MODE_AUTO ||
-	    CSR_IS_DOT11_PHY_MODE_11BE(phy_mode) ||
-	    CSR_IS_DOT11_PHY_MODE_11BE_ONLY(phy_mode)) {
+
+	if (sme_is_phy_mode_11be(phy_mode))
 		config.eht_cap = 1;
-		config.he_cap = 1;
-	}
-#endif
-	if (phy_mode == eCSR_DOT11_MODE_11ax ||
+
+	if (config.eht_cap ||
+	    phy_mode == eCSR_DOT11_MODE_AUTO ||
+	    phy_mode == eCSR_DOT11_MODE_11ax ||
 	    phy_mode == eCSR_DOT11_MODE_11ax_ONLY)
 		config.he_cap = 1;
 
@@ -16088,7 +16134,8 @@ static inline bool sme_is_11be_capable(void)
 
 QDF_STATUS sme_send_set_mac_addr(struct qdf_mac_addr mac_addr,
 				 struct qdf_mac_addr mld_addr,
-				 struct wlan_objmgr_vdev *vdev)
+				 struct wlan_objmgr_vdev *vdev,
+				 bool update_mld_addr)
 {
 	enum QDF_OPMODE vdev_opmode;
 	struct qdf_mac_addr vdev_mac_addr = mac_addr;
@@ -16108,7 +16155,8 @@ QDF_STATUS sme_send_set_mac_addr(struct qdf_mac_addr mac_addr,
 			return qdf_ret_status;
 	}
 
-	if (sme_is_11be_capable() && (vdev_opmode == QDF_STA_MODE)) {
+	if ((vdev_opmode == QDF_STA_MODE) &&
+	    sme_is_11be_capable() && update_mld_addr) {
 		/* Set new MAC addr as MLD address incase of MLO */
 		mld_addr = mac_addr;
 		qdf_mem_copy(&vdev_mac_addr, wlan_vdev_mlme_get_linkaddr(vdev),
@@ -16146,7 +16194,8 @@ QDF_STATUS sme_send_set_mac_addr(struct qdf_mac_addr mac_addr,
 QDF_STATUS sme_update_vdev_mac_addr(struct wlan_objmgr_psoc *psoc,
 				    struct qdf_mac_addr mac_addr,
 				    struct wlan_objmgr_vdev *vdev,
-				    bool update_sta_self_peer, int req_status)
+				    bool update_sta_self_peer,
+				    bool update_mld_addr, int req_status)
 {
 	enum QDF_OPMODE vdev_opmode;
 	uint8_t *old_mac_addr_bytes;
@@ -16165,7 +16214,7 @@ QDF_STATUS sme_update_vdev_mac_addr(struct wlan_objmgr_psoc *psoc,
 		goto p2p_self_peer_create;
 
 	if ((vdev_opmode == QDF_STA_MODE) && update_sta_self_peer) {
-		if (sme_is_11be_capable())
+		if (sme_is_11be_capable() && update_mld_addr)
 			old_mac_addr_bytes = wlan_vdev_mlme_get_mldaddr(vdev);
 		else
 			old_mac_addr_bytes = wlan_vdev_mlme_get_macaddr(vdev);
@@ -16191,7 +16240,8 @@ QDF_STATUS sme_update_vdev_mac_addr(struct wlan_objmgr_psoc *psoc,
 	}
 
 	/* Update VDEV MAC address */
-	if ((vdev_opmode == QDF_STA_MODE) && sme_is_11be_capable()) {
+	if ((vdev_opmode == QDF_STA_MODE)
+	    && sme_is_11be_capable() && update_mld_addr) {
 		if (update_sta_self_peer) {
 			qdf_ret_status = wlan_mlo_mgr_update_mld_addr(
 					    (struct qdf_mac_addr *)
@@ -16203,6 +16253,7 @@ QDF_STATUS sme_update_vdev_mac_addr(struct wlan_objmgr_psoc *psoc,
 		wlan_vdev_mlme_set_mldaddr(vdev, mac_addr.bytes);
 	} else {
 		wlan_vdev_mlme_set_macaddr(vdev, mac_addr.bytes);
+		wlan_vdev_mlme_set_linkaddr(vdev, mac_addr.bytes);
 	}
 
 p2p_self_peer_create:
@@ -16224,25 +16275,4 @@ p2p_self_peer_create:
 }
 #endif
 
-#ifdef WLAN_FEATURE_ROAM_OFFLOAD
-void sme_roam_events_register_callback(mac_handle_t mac_handle,
-				       void (*roam_rt_stats_cb)(
-				hdd_handle_t hdd_handle, uint8_t idx,
-				struct roam_stats_event *roam_stats))
-{
-	struct mac_context *mac = MAC_CONTEXT(mac_handle);
-
-	if (!mac) {
-		sme_err("Invalid mac context");
-		return;
-	}
-
-	mac->sme.roam_rt_stats_cb = roam_rt_stats_cb;
-}
-
-void sme_roam_events_deregister_callback(mac_handle_t mac_handle)
-{
-	sme_roam_events_register_callback(mac_handle, NULL);
-}
-#endif
 

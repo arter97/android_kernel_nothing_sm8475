@@ -5228,27 +5228,30 @@ void ipa3_q6_pre_shutdown_cleanup(void)
 		 */
 		ipa_assert();
 	}
-	/* Remove delay from Q6 PRODs to avoid pending descriptors
-	 * on pipe reset procedure
-	 */
 
-	if (ipa3_ctx->ipa_endp_delay_wa_v2) {
-		ipa3_q6_pipe_flow_control(false);
-		ipa3_set_reset_client_prod_pipe_delay(true,
-			IPA_CLIENT_USB_PROD);
-	} else if (!ipa3_ctx->ipa_endp_delay_wa) {
-		ipa3_q6_pipe_delay(false);
-		ipa3_set_reset_client_prod_pipe_delay(true,
-			IPA_CLIENT_USB_PROD);
-		if (ipa3_ctx->ipa_config_is_auto)
+	if(ipa3_ctx->ipa_hw_type != IPA_HW_v5_2) {
+		/* Remove delay from Q6 PRODs to avoid pending descriptors
+	 	* on pipe reset procedure
+	 	*/
+
+		if (ipa3_ctx->ipa_endp_delay_wa_v2) {
+			ipa3_q6_pipe_flow_control(false);
 			ipa3_set_reset_client_prod_pipe_delay(true,
-				IPA_CLIENT_USB2_PROD);
-	} else {
-		ipa3_start_stop_client_prod_gsi_chnl(IPA_CLIENT_USB_PROD,
+				IPA_CLIENT_USB_PROD);
+		} else if (!ipa3_ctx->ipa_endp_delay_wa) {
+			ipa3_q6_pipe_delay(false);
+			ipa3_set_reset_client_prod_pipe_delay(true,
+				IPA_CLIENT_USB_PROD);
+			if (ipa3_ctx->ipa_config_is_auto)
+				ipa3_set_reset_client_prod_pipe_delay(true,
+					IPA_CLIENT_USB2_PROD);
+		} else {
+			ipa3_start_stop_client_prod_gsi_chnl(IPA_CLIENT_USB_PROD,
 						false);
-		if (ipa3_ctx->ipa_config_is_auto)
-			ipa3_start_stop_client_prod_gsi_chnl(
-				IPA_CLIENT_USB2_PROD, false);
+			if (ipa3_ctx->ipa_config_is_auto)
+				ipa3_start_stop_client_prod_gsi_chnl(
+					IPA_CLIENT_USB2_PROD, false);
+		}
 	}
 
 	IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
@@ -5279,6 +5282,26 @@ void ipa3_q6_post_shutdown_cleanup(void)
 	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_0) {
 		prod = true;
 		ipa3_halt_q6_gsi_channels(prod);
+		if (ipa3_ctx->ipa_hw_type == IPA_HW_v5_2) {
+			if (ipa3_ctx->ipa_endp_delay_wa_v2) {
+				ipa3_q6_pipe_flow_control(false);
+				ipa3_set_reset_client_prod_pipe_delay(true,
+					IPA_CLIENT_USB_PROD);
+			} else if (!ipa3_ctx->ipa_endp_delay_wa) {
+				ipa3_q6_pipe_delay(false);
+				ipa3_set_reset_client_prod_pipe_delay(true,
+				IPA_CLIENT_USB_PROD);
+				if (ipa3_ctx->ipa_config_is_auto)
+					ipa3_set_reset_client_prod_pipe_delay(true,
+						IPA_CLIENT_USB2_PROD);
+			} else {
+				ipa3_start_stop_client_prod_gsi_chnl(IPA_CLIENT_USB_PROD,
+							false);
+				if (ipa3_ctx->ipa_config_is_auto)
+					ipa3_start_stop_client_prod_gsi_chnl(
+						IPA_CLIENT_USB2_PROD, false);
+			}
+		}
 		IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
 		IPADBG("Exit without consumer check\n");
 		return;
@@ -8885,6 +8908,7 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
 				0xFF;
 	}
 
+	ipa3_ctx->gfp_no_retry = resource_p->gfp_no_retry;
 	ipa3_ctx->ipa_wrapper_base = resource_p->ipa_mem_base;
 	ipa3_ctx->ipa_wrapper_size = resource_p->ipa_mem_size;
 	ipa3_ctx->ipa_cfg_offset = resource_p->ipa_cfg_offset;
@@ -9933,6 +9957,7 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 	ipa_drv_res->rmnet_ll_enable = 0;
 	ipa_drv_res->ulso_wa = false;
 	ipa_drv_res->is_dual_pine_config = false;
+	ipa_drv_res->gfp_no_retry = false;
 
 	/* Get IPA HW Version */
 	result = of_property_read_u32(pdev->dev.of_node, "qcom,ipa-hw-ver",
@@ -10043,6 +10068,11 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 		ipa_drv_res->ipa_endp_delay_wa_v2 = false;
 	}
 
+	ipa_drv_res->gfp_no_retry = of_property_read_bool(pdev->dev.of_node,
+			"qcom,gfp-no-retry");
+	IPADBG(": gfp-no-retry = %s\n",
+			ipa_drv_res->gfp_no_retry
+			? "True" : "False");
 
 	ipa_drv_res->ulso_wa = of_property_read_bool(pdev->dev.of_node,
 			"qcom,ipa-ulso-wa");

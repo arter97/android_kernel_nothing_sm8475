@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/utsname.h>
@@ -266,16 +266,12 @@ void adreno_parse_ib_lpac(struct kgsl_device *device,
 
 }
 
-static void dump_all_ibs(struct kgsl_device *device,
-			struct adreno_ringbuffer *rb,
-			struct kgsl_snapshot *snapshot)
+void adreno_snapshot_dump_all_ibs(struct kgsl_device *device,
+			unsigned int *rbptr, struct kgsl_snapshot *snapshot)
 {
 	int index = 0;
-	unsigned int *rbptr;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct kgsl_iommu *iommu = KGSL_IOMMU(device);
-
-	rbptr = rb->buffer_desc->hostptr;
 
 	for (index = 0; index < KGSL_RB_DWORDS;) {
 
@@ -334,13 +330,23 @@ static void snapshot_rb_ibs(struct kgsl_device *device,
 	if (device->snapshot_atomic)
 		return;
 
+	rbptr = rb->buffer_desc->hostptr;
+	/*
+	 * KGSL tries to dump the active IB first. If it is not present, then
+	 * only it dumps all the IBs. In few cases, non-active IBs may help to
+	 * establish the flow and understand the hardware state better.
+	 */
+	if (device->dump_all_ibs) {
+		adreno_snapshot_dump_all_ibs(device, rbptr, snapshot);
+		return;
+	}
+
 	/*
 	 * Figure out the window of ringbuffer data to dump.  First we need to
 	 * find where the last processed IB ws submitted.  Start walking back
 	 * from the rptr
 	 */
 	index = rptr;
-	rbptr = rb->buffer_desc->hostptr;
 
 	do {
 		index--;
@@ -393,7 +399,7 @@ static void snapshot_rb_ibs(struct kgsl_device *device,
 	 */
 
 	if (index == rb->wptr) {
-		dump_all_ibs(device, rb, snapshot);
+		adreno_snapshot_dump_all_ibs(device, rb->buffer_desc->hostptr, snapshot);
 		return;
 	}
 
@@ -544,28 +550,15 @@ struct mem_entry {
 	unsigned int type;
 } __packed;
 
-static int _save_mem_entries(int id, void *ptr, void *data)
-{
-	struct kgsl_mem_entry *entry = ptr;
-	struct mem_entry *m = (struct mem_entry *) data;
-	unsigned int index = id - 1;
-
-	m[index].gpuaddr = entry->memdesc.gpuaddr;
-	m[index].size = entry->memdesc.size;
-	m[index].type = kgsl_memdesc_get_memtype(&entry->memdesc);
-
-	return 0;
-}
-
 static size_t snapshot_capture_mem_list(struct kgsl_device *device,
 		u8 *buf, size_t remain, void *priv)
 {
 	struct kgsl_snapshot_mem_list_v2 *header =
 		(struct kgsl_snapshot_mem_list_v2 *)buf;
-	int num_mem = 0;
-	int ret = 0;
-	unsigned int *data = (unsigned int *)(buf + sizeof(*header));
+	int id, index = 0, ret = 0, num_mem = 0;
 	struct kgsl_process_private *process = priv;
+	struct mem_entry *m = (struct mem_entry *)(buf + sizeof(*header));
+	struct kgsl_mem_entry *entry;
 
 	/* we need a process to search! */
 	if (process == NULL)
@@ -592,7 +585,12 @@ static size_t snapshot_capture_mem_list(struct kgsl_device *device,
 	 * Walk through the memory list and store the
 	 * tuples(gpuaddr, size, memtype) in snapshot
 	 */
-	idr_for_each(&process->mem_idr, _save_mem_entries, data);
+	idr_for_each_entry(&process->mem_idr, entry, id) {
+		m[index].gpuaddr = entry->memdesc.gpuaddr;
+		m[index].size = entry->memdesc.size;
+		m[index].type = kgsl_memdesc_get_memtype(&entry->memdesc);
+		index++;
+	}
 
 	ret = sizeof(*header) + (num_mem * sizeof(struct mem_entry));
 out:

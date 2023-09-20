@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -86,6 +86,7 @@
 #include "wlan_mlo_mgr_sta.h"
 #include "wlan_mlo_mgr_peer.h"
 #include <wlan_twt_api.h>
+#include "wlan_tdls_api.h"
 
 struct pe_hang_event_fixed_param {
 	uint16_t tlv_header;
@@ -1849,11 +1850,18 @@ static void pe_update_crypto_params(struct mac_context *mac_ctx,
 		pe_err("crypto params is null");
 		return;
 	}
-	pe_nofl_debug("vdev %d roam auth 0x%x akm 0x%0x rsn_caps 0x%x",
+
+	ft_session->connected_akm =
+		lim_get_connected_akm(ft_session, crypto_params->ucastcipherset,
+				      crypto_params->authmodeset,
+				      crypto_params->key_mgmt);
+	pe_nofl_debug("vdev %d roam auth 0x%x akm 0x%0x rsn_caps 0x%x ucastcipher 0x%x akm %d",
 		      ft_session->vdev_id,
 		      crypto_params->authmodeset,
 		      crypto_params->key_mgmt,
-		      crypto_params->rsn_caps);
+		      crypto_params->rsn_caps,
+		      crypto_params->ucastcipherset,
+		      ft_session->connected_akm);
 }
 
 /**
@@ -2699,6 +2707,10 @@ pe_roam_synch_callback(struct mac_context *mac_ctx,
 	qdf_mem_copy(roam_sync_ind_ptr->ssid.ssid, ft_session_ptr->ssId.ssId,
 		     roam_sync_ind_ptr->ssid.length);
 	pe_update_crypto_params(mac_ctx, ft_session_ptr, roam_sync_ind_ptr);
+
+	/* Reset the SPMK global cache */
+	wlan_mlme_set_sae_single_pmk_bss_cap(mac_ctx->psoc, vdev_id, false);
+
 	/* Next routine may update nss based on dot11Mode */
 
 	lim_ft_prepare_add_bss_req(mac_ctx, ft_session_ptr, bss_desc);
@@ -2711,6 +2723,13 @@ pe_roam_synch_callback(struct mac_context *mac_ctx,
 		(struct bss_params *) ft_session_ptr->ftPEContext.pAddBssReq;
 	add_bss_params = ft_session_ptr->ftPEContext.pAddBssReq;
 	lim_delete_tdls_peers(mac_ctx, session_ptr);
+	/*
+	 * After deleting the TDLS peers notify the Firmware about TDLS STA
+	 * disconnection due to roaming
+	 */
+	wlan_tdls_notify_sta_disconnect(vdev_id, true,
+					false, session_ptr->vdev);
+
 	curr_sta_ds = dph_lookup_hash_entry(mac_ctx, session_ptr->bssId, &aid,
 					    &session_ptr->dph.dphHashTable);
 	if (!curr_sta_ds && !is_multi_link_roam(roam_sync_ind_ptr)) {

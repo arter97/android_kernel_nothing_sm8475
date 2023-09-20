@@ -2,7 +2,7 @@
 /*
  * Qualcomm Technologies, Inc. SDHCI Platform driver.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of_device.h>
@@ -154,12 +154,18 @@ void sdhci_msm_cqe_scaling_resume(struct mmc_host *mhost)
 	struct sdhci_host *shost = mmc_priv(mhost);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(shost);
 	struct sdhci_msm_host *host = sdhci_pltfm_priv(pltfm_host);
+	struct mmc_ios ios = shost->mmc->ios;
 
 	if (host->scaling_suspended == 1) {
 		sdhci_msm_mmc_resume_clk_scaling(mhost);
 		host->scaling_suspended = 0;
 	}
-	host->clk_scaling.curr_freq = 200000000;
+
+	if (ios.timing == MMC_TIMING_MMC_HS400)
+		host->clk_scaling.curr_freq = MMC_SCALE_HIGH_FREQ;
+
+	if (ios.timing == MMC_TIMING_MMC_DDR52)
+		host->clk_scaling.curr_freq = MMC_SCALE_LOW_FREQ;
 }
 EXPORT_SYMBOL(sdhci_msm_cqe_scaling_resume);
 
@@ -202,8 +208,10 @@ void sdhci_msm_set_factors(struct mmc_host *mhost)
 	struct sdhci_host *shost = mmc_priv(mhost);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(shost);
 	struct sdhci_msm_host *host = sdhci_pltfm_priv(pltfm_host);
+	bool special_scale = host->need_special_up_threshold;
 
-	host->clk_scaling.upthreshold = MMC_DEVFRQ_DEFAULT_UP_THRESHOLD;
+	host->clk_scaling.upthreshold =
+		special_scale ? MMC_DEVFRQ_SPECIAL_UP_THRESHOLD : MMC_DEVFRQ_DEFAULT_UP_THRESHOLD;
 	host->clk_scaling.downthreshold = MMC_DEVFRQ_DEFAULT_DOWN_THRESHOLD;
 	host->clk_scaling.polling_delay_ms = MMC_DEVFRQ_DEFAULT_POLLING_MSEC;
 	host->clk_scaling.skip_clk_scale_freq_update = false;
@@ -734,13 +742,38 @@ static bool sdhci_msm_mmc_is_valid_state_for_clk_scaling(struct sdhci_msm_host *
 	return R1_CURRENT_STATE(status) == R1_STATE_TRAN;
 }
 
+static int sdhci_msm_notify_load(struct sdhci_msm_host *msm_host, enum sdhci_msm_mmc_load state)
+{
+	int ret = 0;
+	u32 clk_rate = 0;
+
+	if (!IS_ERR(msm_host->bulk_clks[2].clk)) {
+		clk_rate = (state == MMC_LOAD_LOW) ?
+			msm_host->ice_clk_min :
+			msm_host->ice_clk_max;
+		if (msm_host->ice_clk_rate == clk_rate)
+			return 0;
+		pr_debug("%s: changing ICE clk rate to %u\n",
+			mmc_hostname(msm_host->mmc), clk_rate);
+		ret = clk_set_rate(msm_host->bulk_clks[2].clk, clk_rate);
+		if (ret) {
+			pr_err("%s: ICE_CLK rate set failed (%d) for %u\n",
+				mmc_hostname(msm_host->mmc), ret, clk_rate);
+			return ret;
+		}
+		msm_host->ice_clk_rate = clk_rate;
+	}
+	return 0;
+}
+
+
 int sdhci_msm_mmc_clk_update_freq(struct sdhci_msm_host *host,
 		unsigned long freq, enum sdhci_msm_mmc_load state)
 {
 	struct mmc_host *mhost = host->mmc;
 	int err = 0;
 
-	if (!host) {
+	if (!mhost) {
 		pr_err("bad host parameter\n");
 		WARN_ON(1);
 		return -EINVAL;
@@ -772,6 +805,13 @@ int sdhci_msm_mmc_clk_update_freq(struct sdhci_msm_host *host,
 			goto out;
 		}
 		mhost->cqe_ops->cqe_off(mhost);
+	}
+
+	err = sdhci_msm_notify_load(host, state);
+	if (err) {
+		pr_err("%s: %s: fail on notify_load\n",
+			mmc_hostname(mhost), __func__);
+		goto out;
 	}
 
 	if (!sdhci_msm_mmc_is_valid_state_for_clk_scaling(host)) {
@@ -1243,6 +1283,7 @@ int _sdhci_msm_mmc_init_clk_scaling(struct sdhci_msm_host *host)
 		sdhci_msm_mmc_devfreq_get_dev_status;
 	host->clk_scaling.devfreq_profile.target = sdhci_msm_mmc_devfreq_set_target;
 	host->clk_scaling.devfreq_profile.initial_freq = mhost->ios.clock;
+	host->clk_scaling.devfreq_profile.timer = DEVFREQ_TIMER_DELAYED;
 
 	host->clk_scaling.ondemand_gov_data.upthreshold =
 		host->clk_scaling.upthreshold;
@@ -1316,7 +1357,7 @@ int _sdhci_msm_mmc_suspend_clk_scaling(struct sdhci_msm_host *host)
 	struct mmc_host *mhost = host->mmc;
 	int err;
 
-	if (!host) {
+	if (!mhost) {
 		WARN(1, "bad host parameter\n");
 		return -EINVAL;
 	}
@@ -1365,7 +1406,7 @@ int _sdhci_msm_mmc_resume_clk_scaling(struct sdhci_msm_host *host)
 	u32 devfreq_max_clk = 0;
 	u32 devfreq_min_clk = 0;
 
-	if (!host) {
+	if (!mhost) {
 		WARN(1, "bad host parameter\n");
 		return -EINVAL;
 	}
@@ -1419,7 +1460,7 @@ int _sdhci_msm_mmc_exit_clk_scaling(struct sdhci_msm_host *host)
 	struct mmc_host *mhost = host->mmc;
 	int err;
 
-	if (!host) {
+	if (!mhost) {
 		pr_err("%s: bad host parameter\n", __func__);
 		WARN_ON(1);
 		return -EINVAL;

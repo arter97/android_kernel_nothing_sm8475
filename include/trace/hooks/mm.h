@@ -125,6 +125,14 @@ DECLARE_HOOK(android_vh_save_track_hash,
 DECLARE_HOOK(android_vh_vmpressure,
 	TP_PROTO(struct mem_cgroup *memcg, bool *bypass),
 	TP_ARGS(memcg, bypass));
+DECLARE_HOOK(android_vh_dm_bufio_shrink_scan_bypass,
+	TP_PROTO(unsigned long dm_bufio_current_allocated, bool *bypass),
+	TP_ARGS(dm_bufio_current_allocated, bypass));
+DECLARE_HOOK(android_vh_cleanup_old_buffers_bypass,
+	TP_PROTO(unsigned long dm_bufio_current_allocated,
+		unsigned long *max_age_hz,
+		bool *bypass),
+	TP_ARGS(dm_bufio_current_allocated, max_age_hz, bypass));
 DECLARE_HOOK(android_vh_mem_cgroup_alloc,
 	TP_PROTO(struct mem_cgroup *memcg),
 	TP_ARGS(memcg));
@@ -166,6 +174,10 @@ DECLARE_HOOK(android_vh_subpage_dma_contig_alloc,
 DECLARE_HOOK(android_vh_ra_tuning_max_page,
 	TP_PROTO(struct readahead_control *ractl, unsigned long *max_page),
 	TP_ARGS(ractl, max_page));
+DECLARE_HOOK(android_vh_tune_mmap_readaround,
+	TP_PROTO(unsigned int ra_pages, pgoff_t pgoff,
+		pgoff_t *start, unsigned int *size, unsigned int *async_size),
+	TP_ARGS(ra_pages, pgoff, start, size, async_size));
 DECLARE_RESTRICTED_HOOK(android_rvh_handle_pte_fault_end,
 	TP_PROTO(struct vm_fault *vmf, unsigned long highest_memmap_pfn),
 	TP_ARGS(vmf, highest_memmap_pfn), 1);
@@ -260,6 +272,12 @@ DECLARE_HOOK(android_vh_set_shmem_page_flag,
 DECLARE_HOOK(android_vh_remove_vmalloc_stack,
 	TP_PROTO(struct vm_struct *vm),
 	TP_ARGS(vm));
+DECLARE_HOOK(android_vh_compact_finished,
+	TP_PROTO(bool *abort_compact),
+	TP_ARGS(abort_compact));
+DECLARE_HOOK(android_vh_madvise_cold_or_pageout_abort,
+	TP_PROTO(struct vm_area_struct *vma, bool *abort_madvise),
+	TP_ARGS(vma, abort_madvise));
 /* macro versions of hooks are no longer required */
 
 #endif /* _TRACE_HOOK_MM_H */

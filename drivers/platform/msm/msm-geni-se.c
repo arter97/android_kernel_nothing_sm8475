@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -18,6 +18,11 @@
 #include <linux/msm-geni-se.h>
 #include <linux/spinlock.h>
 #include <linux/pinctrl/consumer.h>
+
+
+#define QUPV3_TEST_BUS_EN	0x204 //write 0x11
+#define QUPV3_TEST_BUS_SEL	0x200 //write 0x5  [for SE index 4)
+#define QUPV3_TEST_BUS_REG	0x208 //Read only reg, to be read as part of dump
 
 #define GENI_SE_IOMMU_VA_START	(0x40000000)
 #define GENI_SE_IOMMU_VA_SIZE	(0xC0000000)
@@ -193,6 +198,65 @@ void geni_write_reg(unsigned int value, void __iomem *base, int offset)
 	return writel_relaxed(value, (base + offset));
 }
 EXPORT_SYMBOL(geni_write_reg);
+
+/*
+ * test_bus_enable_per_qupv3: enables particular test bus number.
+ * @wrapper_dev: QUPV3 common driver handle from SE driver
+ *
+ * Note : Need to call only once.
+ * Return: none
+ */
+void test_bus_enable_per_qupv3(struct device *wrapper_dev)
+{
+	struct geni_se_device *geni_se_dev;
+
+	geni_se_dev = dev_get_drvdata(wrapper_dev);
+	//Enablement of test bus is required only once.
+	//TEST_BUS_EN:4, TEST_BUS_REG_EN:0
+	geni_write_reg(0x11, geni_se_dev->base, QUPV3_TEST_BUS_EN);
+
+	GENI_LOG_ERR(geni_se_dev->log_ctx, false, geni_se_dev->dev,
+		"%s: TEST_BUS_EN: 0x%x @address:0x%x\n", __func__,
+		geni_read_reg(geni_se_dev->base, QUPV3_TEST_BUS_EN),
+		(geni_se_dev->base + QUPV3_TEST_BUS_EN));
+}
+EXPORT_SYMBOL(test_bus_enable_per_qupv3);
+
+/*
+ * test_bus_select_per_qupv3: Selects the test bus as required
+ * @wrapper_dev: QUPV3 common driver handle from SE driver
+ * @test_bus_num: GENI SE number from QUPV3 core. E.g. SE0 should pass value 1.
+ * @Return:	None
+ */
+void test_bus_select_per_qupv3(struct device *wrapper_dev, u8 test_bus_num)
+{
+	struct geni_se_device *geni_se_dev;
+
+	geni_se_dev = dev_get_drvdata(wrapper_dev);
+
+	geni_write_reg(test_bus_num, geni_se_dev->base, QUPV3_TEST_BUS_SEL);
+	GENI_LOG_ERR(geni_se_dev->log_ctx, false, geni_se_dev->dev,
+		"%s: readback TEST_BUS_SEL: 0x%x @address:0x%x\n", __func__,
+		geni_read_reg(geni_se_dev->base, QUPV3_TEST_BUS_SEL),
+		(geni_se_dev->base + QUPV3_TEST_BUS_SEL));
+}
+EXPORT_SYMBOL(test_bus_select_per_qupv3);
+
+/*
+ * test_bus_read_per_qupv3: Selects the test bus as required
+ * @wrapper_dev:	QUPV3 common driver handle from SE driver
+ * Return:		None
+ */
+void test_bus_read_per_qupv3(struct device *wrapper_dev)
+{
+	struct geni_se_device *geni_se_dev;
+
+	geni_se_dev = dev_get_drvdata(wrapper_dev);
+	GENI_LOG_ERR(geni_se_dev->log_ctx, false, geni_se_dev->dev,
+		"%s: dump QUPV3_TEST_BUS_REG:0x%x\n",
+		__func__, geni_read_reg(geni_se_dev->base, QUPV3_TEST_BUS_REG));
+}
+EXPORT_SYMBOL(test_bus_read_per_qupv3);
 
 /**
  * get_se_proto() - Read the protocol configured for a serial engine
@@ -718,7 +782,7 @@ static bool geni_se_check_bus_bw_noc(struct geni_se_device *geni_se_dev)
 	unsigned long new_bus_bw;
 	bool bus_bw_update = false;
 
-	new_bus_bw = max(geni_se_dev->cur_ib_noc, geni_se_dev->cur_ab_noc) /
+	new_bus_bw = KHz(max(geni_se_dev->cur_ib_noc, geni_se_dev->cur_ab_noc)) /
 							DEFAULT_BUS_WIDTH;
 
 	for (i = 0; i < geni_se_dev->bus_bw_set_size_noc; i++) {
@@ -954,6 +1018,13 @@ static int geni_se_add_ab_ib(struct geni_se_device *geni_se_dev,
 		geni_se_dev->cur_ab, geni_se_dev->cur_ib,
 		rsc->ab, rsc->ib, bus_bw_update);
 
+	if (ret) {
+		GENI_LOG_ERR(geni_se_dev->log_ctx, true, geni_se_dev->dev,
+			     "%s: %s: Error %d core2x clock vote\n",
+			     __func__, dev_name(rsc->ctrl_dev), ret);
+		mutex_unlock(&geni_se_dev->geni_dev_lock);
+		return ret;
+	}
 
 	if (geni_se_dev->num_paths >= 2) {
 
@@ -1159,7 +1230,7 @@ int geni_se_resources_init(struct se_geni_rsc *rsc,
 		/* To reduce the higher ab values from individual drivers */
 		rsc->ab = ab/2;
 		rsc->ib = ab;
-		rsc->ab_noc = 0;
+		rsc->ab_noc = ib;
 		rsc->ib_noc = ib;
 		INIT_LIST_HEAD(&rsc->ab_list_noc);
 		INIT_LIST_HEAD(&rsc->ib_list_noc);

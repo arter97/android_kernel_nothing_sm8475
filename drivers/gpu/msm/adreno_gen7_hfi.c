@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -105,7 +105,7 @@ int gen7_hfi_queue_write(struct adreno_device *adreno_dev, u32 queue_idx,
 	struct hfi_queue_table *tbl = gmu->hfi.hfi_mem->hostptr;
 	struct hfi_queue_header *hdr = &tbl->qhdr[queue_idx];
 	u32 *queue;
-	u32 i, write, empty_space;
+	u32 i, write_idx, read_idx, empty_space;
 	u32 size = MSG_HDR_GET_SIZE(*msg);
 	u32 align_size = ALIGN(size, SZ_4);
 
@@ -116,27 +116,28 @@ int gen7_hfi_queue_write(struct adreno_device *adreno_dev, u32 queue_idx,
 
 	trace_kgsl_hfi_send(id, size, MSG_HDR_GET_SEQNUM(*msg));
 
-	empty_space = (hdr->write_index >= hdr->read_index) ?
-			(hdr->queue_size - (hdr->write_index - hdr->read_index))
-			: (hdr->read_index - hdr->write_index);
+	write_idx = hdr->write_index;
+	read_idx = hdr->read_index;
+
+	empty_space = (write_idx >= read_idx) ?
+			(hdr->queue_size - (write_idx - read_idx))
+			: (read_idx - write_idx);
 
 	if (empty_space <= align_size)
 		return -ENOSPC;
 
-	write = hdr->write_index;
-
 	for (i = 0; i < size; i++) {
-		queue[write] = msg[i];
-		write = (write + 1) % hdr->queue_size;
+		queue[write_idx] = msg[i];
+		write_idx = (write_idx + 1) % hdr->queue_size;
 	}
 
 	/* Cookify any non used data at the end of the write buffer */
 	for (; i < align_size; i++) {
-		queue[write] = 0xfafafafa;
-		write = (write + 1) % hdr->queue_size;
+		queue[write_idx] = 0xfafafafa;
+		write_idx = (write_idx + 1) % hdr->queue_size;
 	}
 
-	hfi_update_write_idx(&hdr->write_index, write);
+	hfi_update_write_idx(&hdr->write_index, write_idx);
 
 	return 0;
 }
@@ -512,20 +513,6 @@ int gen7_hfi_process_queue(struct gen7_gmu_device *gmu,
 	return 0;
 }
 
-static int gen7_verify_fw_version(struct adreno_device *adreno_dev)
-{
-	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
-	const struct adreno_gen7_core *gen7_core = to_gen7_core(adreno_dev);
-
-	/* For now, warn once. Could return error later if needed */
-	if (gmu->ver.core < gen7_core->gmu_fw_version)
-		dev_err_once(&gmu->pdev->dev,
-			     "GMU FW version error: wanted minimum 0x%x, got 0x%x\n",
-			     gen7_core->gmu_fw_version, gmu->ver.core);
-
-	return 0;
-}
-
 int gen7_hfi_send_bcl_feature_ctrl(struct adreno_device *adreno_dev)
 {
 	if (!adreno_dev->bcl_enabled)
@@ -569,32 +556,31 @@ int gen7_hfi_send_ifpc_feature_ctrl(struct adreno_device *adreno_dev)
 	return 0;
 }
 
-int gen7_hfi_start(struct adreno_device *adreno_dev)
+static void reset_hfi_queues(struct adreno_device *adreno_dev)
 {
 	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
-	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct kgsl_memdesc *mem_addr = gmu->hfi.hfi_mem;
 	struct hfi_queue_table *tbl = mem_addr->hostptr;
 	struct hfi_queue_header *hdr;
-	int result, i;
+	unsigned int i;
 
-	/* Force read_index to the write_index no matter what */
+	/* Flush HFI queues */
 	for (i = 0; i < HFI_QUEUE_MAX; i++) {
 		hdr = &tbl->qhdr[i];
 		if (hdr->status == HFI_QUEUE_STATUS_DISABLED)
 			continue;
 
-		if (hdr->read_index != hdr->write_index) {
-			dev_err(&gmu->pdev->dev,
-				"HFI Q[%d] Index Error: read:0x%X write:0x%X\n",
-				i, hdr->read_index, hdr->write_index);
-			hdr->read_index = hdr->write_index;
-		}
+		hdr->read_index = hdr->write_index;
 	}
+}
 
-	result = gen7_verify_fw_version(adreno_dev);
-	if (result)
-		goto err;
+int gen7_hfi_start(struct adreno_device *adreno_dev)
+{
+	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
+	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+	int result;
+
+	reset_hfi_queues(adreno_dev);
 
 	result = gen7_hfi_send_generic_req(adreno_dev, &gmu->hfi.dcvs_table);
 	if (result)
@@ -641,28 +627,11 @@ err:
 void gen7_hfi_stop(struct adreno_device *adreno_dev)
 {
 	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
-	struct kgsl_memdesc *mem_addr = gmu->hfi.hfi_mem;
-	struct hfi_queue_table *tbl = mem_addr->hostptr;
-	struct hfi_queue_header *hdr;
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
-	unsigned int i;
-
-	/* Flush HFI queues */
-	for (i = 0; i < HFI_QUEUE_MAX; i++) {
-		hdr = &tbl->qhdr[i];
-		if (hdr->status == HFI_QUEUE_STATUS_DISABLED)
-			continue;
-
-		if (hdr->read_index != hdr->write_index)
-			dev_err(&gmu->pdev->dev,
-			"HFI queue[%d] is not empty before close: rd=%d,wt=%d\n",
-				i, hdr->read_index, hdr->write_index);
-	}
 
 	kgsl_pwrctrl_axi(device, false);
 
 	clear_bit(GMU_PRIV_HFI_STARTED, &gmu->flags);
-
 }
 
 /* HFI interrupt handler */

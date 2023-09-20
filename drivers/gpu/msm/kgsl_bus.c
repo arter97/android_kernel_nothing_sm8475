@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include <dt-bindings/interconnect/qcom,icc.h>
 #include <linux/interconnect.h>
 #include <linux/of.h>
 #include <linux/slab.h>
@@ -12,7 +13,6 @@
 #include "kgsl_bus.h"
 #include "kgsl_device.h"
 #include "kgsl_trace.h"
-
 
 static u32 _ab_buslevel_update(struct kgsl_pwrctrl *pwr,
 		u32 ib)
@@ -94,15 +94,12 @@ int kgsl_bus_update(struct kgsl_device *device,
 		max(pwr->cur_dcvs_buslevel, pwr->rt_bus_hint) :
 		pwr->cur_dcvs_buslevel;
 
-	return device->ftbl->gpu_bus_set(device, buslevel, ab);
-}
-
-void kgsl_icc_set_tag(struct kgsl_pwrctrl *pwr, int buslevel)
-{
 	if (buslevel == pwr->pwrlevels[0].bus_max)
-		icc_set_tag(pwr->icc_path, ACTIVE_ONLY_TAG | PERF_MODE_TAG);
+		icc_set_tag(pwr->icc_path, QCOM_ICC_TAG_ALWAYS | QCOM_ICC_TAG_PERF_MODE);
 	else
-		icc_set_tag(pwr->icc_path, ACTIVE_ONLY_TAG);
+		icc_set_tag(pwr->icc_path, QCOM_ICC_TAG_ALWAYS);
+
+	return device->ftbl->gpu_bus_set(device, buslevel, ab);
 }
 
 static void validate_pwrlevels(struct kgsl_device *device, u32 *ibs,

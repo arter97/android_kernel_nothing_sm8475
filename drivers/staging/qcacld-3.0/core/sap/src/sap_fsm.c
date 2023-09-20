@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1125,8 +1125,8 @@ validation_done:
 	sap_debug("for configured channel, Ch_freq = %d",
 		  sap_context->chan_freq);
 
-	if (!policy_mgr_is_safe_channel(mac_ctx->psoc,
-					sap_context->chan_freq)) {
+	if (!policy_mgr_is_sap_freq_allowed(mac_ctx->psoc,
+					    sap_context->chan_freq)) {
 		sap_warn("Abort SAP start due to unsafe channel");
 		return QDF_STATUS_E_ABORTED;
 	}
@@ -2526,7 +2526,7 @@ static QDF_STATUS wlansap_update_pre_cac_end(struct sap_context *sap_context,
 	QDF_STATUS qdf_status;
 
 	sap_context->isCacEndNotified = true;
-	mac->sap.SapDfsInfo.sap_radar_found_status = false;
+	sap_context->sap_radar_found_status = false;
 	sap_context->fsm_state = SAP_STARTED;
 
 	sap_warn("pre cac end notify on %d: move to state SAP_STARTED", intf);
@@ -2606,7 +2606,7 @@ static QDF_STATUS sap_cac_end_notify(mac_handle_t mac_handle,
 				return qdf_status;
 			}
 			sap_context->isCacEndNotified = true;
-			mac->sap.SapDfsInfo.sap_radar_found_status = false;
+			sap_context->sap_radar_found_status = false;
 			sap_debug("sapdfs: Start beacon request on sapctx[%pK]",
 				  sap_context);
 
@@ -2915,7 +2915,7 @@ static QDF_STATUS sap_goto_starting(struct sap_context *sap_ctx,
 	/* Reset radar found flag before start sap, the flag will
 	 * be set when radar found in CAC wait.
 	 */
-	mac_ctx->sap.SapDfsInfo.sap_radar_found_status = false;
+	sap_ctx->sap_radar_found_status = false;
 
 	sap_debug("session: %d", sap_ctx->sessionId);
 
@@ -3358,7 +3358,7 @@ static QDF_STATUS sap_fsm_state_starting(struct sap_context *sap_ctx,
 							       mac_handle);
 			} else {
 				sap_debug("skip cac timer");
-				mac_ctx->sap.SapDfsInfo.sap_radar_found_status = false;
+				sap_ctx->sap_radar_found_status = false;
 				/*
 				 * If hostapd starts AP on dfs channel,
 				 * hostapd will wait for CAC START/CAC END
@@ -4277,7 +4277,7 @@ qdf_freq_t sap_indicate_radar(struct sap_context *sap_ctx)
 		return sap_ctx->chan_freq;
 
 	/* set the Radar Found flag in SapDfsInfo */
-	mac->sap.SapDfsInfo.sap_radar_found_status = true;
+	sap_ctx->sap_radar_found_status = true;
 
 	if (sap_ctx->freq_before_pre_cac) {
 		sap_info("sapdfs: set chan freq before pre cac %d as target chan",

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
- * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2022, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/dma-buf.h>
@@ -373,13 +373,18 @@ int msm_vidc_memory_alloc(struct msm_vidc_core *core, struct msm_vidc_alloc *mem
 			return -EINVAL;
 		}
 	} else {
-		if (core->is_non_coherent && mem->type == MSM_VIDC_BUF_QUEUE)
+		if (core->is_non_coherent)
 			heap_name = "qcom,system-uncached";
 		else
 			heap_name = "qcom,system";
 	}
 
 	heap = dma_heap_find(heap_name);
+	if (!heap) {
+		d_vpr_e("%s: No heap named %s\n", __func__, heap_name);
+		rc = -ENOMEM;
+		goto error;
+	}
 	mem->dmabuf = dma_heap_buffer_alloc(heap, size, 0, 0);
 	if (IS_ERR_OR_NULL(mem->dmabuf)) {
 		d_vpr_e("%s: dma heap %s alloc failed\n", __func__, heap_name);
@@ -681,17 +686,16 @@ int msm_memory_cache_operations(struct msm_vidc_inst *inst,
 	}
 
 	switch (cache_type) {
-	case MSM_MEM_CACHE_CLEAN:
 	case MSM_MEM_CACHE_CLEAN_INVALIDATE:
 		rc = dma_buf_begin_cpu_access_partial(dbuf, DMA_TO_DEVICE,
 				offset, size);
 		if (rc)
 			break;
-		rc = dma_buf_end_cpu_access_partial(dbuf, DMA_TO_DEVICE,
+		rc = dma_buf_end_cpu_access_partial(dbuf, DMA_FROM_DEVICE,
 				offset, size);
 		break;
 	case MSM_MEM_CACHE_INVALIDATE:
-		rc = dma_buf_begin_cpu_access_partial(dbuf, DMA_TO_DEVICE,
+		rc = dma_buf_begin_cpu_access_partial(dbuf, DMA_FROM_DEVICE,
 				offset, size);
 		if (rc)
 			break;

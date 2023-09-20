@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -34,7 +34,7 @@ void __init gmu_core_register(void)
 	of_node_put(node);
 }
 
-void __exit gmu_core_unregister(void)
+void gmu_core_unregister(void)
 {
 	const struct of_device_id *match;
 	struct device_node *node;
@@ -164,6 +164,12 @@ int gmu_core_dev_wait_for_active_transition(struct kgsl_device *device)
 
 void gmu_core_fault_snapshot(struct kgsl_device *device)
 {
+	const struct gmu_dev_ops *ops = GMU_DEVICE_OPS(device);
+
+	/* Send NMI first to halt GMU and capture the state close to the point of failure */
+	if (ops && ops->send_nmi)
+		ops->send_nmi(device, false);
+
 	kgsl_device_snapshot(device, NULL, NULL, true);
 }
 

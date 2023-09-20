@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -971,7 +971,7 @@ static struct clk_rcg2 gcc_sdcc1_apps_clk_src = {
 		.name = "gcc_sdcc1_apps_clk_src",
 		.parent_data = gcc_parent_data_4,
 		.num_parents = ARRAY_SIZE(gcc_parent_data_4),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_floor_ops,
 	},
 	.clkr.vdd_data = {
 		.vdd_classes = gcc_ravelin_regulators,
@@ -1001,7 +1001,7 @@ static struct clk_rcg2 gcc_sdcc1_ice_core_clk_src = {
 		.name = "gcc_sdcc1_ice_core_clk_src",
 		.parent_data = gcc_parent_data_4,
 		.num_parents = ARRAY_SIZE(gcc_parent_data_4),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_floor_ops,
 	},
 	.clkr.vdd_data = {
 		.vdd_classes = gcc_ravelin_regulators,
@@ -1034,7 +1034,7 @@ static struct clk_rcg2 gcc_sdcc2_apps_clk_src = {
 		.name = "gcc_sdcc2_apps_clk_src",
 		.parent_data = gcc_parent_data_7,
 		.num_parents = ARRAY_SIZE(gcc_parent_data_7),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_floor_ops,
 	},
 	.clkr.vdd_data = {
 		.vdd_classes = gcc_ravelin_regulators,
@@ -1644,6 +1644,110 @@ static struct clk_branch gcc_gpu_snoc_dvm_gfx_clk = {
 		.hw.init = &(const struct clk_init_data){
 			.name = "gcc_gpu_snoc_dvm_gfx_clk",
 			.flags = CLK_DONT_HOLD_STATE,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_aggre_noc_mmu_audio_tbu_clk = {
+	.halt_reg = 0x8d004,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d004,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_aggre_noc_mmu_audio_tbu_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_aggre_noc_mmu_pcie_tbu_clk = {
+	.halt_reg = 0x8d010,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d010,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_aggre_noc_mmu_pcie_tbu_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_aggre_noc_mmu_tbu1_clk = {
+	.halt_reg = 0x8d008,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d008,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_aggre_noc_mmu_tbu1_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_aggre_noc_mmu_tbu2_clk = {
+	.halt_reg = 0x8d00c,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d00c,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_aggre_noc_mmu_tbu2_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_hf0_clk = {
+	.halt_reg = 0x8d018,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d018,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_hf0_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_hf1_clk = {
+	.halt_reg = 0x8d01c,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d01c,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_hf1_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_sf0_clk = {
+	.halt_reg = 0x8d014,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d014,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_sf0_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmu_tcu_clk = {
+	.halt_reg = 0x8d02c,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d02c,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmu_tcu_clk",
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2787,6 +2891,16 @@ static struct clk_regmap *gcc_ravelin_clocks[] = {
 	[GCC_GPU_GPLL0_DIV_CLK_SRC] = &gcc_gpu_gpll0_div_clk_src.clkr,
 	[GCC_GPU_MEMNOC_GFX_CLK] = &gcc_gpu_memnoc_gfx_clk.clkr,
 	[GCC_GPU_SNOC_DVM_GFX_CLK] = &gcc_gpu_snoc_dvm_gfx_clk.clkr,
+	[GCC_HLOS1_VOTE_AGGRE_NOC_MMU_AUDIO_TBU_CLK] =
+		&gcc_hlos1_vote_aggre_noc_mmu_audio_tbu_clk.clkr,
+	[GCC_HLOS1_VOTE_AGGRE_NOC_MMU_PCIE_TBU_CLK] =
+		&gcc_hlos1_vote_aggre_noc_mmu_pcie_tbu_clk.clkr,
+	[GCC_HLOS1_VOTE_AGGRE_NOC_MMU_TBU1_CLK] = &gcc_hlos1_vote_aggre_noc_mmu_tbu1_clk.clkr,
+	[GCC_HLOS1_VOTE_AGGRE_NOC_MMU_TBU2_CLK] = &gcc_hlos1_vote_aggre_noc_mmu_tbu2_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_HF0_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_hf0_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_HF1_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_hf1_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_SF0_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_sf0_clk.clkr,
+	[GCC_HLOS1_VOTE_MMU_TCU_CLK] = &gcc_hlos1_vote_mmu_tcu_clk.clkr,
 	[GCC_PCIE_0_AUX_CLK] = &gcc_pcie_0_aux_clk.clkr,
 	[GCC_PCIE_0_AUX_CLK_SRC] = &gcc_pcie_0_aux_clk_src.clkr,
 	[GCC_PCIE_0_CFG_AHB_CLK] = &gcc_pcie_0_cfg_ahb_clk.clkr,
@@ -2917,6 +3031,8 @@ static const struct qcom_reset_map gcc_ravelin_resets[] = {
 	[GCC_VENUS_BCR] = { 0xb601c },
 	[GCC_VIDEO_BCR] = { 0x42000 },
 	[GCC_VIDEO_VENUS_BCR] = { 0xb6000 },
+	[GCC_VENUS_CTL_AXI_CLK_ARES] = { 0x4201c, 2 },
+	[GCC_VIDEO_VENUS_CTL_CLK_ARES] = { 0xb6038, 2 },
 };
 
 

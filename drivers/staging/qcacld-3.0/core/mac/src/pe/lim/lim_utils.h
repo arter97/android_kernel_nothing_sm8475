@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -185,8 +185,6 @@ uint8_t lim_get_max_tx_power(struct mac_context *mac,
  * lim_calculate_tpc() - Utility to get maximum tx power
  * @mac: mac handle
  * @session: PE Session Entry
- * @is_pwr_constraint_absolute: If local power constraint is an absolute
- * value or an offset value.
  * @ap_pwr_type: Ap power type for 6G
  * @ctry_code_match: check for country IE and sta programmed ctry match
  *
@@ -197,7 +195,6 @@ uint8_t lim_get_max_tx_power(struct mac_context *mac,
  */
 void lim_calculate_tpc(struct mac_context *mac,
 		       struct pe_session *session,
-		       bool is_pwr_constraint_absolute,
 		       uint8_t ap_pwr_type,
 		       bool ctry_code_match);
 
@@ -2199,13 +2196,15 @@ QDF_STATUS lim_util_get_type_subtype(void *pkt, uint8_t *type,
 /**
  * lim_get_min_session_txrate() - Get the minimum rate supported in the session
  * @session: Pointer to PE session
+ * @pre_auth_freq: Pointer to pre_auth_freq
  *
  * This API will find the minimum rate supported by the given PE session and
  * return the enum rateid corresponding to the rate.
  *
  * Return: enum rateid
  */
-enum rateid lim_get_min_session_txrate(struct pe_session *session);
+enum rateid lim_get_min_session_txrate(struct pe_session *session,
+				       qdf_freq_t *pre_auth_freq);
 
 /**
  * lim_send_dfs_chan_sw_ie_update() - updates the channel switch IE in beacon

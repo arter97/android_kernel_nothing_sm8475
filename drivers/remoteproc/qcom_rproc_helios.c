@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)    "%s: " fmt, __func__
@@ -25,8 +25,9 @@
 #include <misc/qseecom_kernel.h>
 #include <soc/qcom/qseecomi.h>
 #include <soc/qcom/ramdump.h>
-#include <soc/qcom/smcinvoke_object.h>
+#include <soc/qcom/smci_object.h>
 #include <linux/smcinvoke.h>
+#include <trace/events/rproc_qcom.h>
 
 #include "../soc/qcom/helioscom.h"
 
@@ -34,15 +35,13 @@
 #include "qcom_pil_info.h"
 #include "remoteproc_internal.h"
 
-#include "../soc/qcom/helios_app_smc_interface.h"
+#include "../soc/qcom/smci_heliosapp.h"
 
-#include <soc/qcom/CAppClient.h>
-#include <soc/qcom/CAppLoader.h>
-#include <soc/qcom/IAppClient.h>
-#include <soc/qcom/IAppController.h>
-#include <soc/qcom/IAppLoader.h>
-#include <soc/qcom/IClientEnv.h>
-#include <soc/qcom/IOpener.h>
+#include <soc/qcom/smci_appclient.h>
+#include <soc/qcom/smci_appcontroller.h>
+#include <soc/qcom/smci_apploader.h>
+#include <soc/qcom/smci_clientenv.h>
+#include <soc/qcom/smci_opener.h>
 
 #define RESULT_SUCCESS		0
 #define RESULT_FAILURE		-1
@@ -214,25 +213,25 @@ static int load_helios_tzapp(struct qcom_helios *pbd)
 	struct qtee_shm shm = {0};
 	size_t size = 0;
 	char *app_name = "heliosapp";
-	struct Object client_env = {NULL, NULL};
-	struct Object app_client = {NULL, NULL};
-	struct Object app_loader = {NULL, NULL};
-	struct Object app_controller_obj = {NULL, NULL};
+	struct smci_object clientenv = {NULL, NULL};
+	struct smci_object app_client = {NULL, NULL};
+	struct smci_object app_loader = {NULL, NULL};
+	struct smci_object app_controller_obj = {NULL, NULL};
 
 	pbd->app_status = RESULT_FAILURE;
 
 	/* Load the APP */
 	pr_debug("Start loading of secure app\n");
-	rc = get_client_env_object(&client_env);
+	rc = get_client_env_object(&clientenv);
 	if (rc) {
-		client_env.invoke = NULL;
-		client_env.context = NULL;
+		clientenv.invoke = NULL;
+		clientenv.context = NULL;
 		dev_err(pbd->dev, "<helios> get client env object failure\n");
 		rc =  -EIO;
 		goto end;
 	}
 
-	rc = IClientEnv_open(client_env, CAppLoader_UID, &app_loader);
+	rc = smci_clientenv_open(clientenv, SMCI_APPLOADER_UID, &app_loader);
 	if (rc) {
 		app_loader.invoke = NULL;
 		app_loader.context = NULL;
@@ -248,7 +247,7 @@ static int load_helios_tzapp(struct qcom_helios *pbd)
 		goto end;
 	}
 
-	rc = IAppLoader_loadFromBuffer(app_loader, (const void *)buffer, size,
+	rc = smci_apploader_loadfrombuffer(app_loader, (const void *)buffer, size,
 			&app_controller_obj);
 	if (rc) {
 		app_controller_obj.invoke = NULL;
@@ -258,7 +257,7 @@ static int load_helios_tzapp(struct qcom_helios *pbd)
 		goto end;
 	}
 
-	rc = IClientEnv_open(client_env, CAppClient_UID, &app_client);
+	rc = smci_clientenv_open(clientenv, SMCI_APPCLIENT_UID, &app_client);
 	if (rc) {
 		app_client.invoke = NULL;
 		app_client.context = NULL;
@@ -269,31 +268,31 @@ static int load_helios_tzapp(struct qcom_helios *pbd)
 
 	pbd->app_status = RESULT_SUCCESS;
 end:
-	Object_ASSIGN_NULL(app_controller_obj);
-	Object_ASSIGN_NULL(app_loader);
-	Object_ASSIGN_NULL(client_env);
-	Object_ASSIGN_NULL(app_client);
+	SMCI_OBJECT_ASSIGN_NULL(app_controller_obj);
+	SMCI_OBJECT_ASSIGN_NULL(app_loader);
+	SMCI_OBJECT_ASSIGN_NULL(clientenv);
+	SMCI_OBJECT_ASSIGN_NULL(app_client);
 	return rc;
 }
 
-static int32_t get_helios_app_object(struct Object *helios_app_obj)
+static int32_t get_helios_app_object(struct smci_object *helios_app_obj)
 {
 	int32_t ret = 0;
 	const char *app_name = "heliosapp";
-	struct Object remote_obj = {NULL, NULL};
-	struct Object client_env = {NULL, NULL};
-	struct Object app_client = {NULL, NULL};
+	struct smci_object remote_obj = {NULL, NULL};
+	struct smci_object clientenv = {NULL, NULL};
+	struct smci_object app_client = {NULL, NULL};
 
-	ret = get_client_env_object(&client_env);
+	ret = get_client_env_object(&clientenv);
 	if (ret) {
-		client_env.invoke = NULL;
-		client_env.context = NULL;
+		clientenv.invoke = NULL;
+		clientenv.context = NULL;
 		pr_err("<helios> get client env object failure:[%d]\n", ret);
 		ret =  -EIO;
 		goto end;
 	}
 
-	ret = IClientEnv_open(client_env, CAppClient_UID, &app_client);
+	ret = smci_clientenv_open(clientenv, SMCI_APPCLIENT_UID, &app_client);
 	if (ret) {
 		app_client.invoke = NULL;
 		app_client.context = NULL;
@@ -302,16 +301,16 @@ static int32_t get_helios_app_object(struct Object *helios_app_obj)
 		goto end;
 	}
 
-	ret = IAppClient_getAppObject(app_client, app_name, strlen(app_name), &remote_obj);
+	ret = smci_appclient_getappobject(app_client, app_name, strlen(app_name), &remote_obj);
 	if (ret) {
-		pr_err("IAppClient_getAppObject failure:[%d]\n", ret);
+		pr_err("smci_appclient_getappobject failure:[%d]\n", ret);
 		remote_obj.invoke = NULL;
 		remote_obj.context = NULL;
 		ret = -EIO;
 		goto end;
 	}
 
-	ret = IOpener_open(remote_obj, helios_app_uid, helios_app_obj);
+	ret = smci_opener_open(remote_obj, helios_app_uid, helios_app_obj);
 	if (ret) {
 		pr_err("IOpener_open failure: ret:[%d]\n", ret);
 		helios_app_obj->invoke = NULL;
@@ -321,9 +320,9 @@ static int32_t get_helios_app_object(struct Object *helios_app_obj)
 	}
 
 end:
-	Object_ASSIGN_NULL(remote_obj);
-	Object_ASSIGN_NULL(client_env);
-	Object_ASSIGN_NULL(app_client);
+	SMCI_OBJECT_ASSIGN_NULL(remote_obj);
+	SMCI_OBJECT_ASSIGN_NULL(clientenv);
+	SMCI_OBJECT_ASSIGN_NULL(app_client);
 	return ret;
 }
 
@@ -338,7 +337,7 @@ static long helios_tzapp_comm(struct qcom_helios *pbd,
 		struct tzapp_helios_req *req)
 {
 	int32_t ret = 0;
-	struct Object helios_app_obj = {NULL, NULL};
+	struct smci_object helios_app_obj = {NULL, NULL};
 
 	pr_debug("command id = %d\n", req->tzapp_helios_cmd);
 	ret = get_helios_app_object(&helios_app_obj);
@@ -350,7 +349,7 @@ static long helios_tzapp_comm(struct qcom_helios *pbd,
 	switch (req->tzapp_helios_cmd) {
 
 	case HELIOS_RPROC_AUTH_MDT:
-		pbd->cmd_status = helios_app_load_meta_data(
+		pbd->cmd_status = smci_heliosapp_loadmetadata(
 				helios_app_obj,
 				(void *)req,
 				sizeof(struct tzapp_helios_req));
@@ -358,29 +357,29 @@ static long helios_tzapp_comm(struct qcom_helios *pbd,
 		break;
 
 	case HELIOS_RPROC_IMAGE_LOAD:
-		pbd->cmd_status = helios_app_transfer_and_authenticate_fw(
+		pbd->cmd_status = smci_heliosapp_transferandauthenticatefw(
 				helios_app_obj,
 				(void *)req,
 				sizeof(struct tzapp_helios_req));
 		break;
 
 	case HELIOS_RPROC_RAMDUMP:
-		pbd->cmd_status = helios_app_collect_ramdump(
+		pbd->cmd_status = smci_heliosapp_collectramdump(
 				helios_app_obj,
 				(void *)req,
 				sizeof(struct tzapp_helios_req));
 		break;
 
 	case HELIOS_RPROC_RESTART:
-		pbd->cmd_status = helios_app_force_restart(helios_app_obj);
+		pbd->cmd_status = smci_heliosapp_forcerestart(helios_app_obj);
 		break;
 
 	case HELIOS_RPROC_SHUTDOWN:
-		pbd->cmd_status = helios_app_shutdown(helios_app_obj);
+		pbd->cmd_status = smci_heliosapp_shutdown(helios_app_obj);
 		break;
 
 	case HELIOS_RPROC_POWERDOWN:
-		pbd->cmd_status = helios_app_force_power_down(helios_app_obj);
+		pbd->cmd_status = smci_heliosapp_forcepowerdown(helios_app_obj);
 		break;
 
 	default:
@@ -389,7 +388,7 @@ static long helios_tzapp_comm(struct qcom_helios *pbd,
 	}
 
 end:
-	Object_ASSIGN_NULL(helios_app_obj);
+	SMCI_OBJECT_ASSIGN_NULL(helios_app_obj);
 	return ret;
 }
 
@@ -464,6 +463,7 @@ static void helios_coredump(struct rproc *rproc)
 					__func__, helios->cmd_status);
 			goto exit;
 		}
+		dma_sync_single_for_cpu(helios->dev, start_addr, size, DMA_FROM_DEVICE);
 		memcpy(full_ramdump_buffer + buffer_size, region, size);
 		buffer_size += size;
 	} while (helios->cmd_status == HELIOS_APP_PARTIAL_RAMDUMP);
@@ -529,6 +529,8 @@ static int helios_load(struct rproc *rproc, const struct firmware *fw)
 	struct qtee_shm shm;
 	int ret;
 
+	trace_rproc_qcom_event(dev_name(helios->dev), "helios_load", "enter");
+
 	ret = qtee_shmbridge_allocate_shm(fw->size, &shm);
 	if (ret) {
 		pr_err("Shmbridge memory allocation failed\n");
@@ -556,6 +558,7 @@ static int helios_load(struct rproc *rproc, const struct firmware *fw)
 
 tzapp_com_failed:
 	qtee_shmbridge_free_shm(&shm);
+	trace_rproc_qcom_event(dev_name(helios->dev), "helios_load", "exit");
 	return ret;
 }
 
@@ -572,6 +575,8 @@ static int helios_start(struct rproc *rproc)
 	struct tzapp_helios_req helios_tz_req;
 	int ret;
 
+	trace_rproc_qcom_event(dev_name(helios->dev), "helios_start", "enter");
+
 	helios_tz_req.tzapp_helios_cmd = HELIOS_RPROC_IMAGE_LOAD;
 	helios_tz_req.address_fw = 0;
 	helios_tz_req.size_fw = 0;
@@ -587,6 +592,7 @@ static int helios_start(struct rproc *rproc)
 	pr_err("Helios is booted up!\n");
 	helios->is_ready = true;
 
+	trace_rproc_qcom_event(dev_name(helios->dev), "helios_start", "exit");
 	return 0;
 
 image_load_failed:
@@ -720,6 +726,8 @@ static int helios_stop(struct rproc *rproc)
 	struct qcom_helios *helios = (struct qcom_helios *)rproc->priv;
 	int ret = 0;
 
+	trace_rproc_qcom_event(dev_name(helios->dev), "helios_stop", "enter");
+
 	/* In case of crash, STOP operation is dummy */
 	if (rproc->state == RPROC_CRASHED) {
 		pr_err("Helios is crashed! Skip stop and collect ramdump directly.\n");
@@ -734,6 +742,7 @@ static int helios_stop(struct rproc *rproc)
 	}
 
 	pr_info("Helios Stop is %s\n", ret ? "failed" : "success");
+	trace_rproc_qcom_event(dev_name(helios->dev), "helios_stop", "exit");
 	return ret;
 }
 
@@ -802,7 +811,6 @@ static int rproc_helios_driver_probe(struct platform_device *pdev)
 	if (ret)
 		goto free_rproc;
 
-	qcom_add_ssr_subdev(rproc, &helios->ssr_subdev, helios->ssr_name);
 
 	qcom_add_glink_subdev(rproc, &helios->glink_subdev, helios->ssr_name);
 
@@ -815,6 +823,7 @@ static int rproc_helios_driver_probe(struct platform_device *pdev)
 		goto deinit_wakeup_source;
 	}
 
+	qcom_add_ssr_subdev(rproc, &helios->ssr_subdev, helios->ssr_name);
 	/* Register callback for Helios Crash with heliosCom */
 	helios->config_type.priv = (void *)rproc;
 	helios->config_type.helioscom_reset_notification_cb = helios_crash_handler;

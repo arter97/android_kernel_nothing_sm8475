@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2002,2007-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define ANY_ID (~0)
@@ -1122,7 +1122,7 @@ static const struct adreno_a6xx_core adreno_gpu_core_a621 = {
 		.compatible = "qcom,adreno-gpu-a621",
 		.features = ADRENO_CONTENT_PROTECTION | ADRENO_IOCOHERENT |
 			ADRENO_APRIV | ADRENO_LSR | ADRENO_PREEMPTION |
-			ADRENO_IFPC | ADRENO_ACD,
+			ADRENO_IFPC | ADRENO_ACD | ADRENO_BCL,
 		.gpudev = &adreno_a6xx_hwsched_gpudev.base,
 		.perfcounters = &adreno_a6xx_hwsched_perfcounters,
 		.uche_gmem_alignment = 0,
@@ -2140,9 +2140,9 @@ static const struct adreno_gen7_core adreno_gpu_core_gen7_6_0 = {
 		.features = ADRENO_APRIV | ADRENO_IOCOHERENT |
 				ADRENO_CONTENT_PROTECTION | ADRENO_L3_VOTE |
 				ADRENO_IFPC | ADRENO_PREEMPTION | ADRENO_BCL |
-				ADRENO_ACD,
+				ADRENO_ACD | ADRENO_LPAC | ADRENO_DMS,
 		.gpudev = &adreno_gen7_hwsched_gpudev.base,
-		.perfcounters = &adreno_gen7_6_0_perfcounters,
+		.perfcounters = &adreno_gen7_hwsched_perfcounters,
 		.uche_gmem_alignment = SZ_16M,
 		.gmem_size = 3 * SZ_1M,
 		.bus_width = 32,
@@ -2161,6 +2161,7 @@ static const struct adreno_gen7_core adreno_gpu_core_gen7_6_0 = {
 	.gmu_hub_clk_freq = 200000000,
 	.bcl_data = 1,
 	.qos_value = gen7_6_0_gbif_client_qos_values,
+	.ctxt_record_size = (4192 * SZ_1K),
 };
 
 static const struct adreno_gpu_core *adreno_gpulist[] = {
