@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -471,7 +471,7 @@ enum channel_enum {
 	MAX_24GHZ_CHANNEL = CHAN_ENUM_2484,
 	NUM_24GHZ_CHANNELS = (MAX_24GHZ_CHANNEL - MIN_24GHZ_CHANNEL + 1),
 
-	INVALID_CHANNEL = 0xBAD,
+	INVALID_CHANNEL = NUM_CHANNELS,
 
 #ifdef CONFIG_49GHZ_CHAN
 	MIN_49GHZ_CHANNEL = CHAN_ENUM_4912,
@@ -1681,6 +1681,7 @@ struct chan_power_info {
  * @frequency: Array of operating frequency
  * @tpe: TPE values processed from TPE IE
  * @chan_power_info: power info to send to FW
+ * @is_power_constraint_abs: is power constraint absolute or not
  */
 struct reg_tpc_power_info {
 	bool is_psd_power;
@@ -1692,6 +1693,7 @@ struct reg_tpc_power_info {
 	qdf_freq_t frequency[MAX_NUM_PWR_LEVEL];
 	uint8_t tpe[MAX_NUM_PWR_LEVEL];
 	struct chan_power_info chan_power_info[MAX_NUM_PWR_LEVEL];
+	bool is_power_constraint_abs;
 };
 
 #ifdef FEATURE_WLAN_CH_AVOID_EXT
@@ -2112,4 +2114,15 @@ typedef void (*afc_req_rx_evt_handler)(struct wlan_objmgr_pdev *pdev,
 				       struct wlan_afc_host_partial_request *afc_par_req,
 				       void *arg);
 #endif
+
+/**
+ * reg_is_chan_enum_invalid() - Checks if the channel enum is invalid or not.
+ * @chan_enum: Input channel enum.
+ *
+ * Return: true if channel enum is invalid else false.
+ */
+static inline bool reg_is_chan_enum_invalid(enum channel_enum chan_enum)
+{
+	return chan_enum >= INVALID_CHANNEL;
+}
 #endif

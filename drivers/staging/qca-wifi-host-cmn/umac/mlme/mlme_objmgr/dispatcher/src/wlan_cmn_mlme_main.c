@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -563,6 +563,17 @@ mlme_cm_osif_roam_complete(struct wlan_objmgr_vdev *vdev)
 
 	return ret;
 }
+
+void
+mlme_cm_osif_roam_rt_stats(struct roam_stats_event *roam_stats,
+			   uint8_t idx)
+{
+	if (glbl_cm_ops &&
+	    glbl_cm_ops->mlme_cm_roam_rt_stats_cb)
+		glbl_cm_ops->mlme_cm_roam_rt_stats_cb(roam_stats,
+						      idx);
+}
+
 #endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
@@ -799,3 +810,10 @@ mlme_twt_vdev_destroy_notification(struct wlan_objmgr_vdev *vdev)
 
 #endif
 
+#ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
+void mlme_cm_osif_perfd_reset_cpufreq(void)
+{
+	if (glbl_cm_ops && glbl_cm_ops->mlme_cm_perfd_reset_cpufreq_ctrl_cb)
+		glbl_cm_ops->mlme_cm_perfd_reset_cpufreq_ctrl_cb();
+}
+#endif
