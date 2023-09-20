@@ -4281,7 +4281,6 @@ static void walt_init(struct work_struct *work)
 {
 	struct ctl_table_header *hdr;
 	static atomic_t already_inited = ATOMIC_INIT(0);
-	int i;
 
 	might_sleep();
 
@@ -4312,12 +4311,6 @@ static void walt_init(struct work_struct *work)
 	core_ctl_init();
 	walt_boost_init();
 	waltgov_register();
-
-	i = match_string(sched_feat_names, __SCHED_FEAT_NR, "TTWU_QUEUE");
-	if (i >= 0) {
-		static_key_disable(&sched_feat_keys[i]);
-		sysctl_sched_features &= ~(1UL << i);
-	}
 }
 
 static DECLARE_WORK(walt_init_work, walt_init);
