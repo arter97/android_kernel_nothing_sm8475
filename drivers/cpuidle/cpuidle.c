@@ -212,6 +212,7 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 	 * The vendor hook may modify index, which means target_state and
 	 * broadcast must be assigned after the vendor hook.
 	 */
+	trace_android_vh_cpu_idle_enter_prio(&index, dev);
 	trace_android_vh_cpu_idle_enter(&index, dev);
 	if (index < 0)
 		return index;
@@ -255,6 +256,7 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 	sched_clock_idle_wakeup_event();
 	time_end = ns_to_ktime(local_clock());
 	trace_cpu_idle(PWR_EVENT_EXIT, dev->cpu);
+	trace_android_vh_cpu_idle_exit_prio(entered_state, dev);
 	trace_android_vh_cpu_idle_exit(entered_state, dev);
 
 	/* The cpu is no longer idle or about to enter idle. */
