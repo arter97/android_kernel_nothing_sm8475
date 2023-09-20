@@ -642,7 +642,7 @@ ifeq ($(CONFIG_CNSS_QCA6750), y)
 	endif
 endif
 
-ifeq ($(CONFIG_CNSS_QCA6750), y)
+ifeq (y,$(findstring y, $(CONFIG_CNSS_QCA6750) $(CONFIG_CNSS_QCA6490)))
 	CONFIG_BUS_AUTO_SUSPEND := y
 endif
 
@@ -1111,8 +1111,6 @@ CONFIG_FEATURE_INTEROP_ISSUES_AP := y
 
 CONFIG_FEATURE_WLAN_WAPI := y
 
-CONFIG_AGEIE_ON_SCAN_RESULTS := y
-
 #Flag to enable FW log parsing support feature
 CONFIG_FEATURE_FW_LOG_PARSING := n
 
@@ -1404,6 +1402,13 @@ ifeq ($(CONFIG_ARCH_QCS405), y)
 CONFIG_FEATURE_WLAN_TIME_SYNC_FTM := y
 endif
 
+ifeq ($(CONFIG_CNSS_QCA6490), y)
+ifneq (, $(filter y, $(CONFIG_ARCH_LAHAINA) $(CONFIG_ARCH_PARROT)))
+CONFIG_DP_RX_UDP_OVER_PEER_ROAM := y
+CONFIG_WLAN_BOOST_CPU_FREQ_IN_ROAM := y
+endif
+endif
+
 #Enable VDEV OPS wakelock feature
 CONFIG_FEATURE_VDEV_OPS_WAKELOCK := y
 
@@ -1455,3 +1460,6 @@ endif
 ifeq ($(CONFIG_LITHIUM), y)
 CONFIG_DP_TX_TRACKING := y
 endif
+
+#Flag to enable Dynamic MAC address update
+CONFIG_WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE := y

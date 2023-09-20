@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -211,6 +211,21 @@ bool wlan_mlme_get_wlm_multi_client_ll_caps(struct wlan_objmgr_psoc *psoc)
 {
 	return wlan_psoc_nif_fw_ext2_cap_get(psoc,
 					WLAN_SOC_WLM_MULTI_CLIENT_LL_SUPPORT);
+}
+#endif
+
+#ifdef FEATURE_WLAN_CH_AVOID_EXT
+bool wlan_mlme_get_coex_unsafe_chan_nb_user_prefer(
+		struct wlan_objmgr_psoc *psoc)
+{
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+	if (!mlme_obj) {
+		mlme_legacy_err("Failed to get MLME Obj");
+		return cfg_default(CFG_COEX_UNSAFE_CHAN_NB_USER_PREFER);
+	}
+	return mlme_obj->cfg.reg.coex_unsafe_chan_nb_user_prefer;
 }
 #endif
 
@@ -3070,6 +3085,23 @@ wlan_mlme_set_rf_test_mode_enabled(struct wlan_objmgr_psoc *psoc, bool value)
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef CONFIG_BAND_6GHZ
+QDF_STATUS
+wlan_mlme_is_standard_6ghz_conn_policy_enabled(struct wlan_objmgr_psoc *psoc,
+					       bool *value)
+{
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+	if (!mlme_obj)
+		return QDF_STATUS_E_FAILURE;
+
+	*value = mlme_obj->cfg.gen.std_6ghz_conn_policy;
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 QDF_STATUS
 wlan_mlme_cfg_set_vht_chan_width(struct wlan_objmgr_psoc *psoc, uint8_t value)
 {
@@ -4348,6 +4380,25 @@ wlan_mlme_get_mgmt_max_retry(struct wlan_objmgr_psoc *psoc,
 	}
 
 	*max_retry = mlme_obj->cfg.gen.mgmt_retry_max;
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+wlan_mlme_get_mgmt_6ghz_rate_support(struct wlan_objmgr_psoc *psoc,
+				     bool *enable_he_mcs0_for_6ghz_mgmt)
+{
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+
+	if (!mlme_obj) {
+		*enable_he_mcs0_for_6ghz_mgmt =
+			cfg_default(CFG_ENABLE_HE_MCS0_MGMT_6GHZ);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	*enable_he_mcs0_for_6ghz_mgmt =
+		mlme_obj->cfg.gen.enable_he_mcs0_for_6ghz_mgmt;
 	return QDF_STATUS_SUCCESS;
 }
 

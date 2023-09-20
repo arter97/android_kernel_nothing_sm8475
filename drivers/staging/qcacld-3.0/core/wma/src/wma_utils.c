@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -110,7 +110,9 @@ static struct index_vht_data_rate_type vht_mcs_nss1[] = {
 	{6,  {585,  650}, {1215, 1350}, {2633, 2925}, {5265, 5850} },
 	{7,  {650,  722}, {1350, 1500}, {2925, 3250}, {5850, 6500} },
 	{8,  {780,  867}, {1620, 1800}, {3510, 3900}, {7020, 7800} },
-	{9,  {865,  960}, {1800, 2000}, {3900, 4333}, {7800, 8667} }
+	{9,  {865,  960}, {1800, 2000}, {3900, 4333}, {7800, 8667} },
+	{10, {975, 1083}, {2025, 2250}, {4388, 4875}, {8775, 9750} },
+	{11, {1083, 1204}, {2250, 2500}, {4875, 5417}, {9750, 1083} }
 };
 
 /*MCS parameters with Nss = 2*/
@@ -125,7 +127,9 @@ static struct index_vht_data_rate_type vht_mcs_nss2[] = {
 	{6,  {1170, 1300}, {2430, 2700}, {5265, 5850}, {10530, 11700} },
 	{7,  {1300, 1444}, {2700, 3000}, {5850, 6500}, {11700, 13000} },
 	{8,  {1560, 1733}, {3240, 3600}, {7020, 7800}, {14040, 15600} },
-	{9,  {1730, 1920}, {3600, 4000}, {7800, 8667}, {15600, 17333} }
+	{9,  {1730, 1920}, {3600, 4000}, {7800, 8667}, {15600, 17333} },
+	{10, {1950, 2167}, {4050, 4500}, {8775, 9750}, {17550, 19500} },
+	{11, {2167, 2407}, {4500, 5000}, {9750, 10833}, {19500, 21667} }
 };
 
 #ifdef WLAN_FEATURE_11AX
@@ -367,9 +371,9 @@ static uint16_t wma_match_he_rate(uint16_t raw_rate,
 		return 0;
 
 	if (is_he_mcs_12_13_supported)
-		max_he_mcs_idx = MAX_HE_MCS12_13_IDX;
+		max_he_mcs_idx = QDF_ARRAY_SIZE(he_mcs_nss1);
 	else
-		max_he_mcs_idx = MAX_HE_MCS_IDX;
+		max_he_mcs_idx = QDF_ARRAY_SIZE(he_mcs_nss1) - 2;
 
 	for (index = 0; index < max_he_mcs_idx; index++) {
 		dcm_index_max = IS_MCS_HAS_DCM_RATE(index) ? 2 : 1;
@@ -478,6 +482,7 @@ uint8_t wma_get_mcs_idx(uint16_t raw_rate, enum tx_rate_info rate_flags,
 {
 	uint8_t  index = 0;
 	uint16_t match_rate = 0;
+	uint8_t max_ht_mcs_idx;
 	uint16_t *nss1_rate;
 	uint16_t *nss2_rate;
 
@@ -493,7 +498,7 @@ uint8_t wma_get_mcs_idx(uint16_t raw_rate, enum tx_rate_info rate_flags,
 	if (match_rate)
 		goto rate_found;
 
-	for (index = 0; index < MAX_VHT_MCS_IDX; index++) {
+	for (index = 0; index < QDF_ARRAY_SIZE(vht_mcs_nss1); index++) {
 		if (rate_flags & TX_RATE_VHT160) {
 			nss1_rate = &vht_mcs_nss1[index].ht160_rate[0];
 			nss2_rate = &vht_mcs_nss2[index].ht160_rate[0];
@@ -548,7 +553,8 @@ uint8_t wma_get_mcs_idx(uint16_t raw_rate, enum tx_rate_info rate_flags,
 			}
 		}
 	}
-	for (index = 0; index < MAX_HT_MCS_IDX; index++) {
+	max_ht_mcs_idx = QDF_ARRAY_SIZE(mcs_nss1);
+	for (index = 0; index < max_ht_mcs_idx; index++) {
 		if (rate_flags & TX_RATE_HT40) {
 			nss1_rate = &mcs_nss1[index].ht40_rate[0];
 			nss2_rate = &mcs_nss2[index].ht40_rate[0];
@@ -560,7 +566,7 @@ uint8_t wma_get_mcs_idx(uint16_t raw_rate, enum tx_rate_info rate_flags,
 			if (match_rate) {
 				*mcs_rate_flag = TX_RATE_HT40;
 				if (*nss == 2)
-					index += MAX_HT_MCS_IDX;
+					index += max_ht_mcs_idx;
 				goto rate_found;
 			}
 		}
@@ -575,7 +581,7 @@ uint8_t wma_get_mcs_idx(uint16_t raw_rate, enum tx_rate_info rate_flags,
 			if (match_rate) {
 				*mcs_rate_flag = TX_RATE_HT20;
 				if (*nss == 2)
-					index += MAX_HT_MCS_IDX;
+					index += max_ht_mcs_idx;
 				goto rate_found;
 			}
 		}

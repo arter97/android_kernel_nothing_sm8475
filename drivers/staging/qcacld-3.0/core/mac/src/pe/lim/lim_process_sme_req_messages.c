@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -67,6 +67,7 @@
 #include "wlan_reg_services_api.h"
 #include <lim_mlo.h>
 #include <wlan_vdev_mgr_utils_api.h>
+#include "wma_he.h"
 
 /* SME REQ processing function templates */
 static bool __lim_process_sme_sys_ready_ind(struct mac_context *, uint32_t *);
@@ -1929,19 +1930,16 @@ lim_handle_11a_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 
 	switch (bss_dot11_mode) {
 	case MLME_DOT11_MODE_11B:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11G:
 		/* Self 11A and BSS 11B/G cannot connect */
 		pe_err("Self dot11mode 11A, bss dot11mode %d not compatible",
 		       bss_dot11_mode);
 		return QDF_STATUS_E_INVAL;
 	case MLME_DOT11_MODE_11A:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11N:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AC:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AX:
+	case MLME_DOT11_MODE_11BE:
 		*intersected_mode = MLME_DOT11_MODE_11A;
 		break;
 	default:
@@ -1965,14 +1963,11 @@ lim_handle_11b_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 
 	switch (bss_dot11_mode) {
 	case MLME_DOT11_MODE_11N:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AC:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AX:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11B:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11G:
+	case MLME_DOT11_MODE_11BE:
 		/* Self 11B and BSS 11A cannot connect */
 		*intersected_mode = MLME_DOT11_MODE_11B;
 		break;
@@ -2001,12 +1996,10 @@ lim_handle_11g_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 
 	switch (bss_dot11_mode) {
 	case MLME_DOT11_MODE_11N:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AC:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AX:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11G:
+	case MLME_DOT11_MODE_11BE:
 		/* Self 11B and BSS 11A cannot connect */
 		*intersected_mode = MLME_DOT11_MODE_11G;
 		break;
@@ -2042,6 +2035,8 @@ lim_handle_11n_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 		*intersected_mode = MLME_DOT11_MODE_11N;
 		break;
 	case MLME_DOT11_MODE_11AC:
+		/* fallthrough */
+	case MLME_DOT11_MODE_11BE:
 		/* fallthrough */
 	case MLME_DOT11_MODE_11AX:
 		if (ie_struct->HTCaps.present) {
@@ -2096,6 +2091,7 @@ lim_handle_11ac_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 		*intersected_mode = MLME_DOT11_MODE_11AC;
 		break;
 	case MLME_DOT11_MODE_11AX:
+	case MLME_DOT11_MODE_11BE:
 		if (vht_capable) {
 			*intersected_mode = MLME_DOT11_MODE_11AC;
 			break;
@@ -2235,17 +2231,14 @@ lim_handle_11g_only_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 
 	switch (bss_dot11_mode) {
 	case MLME_DOT11_MODE_11N:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AC:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AX:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11G:
+	case MLME_DOT11_MODE_11BE:
 		/* Self 11B and BSS 11A cannot connect */
 		*intersected_mode = MLME_DOT11_MODE_11G;
 		break;
 	case MLME_DOT11_MODE_11B:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11A:
 		pe_err("Self dot11mode 11G only, bss dot11mode %d not compatible",
 		       bss_dot11_mode);
@@ -2275,8 +2268,8 @@ lim_handle_11n_only_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 		*intersected_mode = MLME_DOT11_MODE_11N;
 		break;
 	case MLME_DOT11_MODE_11AC:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AX:
+	case MLME_DOT11_MODE_11BE:
 		if (ie_struct->HTCaps.present) {
 			*intersected_mode = MLME_DOT11_MODE_11N;
 			break;
@@ -2284,9 +2277,7 @@ lim_handle_11n_only_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 		pe_err("Self dot11mode is 11N ONLY peer is not HT capable");
 		return QDF_STATUS_E_INVAL;
 	case MLME_DOT11_MODE_11G:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11B:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11A:
 		pe_err("Self dot11mode 11N only, bss dot11mode %d not compatible",
 		       bss_dot11_mode);
@@ -2322,6 +2313,7 @@ lim_handle_11ac_only_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 		*intersected_mode = MLME_DOT11_MODE_11AC;
 		break;
 	case MLME_DOT11_MODE_11AX:
+	case MLME_DOT11_MODE_11BE:
 		if (vht_capable) {
 			*intersected_mode = MLME_DOT11_MODE_11AC;
 			break;
@@ -2329,11 +2321,8 @@ lim_handle_11ac_only_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 		pe_err("Self dot11mode is 11AC ONLY peer is not VHT capable");
 		return QDF_STATUS_E_INVAL;
 	case MLME_DOT11_MODE_11N:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11G:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11B:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11A:
 		pe_err("Self dot11mode 11AC only, bss dot11mode %d not compatible",
 		       bss_dot11_mode);
@@ -2360,15 +2349,11 @@ lim_handle_11ax_only_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 			*intersected_mode = MLME_DOT11_MODE_11AX;
 			break;
 		}
-		/* fallthrough */
+		fallthrough;
 	case MLME_DOT11_MODE_11N:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AC:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11G:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11B:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11A:
 		pe_err("Self dot11mode 11AX only, bss dot11mode %d not compatible",
 		       bss_dot11_mode);
@@ -2390,15 +2375,10 @@ lim_handle_11be_only_dot11_mode(enum mlme_dot11_mode bss_dot11_mode,
 		*intersected_mode = MLME_DOT11_MODE_11BE;
 		break;
 	case MLME_DOT11_MODE_11N:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AC:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11AX:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11G:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11B:
-		/* fallthrough */
 	case MLME_DOT11_MODE_11A:
 		pe_err("Self dot11mode 11BE only, bss dot11mode %d not compatible",
 		       bss_dot11_mode);
@@ -2708,7 +2688,7 @@ lim_fill_ese_params(struct mac_context *mac_ctx, struct pe_session *session,
 }
 #endif
 
-static void lim_get_basic_rates(tSirMacRateSet *b_rates, uint32_t chan_freq)
+void lim_get_basic_rates(tSirMacRateSet *b_rates, uint32_t chan_freq)
 {
 	/*
 	 * Some IOT APs don't send supported rates in
@@ -2872,7 +2852,7 @@ lim_fill_pe_session(struct mac_context *mac_ctx, struct pe_session *session,
 	uint16_t ie_len;
 	int8_t local_power_constraint;
 	struct vdev_mlme_obj *mlme_obj;
-	bool is_pwr_constraint;
+	bool is_pwr_constraint = false;
 	tSirMacCapabilityInfo *ap_cap_info;
 	uint8_t wmm_mode, value;
 	struct wlan_mlme_lfr_cfg *lfr = &mac_ctx->mlme_cfg->lfr;
@@ -3135,13 +3115,16 @@ lim_fill_pe_session(struct mac_context *mac_ctx, struct pe_session *session,
 		&session->gLimCurrentBssUapsd,
 		&local_power_constraint, session, &is_pwr_constraint);
 
+	mlme_obj->reg_tpc_obj.is_power_constraint_abs = !is_pwr_constraint;
+
 	if (wlan_reg_is_6ghz_chan_freq(bss_desc->chan_freq)) {
 		if (!ie_struct->Country.present)
 			pe_debug("Channel is 6G but country IE not present");
 		wlan_reg_read_current_country(mac_ctx->psoc,
 					      programmed_country);
 		status = wlan_reg_get_6g_power_type_for_ctry(
-				mac_ctx->psoc, ie_struct->Country.country,
+				mac_ctx->psoc, mac_ctx->pdev,
+				ie_struct->Country.country,
 				programmed_country, &power_type_6g,
 				&ctry_code_match, session->ap_power_type);
 		if (QDF_IS_STATUS_ERROR(status)) {
@@ -3538,7 +3521,7 @@ lim_get_rsn_akm(uint32_t akm)
 		return ANI_AKM_TYPE_NONE;
 }
 
-static enum ani_akm_type
+enum ani_akm_type
 lim_get_connected_akm(struct pe_session *session, int32_t ucast_cipher,
 		      int32_t auth_mode, int32_t akm)
 {
@@ -3892,6 +3875,15 @@ lim_fill_session_params(struct mac_context *mac_ctx,
 				   req->assoc_ie.ptr, req->assoc_ie.len);
 	lim_fill_crypto_params(mac_ctx, session, req);
 
+	/* Reset the SPMK global cache for non-SAE connection */
+	if (session->connected_akm != ANI_AKM_TYPE_SAE) {
+		wlan_mlme_set_sae_single_pmk_bss_cap(mac_ctx->psoc,
+						     session->vdev_id,
+						     false);
+		wlan_mlme_clear_sae_single_pmk_info(session->vdev,
+						    NULL);
+	}
+
 	pe_debug("After stripping Assoc IE len: %d", req->assoc_ie.len);
 	if (req->assoc_ie.len)
 		QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_PE, QDF_TRACE_LEVEL_DEBUG,
@@ -3994,7 +3986,7 @@ lim_cm_handle_join_req(struct cm_vdev_join_req *req)
 	if (QDF_IS_STATUS_ERROR(status))
 		goto fail;
 
-	pe_debug("Freq %d width %d freq0 %d freq1 %d, Smps %d: mode %d action %d, nss 1x1 %d vdev_nss %d nss %d cbMode %d dot11mode %d subfer %d subfee %d csn %d is_cisco %d WPS %d OSEN %d fils %d",
+	pe_debug("Freq %d width %d freq0 %d freq1 %d, Smps %d: mode %d action %d, nss 1x1 %d vdev_nss %d nss %d cbMode %d dot11mode %d subfer %d subfee %d csn %d is_cisco %d WPS %d OSEN %d fils %d akm %d",
 		 pe_session->curr_op_freq, pe_session->ch_width,
 		 pe_session->ch_center_freq_seg0,
 		 pe_session->ch_center_freq_seg1,
@@ -4009,7 +4001,8 @@ lim_cm_handle_join_req(struct cm_vdev_join_req *req)
 		 pe_session->isCiscoVendorAP,
 		 pe_session->wps_registration,
 		 pe_session->isOSENConnection,
-		 lim_is_fils_connection(pe_session));
+		 lim_is_fils_connection(pe_session),
+		 pe_session->connected_akm);
 
 	status = lim_send_connect_req_to_mlm(pe_session);
 	if (QDF_IS_STATUS_ERROR(status)) {
@@ -4138,7 +4131,7 @@ static void lim_process_nb_disconnect_req(struct mac_context *mac_ctx,
 	case REASON_OPER_CHANNEL_DISABLED_INDOOR:
 		/* Set reason REASON_DEAUTH_NETWORK_LEAVING for prop deauth */
 		req->req.reason_code = REASON_DEAUTH_NETWORK_LEAVING;
-		/* fallthrough */
+		fallthrough;
 	case REASON_PREV_AUTH_NOT_VALID:
 	case REASON_CLASS2_FRAME_FROM_NON_AUTH_STA:
 		lim_prepare_and_send_deauth(mac_ctx, pe_session, req);
@@ -5161,7 +5154,6 @@ uint8_t lim_get_max_tx_power(struct mac_context *mac,
 
 void lim_calculate_tpc(struct mac_context *mac,
 		       struct pe_session *session,
-		       bool is_pwr_constraint_absolute,
 		       uint8_t ap_pwr_type,
 		       bool ctry_code_match)
 {
@@ -5303,8 +5295,10 @@ void lim_calculate_tpc(struct mac_context *mac,
 		if (mlme_obj->reg_tpc_obj.ap_constraint_power) {
 			local_constraint =
 				mlme_obj->reg_tpc_obj.ap_constraint_power;
-			reg_max = mlme_obj->reg_tpc_obj.reg_max[i];
-			if (is_pwr_constraint_absolute)
+			pe_debug("local constraint: %d power constraint absolute: %d",
+				 local_constraint,
+				 mlme_obj->reg_tpc_obj.is_power_constraint_abs);
+			if (mlme_obj->reg_tpc_obj.is_power_constraint_abs)
 				max_tx_power = QDF_MIN(reg_max,
 						       local_constraint);
 			else
@@ -5342,8 +5336,9 @@ void lim_calculate_tpc(struct mac_context *mac,
 	mlme_obj->reg_tpc_obj.eirp_power = reg_max;
 	mlme_obj->reg_tpc_obj.power_type_6g = ap_power_type_6g;
 
-	pe_debug("num_pwr_levels: %d, is_psd_power: %d, total eirp_power: %d, ap_pwr_type: %d",
-		 num_pwr_levels, is_psd_power, reg_max, ap_power_type_6g);
+	pe_debug("num_pwr_levels: %d, is_psd_power: %d, total eirp_power: %d, ap_pwr_type: %d tx_pwrlimit: %d",
+		 num_pwr_levels, is_psd_power, reg_max, ap_power_type_6g,
+		 mlme_obj->mgmt.generic.tx_pwrlimit);
 }
 
 bool send_disassoc_frame = 1;
@@ -5500,7 +5495,6 @@ static void __lim_process_sme_disassoc_req(struct mac_context *mac,
 		break;
 
 	case eLIM_AP_ROLE:
-		/* Fall through */
 		break;
 
 	default:
@@ -5646,7 +5640,6 @@ void __lim_process_sme_disassoc_cnf(struct mac_context *mac, uint32_t *msg_buf)
 		break;
 
 	case eLIM_AP_ROLE:
-		/* Fall through */
 		break;
 	default:                /* eLIM_UNKNOWN_ROLE */
 		pe_err("received unexpected SME_DISASSOC_CNF role %d",
@@ -5786,7 +5779,7 @@ static void __lim_process_sme_deauth_req(struct mac_context *mac_ctx,
 		case eLIM_SME_LINK_EST_STATE:
 			/* Delete all TDLS peers connected before leaving BSS */
 			lim_delete_tdls_peers(mac_ctx, session_entry);
-		/* fallthrough */
+			fallthrough;
 		case eLIM_SME_WT_ASSOC_STATE:
 		case eLIM_SME_JOIN_FAILURE_STATE:
 		case eLIM_SME_IDLE_STATE:
@@ -6491,7 +6484,7 @@ __lim_process_sme_addts_req(struct mac_context *mac, uint32_t *msg_buf)
 	/* ship out the message now */
 	lim_send_addts_req_action_frame(mac, peerMac, &pSirAddts->req,
 					pe_session);
-	pe_err("Sent ADDTS request");
+	pe_debug("Sent ADDTS request");
 	/* start a timer to wait for the response */
 	if (pSirAddts->timeout)
 		timeout = pSirAddts->timeout;
@@ -7157,7 +7150,7 @@ static void __lim_process_sme_set_ht2040_mode(struct mac_context *mac,
 				eHT_CHANNEL_WIDTH_20MHZ : eHT_CHANNEL_WIDTH_40MHZ;
 			qdf_mem_copy(pHtOpMode->peer_mac, &sta->staAddr,
 				     sizeof(tSirMacAddr));
-			pHtOpMode->smesessionId = sessionId;
+			pHtOpMode->smesessionId = pe_session->smeSessionId;
 
 			msg.type = WMA_UPDATE_OP_MODE;
 			msg.reserved = 0;
@@ -9220,6 +9213,10 @@ static void obss_color_collision_process_color_change(struct mac_context *mac_ct
 		pe_debug("New bss color = %d", bss_color_index_array[i]);
 		he_bss_color.vdev_id = obss_color_info->vdev_id;
 		he_bss_color.bss_color = bss_color_index_array[i];
+
+		/* Take the wakelock for 2 sec, release it after color change */
+		wma_prevent_suspend_on_obss_color_collision(session->vdev);
+
 		lim_process_set_he_bss_color(mac_ctx,
 					     (uint32_t *)&he_bss_color);
 	} else {
