@@ -1422,7 +1422,9 @@ static void adreno_unbind(struct device *dev)
 	adreno_dev = ADRENO_DEVICE(device);
 	gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 
+#ifdef CONFIG_QCOM_KGSL_FENCE_TRACE
 	trace_array_put(device->fence_trace_array);
+#endif
 
 	if (gpudev->remove != NULL)
 		gpudev->remove(adreno_dev);
