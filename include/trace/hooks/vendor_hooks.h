@@ -99,6 +99,9 @@ int android_rvh_probe_register(struct tracepoint *tp, void *probe, void *data);
 		return android_rvh_probe_register(&__tracepoint_##name,	\
 						  (void *)probe, data);	\
 	}								\
+	static inline void						\
+	unregister_trace_##name(void (*probe)(data_proto), void *data) 	\
+	{}								\
 	/* vendor hooks cannot be unregistered */			\
 
 #undef DECLARE_RESTRICTED_HOOK
