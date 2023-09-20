@@ -22,6 +22,7 @@
 #include <linux/pm_qos.h>
 #include <linux/cpufreq.h>
 #include <linux/cpu.h>
+#include <linux/interrupt.h>
 
 #include <linux/arch_topology.h>
 #include <linux/gunyah/gh_errno.h>
