@@ -85,8 +85,8 @@ static void gic_s2idle_exit(void *unused, struct cpuidle_device *dev, bool s2idl
 
 static int __init msm_show_resume_irq_init(void)
 {
-	register_trace_prio_android_vh_cpuidle_psci_enter(gic_s2idle_enter, NULL, INT_MAX);
-	register_trace_prio_android_vh_cpuidle_psci_exit(gic_s2idle_exit, NULL, INT_MAX);
+	register_trace_android_vh_cpuidle_psci_enter(gic_s2idle_enter, NULL);
+	register_trace_android_vh_cpuidle_psci_exit(gic_s2idle_exit, NULL);
 
 	return register_trace_android_vh_gic_resume(msm_show_resume_irqs, NULL);
 }
