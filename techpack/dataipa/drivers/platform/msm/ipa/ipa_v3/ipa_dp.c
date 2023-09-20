@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -1953,6 +1953,13 @@ int ipa3_teardown_sys_pipe(u32 clnt_hdl)
 		usleep_range(95, 105);
 	} while (atomic_read(&ep->sys->curr_polling_state));
 
+	/* moving the channel to poll mode here to get rid of IEOB IRQ if we get,
+	 after stopping the channel, and which could lead to list corruption. */
+	gsi_config_channel_mode(ep->gsi_chan_hdl,
+					GSI_CHAN_MODE_POLL);
+	atomic_set(&ep->sys->curr_polling_state, 1);
+	__ipa3_update_curr_poll_state(ep->client, 1);
+
 	if (IPA_CLIENT_IS_CONS(ep->client))
 		cancel_delayed_work_sync(&ep->sys->replenish_rx_work);
 	flush_workqueue(ep->sys->wq);
@@ -2548,6 +2555,11 @@ static struct page *ipa3_alloc_page(
 	if (unlikely(!page)) {
 		if (try_lower && p_order > 0) {
 			p_order = p_order - 1;
+			if(ipa3_ctx->gfp_no_retry) {
+				flag = GFP_KERNEL | __GFP_RETRY_MAYFAIL | __GFP_NOWARN
+					| __GFP_NOMEMALLOC;
+			}
+
 			page = __dev_alloc_pages(flag, p_order);
 			if (likely(page))
 				ipa3_ctx->stats.lower_order++;
@@ -2571,8 +2583,13 @@ static struct ipa3_rx_pkt_wrapper *ipa3_alloc_rx_pkt_page(
 
 	rx_pkt->page_data.page_order = sys->page_order;
 	/* For temporary allocations, avoid triggering OOM Killer. */
-	if (is_tmp_alloc)
-		flag |= __GFP_RETRY_MAYFAIL | __GFP_NOWARN;
+	if (is_tmp_alloc) {
+		if(ipa3_ctx->gfp_no_retry)
+			flag |= __GFP_NORETRY | __GFP_NOWARN;
+		else
+			flag |= __GFP_RETRY_MAYFAIL | __GFP_NOWARN;
+	}
+
 	/* Try a lower order page for order 3 pages in case allocation fails. */
 	rx_pkt->page_data.page = ipa3_alloc_page(flag,
 				&rx_pkt->page_data.page_order,
