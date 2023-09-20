@@ -25,6 +25,7 @@
 #include <linux/platform_data/qcom_crypto_device.h>
 #include <linux/qcedev.h>
 #include <linux/interconnect.h>
+#include <linux/delay.h>
 
 #include <crypto/hash.h>
 #include "qcedevi.h"
@@ -38,11 +39,16 @@
 #define CE_SHA_BLOCK_SIZE SHA256_BLOCK_SIZE
 #define MAX_CEHW_REQ_TRANSFER_SIZE (128*32*1024)
 /*
- * Max wait time once a crypto request is done.
- * Assuming 5ms per crypto operation, this is calculated for
- * the scenario of having 3 offload reqs + 1 tz req + buffer.
+ * Max wait time once a crypto request is submitted.
  */
-#define MAX_CRYPTO_WAIT_TIME 25
+#define MAX_CRYPTO_WAIT_TIME 1500
+/*
+ * Max wait time once a offload crypto request is submitted.
+ * This is low due to expected timeout and key pause errors.
+ * This is temporary, and we can use the 1500 value once the
+ * core irqs are enabled.
+ */
+#define MAX_OFFLOAD_CRYPTO_WAIT_TIME 25
 
 #define MAX_REQUEST_TIME 5000
 
@@ -50,6 +56,7 @@ enum qcedev_req_status {
 	QCEDEV_REQ_CURRENT = 0,
 	QCEDEV_REQ_WAITING = 1,
 	QCEDEV_REQ_SUBMITTED = 2,
+	QCEDEV_REQ_DONE = 3,
 };
 
 static uint8_t  _std_init_vector_sha1_uint8[] =   {
@@ -336,9 +343,11 @@ static void req_done(unsigned long data)
 	areq = podev->active_command;
 	podev->active_command = NULL;
 
-	if (areq && !areq->timed_out)
-		complete(&areq->complete);
-
+	if (areq) {
+		if (!areq->timed_out)
+			complete(&areq->complete);
+		areq->state = QCEDEV_REQ_DONE;
+	}
 	/* Look through queued requests and wake up the corresponding thread */
 	if (!list_empty(&podev->ready_commands)) {
 		new_req = container_of(podev->ready_commands.next,
@@ -746,6 +755,8 @@ static void qcedev_check_crypto_status(
 	}
 }
 
+#define MAX_RETRIES              333
+
 static int submit_req(struct qcedev_async_req *qcedev_areq,
 					struct qcedev_handle *handle)
 {
@@ -757,11 +768,13 @@ static int submit_req(struct qcedev_async_req *qcedev_areq,
 	int wait = MAX_CRYPTO_WAIT_TIME;
 	bool print_sts = false;
 	struct qcedev_async_req *new_req = NULL;
+	int retries = 0;
+	int req_wait = MAX_REQUEST_TIME;
+	unsigned int crypto_wait = 0;
 
 	qcedev_areq->err = 0;
 	podev = handle->cntl;
 	init_waitqueue_head(&qcedev_areq->wait_q);
-
 
 	spin_lock_irqsave(&podev->lock, flags);
 
@@ -779,12 +792,15 @@ static int submit_req(struct qcedev_async_req *qcedev_areq,
 			case QCEDEV_CRYPTO_OPER_CIPHER:
 				ret = start_cipher_req(podev,
 						&current_req_info);
+				crypto_wait = MAX_CRYPTO_WAIT_TIME;
 				break;
 			case QCEDEV_CRYPTO_OPER_OFFLOAD_CIPHER:
 				ret = start_offload_cipher_req(podev,
 						&current_req_info);
+				crypto_wait = MAX_OFFLOAD_CRYPTO_WAIT_TIME;
 				break;
 			default:
+				crypto_wait = MAX_CRYPTO_WAIT_TIME;
 
 				ret = start_sha_req(podev,
 						&current_req_info);
@@ -794,14 +810,19 @@ static int submit_req(struct qcedev_async_req *qcedev_areq,
 			list_add_tail(&qcedev_areq->list,
 					&podev->ready_commands);
 			qcedev_areq->state = QCEDEV_REQ_WAITING;
-			if (wait_event_interruptible_lock_irq_timeout(
+			req_wait = wait_event_interruptible_lock_irq_timeout(
 				qcedev_areq->wait_q,
 				(qcedev_areq->state == QCEDEV_REQ_CURRENT),
 				podev->lock,
-				msecs_to_jiffies(MAX_REQUEST_TIME)) == 0) {
-				pr_err("%s: request timed out\n", __func__);
-				return qcedev_areq->err;
-			}
+				msecs_to_jiffies(MAX_REQUEST_TIME));
+				if ((req_wait == 0) || (req_wait == -ERESTARTSYS)) {
+					pr_err("%s: request timed out, req_wait = %d\n",
+					__func__, req_wait);
+					list_del(&qcedev_areq->list);
+					podev->active_command = NULL;
+					spin_unlock_irqrestore(&podev->lock, flags);
+					return qcedev_areq->err;
+				}
 		}
 	} while (qcedev_areq->state != QCEDEV_REQ_SUBMITTED);
 
@@ -825,7 +846,7 @@ static int submit_req(struct qcedev_async_req *qcedev_areq,
 	qcedev_areq->timed_out = false;
 	if (ret == 0)
 		wait = wait_for_completion_timeout(&qcedev_areq->complete,
-				msecs_to_jiffies(MAX_CRYPTO_WAIT_TIME));
+				msecs_to_jiffies(crypto_wait));
 
 	if (!wait) {
 	/*
@@ -837,15 +858,24 @@ static int submit_req(struct qcedev_async_req *qcedev_areq,
 		pr_err("%s: wait timed out, req info = %d\n", __func__,
 					current_req_info);
 		print_sts = true;
+		spin_lock_irqsave(&podev->lock, flags);
 		qcedev_check_crypto_status(qcedev_areq, podev->qce, print_sts);
 		qcedev_areq->timed_out = true;
 		ret = qce_manage_timeout(podev->qce, current_req_info);
+		spin_unlock_irqrestore(&podev->lock, flags);
 		if (ret) {
 			pr_err("%s: error during manage timeout\n", __func__);
-			qcedev_areq->err = -EIO;
-			return qcedev_areq->err;
+			while (qcedev_areq->state != QCEDEV_REQ_DONE &&
+					(retries < MAX_RETRIES)) {
+				usleep_range(3000, 5000);
+				retries++;
+				pr_err("%s: waiting for req state to be done,retries = %d\n",
+						__func__, retries);
+			}
+			return 0;
 		}
-		tasklet_schedule(&podev->done_tasklet);
+
+		req_done((unsigned long) podev);
 		if (qcedev_areq->offload_cipher_op_req.err !=
 						QCEDEV_OFFLOAD_NO_ERROR)
 			return 0;
@@ -922,6 +952,7 @@ static int qcedev_sha_update_max_xfer(struct qcedev_async_req *qcedev_areq,
 	uint8_t *user_src = NULL;
 	uint8_t *k_src = NULL;
 	uint8_t *k_buf_src = NULL;
+	uint32_t buf_size = 0;
 	uint8_t *k_align_src = NULL;
 
 	uint32_t sha_pad_len = 0;
@@ -960,9 +991,8 @@ static int qcedev_sha_update_max_xfer(struct qcedev_async_req *qcedev_areq,
 		return 0;
 	}
 
-
-	k_buf_src = kmalloc(total + CACHE_LINE_SIZE * 2,
-				GFP_KERNEL);
+	buf_size = total + CACHE_LINE_SIZE * 2;
+	k_buf_src = kmalloc(buf_size, GFP_KERNEL);
 	if (k_buf_src == NULL)
 		return -ENOMEM;
 
@@ -982,7 +1012,7 @@ static int qcedev_sha_update_max_xfer(struct qcedev_async_req *qcedev_areq,
 	if (user_src && copy_from_user(k_src,
 				(void __user *)user_src,
 				qcedev_areq->sha_op_req.data[0].len)) {
-		memset(k_buf_src, 0, ksize((void *)k_buf_src));
+		memset(k_buf_src, 0, buf_size);
 		kfree(k_buf_src);
 		return -EFAULT;
 	}
@@ -992,7 +1022,7 @@ static int qcedev_sha_update_max_xfer(struct qcedev_async_req *qcedev_areq,
 		if (user_src && copy_from_user(k_src,
 					(void __user *)user_src,
 					qcedev_areq->sha_op_req.data[i].len)) {
-			memset(k_buf_src, 0, ksize((void *)k_buf_src));
+			memset(k_buf_src, 0, buf_size);
 			kfree(k_buf_src);
 			return -EFAULT;
 		}
@@ -1023,7 +1053,7 @@ static int qcedev_sha_update_max_xfer(struct qcedev_async_req *qcedev_areq,
 	handle->sha_ctxt.last_blk = 0;
 	handle->sha_ctxt.first_blk = 0;
 
-	memset(k_buf_src, 0, ksize((void *)k_buf_src));
+	memset(k_buf_src, 0, buf_size);
 	kfree(k_buf_src);
 	return err;
 }
@@ -1049,17 +1079,19 @@ static int qcedev_sha_update(struct qcedev_async_req *qcedev_areq,
 		struct	qcedev_sha_op_req *saved_req;
 		struct	qcedev_sha_op_req req;
 		struct	qcedev_sha_op_req *sreq = &qcedev_areq->sha_op_req;
+		uint32_t req_size = 0;
 
+		req_size = sizeof(struct qcedev_sha_op_req);
 		/* save the original req structure */
 		saved_req =
-			kmalloc(sizeof(struct qcedev_sha_op_req), GFP_KERNEL);
+			kmalloc(req_size, GFP_KERNEL);
 		if (saved_req == NULL) {
 			pr_err("%s:Can't Allocate mem:saved_req 0x%lx\n",
 						__func__, (uintptr_t)saved_req);
 			return -ENOMEM;
 		}
-		memcpy(&req, sreq, sizeof(struct qcedev_sha_op_req));
-		memcpy(saved_req, sreq, sizeof(struct qcedev_sha_op_req));
+		memcpy(&req, sreq, sizeof(*sreq));
+		memcpy(saved_req, sreq, sizeof(*sreq));
 
 		i = 0;
 		/* Address 32 KB  at a time */
@@ -1131,7 +1163,7 @@ static int qcedev_sha_update(struct qcedev_async_req *qcedev_areq,
 		}
 		sreq->entries = saved_req->entries;
 		sreq->data_len = saved_req->data_len;
-		memset(saved_req, 0, ksize((void *)saved_req));
+		memset(saved_req, 0, req_size);
 		kfree(saved_req);
 	} else
 		err = qcedev_sha_update_max_xfer(qcedev_areq, handle, sg_src);
@@ -1146,6 +1178,7 @@ static int qcedev_sha_final(struct qcedev_async_req *qcedev_areq,
 	struct scatterlist sg_src;
 	uint32_t total;
 	uint8_t *k_buf_src = NULL;
+	uint32_t buf_size = 0;
 	uint8_t *k_align_src = NULL;
 
 	if (!handle->sha_ctxt.init_done) {
@@ -1157,8 +1190,8 @@ static int qcedev_sha_final(struct qcedev_async_req *qcedev_areq,
 
 	total = handle->sha_ctxt.trailing_buf_len;
 
-	k_buf_src = kmalloc(total + CACHE_LINE_SIZE * 2,
-				GFP_KERNEL);
+	buf_size = total + CACHE_LINE_SIZE * 2;
+	k_buf_src = kmalloc(buf_size, GFP_KERNEL);
 	if (k_buf_src == NULL)
 		return -ENOMEM;
 
@@ -1181,7 +1214,7 @@ static int qcedev_sha_final(struct qcedev_async_req *qcedev_areq,
 	handle->sha_ctxt.trailing_buf_len = 0;
 	handle->sha_ctxt.init_done = false;
 	memset(&handle->sha_ctxt.trailing_buf[0], 0, 64);
-	memset(k_buf_src, 0, ksize((void *)k_buf_src));
+	memset(k_buf_src, 0, buf_size);
 	kfree(k_buf_src);
 	qcedev_areq->sha_req.sreq.src = NULL;
 	return err;
@@ -1198,6 +1231,7 @@ static int qcedev_hash_cmac(struct qcedev_async_req *qcedev_areq,
 	uint8_t *user_src = NULL;
 	uint8_t *k_src = NULL;
 	uint8_t *k_buf_src = NULL;
+	uint32_t buf_size = 0;
 
 	total = qcedev_areq->sha_op_req.data_len;
 
@@ -1215,7 +1249,8 @@ static int qcedev_hash_cmac(struct qcedev_async_req *qcedev_areq,
 	if (total > U32_MAX - CACHE_LINE_SIZE * 2)
 		return -EINVAL;
 
-	k_buf_src = kmalloc(total + CACHE_LINE_SIZE * 2, GFP_KERNEL);
+	buf_size = total + CACHE_LINE_SIZE * 2;
+	k_buf_src = kmalloc(buf_size, GFP_KERNEL);
 	if (k_buf_src == NULL)
 		return -ENOMEM;
 
@@ -1227,7 +1262,7 @@ static int qcedev_hash_cmac(struct qcedev_async_req *qcedev_areq,
 		user_src = qcedev_areq->sha_op_req.data[i].vaddr;
 		if (user_src && copy_from_user(k_src, (void __user *)user_src,
 				qcedev_areq->sha_op_req.data[i].len)) {
-			memset(k_buf_src, 0, ksize((void *)k_buf_src));
+			memset(k_buf_src, 0, buf_size);
 			kfree(k_buf_src);
 			return -EFAULT;
 		}
@@ -1241,7 +1276,7 @@ static int qcedev_hash_cmac(struct qcedev_async_req *qcedev_areq,
 	handle->sha_ctxt.diglen = qcedev_areq->sha_op_req.diglen;
 	err = submit_req(qcedev_areq, handle);
 
-	memset(k_buf_src, 0, ksize((void *)k_buf_src));
+	memset(k_buf_src, 0, buf_size);
 	kfree(k_buf_src);
 	return err;
 }
@@ -1352,7 +1387,7 @@ static int qcedev_hmac_get_ohash(struct qcedev_async_req *qcedev_areq,
 
 	handle->sha_ctxt.last_blk = 0;
 	handle->sha_ctxt.first_blk = 0;
-	memset(k_src, 0, ksize((void *)k_src));
+	memset(k_src, 0, sha_block_size);
 	kfree(k_src);
 	qcedev_areq->sha_req.sreq.src = NULL;
 	return err;
@@ -1550,27 +1585,29 @@ static int qcedev_vbuf_ablk_cipher(struct qcedev_async_req *areq,
 	uint32_t total = 0;
 	uint32_t len;
 	uint8_t *k_buf_src = NULL;
+	uint32_t buf_size = 0;
 	uint8_t *k_align_src = NULL;
 	uint32_t max_data_xfer;
 	struct qcedev_cipher_op_req *saved_req;
+	uint32_t req_size = 0;
 	struct	qcedev_cipher_op_req *creq = &areq->cipher_op_req;
 
 	total = 0;
 
 	if (areq->cipher_op_req.mode == QCEDEV_AES_MODE_CTR)
 		byteoffset = areq->cipher_op_req.byteoffset;
-	k_buf_src = kmalloc(QCE_MAX_OPER_DATA + CACHE_LINE_SIZE * 2,
-				GFP_KERNEL);
+	buf_size = QCE_MAX_OPER_DATA + CACHE_LINE_SIZE * 2;
+	k_buf_src = kmalloc(buf_size, GFP_KERNEL);
 	if (k_buf_src == NULL)
 		return -ENOMEM;
 	k_align_src = (uint8_t *)ALIGN(((uintptr_t)k_buf_src),
 							CACHE_LINE_SIZE);
 	max_data_xfer = QCE_MAX_OPER_DATA - byteoffset;
 
-	saved_req = kmemdup(creq, sizeof(struct qcedev_cipher_op_req),
-				GFP_KERNEL);
+	req_size = sizeof(struct qcedev_cipher_op_req);
+	saved_req = kmemdup(creq, req_size, GFP_KERNEL);
 	if (saved_req == NULL) {
-		memset(k_buf_src, 0, ksize((void *)k_buf_src));
+		memset(k_buf_src, 0, buf_size);
 		kfree(k_buf_src);
 		return -ENOMEM;
 
@@ -1598,10 +1635,8 @@ static int qcedev_vbuf_ablk_cipher(struct qcedev_async_req *areq,
 				err = qcedev_vbuf_ablk_cipher_max_xfer(areq,
 						&di, handle, k_align_src);
 				if (err < 0) {
-					memset(saved_req, 0,
-						ksize((void *)saved_req));
-					memset(k_buf_src, 0,
-						ksize((void *)k_buf_src));
+					memset(saved_req, 0, req_size);
+					memset(k_buf_src, 0, buf_size);
 					kfree(k_buf_src);
 					kfree(saved_req);
 					return err;
@@ -1644,10 +1679,8 @@ static int qcedev_vbuf_ablk_cipher(struct qcedev_async_req *areq,
 				err = qcedev_vbuf_ablk_cipher_max_xfer(areq,
 						&di, handle, k_align_src);
 				if (err < 0) {
-					memset(saved_req, 0,
-						ksize((void *)saved_req));
-					memset(k_buf_src, 0,
-						ksize((void *)k_buf_src));
+					memset(saved_req, 0, req_size);
+					memset(k_buf_src, 0, buf_size);
 					kfree(k_buf_src);
 					kfree(saved_req);
 					return err;
@@ -1692,8 +1725,8 @@ static int qcedev_vbuf_ablk_cipher(struct qcedev_async_req *areq,
 	creq->data_len = saved_req->data_len;
 	creq->byteoffset = saved_req->byteoffset;
 
-	memset(saved_req, 0, ksize((void *)saved_req));
-	memset(k_buf_src, 0, ksize((void *)k_buf_src));
+	memset(saved_req, 0, req_size);
+	memset(k_buf_src, 0, buf_size);
 	kfree(saved_req);
 	kfree(k_buf_src);
 	return err;
@@ -2692,8 +2725,11 @@ static int qcedev_remove(struct platform_device *pdev)
 	podev = platform_get_drvdata(pdev);
 	if (!podev)
 		return 0;
+
+	qcedev_ce_high_bw_req(podev, true);
 	if (podev->qce)
 		qce_close(podev->qce);
+	qcedev_ce_high_bw_req(podev, false);
 
 	if (podev->icc_path)
 		icc_put(podev->icc_path);

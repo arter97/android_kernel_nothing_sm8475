@@ -7,6 +7,7 @@
 #include <linux/dma-fence-array.h>
 #include <linux/iommu.h>
 #include <linux/sched/clock.h>
+#include <soc/qcom/msm_performance.h>
 
 #include "adreno.h"
 #include "adreno_gen7.h"
@@ -148,8 +149,10 @@ static void log_profiling_info(struct adreno_device *adreno_dev, u32 *rcvd)
 	struct hfi_ts_retire_cmd *cmd = (struct hfi_ts_retire_cmd *)rcvd;
 	struct kgsl_context *context;
 	struct retire_info info = {0};
+	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
+	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 
-	context = kgsl_context_get(KGSL_DEVICE(adreno_dev), cmd->ctxt_id);
+	context = kgsl_context_get(device, cmd->ctxt_id);
 	if (context == NULL)
 		return;
 
@@ -159,7 +162,16 @@ static void log_profiling_info(struct adreno_device *adreno_dev, u32 *rcvd)
 	info.submitted_to_rb = cmd->submitted_to_rb;
 	info.sop = cmd->sop;
 	info.eop = cmd->eop;
+	if (GMU_VER_MINOR(gmu->ver.hfi) < 4)
+		info.active = cmd->eop - cmd->sop;
+	else
+		info.active = cmd->active;
 	info.retired_on_gmu = cmd->retired_on_gmu;
+
+	/* protected GPU work must not be reported */
+	if  (!(context->flags & KGSL_CONTEXT_SECURE))
+		kgsl_work_period_update(device, context->proc_priv->period,
+					     info.active);
 
 	trace_adreno_cmdbatch_retired(context, &info, 0, 0, 0);
 
@@ -1133,7 +1145,6 @@ static void reset_hfi_mem_records(struct adreno_device *adreno_dev)
 static void reset_hfi_queues(struct adreno_device *adreno_dev)
 {
 	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
-	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct hfi_queue_table *tbl = gmu->hfi.hfi_mem->hostptr;
 	u32 i;
 
@@ -1144,17 +1155,7 @@ static void reset_hfi_queues(struct adreno_device *adreno_dev)
 		if (hdr->status == HFI_QUEUE_STATUS_DISABLED)
 			continue;
 
-		if (hdr->read_index != hdr->write_index) {
-			/* Don't capture snapshot again in reset path */
-			if (!device->snapshot || device->snapshot->recovered) {
-				dev_err(&gmu->pdev->dev,
-				"HFI queue[%d] is not empty before close: rd=%d,wt=%d\n",
-					i, hdr->read_index, hdr->write_index);
-
-				gmu_core_fault_snapshot(device);
-			}
-			hdr->read_index = hdr->write_index;
-		}
+		hdr->read_index = hdr->write_index;
 	}
 }
 
@@ -1174,8 +1175,6 @@ void gen7_hwsched_hfi_stop(struct adreno_device *adreno_dev)
 
 	/* Drain the debug queue before we reset HFI queues */
 	gen7_hwsched_process_dbgq(adreno_dev, false);
-
-	reset_hfi_queues(adreno_dev);
 
 	kgsl_pwrctrl_axi(KGSL_DEVICE(adreno_dev), false);
 
@@ -1345,6 +1344,8 @@ int gen7_hwsched_hfi_start(struct adreno_device *adreno_dev)
 	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	int ret;
+
+	reset_hfi_queues(adreno_dev);
 
 	ret = gen7_gmu_hfi_start(adreno_dev);
 	if (ret)
@@ -1702,6 +1703,10 @@ static void gen7_add_profile_events(struct adreno_device *adreno_dev,
 
 	cmdobj->submit_ticks = time->ticks;
 
+	msm_perf_events_update(MSM_PERF_GFX, MSM_PERF_SUBMIT,
+		pid_nr(context->proc_priv->pid),
+		context->id, drawobj->timestamp,
+		!!(drawobj->flags & KGSL_DRAWOBJ_END_OF_FRAME));
 	trace_adreno_cmdbatch_submitted(drawobj, &info, time->ticks,
 		(unsigned long) time_in_s, time_in_ns / 1000, 0);
 
@@ -1922,30 +1927,28 @@ int gen7_gmu_context_queue_write(struct adreno_device *adreno_dev,
 {
 	struct gmu_context_queue_header *hdr = drawctxt->gmu_context_queue.hostptr;
 	u32 *queue = drawctxt->gmu_context_queue.hostptr + sizeof(*hdr);
-	u32 i, write, empty_space;
+	u32 i, empty_space, write_idx = hdr->write_index, read_idx = hdr->read_index;
 	u32 size = MSG_HDR_GET_SIZE(*msg);
 	u32 align_size = ALIGN(size, SZ_4);
 	u32 id = MSG_HDR_GET_ID(*msg);
 	struct kgsl_drawobj_cmd *cmdobj = NULL;
 
-	empty_space = (hdr->write_index >= hdr->read_index) ?
-			(hdr->queue_size - (hdr->write_index - hdr->read_index))
-			: (hdr->read_index - hdr->write_index);
+	empty_space = (write_idx >= read_idx) ?
+			(hdr->queue_size - (write_idx - read_idx))
+			: (read_idx - write_idx);
 
 	if (empty_space <= align_size)
 		return -ENOSPC;
 
-	write = hdr->write_index;
-
 	for (i = 0; i < size; i++) {
-		queue[write] = msg[i];
-		write = (write + 1) % hdr->queue_size;
+		queue[write_idx] = msg[i];
+		write_idx = (write_idx + 1) % hdr->queue_size;
 	}
 
 	/* Cookify any non used data at the end of the write buffer */
 	for (; i < align_size; i++) {
-		queue[write] = 0xfafafafa;
-		write = (write + 1) % hdr->queue_size;
+		queue[write_idx] = 0xfafafafa;
+		write_idx = (write_idx + 1) % hdr->queue_size;
 	}
 
 	/* Ensure packet is written out before proceeding */
@@ -1974,7 +1977,7 @@ int gen7_gmu_context_queue_write(struct adreno_device *adreno_dev,
 done:
 	trace_kgsl_hfi_send(id, size, MSG_HDR_GET_SEQNUM(*msg));
 
-	hfi_update_write_idx(&hdr->write_index, write);
+	hfi_update_write_idx(&hdr->write_index, write_idx);
 
 	return 0;
 }
@@ -2692,4 +2695,42 @@ void gen7_hwsched_context_destroy(struct adreno_device *adreno_dev,
 
 	if (drawctxt->gmu_hw_fence_queue.gmuaddr)
 		gen7_free_gmu_block(to_gen7_gmu(adreno_dev), &drawctxt->gmu_hw_fence_queue);
+}
+
+int gen7_hwsched_counter_inline_enable(struct adreno_device *adreno_dev,
+		const struct adreno_perfcount_group *group,
+		u32 counter, u32 countable)
+{
+	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+	struct adreno_perfcount_register *reg = &group->regs[counter];
+	u32 val, cmds[GEN7_PERF_COUNTER_ENABLE_DWORDS + 1];
+	int ret;
+
+	if (group->flags & ADRENO_PERFCOUNTER_GROUP_RESTORE)
+		gen7_perfcounter_update(adreno_dev, reg, false,
+				FIELD_PREP(GENMASK(13, 12), PIPE_NONE));
+
+	cmds[0] = CREATE_MSG_HDR(H2F_MSG_ISSUE_CMD_RAW,
+		(GEN7_PERF_COUNTER_ENABLE_DWORDS + 1) << 2, HFI_MSG_CMD);
+
+	cmds[1] = cp_type7_packet(CP_WAIT_FOR_IDLE, 0);
+	cmds[2] = cp_type4_packet(reg->select, 1);
+	cmds[3] = countable;
+
+	ret = gen7_hfi_send_cmd_async(adreno_dev, cmds);
+	if (ret)
+		goto err;
+
+	/* Wait till the register is programmed with the countable */
+	ret = kgsl_regmap_read_poll_timeout(&device->regmap, reg->select, val,
+				val == countable, 100, ADRENO_IDLE_TIMEOUT);
+	if (!ret) {
+		reg->value = 0;
+		return ret;
+	}
+
+err:
+	dev_err(device->dev, "Perfcounter %s/%u/%u start via commands failed\n",
+			group->name, counter, countable);
+	return ret;
 }

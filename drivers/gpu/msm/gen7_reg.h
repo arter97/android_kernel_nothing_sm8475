@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _GEN7_REG_H
@@ -109,7 +109,11 @@
 #define GEN7_CP_IB2_REM_SIZE             0x92d
 #define GEN7_CP_ALWAYS_ON_COUNTER_LO     0x980
 #define GEN7_CP_ALWAYS_ON_COUNTER_HI     0x981
+#define GEN7_CP_ALWAYS_ON_CONTEXT_LO     0x982
+#define GEN7_CP_ALWAYS_ON_CONTEXT_HI     0x983
 #define GEN7_CP_AHB_CNTL                 0x98d
+#define GEN7_CP_RL_ERROR_DETAILS_0       0x9b4
+#define GEN7_CP_RL_ERROR_DETAILS_1       0x9cf
 #define GEN7_CP_APERTURE_CNTL_HOST       0xa00
 #define GEN7_CP_APERTURE_CNTL_CD         0xa03
 #define GEN7_CP_BV_PROTECT_STATUS        0xa61
@@ -132,6 +136,8 @@
 #define GEN7_CP_BV_CHICKEN_DBG           0xada
 
 /* LPAC registers */
+#define GEN7_CP_LPAC_RB_BASE             0xb00
+#define GEN7_CP_LPAC_RB_BASE_HI          0xb01
 #define GEN7_CP_LPAC_RB_RPTR             0xb06
 #define GEN7_CP_LPAC_RB_WPTR             0xb07
 #define GEN7_CP_LPAC_DRAW_STATE_ADDR     0xb0a
@@ -799,7 +805,10 @@
 #define GEN7_VFD_PERFCTR_VFD_SEL_13         0xa61d
 #define GEN7_VFD_PERFCTR_VFD_SEL_14         0xa61e
 #define GEN7_VFD_PERFCTR_VFD_SEL_15         0xa61f
+
+/* SP registers */
 #define GEN7_SP_READ_SEL                    0xae6d
+#define GEN7_SP_DBG_CNTL                    0xae71
 #define GEN7_SP_AHB_READ_APERTURE           0xc000
 
 /* VPC registers */
@@ -1207,6 +1216,12 @@
 #define GEN7_RSCC_TCS1_DRV0_STATUS			0x003ee
 #define GEN7_RSCC_TCS2_DRV0_STATUS			0x00496
 #define GEN7_RSCC_TCS3_DRV0_STATUS			0x0053e
+#define GEN7_RSCC_TCS4_DRV0_STATUS          0x005e6
+#define GEN7_RSCC_TCS5_DRV0_STATUS          0x0068e
+#define GEN7_RSCC_TCS6_DRV0_STATUS          0x00736
+#define GEN7_RSCC_TCS7_DRV0_STATUS          0x007de
+#define GEN7_RSCC_TCS8_DRV0_STATUS          0x00886
+#define GEN7_RSCC_TCS9_DRV0_STATUS          0x0092e
 
 /* Device-specific RSCC registers */
 #define GEN7_6_0_RSCC_SEQ_MEM_0_DRV0			0x00154
@@ -1214,6 +1229,12 @@
 #define GEN7_6_0_RSCC_TCS1_DRV0_STATUS			0x003f2
 #define GEN7_6_0_RSCC_TCS2_DRV0_STATUS			0x0049a
 #define GEN7_6_0_RSCC_TCS3_DRV0_STATUS			0x00542
+#define GEN7_6_0_RSCC_TCS4_DRV0_STATUS			0x005EA
+#define GEN7_6_0_RSCC_TCS5_DRV0_STATUS			0x00692
+#define GEN7_6_0_RSCC_TCS6_DRV0_STATUS			0x0073A
+#define GEN7_6_0_RSCC_TCS7_DRV0_STATUS			0x007E2
+#define GEN7_6_0_RSCC_TCS8_DRV0_STATUS			0x0088A
+#define GEN7_6_0_RSCC_TCS9_DRV0_STATUS			0x00932
 
 /* GPU PDC sequencer registers in AOSS.RPMh domain */
 #define GEN7_PDC_GPU_ENABLE_PDC				0x1140

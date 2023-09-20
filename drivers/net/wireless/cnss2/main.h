@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CNSS_MAIN_H
@@ -311,6 +311,7 @@ enum cnss_driver_state {
 	CNSS_PCI_PROBE_DONE,
 	CNSS_DRIVER_REGISTER,
 	CNSS_FS_READY,
+	CNSS_DRIVER_REGISTERED = 25,
 };
 
 struct cnss_recovery_data {
@@ -368,6 +369,18 @@ struct cnss_cal_info {
 	enum cnss_cal_status cal_status;
 };
 
+/**
+ * enum cnss_time_sync_period_vote - to get per vote time sync period
+ * @TIME_SYNC_VOTE_WLAN: WLAN Driver vote
+ * @TIME_SYNC_VOTE_CNSS: sys config vote
+ * @TIME_SYNC_VOTE_MAX
+ */
+enum cnss_time_sync_period_vote {
+	TIME_SYNC_VOTE_WLAN,
+	TIME_SYNC_VOTE_CNSS,
+	TIME_SYNC_VOTE_MAX,
+};
+
 struct cnss_control_params {
 	unsigned long quirks;
 	unsigned int mhi_timeout;
@@ -375,6 +388,7 @@ struct cnss_control_params {
 	unsigned int qmi_timeout;
 	unsigned int bdf_type;
 	unsigned int time_sync_period;
+	unsigned int time_sync_period_vote[TIME_SYNC_VOTE_MAX];
 };
 
 struct cnss_tcs_info {
@@ -428,6 +442,15 @@ struct cnss_sol_gpio {
 	int host_sol_gpio;
 };
 
+struct cnss_thermal_cdev {
+	struct list_head tcdev_list;
+	int tcdev_id;
+	unsigned long curr_thermal_state;
+	unsigned long max_thermal_state;
+	struct device_node *dev_node;
+	struct thermal_cooling_device *tcdev;
+};
+
 struct cnss_plat_data {
 	struct platform_device *plat_dev;
 	void *bus_priv;
@@ -459,6 +482,8 @@ struct cnss_plat_data {
 	u8 hds_enabled;
 	unsigned long driver_state;
 	struct list_head event_list;
+	struct list_head cnss_tcdev_list;
+	struct mutex tcdev_lock; /* mutex for cooling devices list access */
 	spinlock_t event_lock; /* spinlock for driver work event handling */
 	struct work_struct event_work;
 	struct workqueue_struct *event_wq;
@@ -543,6 +568,8 @@ struct cnss_plat_data {
 	u8 hwid_bitmap;
 	enum cnss_driver_mode driver_mode;
 	u32 num_shadow_regs_v3;
+	u32 on_chip_pmic_devices_count;
+	u32 *on_chip_pmic_board_ids;
 };
 
 #if IS_ENABLED(CONFIG_ARCH_QCOM)
@@ -630,4 +657,5 @@ int cnss_get_feature_list(struct cnss_plat_data *plat_priv,
 			  u64 *feature_list);
 int cnss_get_input_gpio_value(struct cnss_plat_data *plat_priv, int gpio_num);
 bool cnss_check_driver_loading_allowed(void);
+void cnss_recovery_handler(struct cnss_plat_data *plat_priv);
 #endif /* _CNSS_MAIN_H */

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _SOC_QCOM_LLCC_PERFMON_H_
@@ -89,6 +90,7 @@
 
 #define PERFMON_COUNTER_n_CONFIG(v, n)	((VER_CHK(v) ? 0x36020 : 0x031020) \
 					+ 4 * (n))
+#define PERFMON_NUM_CNTRS_DUMP_CFG(v)	(VER_CHK(v) ? 0x360EC : 0x0310EC)
 #define PERFMON_MODE(v)			(VER_CHK(v) ? 0x3600C : 0x03100C)
 #define PERFMON_DUMP(v)			(VER_CHK4(v) ? 0x37000 : VER_CHK(v) ? \
 					0x36010 : 0x031010)
@@ -124,6 +126,9 @@
 						MONITOR_MODE_SHIFT)
 
 #define MONITOR_DUMP			BIT(0)
+#define DUMP_NUM_COUNTERS_SHIFT		(0)
+#define DUMP_NUM_COUNTERS_MASK		GENMASK(DUMP_NUM_COUNTERS_SHIFT + 3,\
+						DUMP_NUM_COUNTERS_SHIFT)
 
 /* COMMON */
 #define BYTE_SCALING			(1024)
@@ -380,11 +385,11 @@
 #define TRP_SCID_MASK_SHIFT		(8)
 #define TRP_SCID_MASK_MASK		GENMASK(TRP_SCID_MASK_SHIFT + 4,\
 						TRP_SCID_MASK_SHIFT)
-#define TRP_WAY_ID_MATCH_SHIFT		(16)
-#define TRP_WAY_ID_MATCH_MASK		GENMASK(TRP_WAY_ID_MATCH_SHIFT + 3,\
+#define TRP_WAY_ID_MATCH_SHIFT		(0)
+#define TRP_WAY_ID_MATCH_MASK		GENMASK(TRP_WAY_ID_MATCH_SHIFT + 4,\
 						TRP_WAY_ID_MATCH_SHIFT)
-#define TRP_WAY_ID_MASK_SHIFT		(20)
-#define TRP_WAY_ID_MASK_MASK		GENMASK(TRP_WAY_ID_MASK_SHIFT + 3,\
+#define TRP_WAY_ID_MASK_SHIFT		(12)
+#define TRP_WAY_ID_MASK_MASK		GENMASK(TRP_WAY_ID_MASK_SHIFT + 4,\
 						TRP_WAY_ID_MASK_SHIFT)
 #define TRP_PROFTAG_MATCH_SHIFT		(24)
 #define TRP_PROFTAG_MATCH_MASK		GENMASK(TRP_PROFTAG_MATCH_SHIFT + 1,\
