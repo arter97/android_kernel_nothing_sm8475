@@ -2707,6 +2707,7 @@ static int internal_get_user_pages_fast(unsigned long start,
 	unsigned long len, end;
 	unsigned long nr_pinned;
 	int ret;
+	unsigned long orig_gup_flags = gup_flags;
 
 	if (WARN_ON_ONCE(gup_flags & ~(FOLL_WRITE | FOLL_LONGTERM |
 				       FOLL_FORCE | FOLL_PIN | FOLL_GET |
@@ -2733,8 +2734,14 @@ static int internal_get_user_pages_fast(unsigned long start,
 	/* Slow path: try to get the remaining pages with get_user_pages */
 	start += nr_pinned << PAGE_SHIFT;
 	pages += nr_pinned;
+retry:
 	ret = __gup_longterm_unlocked(start, nr_pages - nr_pinned, gup_flags,
 				      pages);
+	if (ret < 0 && orig_gup_flags != gup_flags) {
+		gup_flags = orig_gup_flags;
+		goto retry;
+	}
+
 	if (ret < 0) {
 		/*
 		 * The caller has to unpin the pages we already pinned so

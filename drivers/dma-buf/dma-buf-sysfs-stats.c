@@ -96,7 +96,6 @@ void dma_buf_stats_teardown(struct dma_buf *dmabuf)
 	if (!sysfs_entry)
 		return;
 
-	trace_android_rvh_dma_buf_stats_teardown(sysfs_entry, &skip_sysfs_release);
 	if (!skip_sysfs_release) {
 		kobject_del(&sysfs_entry->kobj);
 		kobject_put(&sysfs_entry->kobj);

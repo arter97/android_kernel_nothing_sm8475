@@ -2280,7 +2280,6 @@ int kvm_arch_init(void *opaque)
 out_subs:
 	hyp_cpu_pm_exit();
 out_hyp:
-	hyp_cpu_pm_exit();
 	if (!in_hyp_mode)
 		teardown_hyp_mode();
 out_err:

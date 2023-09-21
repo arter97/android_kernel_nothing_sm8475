@@ -1198,7 +1198,6 @@ static void z_erofs_decompressqueue_work(struct work_struct *work)
 
 	DBG_BUGON(bgq->head == Z_EROFS_PCLUSTER_TAIL_CLOSED);
 	z_erofs_decompress_queue(bgq, &pagepool);
-
 	erofs_release_pages(&pagepool);
 	kvfree(bgq);
 }

@@ -452,7 +452,7 @@ void dw_pcie_disable_atu(struct dw_pcie *pci, int index,
 		return;
 	}
 
-	if (pci->iatu_unroll_enabled) {
+	if (pci->iatu_unroll_enabled & DWC_IATU_UNROLL_EN) {
 		if (region == PCIE_ATU_REGION_INBOUND) {
 			dw_pcie_writel_ib_unroll(pci, index, PCIE_ATU_UNR_REGION_CTRL2,
 						 ~(u32)PCIE_ATU_ENABLE);

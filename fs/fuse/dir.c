@@ -183,8 +183,10 @@ static bool backing_data_changed(struct fuse_inode *fi, struct dentry *entry,
 	int err;
 	bool ret = true;
 
-	if (!entry)
-		return false;
+	if (!entry) {
+		ret = false;
+		goto put_backing_file;
+	}
 
 	get_fuse_backing_path(entry, &new_backing_path);
 	new_backing_inode = fi->backing_inode;
@@ -207,6 +209,9 @@ put_bpf:
 put_inode:
 	iput(new_backing_inode);
 	path_put(&new_backing_path);
+put_backing_file:
+	if (bpf_arg->backing_file)
+		fput(bpf_arg->backing_file);
 	return ret;
 }
 #endif
@@ -231,7 +236,6 @@ static int fuse_dentry_revalidate(struct dentry *entry, unsigned int flags)
 	inode = d_inode_rcu(entry);
 	if (inode && fuse_is_bad(inode))
 		goto invalid;
-
 #ifdef CONFIG_FUSE_BPF
 	/* TODO: Do we need bpf support for revalidate?
 	 * If the lower filesystem says the entry is invalid, FUSE probably shouldn't
@@ -307,7 +311,7 @@ static int fuse_dentry_revalidate(struct dentry *entry, unsigned int flags)
 			spin_unlock(&fi->lock);
 		}
 		kfree(forget);
-		if (ret == -ENOMEM)
+		if (ret == -ENOMEM || ret == -EINTR)
 			goto out;
 		if (ret || fuse_invalid_attr(&outarg.attr) ||
 		    fuse_stale_inode(inode, outarg.generation, &outarg.attr))
@@ -350,8 +354,13 @@ static void fuse_dentry_release(struct dentry *dentry)
 {
 	struct fuse_dentry *fd = dentry->d_fsdata;
 
+#ifdef CONFIG_FUSE_BPF
 	if (fd && fd->backing_path.dentry)
 		path_put(&fd->backing_path);
+
+	if (fd && fd->bpf)
+		bpf_prog_put(fd->bpf);
+#endif
 
 	kfree_rcu(fd, rcu);
 }
@@ -474,13 +483,18 @@ static void fuse_dentry_canonical_path(const struct path *path,
 			       fuse_canonical_path_backing,
 			       fuse_canonical_path_finalize, path,
 			       canonical_path);
-	if (fer.ret)
+	if (fer.ret) {
+		if (IS_ERR(fer.result))
+			canonical_path->dentry = fer.result;
 		return;
+	}
 #endif
 
 	path_name = (char *)get_zeroed_page(GFP_KERNEL);
-	if (!path_name)
-		goto default_path;
+	if (!path_name) {
+		canonical_path->dentry = ERR_PTR(-ENOMEM);
+		return;
+	}
 
 	args.opcode = FUSE_CANONICAL_PATH;
 	args.nodeid = get_node_id(inode);
@@ -495,10 +509,15 @@ static void fuse_dentry_canonical_path(const struct path *path,
 	free_page((unsigned long)path_name);
 	if (err > 0)
 		return;
-default_path:
+	if (err < 0) {
+		canonical_path->dentry = ERR_PTR(err);
+		return;
+	}
+
 	canonical_path->dentry = path->dentry;
 	canonical_path->mnt = path->mnt;
 	path_get(canonical_path);
+	return;
 }
 
 const struct dentry_operations fuse_dentry_operations = {
@@ -548,7 +567,6 @@ int fuse_lookup_name(struct super_block *sb, u64 nodeid, const struct qstr *name
 	if (name->len > FUSE_NAME_MAX)
 		goto out;
 
-
 	forget = fuse_alloc_forget();
 	err = -ENOMEM;
 	if (!forget)
@@ -567,34 +585,34 @@ int fuse_lookup_name(struct super_block *sb, u64 nodeid, const struct qstr *name
 
 		err = -ENOENT;
 		if (!entry)
-			goto out_queue_forget;
+			goto out_put_forget;
 
 		err = -EINVAL;
 		backing_file = bpf_arg.backing_file;
 		if (!backing_file)
-			goto out_queue_forget;
+			goto out_put_forget;
 
 		if (IS_ERR(backing_file)) {
 			err = PTR_ERR(backing_file);
-			goto out_queue_forget;
+			goto out_put_forget;
 		}
 
 		backing_inode = backing_file->f_inode;
 		*inode = fuse_iget_backing(sb, outarg->nodeid, backing_inode);
 		if (!*inode)
-			goto bpf_arg_out;
+			goto out_put_forget;
 
 		err = fuse_handle_backing(&bpf_arg,
 				&get_fuse_inode(*inode)->backing_inode,
 				&get_fuse_dentry(entry)->backing_path);
-		if (err)
-			goto out;
-
-		err = fuse_handle_bpf_prog(&bpf_arg, NULL, &get_fuse_inode(*inode)->bpf);
-		if (err)
-			goto out;
-bpf_arg_out:
-		fput(backing_file);
+		if (!err)
+			err = fuse_handle_bpf_prog(&bpf_arg, NULL,
+					   &get_fuse_inode(*inode)->bpf);
+		if (err) {
+			iput(*inode);
+			*inode = NULL;
+			goto out_put_forget;
+		}
 	} else
 #endif
 	{
@@ -614,9 +632,6 @@ bpf_arg_out:
 	}
 
 	err = -ENOMEM;
-#ifdef CONFIG_FUSE_BPF
-out_queue_forget:
-#endif
 	if (!*inode && outarg->nodeid) {
 		fuse_queue_forget(fm->fc, forget, outarg->nodeid, 1);
 		goto out;
@@ -626,6 +641,8 @@ out_queue_forget:
  out_put_forget:
 	kfree(forget);
  out:
+	if (bpf_arg.backing_file)
+		fput(bpf_arg.backing_file);
 	return err;
 }
 
@@ -1731,17 +1748,6 @@ static int fuse_dir_open(struct inode *inode, struct file *file)
 
 static int fuse_dir_release(struct inode *inode, struct file *file)
 {
-#ifdef CONFIG_FUSE_BPF
-	struct fuse_err_ret fer;
-
-	fer = fuse_bpf_backing(inode, struct fuse_release_in,
-		       fuse_releasedir_initialize, fuse_release_backing,
-		       fuse_release_finalize,
-		       inode, file);
-	if (fer.ret)
-		return PTR_ERR(fer.result);
-#endif
-
 	fuse_release_common(file, true);
 	return 0;
 }
