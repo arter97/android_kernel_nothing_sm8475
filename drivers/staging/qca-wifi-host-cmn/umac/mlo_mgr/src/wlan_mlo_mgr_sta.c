@@ -470,8 +470,11 @@ mlo_prepare_and_send_connect(struct wlan_objmgr_vdev *vdev,
 		  QDF_MAC_ADDR_REF(wlan_vdev_mlme_get_macaddr(vdev)),
 		  wlan_vdev_get_id(vdev));
 
-	qdf_mem_copy(&req, sta_ctx->copied_conn_req,
-		     sizeof(struct wlan_cm_connect_req));
+	if (sta_ctx->copied_conn_req)
+		qdf_mem_copy(&req, sta_ctx->copied_conn_req,
+			     sizeof(struct wlan_cm_connect_req));
+	else
+		mlo_err("Invalid copied_conn_req");
 
 	mlo_update_connect_req_chan_info(&req);
 
@@ -486,7 +489,9 @@ mlo_prepare_and_send_connect(struct wlan_objmgr_vdev *vdev,
 	req.ssid.length = ssid.length;
 	qdf_mem_copy(&req.ssid.ssid, &ssid.ssid, ssid.length);
 
-	mlo_allocate_and_copy_ies(&req, sta_ctx->copied_conn_req);
+	if (sta_ctx->copied_conn_req)
+		mlo_allocate_and_copy_ies(&req, sta_ctx->copied_conn_req);
+
 	if (!req.assoc_ie.ptr)
 		mlo_err("Failed to allocate assoc IEs");
 
