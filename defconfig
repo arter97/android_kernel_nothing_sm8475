@@ -6507,6 +6507,13 @@ CONFIG_INTERCONNECT_QCOM_QOS=m
 CONFIG_INTERCONNECT_QCOM_DEBUG=m
 # CONFIG_COUNTER is not set
 # CONFIG_MOST is not set
+
+#
+# KernelSU
+#
+CONFIG_KSU=y
+# CONFIG_KSU_DEBUG is not set
+# end of KernelSU
 # end of Device Drivers
 
 #
