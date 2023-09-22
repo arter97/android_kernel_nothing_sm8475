@@ -782,9 +782,7 @@ static int adsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto deinit_wakeup_source;
 
-	ret = adsp_setup_32b_dma_allocs(adsp);
-	if (ret)
-		goto deinit_wakeup_source;
+	adsp_setup_32b_dma_allocs(adsp);
 
 	ret = adsp_init_clock(adsp);
 	if (ret)
