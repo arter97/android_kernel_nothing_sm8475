@@ -47,7 +47,7 @@ cd $KERNELDIR
 
 echo "Making new boot image"
 mkbootimg.py \
-    --kernel $KERNELDIR/arch/arm64/boot/Image \
+    --kernel $KERNELDIR/arch/arm64/boot/Image.gz \
     --ramdisk $RAMFS_TMP.cpio.lz4 \
     --pagesize 4096 \
     --os_version     $OS \
