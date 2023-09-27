@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2020-2022, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
@@ -5570,13 +5571,19 @@ int msm_vidc_update_buffer_count(struct msm_vidc_inst *inst, u32 port)
 	return 0;
 }
 
-void msm_vidc_schedule_core_deinit(struct msm_vidc_core *core)
+int msm_vidc_schedule_core_deinit(struct msm_vidc_core *core, bool force_deinit)
 {
 	if (!core)
-		return;
+		return -EINVAL;
 
-	if (!core->capabilities[FW_UNLOAD].value)
-		return;
+	if (!(core->capabilities[FW_UNLOAD].value || force_deinit))
+		return -EINVAL;
+
+	/* in normal case, deinit core only if no session present */
+	if (!list_empty(&core->instances)) {
+		d_vpr_e("%s(): skip core deinit\n", __func__);
+		return -ECANCELED;
+	}
 
 	cancel_delayed_work(&core->fw_unload_work);
 
@@ -5586,7 +5593,7 @@ void msm_vidc_schedule_core_deinit(struct msm_vidc_core *core)
 	d_vpr_h("firmware unload delayed by %u ms\n",
 		core->capabilities[FW_UNLOAD_DELAY].value);
 
-	return;
+	return 0;
 }
 
 static const char *get_codec_str(enum msm_vidc_codec_type type)
