@@ -101,7 +101,7 @@ static ssize_t aud_dev_sysfs_store(struct kobject *kobj,
 
 	sscanf(buf, "%d %d", &pcm_id, &state);
 
-	if ((pcm_id > pdata->num_aud_devs) || (pcm_id < 0)) {
+	if ((pcm_id >= pdata->num_aud_devs) || (pcm_id < 0)) {
 		pr_err("%s: invalid pcm id %d \n", __func__, pcm_id);
 		goto done;
 	}
