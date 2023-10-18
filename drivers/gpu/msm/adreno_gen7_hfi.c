@@ -114,8 +114,6 @@ int gen7_hfi_queue_write(struct adreno_device *adreno_dev, u32 queue_idx,
 
 	queue = HOST_QUEUE_START_ADDR(gmu->hfi.hfi_mem, queue_idx);
 
-	trace_kgsl_hfi_send(id, size_dwords, MSG_HDR_GET_SEQNUM(*msg));
-
 	write_idx = hdr->write_index;
 	read_idx = hdr->read_index;
 
@@ -125,8 +123,6 @@ int gen7_hfi_queue_write(struct adreno_device *adreno_dev, u32 queue_idx,
 
 	if (empty_space <= align_size)
 		return -ENOSPC;
-
-	*msg = MSG_HDR_SET_SIZE(*msg, size_dwords);
 
 	for (i = 0; i < size_dwords; i++) {
 		queue[write_idx] = msg[i];
@@ -138,6 +134,8 @@ int gen7_hfi_queue_write(struct adreno_device *adreno_dev, u32 queue_idx,
 		queue[write_idx] = 0xfafafafa;
 		write_idx = (write_idx + 1) % hdr->queue_size;
 	}
+
+	trace_kgsl_hfi_send(id, size_dwords, MSG_HDR_GET_SEQNUM(*msg));
 
 	hfi_update_write_idx(&hdr->write_index, write_idx);
 
@@ -231,7 +229,7 @@ int gen7_receive_ack_cmd(struct gen7_gmu_device *gmu, void *rcvd,
 	if (ret_cmd == NULL)
 		return -EINVAL;
 
-	if (HDR_CMP_SEQNUM(ret_cmd->sent_hdr, req_hdr)) {
+	if (CMP_HFI_ACK_HDR(ret_cmd->sent_hdr, req_hdr)) {
 		memcpy(&ret_cmd->results, ack, MSG_HDR_GET_SIZE(hdr) << 2);
 		return 0;
 	}
@@ -301,7 +299,8 @@ static int gen7_hfi_send_cmd_wait_inline(struct adreno_device *adreno_dev,
 	struct gen7_hfi *hfi = &gmu->hfi;
 	unsigned int seqnum = atomic_inc_return(&hfi->seqnum);
 
-	*cmd = MSG_HDR_SET_SEQNUM(*cmd, seqnum);
+	*cmd = MSG_HDR_SET_SEQNUM_SIZE(*cmd, seqnum, size_bytes >> 2);
+
 	if (ret_cmd == NULL)
 		return gen7_hfi_cmdq_write(adreno_dev, cmd, size_bytes);
 
