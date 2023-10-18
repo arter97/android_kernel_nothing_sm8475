@@ -3787,7 +3787,7 @@ long vread(char *buf, char *addr, unsigned long count)
 
 		if (flags & VMAP_RAM)
 			vmap_ram_vread(buf, addr, n, flags);
-		else if (!(vm->flags & VM_IOREMAP))
+		else if (!(vm && (vm->flags & VM_IOREMAP)))
 			aligned_vread(buf, addr, n);
 		else /* IOREMAP area is treated as memory hole */
 			memset(buf, 0, n);
