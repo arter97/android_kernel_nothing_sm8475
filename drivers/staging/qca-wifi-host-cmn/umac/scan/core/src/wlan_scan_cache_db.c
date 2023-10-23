@@ -205,6 +205,8 @@ void scm_filter_rnr_flag_pno(struct wlan_objmgr_vdev *vdev,
 			continue;
 
 		qdf_list_for_each(&chan->rnr_list, rnr_node, node) {
+			if (!rnr_node)
+				continue;
 			if (rnr_node->entry.short_ssid) {
 				if (rnr_node->entry.short_ssid == short_ssid) {
 			/* If short ssid entry present in RNR db cache, remove
