@@ -37,6 +37,9 @@
 #include "sdhci-msm-scaling.h"
 #endif
 #include "sdhci-msm.h"
+#if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
+#include <linux/hwkm.h>
+#endif
 
 #define CORE_MCI_VERSION		0x50
 #define CORE_VERSION_MAJOR_SHIFT	28
@@ -765,8 +768,6 @@ static int msm_init_cm_dll(struct sdhci_host *host,
 				| CORE_LOW_FREQ_MODE), host->ioaddr +
 				msm_offset->core_dll_config_2);
 		}
-		/* wait for 5us before enabling DLL clock */
-		udelay(5);
 	}
 
 	/*
@@ -778,24 +779,6 @@ static int msm_init_cm_dll(struct sdhci_host *host,
 			msm_offset->core_dll_config) |
 			(msm_host->dll_hsr->dll_config & 0xffff)),
 			host->ioaddr + msm_offset->core_dll_config);
-	}
-
-	/*
-	 * Configure DLL user control register to enable DLL status.
-	 * This setting is applicable to SDCC v5.1 onwards only.
-	 */
-	if (msm_host->uses_tassadar_dll) {
-		u32 config;
-		if (msm_host->dll_hsr) {
-			writel_relaxed(msm_host->dll_hsr->dll_usr_ctl,
-					host->ioaddr +
-					msm_offset->core_dll_usr_ctl);
-		} else {
-			config = DLL_USR_CTL_POR_VAL | FINE_TUNE_MODE_EN |
-				ENABLE_DLL_LOCK_STATUS | BIAS_OK_SIGNAL;
-			writel_relaxed(config, host->ioaddr +
-					msm_offset->core_dll_usr_ctl);
-		}
 	}
 
 	/* Step 11 - Wait for 52us */
@@ -3868,6 +3851,15 @@ static int sdhci_msm_gcc_reset(struct device *dev, struct sdhci_host *host)
 	return ret;
 }
 
+static void sdhci_msm_hwkm_ice_init(struct sdhci_msm_host *msm_host)
+{
+	struct ice_mmio_data mmio_data;
+
+	mmio_data.ice_base_mmio = msm_host->ice_mem;
+	mmio_data.ice_hwkm_mmio = msm_host->ice_hwkm_mem;
+	qti_hwkm_ice_init_sequence(&mmio_data);
+}
+
 static void sdhci_msm_hw_reset(struct sdhci_host *host)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -3896,6 +3888,9 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 #if defined(CONFIG_SDC_QTI)
 	if (host->mmc->card)
 		mmc_power_cycle(host->mmc, host->mmc->card->ocr);
+#endif
+#if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
+	sdhci_msm_hwkm_ice_init(msm_host);
 #endif
 	return;
 }
