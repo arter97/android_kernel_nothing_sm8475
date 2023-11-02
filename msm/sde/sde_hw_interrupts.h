@@ -177,15 +177,6 @@ struct sde_hw_intr_ops {
 			int irq_idx);
 
 	/**
-	 * clear_intr_status_nolock() - clears the HW interrupts without lock
-	 * @intr:	HW interrupt handle
-	 * @irq_idx:	Lookup irq index return from irq_idx_lookup
-	 */
-	void (*clear_intr_status_nolock)(
-			struct sde_hw_intr *intr,
-			int irq_idx);
-
-	/**
 	 * get_interrupt_status - Gets HW interrupt status, and clear if set,
 	 *                        based on given lookup IRQ index.
 	 * @intr:	HW interrupt handle

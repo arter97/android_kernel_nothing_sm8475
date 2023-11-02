@@ -507,16 +507,11 @@ static void sde_hw_intr_dispatch_irq(struct sde_hw_intr *intr,
 				 reg_idx)) {
 				/*
 				 * Once a match on irq mask, perform a callback
-				 * to the given cbfunc. cbfunc will take care
-				 * the interrupt status clearing. If cbfunc is
-				 * not provided, then the interrupt clearing
-				 * is here.
+				 * to the given cbfunc. This callback is done
+				 * after clearing the interrupt registers.
 				 */
 				if (cbfunc)
 					cbfunc(arg, irq_idx);
-				else
-					intr->ops.clear_intr_status_nolock(
-							intr, irq_idx);
 
 				/*
 				 * When callback finish, clear the irq_status
@@ -874,7 +869,6 @@ static void __setup_intr_ops(struct sde_hw_intr_ops *ops)
 	ops->disable_all_irqs = sde_hw_intr_disable_irqs;
 	ops->get_interrupt_sources = sde_hw_intr_get_interrupt_sources;
 	ops->clear_interrupt_status = sde_hw_intr_clear_interrupt_status;
-	ops->clear_intr_status_nolock = sde_hw_intr_clear_intr_status_nolock;
 	ops->get_interrupt_status = sde_hw_intr_get_interrupt_status;
 	ops->get_intr_status_nolock = sde_hw_intr_get_intr_status_nolock;
 }
