@@ -3343,8 +3343,9 @@ bool policy_mgr_allow_same_mac_same_freq(struct wlan_objmgr_psoc *psoc,
 		 */
 	} else if (policy_mgr_are_2_freq_on_same_mac(psoc, ch_freq,
 					pm_conc_connection_list[0].freq) &&
-		   !policy_mgr_is_3rd_conn_on_same_band_allowed(psoc, mode)) {
-			policy_mgr_rl_debug("don't allow 3rd home channel on same MAC – for sta+multi-AP");
+		   !policy_mgr_is_3rd_conn_on_same_band_allowed(
+					psoc, mode, ch_freq)) {
+		policy_mgr_rl_debug("don't allow 3rd home channel on same MAC for sta+multi-AP");
 			allow = false;
 	}
 
@@ -3853,6 +3854,8 @@ void policy_mgr_check_scc_sbs_channel(struct wlan_objmgr_psoc *psoc,
 
 		policy_mgr_debug("no mandatory channels (%d, %d)", sap_ch_freq,
 				 *intf_ch_freq);
+	} else if (sta_count && policy_mgr_is_hw_dbs_capable(psoc)) {
+		policy_mgr_sap_on_non_psc_channel(psoc, intf_ch_freq, vdev_id);
 	}
 
 sbs_check:
