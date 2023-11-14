@@ -16135,6 +16135,8 @@ wlan_roam_fail_reason_code(uint16_t wmi_roam_fail_reason)
 	}
 }
 
+#define ROAM_SUCCESS 0
+
 /**
  * extract_roam_scan_stats_tlv() - Extract the Roam trigger stats
  * from the WMI_ROAM_STATS_EVENTID
@@ -16160,8 +16162,9 @@ extract_roam_result_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	dst->present = true;
 	dst->status = src_data->roam_status;
 	dst->timestamp = src_data->timestamp;
-	dst->fail_reason =
-	wlan_roam_fail_reason_code(src_data->roam_fail_reason);
+	if (src_data->roam_fail_reason != ROAM_SUCCESS)
+		dst->fail_reason =
+			wlan_roam_fail_reason_code(src_data->roam_fail_reason);
 	WMI_MAC_ADDR_TO_CHAR_ARRAY(&src_data->bssid, dst->fail_bssid.bytes);
 
 	return QDF_STATUS_SUCCESS;
@@ -16367,7 +16370,7 @@ extract_smart_monitor_event_tlv(void *handle, void *evt_buf,
 	if (params->vdev_id >= WLAN_UMAC_PDEV_MAX_VDEVS)
 		return QDF_STATUS_E_INVAL;
 
-	params->rx_avg_rssi = smu_event->avg_rssi_data_dbm;
+	params->rx_vht_sgi = smu_event->rx_vht_sgi;
 
 	return QDF_STATUS_SUCCESS;
 }
