@@ -1884,7 +1884,8 @@ static void tcpm_handle_vdm_request(struct tcpm_port *port,
 			}
 			break;
 		case ADEV_ATTENTION:
-			typec_altmode_attention(adev, p[1]);
+			if (typec_altmode_attention(adev, p[1]))
+				tcpm_log(port, "typec_altmode_attention no port partner altmode");
 			break;
 		}
 	}
@@ -2711,6 +2712,13 @@ static void tcpm_pd_ctrl_request(struct tcpm_port *port,
 			break;
 		case GET_SINK_CAP:
 			port->sink_cap_done = true;
+			tcpm_set_state(port, ready_state(port), 0);
+			break;
+		/*
+		 * Some port partners do not support GET_STATUS, avoid soft reset the link to
+		 * prevent redundant power re-negotiation
+		 */
+		case GET_STATUS_SEND:
 			tcpm_set_state(port, ready_state(port), 0);
 			break;
 		case SRC_READY:
