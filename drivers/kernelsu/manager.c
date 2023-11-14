@@ -24,6 +24,15 @@ bool become_manager(char *pkg)
 	char *buf;
 	bool result = false;
 
+#ifdef KSU_MANAGER_PACKAGE
+	// pkg is `/<real package>`
+	if (strncmp(pkg + 1, KSU_MANAGER_PACKAGE,
+		    sizeof(KSU_MANAGER_PACKAGE)) != 0) {
+		pr_info("manager package is inconsistent with kernel build: %s\n",
+			KSU_MANAGER_PACKAGE);
+		return false;
+	}
+#endif
 	// must be zygote's direct child, otherwise any app can fork a new process and
 	// open manager's apk
 	if (task_uid(current->real_parent).val != 0) {
@@ -52,7 +61,7 @@ bool become_manager(char *pkg)
 			continue;
 		}
 		// we have found the apk!
-		pr_info("found apk: %s", cwd);
+		pr_info("found apk: %s\n", cwd);
 		char *pkg_index = strstr(cwd, pkg);
 		if (!pkg_index) {
 			pr_info("apk path not match package name!\n");
@@ -70,7 +79,7 @@ bool become_manager(char *pkg)
 			pr_info("invalid pkg: %s\n", pkg);
 			continue;
 		}
-		if (is_manager_apk(cwd) == 0) {
+		if (is_manager_apk(cwd)) {
 			// check passed
 			uid_t uid = current_uid().val;
 			pr_info("manager uid: %d\n", uid);
@@ -80,7 +89,7 @@ bool become_manager(char *pkg)
 			result = true;
 			goto clean;
 		} else {
-			pr_info("manager signature invalid!");
+			pr_info("manager signature invalid!\n");
 		}
 
 		break;
