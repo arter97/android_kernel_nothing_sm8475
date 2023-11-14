@@ -29,11 +29,11 @@ struct cam_vfe_top_ver4_common_data {
 };
 
 struct cam_vfe_top_ver4_priv {
-	struct cam_vfe_top_ver4_common_data      common_data;
-	struct cam_vfe_top_priv_common           top_common;
-	atomic_t                                 overflow_pending;
-	uint8_t                                  log_buf[CAM_VFE_LEN_LOG_BUF];
-	uint32_t                                 sof_cnt;
+	struct cam_vfe_top_ver4_common_data common_data;
+	struct cam_vfe_top_priv_common      top_common;
+	atomic_t                            overflow_pending;
+	uint8_t                             log_buf[CAM_VFE_LEN_LOG_BUF];
+	uint32_t                            sof_cnt;
 };
 
 enum cam_vfe_top_ver4_fsm_state {
@@ -70,6 +70,7 @@ struct cam_vfe_mux_ver4_data {
 	uint32_t                           last_line;
 	uint32_t                           hbi_value;
 	uint32_t                           vbi_value;
+	bool                               enable_sof_irq_debug;
 	uint32_t                           irq_debug_cnt;
 	uint32_t                           camif_debug;
 	uint32_t                           horizontal_bin;
@@ -77,6 +78,11 @@ struct cam_vfe_mux_ver4_data {
 	uint32_t                           dual_hw_idx;
 	uint32_t                           is_dual;
 	uint32_t                           epoch_factor;
+	bool                               is_fe_enabled;
+	bool                               is_offline;
+	bool                               is_lite;
+	bool                               is_pixel_path;
+	bool                               sfe_binned_epoch_cfg;
 
 	struct timespec64                  sof_ts;
 	struct timespec64                  epoch_ts;
@@ -84,14 +90,6 @@ struct cam_vfe_mux_ver4_data {
 	struct timespec64                  error_ts;
 	enum cam_vfe_top_ver4_fsm_state    fsm_state;
 	uint32_t                           n_frame_irqs;
-
-	bool                               is_fe_enabled;
-	bool                               is_offline;
-	bool                               is_lite;
-	bool                               is_pixel_path;
-	bool                               sfe_binned_epoch_cfg;
-	bool                               enable_sof_irq_debug;
-	bool                               handle_camif_irq;
 };
 
 static int cam_vfe_top_ver4_get_path_port_map(struct cam_vfe_top_ver4_priv *top_priv,
@@ -698,7 +696,6 @@ int cam_vfe_top_acquire_resource(
 	res_data->hbi_value      = 0;
 	res_data->sfe_binned_epoch_cfg =
 		acquire_data->vfe_in.in_port->sfe_binned_epoch_cfg;
-	res_data->handle_camif_irq   = acquire_data->vfe_in.handle_camif_irq;
 
 	if (res_data->is_dual)
 		res_data->dual_hw_idx = acquire_data->vfe_in.dual_hw_idx;
@@ -1502,11 +1499,9 @@ skip_core_cfg:
 	/* Skip subscribing to timing irqs in these scenarios:
 	 *     1. Resource is dual IFE slave
 	 *     2. Resource is not primary RDI
-	 *     3. non-sfe use cases, such cases are taken care in CSID.
 	 */
 	if (((rsrc_data->sync_mode == CAM_ISP_HW_SYNC_SLAVE) && rsrc_data->is_dual) ||
-		(!rsrc_data->is_pixel_path && !vfe_res->rdi_only_ctx) ||
-		!rsrc_data->handle_camif_irq)
+		(!rsrc_data->is_pixel_path && !vfe_res->rdi_only_ctx))
 		goto subscribe_err;
 
 	irq_mask[CAM_IFE_IRQ_CAMIF_REG_STATUS1] = rsrc_data->reg_data->sof_irq_mask |

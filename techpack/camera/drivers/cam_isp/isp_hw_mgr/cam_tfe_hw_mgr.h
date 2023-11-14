@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_TFE_HW_MGR_H_
@@ -140,7 +140,6 @@ struct cam_tfe_hw_mgr_ctx {
 	struct cam_packet              *packet;
 	uint32_t                        bw_config_version;
 	struct cam_tfe_cdm_user_data    cdm_userdata;
-	struct cam_isp_hw_comp_record  *tfe_bus_comp_grp;
 };
 
 /**

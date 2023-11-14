@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 
@@ -451,6 +451,120 @@ static enum cam_vfe_bus_ver3_vfe_out_type
 	*index = bus_priv->vfe_out_map_outtype[vfe_out_type];
 
 	return vfe_out_type;
+}
+
+static int cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
+	uint64_t comp_mask, uint32_t *out_list, int *num_out)
+{
+	int count = 0;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RDI0)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_0;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RDI1)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_1;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RDI2)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_2;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RDI3)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_3;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_FULL)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_FULL;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_DS4)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS4;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_DS16)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS16;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RAW_DUMP)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RAW_DUMP;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_FD)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_FD;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_PDAF)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_PDAF;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BE)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_HDR_BE;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BHIST)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_HDR_BHIST;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_TL_BG)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_TL_BG;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BF)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BF;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_AWB_BG)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_AWB_BG;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BHIST)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BHIST;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_RS)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_RS;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_CS)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_CS;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_IHIST)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_IHIST;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_FULL_DISP)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_FULL_DISP;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_DS4_DISP)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS4_DISP;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_DS16_DISP)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS16_DISP;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_2PD)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_2PD;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_LCR)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_LCR;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_AWB_BFW)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_AWB_BFW;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_2PD)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_AEC_BE)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_AEC_BE;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_LTM_STATS)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_LTM_STATS;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_GTM_BHIST)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_GTM_BHIST;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG)))
+		out_list[count++] = CAM_ISP_IFE_LITE_OUT_RES_STATS_BG;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW)))
+		out_list[count++] = CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_SPARSE_PD)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_SPARSE_PD;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_CAF)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_CAF;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BAYER_RS)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BAYER_RS;
+
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_PDAF_PARSED)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_PDAF_PARSED_DATA;
+
+	*num_out = count;
+	return 0;
 }
 
 static enum cam_vfe_bus_ver3_packer_format
@@ -1713,7 +1827,7 @@ static int cam_vfe_bus_ver3_handle_comp_done_top_half(uint32_t evt_id,
 static int cam_vfe_bus_ver3_handle_comp_done_bottom_half(
 	void                *handler_priv,
 	void                *evt_payload_priv,
-	uint32_t            *comp_grp_id)
+	uint64_t            *comp_mask)
 {
 	int rc = CAM_VFE_IRQ_STATUS_ERR;
 	struct cam_vfe_bus_ver3_vfe_out_data  *vfe_out  = handler_priv;
@@ -1746,7 +1860,7 @@ static int cam_vfe_bus_ver3_handle_comp_done_bottom_half(
 		rsrc_data->common_data->core_index, rsrc_data->comp_grp_type,
 		status_0, rc);
 
-	*comp_grp_id = rsrc_data->comp_grp_type;
+	*comp_mask = rsrc_data->composite_mask;
 
 	return rc;
 }
@@ -1986,7 +2100,6 @@ static int cam_vfe_bus_ver3_acquire_vfe_out(void *bus_priv, void *acquire_args,
 
 	rsrc_node->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 	out_acquire_args->rsrc_node = rsrc_node;
-	out_acquire_args->comp_grp_id = comp_acq_args.comp_grp_id;
 
 	CAM_DBG(CAM_ISP, "Acquire successful");
 	return rc;
@@ -2233,7 +2346,6 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_top_half(uint32_t evt_id,
 	struct cam_vfe_bus_irq_evt_payload         *evt_payload;
 	struct cam_vfe_bus_ver3_comp_grp_data      *resource_data;
 	uint32_t                                    status_0;
-	struct cam_vfe_bus_ver3_wm_resource_data   *wm_rsrc_data = NULL;
 
 	vfe_out = th_payload->handler_priv;
 	if (!vfe_out) {
@@ -2274,10 +2386,6 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_top_half(uint32_t evt_id,
 
 	if (status_0 & BIT(resource_data->comp_grp_type +
 		rsrc_data->common_data->comp_done_shift)) {
-		wm_rsrc_data = rsrc_data->wm_res[PLANE_Y].res_priv;
-		evt_payload->last_consumed_addr = cam_io_r_mb(
-			wm_rsrc_data->common_data->mem_base +
-			wm_rsrc_data->hw_regs->addr_status_0);
 		trace_cam_log_event("bufdone", "bufdone_IRQ",
 			status_0, resource_data->comp_grp_type);
 	}
@@ -2289,27 +2397,61 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_top_half(uint32_t evt_id,
 	return rc;
 }
 
+static uint32_t cam_vfe_bus_ver3_get_last_consumed_addr(
+	struct cam_vfe_bus_ver3_priv *bus_priv,
+	uint32_t res_type)
+{
+	uint32_t                                  val = 0;
+	struct cam_isp_resource_node             *rsrc_node = NULL;
+	struct cam_vfe_bus_ver3_vfe_out_data     *rsrc_data = NULL;
+	struct cam_vfe_bus_ver3_wm_resource_data *wm_rsrc_data = NULL;
+	enum cam_vfe_bus_ver3_vfe_out_type        res_id;
+	uint32_t           outmap_index = CAM_VFE_BUS_VER3_VFE_OUT_MAX;
+
+	res_id = cam_vfe_bus_ver3_get_out_res_id_and_index(bus_priv,
+		res_type, &outmap_index);
+
+	if ((res_id >= CAM_VFE_BUS_VER3_VFE_OUT_MAX) ||
+		(outmap_index >= bus_priv->num_out)) {
+		CAM_WARN(CAM_ISP,
+			"target does not support req res id :0x%x outtype:%d index:%d",
+			res_type, res_id, outmap_index);
+		return 0;
+	}
+
+	rsrc_node = &bus_priv->vfe_out[outmap_index];
+	rsrc_data = rsrc_node->res_priv;
+	wm_rsrc_data = rsrc_data->wm_res[PLANE_Y].res_priv;
+
+	val = cam_io_r_mb(
+		wm_rsrc_data->common_data->mem_base +
+		wm_rsrc_data->hw_regs->addr_status_0);
+
+	return val;
+}
+
 static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 	void                *handler_priv,
 	void                *evt_payload_priv)
 {
-	int                                    rc = -EINVAL;
+	int                                    rc = -EINVAL, num_out = 0, i = 0;
 	struct cam_isp_resource_node          *vfe_out = handler_priv;
 	struct cam_vfe_bus_ver3_vfe_out_data  *rsrc_data = vfe_out->res_priv;
 	struct cam_vfe_bus_irq_evt_payload    *evt_payload = evt_payload_priv;
 	struct cam_isp_hw_event_info           evt_info;
-	struct cam_isp_hw_bufdone_event_info   bufdone_evt_info = {0};
+	struct cam_isp_hw_compdone_event_info  compdone_evt_info = {0};
 	void                                  *ctx = NULL;
 	uint32_t                               evt_id = 0;
-	uint32_t                               comp_grp_id = 0;
+	uint64_t                               comp_mask = 0;
+	uint32_t                               out_list[CAM_VFE_BUS_VER3_VFE_OUT_MAX];
 
 	rc = cam_vfe_bus_ver3_handle_comp_done_bottom_half(
-		rsrc_data, evt_payload_priv, &comp_grp_id);
-	CAM_DBG(CAM_ISP, "VFE:%d out_type:0x%x comp_grp_id:%d rc:%d",
-		rsrc_data->common_data->core_index, rsrc_data->out_type,
-		comp_grp_id, rc);
+		rsrc_data, evt_payload_priv, &comp_mask);
+	CAM_DBG(CAM_ISP, "VFE:%d out_type:0x%X comp_mask: 0x%lx rc:%d",
+		rsrc_data->common_data->core_index, rsrc_data->out_type, comp_mask, rc);
 
 	ctx = rsrc_data->priv;
+	memset(out_list, 0, sizeof(out_list));
 
 	switch (rc) {
 	case CAM_VFE_IRQ_STATUS_SUCCESS:
@@ -2318,12 +2460,30 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 		evt_info.res_type = vfe_out->res_type;
 		evt_info.hw_idx   = vfe_out->hw_intf->hw_idx;
 		evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
-		evt_info.res_id = vfe_out->res_id;
-		bufdone_evt_info.res_id = vfe_out->res_id;
-		bufdone_evt_info.comp_grp_id = comp_grp_id;
-		bufdone_evt_info.last_consumed_addr = evt_payload->last_consumed_addr;
-		evt_info.event_data = (void *)&bufdone_evt_info;
 
+		cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
+			comp_mask, out_list, &num_out);
+		if (num_out > CAM_NUM_OUT_PER_COMP_IRQ_MAX) {
+			CAM_ERR(CAM_ISP,
+				"num_out: %d  exceeds max_port_per_comp_grp: %d for comp_mask: %u",
+				num_out, CAM_NUM_OUT_PER_COMP_IRQ_MAX, comp_mask);
+			for (i = 0; i < num_out; i++)
+				CAM_ERR(CAM_ISP,
+					"Skipping buf done notify for outport: %u",
+					out_list[i]);
+			rc = -EINVAL;
+			goto end;
+		}
+
+		compdone_evt_info.num_res = num_out;
+		for (i = 0; i < num_out; i++) {
+			compdone_evt_info.res_id[i] = out_list[i];
+			compdone_evt_info.last_consumed_addr[i] =
+				cam_vfe_bus_ver3_get_last_consumed_addr(
+				rsrc_data->bus_priv,
+				compdone_evt_info.res_id[i]);
+		}
+		evt_info.event_data = (void *)&compdone_evt_info;
 		if (rsrc_data->common_data->event_cb)
 			rsrc_data->common_data->event_cb(ctx, evt_id,
 				(void *)&evt_info);
@@ -2332,6 +2492,7 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 		break;
 	}
 
+end:
 	cam_vfe_bus_ver3_put_evt_payload(rsrc_data->common_data, &evt_payload);
 
 	return rc;

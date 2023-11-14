@@ -118,6 +118,17 @@ struct cam_ife_csid_ver2_evt_payload {
 };
 
 /*
+ * struct cam_ife_csid_ver2_camif_data: place holder for camif parameters
+ *
+ * @epoch0_cfg:   Epoch 0 configuration value
+ * @epoch1_cfg:   Epoch 1 configuration value
+ */
+struct cam_ife_csid_ver2_camif_data {
+	uint32_t epoch0;
+	uint32_t epoch1;
+};
+
+/*
  * struct cam_ife_csid_ver2_path_cfg: place holder for path parameters
  *
  * @camif_data:             CAMIF data
@@ -146,7 +157,6 @@ struct cam_ife_csid_ver2_evt_payload {
  * @irq_reg_idx:            IRQ Reg index
  * @sof_cnt:                SOF counter
  * @num_frames_discard:     number of frames to discard
- * @epoch_cfg:              Epoch configured value
  * @sync_mode   :           Sync mode--> master/slave/none
  * @vfr_en   :              flag to indicate if variable frame rate is enabled
  * @frame_id_dec_en:        flag to indicate if frame id decoding is enabled
@@ -163,6 +173,7 @@ struct cam_ife_csid_ver2_evt_payload {
  *
  */
 struct cam_ife_csid_ver2_path_cfg {
+	struct cam_ife_csid_ver2_camif_data  camif_data;
 	struct timespec64                    error_ts;
 	struct cam_ife_csid_path_format      path_format[CAM_ISP_VC_DT_CFG];
 	struct cam_csid_secondary_evt_config sec_evt_config;
@@ -188,18 +199,16 @@ struct cam_ife_csid_ver2_path_cfg {
 	uint32_t                             irq_reg_idx;
 	uint32_t                             sof_cnt;
 	uint32_t                             num_frames_discard;
-	uint32_t                             epoch_cfg;
 	enum cam_isp_hw_sync_mode            sync_mode;
 	bool                                 vfr_en;
 	bool                                 frame_id_dec_en;
 	bool                                 crop_enable;
 	bool                                 drop_enable;
+	bool                                 handle_camif_irq;
 	bool                                 discard_init_frames;
 	bool                                 skip_discard_frame_cfg;
 	bool                                 sfe_shdr;
 	bool                                 lcr_en;
-	bool                                 csid_out_unpack_msb;
-	bool                                 handle_camif_irq;
 };
 
 struct cam_ife_csid_ver2_top_reg_info {
@@ -338,11 +347,7 @@ struct cam_ife_csid_ver2_path_reg_info {
 	uint32_t fatal_err_mask;
 	uint32_t non_fatal_err_mask;
 	uint32_t pix_pattern_shift;
-	uint32_t rup_irq_mask;
-	uint32_t sof_irq_mask;
-	uint32_t eof_irq_mask;
-	uint32_t epoch0_irq_mask;
-	uint32_t epoch1_irq_mask;
+	uint32_t camif_irq_mask;
 	uint32_t rup_aup_mask;
 	uint32_t top_irq_mask;
 	uint32_t epoch0_cfg_val;
@@ -456,7 +461,6 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t rup_supported;
 	uint32_t only_master_rup;
 	bool     timestamp_enabled_in_cfg0;
-	bool     camif_irq_support;
 
 	/* Masks */
 	uint32_t pxl_cnt_mask;
@@ -484,7 +488,7 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t top_err_irq_mask;
 	uint32_t top_reset_irq_mask;
 	uint32_t top_buf_done_irq_mask;
-	uint32_t epoch_factor;
+	uint32_t epoch_div_factor;
 	uint32_t decode_format_payload_only;
 };
 
