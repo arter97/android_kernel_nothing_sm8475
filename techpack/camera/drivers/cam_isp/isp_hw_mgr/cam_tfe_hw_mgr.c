@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2022, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -815,8 +815,7 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_out_rdi(
 	struct cam_isp_tfe_out_port_generic_info *out_port = NULL;
 	struct cam_isp_hw_mgr_res                *tfe_out_res;
 	struct cam_hw_intf                       *hw_intf;
-	struct cam_isp_hw_comp_record            *comp_grp = NULL;
-	uint32_t  i, tfe_out_res_id, tfe_in_res_id, index;
+	uint32_t  i, tfe_out_res_id, tfe_in_res_id;
 
 	/* take left resource */
 	tfe_in_res_id = tfe_in_res->hw_res[0]->res_id;
@@ -867,10 +866,6 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_out_rdi(
 				 out_port->res_id);
 			goto err;
 		}
-		index = tfe_acquire.tfe_out.comp_grp_id;
-		comp_grp = &tfe_ctx->tfe_bus_comp_grp[index];
-		comp_grp->res_id[comp_grp->num_res] = tfe_out_res_id;
-		comp_grp->num_res++;
 		break;
 	}
 
@@ -903,8 +898,6 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_out_pixel(
 	struct cam_isp_tfe_out_port_generic_info *out_port;
 	struct cam_isp_hw_mgr_res                *tfe_out_res;
 	struct cam_hw_intf                       *hw_intf;
-	struct cam_isp_hw_comp_record            *comp_grp = NULL;
-	uint32_t                                  index;
 
 	for (i = 0; i < in_port->num_out_res; i++) {
 		out_port = &in_port->data[i];
@@ -963,15 +956,9 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_out_pixel(
 
 			tfe_out_res->hw_res[j] =
 				tfe_acquire.tfe_out.rsrc_node;
-			index = tfe_acquire.tfe_out.comp_grp_id;
-			comp_grp = &tfe_ctx->tfe_bus_comp_grp[index];
-			comp_grp->res_id[comp_grp->num_res] =
-				tfe_out_res->hw_res[j]->res_id;
-			comp_grp->num_res++;
-			CAM_DBG(CAM_ISP, "resource type :0x%x res id:0x%x comp grp id:%d",
+			CAM_DBG(CAM_ISP, "resource type :0x%x res id:0x%x",
 				tfe_out_res->hw_res[j]->res_type,
-				tfe_out_res->hw_res[j]->res_id,
-				tfe_acquire.tfe_out.comp_grp_id);
+				tfe_out_res->hw_res[j]->res_id);
 
 		}
 		tfe_out_res->res_type = CAM_ISP_RESOURCE_TFE_OUT;
@@ -2112,14 +2099,6 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		goto free_cdm;
 	}
 
-	tfe_ctx->tfe_bus_comp_grp = kcalloc(CAM_ISP_BUS_COMP_NUM_MAX,
-		sizeof(struct cam_isp_hw_comp_record), GFP_KERNEL);
-	if (!tfe_ctx->tfe_bus_comp_grp) {
-		CAM_ERR(CAM_CTXT, "No memory for vfe_bus_comp_grp");
-		rc = -ENOMEM;
-		goto free_ctx;
-	}
-
 	/* Update in_port structure */
 	for (i = 0; i < acquire_hw_info->num_inputs; i++) {
 		rc = cam_tfe_mgr_acquire_get_unified_structure(acquire_hw_info,
@@ -2208,8 +2187,6 @@ free_res:
 free_cdm:
 	cam_cdm_release(tfe_ctx->cdm_handle);
 free_ctx:
-	kfree(tfe_ctx->tfe_bus_comp_grp);
-	tfe_ctx->tfe_bus_comp_grp = NULL;
 	cam_tfe_hw_mgr_put_ctx(&tfe_hw_mgr->free_ctx_list, &tfe_ctx);
 	if (in_port) {
 		for (i = 0; i < acquire_hw_info->num_inputs; i++) {
@@ -3707,8 +3684,6 @@ static int cam_tfe_mgr_release_hw(void *hw_mgr_priv,
 	ctx->is_dual = false;
 	ctx->num_reg_dump_buf = 0;
 	ctx->last_cdm_done_req = 0;
-	kfree(ctx->tfe_bus_comp_grp);
-	ctx->tfe_bus_comp_grp = NULL;
 	atomic_set(&ctx->overflow_pending, 0);
 
 	for (i = 0; i < ctx->last_submit_bl_cmd.bl_count; i++) {
@@ -4960,7 +4935,6 @@ static int cam_tfe_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 		hw_cmd_args->ctxt_to_hw_map;
 	struct cam_isp_hw_cmd_args *isp_hw_cmd_args = NULL;
 	struct cam_packet          *packet;
-	struct cam_isp_comp_record_query *query_cmd;
 
 	if (!hw_mgr_priv || !cmd_args) {
 		CAM_ERR(CAM_ISP, "Invalid arguments");
@@ -5028,13 +5002,6 @@ static int cam_tfe_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 			break;
 		case CAM_ISP_HW_MGR_CMD_UPDATE_CLOCK:
 			rc = cam_tfe_hw_mgr_csiphy_clk_sync(ctx, isp_hw_cmd_args->cmd_data);
-			break;
-		case CAM_ISP_HW_MGR_GET_BUS_COMP_GROUP:
-			query_cmd = (struct cam_isp_comp_record_query *)
-				isp_hw_cmd_args->cmd_data;
-			memcpy(query_cmd->isp_bus_comp_grp, ctx->tfe_bus_comp_grp,
-				sizeof(struct cam_isp_hw_comp_record) *
-				CAM_ISP_BUS_COMP_NUM_MAX);
 			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid HW mgr command:0x%x, ISP HW mgr cmd:0x%x",
@@ -5814,44 +5781,28 @@ static int cam_tfe_hw_mgr_handle_hw_buf_done(
 	void                                *ctx,
 	void                                *evt_info)
 {
-	cam_hw_event_cb_func                  tfe_hwr_irq_wm_done_cb;
-	struct cam_tfe_hw_mgr_ctx            *tfe_hw_mgr_ctx = ctx;
-	struct cam_isp_hw_done_event_data     buf_done_event_data = {0};
-	struct cam_isp_hw_bufdone_event_info *bufdone_evt_info = NULL;
-	struct cam_isp_hw_event_info         *event_info;
+	cam_hw_event_cb_func                 tfe_hwr_irq_wm_done_cb;
+	struct cam_tfe_hw_mgr_ctx           *tfe_hw_mgr_ctx = ctx;
+	struct cam_isp_hw_done_event_data    buf_done_event_data = {0};
+	struct cam_isp_hw_event_info        *event_info = evt_info;
+
+	tfe_hwr_irq_wm_done_cb = tfe_hw_mgr_ctx->common.event_cb;
+
+	buf_done_event_data.num_handles = 1;
+	buf_done_event_data.resource_handle[0] = event_info->res_id;
+	buf_done_event_data.last_consumed_addr[0] = event_info->reg_val;
 
 	if (atomic_read(&tfe_hw_mgr_ctx->overflow_pending))
 		return 0;
 
-	event_info = (struct cam_isp_hw_event_info *)evt_info;
-	if (!event_info->event_data) {
-		CAM_ERR(CAM_ISP,
-			"No additional buf done data failed to process for HW: %u",
-			event_info->hw_type);
-		return -EINVAL;
-	}
-
-	tfe_hwr_irq_wm_done_cb = tfe_hw_mgr_ctx->common.event_cb;
-	bufdone_evt_info = (struct cam_isp_hw_bufdone_event_info *)event_info->event_data;
-	buf_done_event_data.resource_handle = 0;
-
-	CAM_DBG(CAM_ISP,
-		"Buf done for TFE: %d res_id: 0x%x last consumed addr: 0x%x ctx: %u",
-		event_info->hw_idx, event_info->res_id,
-		bufdone_evt_info->last_consumed_addr, tfe_hw_mgr_ctx->ctx_index);
-
-	buf_done_event_data.hw_type = event_info->hw_type;
-	buf_done_event_data.resource_handle = event_info->res_id;
-	buf_done_event_data.last_consumed_addr = bufdone_evt_info->last_consumed_addr;
-	buf_done_event_data.comp_group_id = bufdone_evt_info->comp_grp_id;
-
-
-	if (buf_done_event_data.resource_handle > 0 && tfe_hwr_irq_wm_done_cb) {
-		CAM_DBG(CAM_ISP, "Buf done for out_res->res_id: 0x%x in ctx: %u",
-			event_info->res_id, tfe_hw_mgr_ctx->ctx_index);
+	if (buf_done_event_data.num_handles > 0 && tfe_hwr_irq_wm_done_cb) {
+		CAM_DBG(CAM_ISP, "Notify ISP context");
 		tfe_hwr_irq_wm_done_cb(tfe_hw_mgr_ctx->common.cb_priv,
 			CAM_ISP_HW_EVENT_DONE, (void *)&buf_done_event_data);
 	}
+
+	CAM_DBG(CAM_ISP, "Buf done for out_res->res_id: 0x%x",
+		event_info->res_id);
 
 	return 0;
 }

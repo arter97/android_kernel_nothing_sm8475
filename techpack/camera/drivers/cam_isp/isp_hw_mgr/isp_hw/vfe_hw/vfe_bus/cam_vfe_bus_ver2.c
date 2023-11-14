@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/ratelimit.h>
@@ -1013,6 +1013,77 @@ static int cam_vfe_bus_get_wm_idx(
 	}
 
 	return wm_idx;
+}
+
+static void cam_vfe_bus_get_comp_vfe_out_res_id_list(
+	uint32_t comp_mask, uint32_t *out_list, int *num_out)
+{
+	int count = 0;
+
+	if (comp_mask & 0x1)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_0;
+
+	if (comp_mask & 0x2)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_1;
+
+	if (comp_mask & 0x4)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_2;
+
+	if ((comp_mask & 0x8) && (((comp_mask >> 4) & 0x1) == 0))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_3;
+
+	if (comp_mask & 0x18)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_FULL;
+
+	if (comp_mask & 0x20)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS4;
+
+	if (comp_mask & 0x40)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS16;
+
+	if (comp_mask & 0x180)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_FD;
+
+	if (comp_mask & 0x200)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_RAW_DUMP;
+
+	if (comp_mask & 0x800)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_HDR_BE;
+
+	if (comp_mask & 0x1000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_HDR_BHIST;
+
+	if (comp_mask & 0x2000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_TL_BG;
+
+	if (comp_mask & 0x4000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BF;
+
+	if (comp_mask & 0x8000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_AWB_BG;
+
+	if (comp_mask & 0x10000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BHIST;
+
+	if (comp_mask & 0x20000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_RS;
+
+	if (comp_mask & 0x40000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_CS;
+
+	if (comp_mask & 0x80000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_IHIST;
+
+	if (comp_mask & 0x300000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_FULL_DISP;
+
+	if (comp_mask & 0x400000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS4_DISP;
+
+	if (comp_mask & 0x800000)
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS16_DISP;
+
+	*num_out = count;
 }
 
 static enum cam_vfe_bus_packer_format
@@ -2111,7 +2182,7 @@ static int cam_vfe_bus_handle_comp_done_top_half(uint32_t evt_id,
 }
 
 static int cam_vfe_bus_handle_comp_done_bottom_half(void *handler_priv,
-	void  *evt_payload_priv, uint32_t *grp_id)
+	void  *evt_payload_priv, uint32_t *comp_mask)
 {
 	int rc = CAM_VFE_IRQ_STATUS_ERR;
 	struct cam_isp_resource_node          *comp_grp = handler_priv;
@@ -2214,7 +2285,7 @@ static int cam_vfe_bus_handle_comp_done_bottom_half(void *handler_priv,
 		break;
 	}
 
-	*grp_id = rsrc_data->comp_grp_type;
+	*comp_mask = rsrc_data->composite_mask;
 
 	return rc;
 }
@@ -2659,12 +2730,14 @@ static int cam_vfe_bus_handle_vfe_out_done_bottom_half(
 	struct cam_isp_resource_node             *vfe_out = handler_priv;
 	struct cam_vfe_bus_ver2_vfe_out_data     *rsrc_data = vfe_out->res_priv;
 	struct cam_isp_hw_event_info              evt_info;
-	struct cam_isp_hw_bufdone_event_info      bufdone_evt_info = {0};
+	struct cam_isp_hw_compdone_event_info     compdone_evt_info = {0};
 	void                                     *ctx = NULL;
 	uint32_t                                  evt_id = 0;
-	uint32_t                                  comp_grp_id = 0;
+	uint32_t                                  comp_mask = 0;
+	int                                       num_out = 0, i = 0;
 	struct cam_vfe_bus_irq_evt_payload       *evt_payload =
 		evt_payload_priv;
+	uint32_t                   out_list[CAM_VFE_BUS_VER2_VFE_OUT_MAX] = {0};
 
 	/*
 	 * If this resource has Composite Group then we only handle
@@ -2673,7 +2746,7 @@ static int cam_vfe_bus_handle_vfe_out_done_bottom_half(
 	 */
 	if (rsrc_data->comp_grp) {
 		rc = cam_vfe_bus_handle_comp_done_bottom_half(
-			rsrc_data->comp_grp, evt_payload_priv, &comp_grp_id);
+			rsrc_data->comp_grp, evt_payload_priv, &comp_mask);
 	} else {
 		rc = rsrc_data->wm_res[0]->bottom_half_handler(
 			rsrc_data->wm_res[0], evt_payload_priv);
@@ -2691,12 +2764,29 @@ static int cam_vfe_bus_handle_vfe_out_done_bottom_half(
 		evt_info.res_type = vfe_out->res_type;
 		evt_info.hw_idx   = vfe_out->hw_intf->hw_idx;
 		if (rsrc_data->comp_grp) {
-			bufdone_evt_info.res_id = vfe_out->res_id;
-			bufdone_evt_info.comp_grp_id = comp_grp_id;
-		} else
-			bufdone_evt_info.res_id = vfe_out->res_id;
+			cam_vfe_bus_get_comp_vfe_out_res_id_list(
+				comp_mask, out_list, &num_out);
+			if (num_out > CAM_NUM_OUT_PER_COMP_IRQ_MAX) {
+				CAM_ERR(CAM_ISP,
+					"num_out: %d  exceeds max_port_per_comp_grp: %d for comp_mask: %u",
+					num_out, CAM_NUM_OUT_PER_COMP_IRQ_MAX, comp_mask);
+				for (i = 0; i < num_out; i++)
+					CAM_ERR(CAM_ISP,
+						"Skipping buf done notify for outport: %u",
+						out_list[i]);
+				rc = -EINVAL;
+				goto end;
+			}
 
-		evt_info.event_data = (void *)&bufdone_evt_info;
+			compdone_evt_info.num_res = num_out;
+			for (i = 0; i < num_out; i++) {
+				compdone_evt_info.res_id[i] = out_list[i];
+			}
+		} else {
+			compdone_evt_info.num_res = 1;
+			compdone_evt_info.res_id[0] = vfe_out->res_id;
+		}
+		evt_info.event_data = (void *)&compdone_evt_info;
 		if (rsrc_data->common_data->event_cb)
 			rsrc_data->common_data->event_cb(ctx,
 				evt_id, (void *)&evt_info);
@@ -2705,6 +2795,7 @@ static int cam_vfe_bus_handle_vfe_out_done_bottom_half(
 		break;
 	}
 
+end:
 	cam_vfe_bus_put_evt_payload(rsrc_data->common_data, &evt_payload);
 
 	return rc;

@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_CSID_HW_INTF_H_
@@ -77,7 +76,6 @@ enum cam_ife_csid_secondary_evt_type {
  * @global_reset_en:      flag to indicate if global reset is enabled
  * @rup_en:               flag to indicate if rup is on csid side
  * @only_master_rup:      flag to indicate if only master RUP
- * @camif_irq_support:     flag to indicate if CSID supports CAMIF irq
  */
 struct cam_ife_csid_hw_caps {
 	uint32_t      num_rdis;
@@ -90,7 +88,6 @@ struct cam_ife_csid_hw_caps {
 	bool          global_reset_en;
 	bool          rup_en;
 	bool          only_master_rup;
-	bool          camif_irq_support;
 };
 
 struct cam_isp_out_port_generic_info {
@@ -160,13 +157,11 @@ struct cam_isp_in_port_generic_info {
  * struct cam_csid_secondary_evt_config - secondary event enablement
  * @evt_type:           Type of secondary event enabled [SOF/EPOCH/EOF...]
  * @en_secondary_evt:   Enable secondary event
- * @handle_camif_irq:    Flag to indicate if CSID IRQ is enabled
  *
  */
 struct cam_csid_secondary_evt_config {
 	enum cam_ife_csid_secondary_evt_type evt_type;
 	bool                                 en_secondary_evt;
-	bool                                 handle_camif_irq;
 };
 
 /**
@@ -204,7 +199,6 @@ struct cam_csid_secondary_evt_config {
  * @sfe_en:              Flag to indicate if SFE is enabled
  * @use_wm_pack:         [OUT]Flag to indicate if WM packing is to be used for packing
  * @secure_mode:         Holds secure mode state of the CSID
- * @handle_camif_irq:    Flag to indicate if CSID IRQ is enabled
  *
  */
 struct cam_csid_hw_reserve_resource_args {
@@ -232,7 +226,6 @@ struct cam_csid_hw_reserve_resource_args {
 	bool                                      sfe_en;
 	bool                                      use_wm_pack;
 	bool                                      secure_mode;
-	bool                                      handle_camif_irq;
 };
 
 /**

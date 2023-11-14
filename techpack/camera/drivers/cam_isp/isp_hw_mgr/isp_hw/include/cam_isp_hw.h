@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_ISP_HW_H_
@@ -290,19 +290,19 @@ struct cam_isp_hw_error_event_info {
 };
 
 /**
- * struct cam_isp_hw_bufdone_event_info:
+ * struct cam_isp_hw_compdone_event_info:
  *
  * @brief:              Structure to pass bufdone event details to hw mgr
  *
+ * @num_res:            Number of valid resource IDs in this event
  * @res_id:             Resource IDs to report buf dones
- * @comp_grp_id:        Bus comp group id
  * @last_consumed_addr: Last consumed addr for resource ID at that index
  *
  */
-struct cam_isp_hw_bufdone_event_info {
-	uint32_t res_id;
-	uint32_t comp_grp_id;
-	uint32_t last_consumed_addr;
+struct cam_isp_hw_compdone_event_info {
+	uint32_t num_res;
+	uint32_t res_id[CAM_NUM_OUT_PER_COMP_IRQ_MAX];
+	uint32_t last_consumed_addr[CAM_NUM_OUT_PER_COMP_IRQ_MAX];
 };
 
 /*

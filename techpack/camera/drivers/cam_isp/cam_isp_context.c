@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -1579,7 +1579,6 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 	struct cam_isp_ctx_req *req_isp;
 	struct cam_context *ctx = ctx_isp->base;
 	const char *handle_type;
-	struct cam_isp_hw_comp_record *comp_grp = NULL;
 
 	trace_cam_buf_done("ISP", ctx, req);
 
@@ -1588,49 +1587,12 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 	CAM_DBG(CAM_ISP, "Enter with bubble_state %d, req_bubble_detected %d",
 		bubble_state, req_isp->bubble_detected);
 
-	done_next_req->resource_handle = 0;
+	done_next_req->num_handles = 0;
 	done_next_req->timestamp = done->timestamp;
 
-	for (i = 0; i < req_isp->num_fence_map_out; i++) {
-		if (done->resource_handle ==
-			req_isp->fence_map_out[i].resource_handle)
-			break;
-	}
-
-	if (i == req_isp->num_fence_map_out) {
-		/*
-		 * If not found in current request, it could be
-		 * belonging to next request, this can happen if
-		 * IRQ delay happens. It is only valid when the
-		 * platform doesn't have last consumed address.
-		 */
-		CAM_WARN(CAM_ISP,
-			"BUF_DONE for res %s not found in Req %lld ",
-			__cam_isp_resource_handle_id_to_type(
-			ctx_isp->isp_device_type,
-			done->resource_handle),
-			req->request_id);
-
-		done_next_req->hw_type = done->hw_type;
-		done_next_req->resource_handle = done->resource_handle;
-		done_next_req->comp_group_id = done->comp_group_id;
-		goto check_deferred;
-	}
-
-	if (done->hw_type == CAM_ISP_HW_TYPE_SFE)
-		comp_grp = &ctx_isp->sfe_bus_comp_grp[done->comp_group_id];
-	else
-		comp_grp = &ctx_isp->vfe_bus_comp_grp[done->comp_group_id];
-
-	if (!comp_grp) {
-		CAM_ERR(CAM_ISP, "comp_grp is NULL");
-		rc = -EINVAL;
-		return rc;
-	}
-
-	for (i = 0; i < comp_grp->num_res; i++) {
+	for (i = 0; i < done->num_handles; i++) {
 		for (j = 0; j < req_isp->num_fence_map_out; j++) {
-			if (comp_grp->res_id[i] ==
+			if (done->resource_handle[i] ==
 				req_isp->fence_map_out[j].resource_handle)
 				break;
 		}
@@ -1638,15 +1600,20 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 		if (j == req_isp->num_fence_map_out) {
 			/*
 			 * If not found in current request, it could be
-			 * belonging to an active port with no valid fence
-			 * bound to it, we needn't process it.
+			 * belonging to next request, this can happen if
+			 * IRQ delay happens. It is only valid when the
+			 * platform doesn't have last consumed address.
 			 */
-			CAM_DBG(CAM_ISP,
-				"BUF_DONE for res %s not active in Req %lld ",
+			CAM_WARN(CAM_ISP,
+				"BUF_DONE for res %s not found in Req %lld ",
 				__cam_isp_resource_handle_id_to_type(
 				ctx_isp->isp_device_type,
-				comp_grp->res_id[i]),
+				done->resource_handle[i]),
 				req->request_id);
+
+			done_next_req->resource_handle
+				[done_next_req->num_handles++] =
+				done->resource_handle[i];
 			continue;
 		}
 
@@ -1662,6 +1629,10 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 
 			trace_cam_log_event("Duplicate BufDone",
 				handle_type, req->request_id, ctx->ctx_id);
+
+			done_next_req->resource_handle
+				[done_next_req->num_handles++] =
+				done->resource_handle[i];
 			continue;
 		}
 
@@ -1739,7 +1710,6 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 				req->request_id, CAM_REQ_MGR_SOF_EVENT_SUCCESS);
 	}
 
-check_deferred:
 	if (req_isp->num_acked > req_isp->num_fence_map_out) {
 		/* Should not happen */
 		CAM_ERR(CAM_ISP,
@@ -1869,8 +1839,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 	struct cam_context *ctx = ctx_isp->base;
 	const char *handle_type;
 	uint32_t cmp_addr = 0;
-	struct cam_isp_hw_done_event_data   unhandled_done = {0};
-	struct cam_isp_hw_comp_record *comp_grp = NULL;
+	struct cam_isp_hw_done_event_data unhandled_done = {0};
 
 	trace_cam_buf_done("ISP", ctx, req);
 
@@ -1879,55 +1848,24 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 	CAM_DBG(CAM_ISP, "Enter with bubble_state %d, req_bubble_detected %d",
 		bubble_state, req_isp->bubble_detected);
 
+	if (done->num_handles > CAM_NUM_OUT_PER_COMP_IRQ_MAX) {
+		CAM_ERR(CAM_ISP, "ctx: %u req: %llu num_handles: %u is more than %u",
+			ctx->ctx_id, req->request_id,
+			done->num_handles, CAM_NUM_OUT_PER_COMP_IRQ_MAX);
+		return -EINVAL;
+	}
+
 	unhandled_done.timestamp = done->timestamp;
 
-	for (i = 0; i < req_isp->num_fence_map_out; i++) {
-		if (done->resource_handle ==
-			req_isp->fence_map_out[i].resource_handle) {
-			cmp_addr = cam_smmu_is_expanded_memory() ? CAM_36BIT_INTF_GET_IOVA_BASE(
-				req_isp->fence_map_out[i].image_buf_addr[0]) :
-				req_isp->fence_map_out[i].image_buf_addr[0];
-			if (!verify_consumed_addr ||
-				(verify_consumed_addr && (done->last_consumed_addr == cmp_addr))) {
-				break;
-			}
-		}
-	}
-
-	if (i == req_isp->num_fence_map_out) {
-		/*
-		 * If not found in current request, it could be
-		 * belonging to next request, this can happen if
-		 * IRQ delay happens. It is only valid when the
-		 * platform doesn't have last consumed address.
-		 */
-		CAM_WARN(CAM_ISP,
-			"BUF_DONE for res %s not found in Req %lld ",
-			__cam_isp_resource_handle_id_to_type(
-			ctx_isp->isp_device_type, done->resource_handle),
-			req->request_id);
-
-		unhandled_done.hw_type = done->hw_type;
-		unhandled_done.resource_handle = done->resource_handle;
-		unhandled_done.comp_group_id = done->comp_group_id;
-		unhandled_done.last_consumed_addr = done->last_consumed_addr;
-		goto check_deferred;
-	}
-
-	if (done->hw_type == CAM_ISP_HW_TYPE_SFE)
-		comp_grp = &ctx_isp->sfe_bus_comp_grp[done->comp_group_id];
-	else
-		comp_grp = &ctx_isp->vfe_bus_comp_grp[done->comp_group_id];
-
-	if (!comp_grp) {
-		CAM_ERR(CAM_ISP, "comp_grp is NULL");
-		rc = -EINVAL;
-		return rc;
-	}
-
-	for (i = 0; i < comp_grp->num_res; i++) {
+	for (i = 0; i < done->num_handles; i++) {
 		for (j = 0; j < req_isp->num_fence_map_out; j++) {
-			if (comp_grp->res_id[i] ==
+			cmp_addr = cam_smmu_is_expanded_memory() ? CAM_36BIT_INTF_GET_IOVA_BASE(
+				req_isp->fence_map_out[j].image_buf_addr[0]) :
+				req_isp->fence_map_out[j].image_buf_addr[0];
+			if (verify_consumed_addr && (done->last_consumed_addr[i] != cmp_addr))
+				continue;
+
+			if (done->resource_handle[i] ==
 				req_isp->fence_map_out[j].resource_handle)
 				break;
 		}
@@ -1935,14 +1873,20 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 		if (j == req_isp->num_fence_map_out) {
 			/*
 			 * If not found in current request, it could be
-			 * belonging to an active port with no valid fence
-			 * bound to it, we needn't process it.
+			 * belonging to next request, this can happen if
+			 * IRQ delay happens. It is only valid when the
+			 * platform doesn't have last consumed address.
 			 */
 			CAM_DBG(CAM_ISP,
-				"BUF_DONE for res %s not active in Req %lld ",
+				"BUF_DONE for res %s not found in Req %lld ",
 				__cam_isp_resource_handle_id_to_type(
-				ctx_isp->isp_device_type, comp_grp->res_id[i]),
+				ctx_isp->isp_device_type, done->resource_handle[i]),
 				req->request_id);
+			unhandled_done.resource_handle[unhandled_done.num_handles] =
+				done->resource_handle[i];
+			unhandled_done.last_consumed_addr[unhandled_done.num_handles] =
+				done->last_consumed_addr[i];
+			unhandled_done.num_handles++;
 			continue;
 		}
 
@@ -2099,8 +2043,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 				req->request_id, CAM_REQ_MGR_SOF_EVENT_SUCCESS);
 	}
 
-check_deferred:
-	if ((unhandled_done.resource_handle > 0) && (!defer_buf_done))
+	if ((unhandled_done.num_handles > 0) && (!defer_buf_done))
 		__cam_isp_ctx_check_deferred_buf_done(
 			ctx_isp, &unhandled_done, bubble_state);
 
@@ -2127,7 +2070,7 @@ static int __cam_isp_ctx_handle_buf_done(
 	int rc = 0;
 	struct cam_ctx_request *req;
 	struct cam_context *ctx = ctx_isp->base;
-	struct cam_isp_hw_done_event_data done_next_req = {0};
+	struct cam_isp_hw_done_event_data done_next_req;
 
 	if (list_empty(&ctx->active_req_list)) {
 		CAM_WARN(CAM_ISP, "Buf done with no active request");
@@ -2140,8 +2083,8 @@ static int __cam_isp_ctx_handle_buf_done(
 	rc = __cam_isp_ctx_handle_buf_done_for_request(ctx_isp, req, done,
 		bubble_state, &done_next_req);
 
-	if (done_next_req.resource_handle) {
-		struct cam_isp_hw_done_event_data unhandled_res = {0};
+	if (done_next_req.num_handles) {
+		struct cam_isp_hw_done_event_data unhandled_res;
 		struct cam_ctx_request  *next_req = list_last_entry(
 			&ctx->active_req_list, struct cam_ctx_request, list);
 
@@ -2165,7 +2108,7 @@ static int __cam_isp_ctx_handle_buf_done(
 				next_req, &done_next_req,
 				bubble_state, &unhandled_res);
 
-			if (unhandled_res.resource_handle == 0)
+			if (unhandled_res.num_handles == 0)
 				CAM_INFO(CAM_ISP,
 					"BUF Done event handed for next request %lld",
 					next_req->request_id);
@@ -2188,22 +2131,24 @@ static void __cam_isp_ctx_buf_done_match_req(
 	struct cam_isp_hw_done_event_data *done,
 	bool *irq_delay_detected)
 {
-	int i;
+	int i, j;
 	uint32_t match_count = 0;
 	struct cam_isp_ctx_req *req_isp;
 	uint32_t cmp_addr = 0;
 
 	req_isp = (struct cam_isp_ctx_req *) req->req_priv;
 
-	for (i = 0; i < req_isp->num_fence_map_out; i++) {
-		cmp_addr = cam_smmu_is_expanded_memory() ? CAM_36BIT_INTF_GET_IOVA_BASE(
-			req_isp->fence_map_out[i].image_buf_addr[0]) :
-			req_isp->fence_map_out[i].image_buf_addr[0];
-		if ((done->resource_handle ==
-			 req_isp->fence_map_out[i].resource_handle) &&
-			(done->last_consumed_addr == cmp_addr)) {
-			match_count++;
-			break;
+	for (i = 0; i < done->num_handles; i++) {
+		for (j = 0; j < req_isp->num_fence_map_out; j++) {
+			cmp_addr = cam_smmu_is_expanded_memory() ? CAM_36BIT_INTF_GET_IOVA_BASE(
+				req_isp->fence_map_out[j].image_buf_addr[0]) :
+				req_isp->fence_map_out[j].image_buf_addr[0];
+			if ((done->resource_handle[i] ==
+				 req_isp->fence_map_out[j].resource_handle) &&
+				(done->last_consumed_addr[i] == cmp_addr)) {
+				match_count++;
+				break;
+			}
 		}
 	}
 
@@ -2214,7 +2159,7 @@ static void __cam_isp_ctx_buf_done_match_req(
 
 	CAM_DBG(CAM_ISP,
 		"buf done num handles %d match count %d for next req:%lld",
-		done->resource_handle, match_count, req->request_id);
+		done->num_handles, match_count, req->request_id);
 	CAM_DBG(CAM_ISP,
 		"irq_delay_detected %d", *irq_delay_detected);
 }
@@ -3134,25 +3079,6 @@ static int __cam_isp_ctx_epoch_in_bubble_applied(
 	ctx_isp->active_req_cnt++;
 	CAM_DBG(CAM_ISP, "move request %lld to active list(cnt = %d) ctx %u",
 		req->request_id, ctx_isp->active_req_cnt);
-
-	/*
-	 * Handle the deferred buf done after moving
-	 * the bubble req to active req list.
-	 */
-	__cam_isp_ctx_handle_deferred_buf_done_in_bubble(
-		ctx_isp, req);
-
-	if (!req_isp->bubble_detected) {
-		req = list_first_entry(&ctx->pending_req_list, struct cam_ctx_request,
-			list);
-		req_isp->bubble_detected = true;
-		req_isp->reapply_type = CAM_CONFIG_REAPPLY_IO;
-		req_isp->cdm_reset_before_apply = false;
-		atomic_set(&ctx_isp->process_bubble, 1);
-		list_del_init(&req->list);
-		list_add_tail(&req->list, &ctx->active_req_list);
-		ctx_isp->active_req_cnt++;
-	}
 
 	if (!req_isp->bubble_report) {
 		if (req->request_id > ctx_isp->reported_req_id) {
@@ -5615,10 +5541,6 @@ static int __cam_isp_ctx_release_hw_in_top_state(struct cam_context *ctx,
 	ctx_isp->aeb_enabled = false;
 	ctx_isp->do_internal_recovery = false;
 	ctx_isp->req_info.last_bufdone_req_id = 0;
-	kfree(ctx_isp->vfe_bus_comp_grp);
-	kfree(ctx_isp->sfe_bus_comp_grp);
-	ctx_isp->vfe_bus_comp_grp = NULL;
-	ctx_isp->sfe_bus_comp_grp = NULL;
 
 	atomic64_set(&ctx_isp->state_monitor_head, -1);
 
@@ -6210,7 +6132,6 @@ static int __cam_isp_ctx_acquire_hw_v1(struct cam_context *ctx,
 	struct cam_hw_cmd_args            hw_cmd_args;
 	struct cam_isp_hw_cmd_args        isp_hw_cmd_args;
 	struct cam_isp_acquire_hw_info   *acquire_hw_info = NULL;
-	struct cam_isp_comp_record_query query_cmd;
 
 	if (!ctx->hw_mgr_intf) {
 		CAM_ERR(CAM_ISP, "HW interface is not ready");
@@ -6275,42 +6196,6 @@ static int __cam_isp_ctx_acquire_hw_v1(struct cam_context *ctx,
 	ctx_isp->support_consumed_addr =
 		(param.op_flags & CAM_IFE_CTX_CONSUME_ADDR_EN);
 
-	/* Query the context bus comp group information */
-	ctx_isp->vfe_bus_comp_grp = kcalloc(CAM_ISP_BUS_COMP_NUM_MAX,
-		sizeof(struct cam_isp_hw_comp_record), GFP_KERNEL);
-	if (!ctx_isp->vfe_bus_comp_grp) {
-		CAM_ERR(CAM_CTXT, "%s[%d] no memory for vfe_bus_comp_grp",
-			ctx->dev_name, ctx->ctx_id);
-		rc = -ENOMEM;
-		goto end;
-	}
-
-	if (param.op_flags & CAM_IFE_CTX_SFE_EN) {
-		ctx_isp->sfe_bus_comp_grp = kcalloc(CAM_SFE_BUS_COMP_NUM_MAX,
-			sizeof(struct cam_isp_hw_comp_record), GFP_KERNEL);
-		if (!ctx_isp->sfe_bus_comp_grp) {
-			CAM_ERR(CAM_CTXT, "%s[%d] no memory for sfe_bus_comp_grp",
-				ctx->dev_name, ctx->ctx_id);
-			rc = -ENOMEM;
-			goto end;
-		}
-	}
-
-	query_cmd.isp_bus_comp_grp = ctx_isp->vfe_bus_comp_grp;
-	if (ctx_isp->sfe_bus_comp_grp)
-		query_cmd.sfe_bus_comp_grp = ctx_isp->sfe_bus_comp_grp;
-	hw_cmd_args.ctxt_to_hw_map = param.ctxt_to_hw_map;
-	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
-	isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_GET_BUS_COMP_GROUP;
-	isp_hw_cmd_args.cmd_data = &query_cmd;
-	hw_cmd_args.u.internal_args = (void *)&isp_hw_cmd_args;
-	rc = ctx->hw_mgr_intf->hw_cmd(ctx->hw_mgr_intf->hw_mgr_priv,
-		&hw_cmd_args);
-	if (rc) {
-		CAM_ERR(CAM_ISP, "HW command failed");
-		goto free_hw;
-	}
-
 	/* Query the context has rdi only resource */
 	hw_cmd_args.ctxt_to_hw_map = param.ctxt_to_hw_map;
 	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
@@ -6322,7 +6207,6 @@ static int __cam_isp_ctx_acquire_hw_v1(struct cam_context *ctx,
 		CAM_ERR(CAM_ISP, "HW command failed");
 		goto free_hw;
 	}
-
 
 	if (isp_hw_cmd_args.u.ctx_type == CAM_ISP_CTX_RDI) {
 		/*
@@ -6400,7 +6284,6 @@ static int __cam_isp_ctx_acquire_hw_v2(struct cam_context *ctx,
 	struct cam_hw_cmd_args           hw_cmd_args;
 	struct cam_isp_hw_cmd_args       isp_hw_cmd_args;
 	struct cam_isp_acquire_hw_info  *acquire_hw_info = NULL;
-	struct cam_isp_comp_record_query query_cmd;
 
 	if (!ctx->hw_mgr_intf) {
 		CAM_ERR(CAM_ISP, "HW interface is not ready");
@@ -6478,42 +6361,6 @@ static int __cam_isp_ctx_acquire_hw_v2(struct cam_context *ctx,
 
 	if ((ctx_isp->aeb_enabled) && (!isp_ctx_debug.disable_internal_recovery))
 		ctx_isp->do_internal_recovery = true;
-
-	/* Query the context bus comp group information */
-	ctx_isp->vfe_bus_comp_grp = kcalloc(CAM_ISP_BUS_COMP_NUM_MAX,
-		sizeof(struct cam_isp_hw_comp_record), GFP_KERNEL);
-	if (!ctx_isp->vfe_bus_comp_grp) {
-		CAM_ERR(CAM_CTXT, "%s[%d] no memory for vfe_bus_comp_grp",
-			ctx->dev_name, ctx->ctx_id);
-		rc = -ENOMEM;
-		goto end;
-	}
-
-	if (param.op_flags & CAM_IFE_CTX_SFE_EN) {
-		ctx_isp->sfe_bus_comp_grp = kcalloc(CAM_SFE_BUS_COMP_NUM_MAX,
-			sizeof(struct cam_isp_hw_comp_record), GFP_KERNEL);
-		if (!ctx_isp->sfe_bus_comp_grp) {
-			CAM_ERR(CAM_CTXT, "%s[%d] no memory for sfe_bus_comp_grp",
-				ctx->dev_name, ctx->ctx_id);
-			rc = -ENOMEM;
-			goto end;
-		}
-	}
-
-	query_cmd.isp_bus_comp_grp = ctx_isp->vfe_bus_comp_grp;
-	if (ctx_isp->sfe_bus_comp_grp)
-		query_cmd.sfe_bus_comp_grp = ctx_isp->sfe_bus_comp_grp;
-	hw_cmd_args.ctxt_to_hw_map = param.ctxt_to_hw_map;
-	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
-	isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_GET_BUS_COMP_GROUP;
-	isp_hw_cmd_args.cmd_data = &query_cmd;
-	hw_cmd_args.u.internal_args = (void *)&isp_hw_cmd_args;
-	rc = ctx->hw_mgr_intf->hw_cmd(ctx->hw_mgr_intf->hw_mgr_priv,
-		&hw_cmd_args);
-	if (rc) {
-		CAM_ERR(CAM_ISP, "HW command failed");
-		goto free_hw;
-	}
 
 	/* Query the context has rdi only resource */
 	hw_cmd_args.ctxt_to_hw_map = param.ctxt_to_hw_map;
