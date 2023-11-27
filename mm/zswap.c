@@ -1054,16 +1054,16 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 	}
 
 	if (zswap_same_filled_pages_enabled) {
-		src = kmap_atomic(page);
+		src = kmap_local_page(page);
 		if (zswap_is_page_same_filled(src, &value)) {
-			kunmap_atomic(src);
+			kunmap_local(src);
 			entry->offset = offset;
 			entry->length = 0;
 			entry->value = value;
 			atomic_inc(&zswap_same_filled_pages);
 			goto insert_entry;
 		}
-		kunmap_atomic(src);
+		kunmap_local(src);
 	}
 
 	/* if entry is successfully added, it keeps the reference */
@@ -1164,9 +1164,9 @@ static int zswap_frontswap_load(unsigned type, pgoff_t offset,
 	spin_unlock(&tree->lock);
 
 	if (!entry->length) {
-		dst = kmap_atomic(page);
+		dst = kmap_local_page(page);
 		zswap_fill_page(dst, entry->value);
-		kunmap_atomic(dst);
+		kunmap_local(dst);
 		goto freeentry;
 	}
 
