@@ -74,6 +74,7 @@ static const __initconst char * const blacklist[] = {
  */
 static const __initconst char * const deferred_list[] = {
 	"qti_battery_charger_main",
+	"nothing_disk_usage",
 
 	NULL
 };

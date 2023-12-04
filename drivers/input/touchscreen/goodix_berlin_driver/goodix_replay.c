@@ -47,6 +47,7 @@ struct fw_attr {
 };
 #pragma pack()
 
+//static struct kobject *replay_kobj;
 struct kobject *parent;
 static struct goodix_ts_core *cd;
 static struct goodix_ic_info *ic_info;
@@ -147,6 +148,8 @@ int fill_replay_data(u8 *buf)
 	type_group = GROUP_FRAME;
 	append_replay_item(&frame_pkg, MISC_GROUP_BEGIN, MISC_GROUP_BEGIN_SIZE, (uint8_t *)&type_group);
 
+	//do_settimeofday64(&tv);
+	//time_stamp = (uint64_t)(tv.tv_sec) * 1000000 + (uint64_t)(tv.tv_nsec);
 	append_replay_item(&frame_pkg, FRAME_PROC_TIME_STAMP, FRAME_PROC_TIME_STAMP_SIZE, (uint8_t *)&time_stamp);
 
 	/*======fw attr info========*/
@@ -290,9 +293,17 @@ int replay_module_init(struct goodix_ts_core *core_data)
 	int ret = 0;
 	parent = &core_data->pdev->dev.kobj;
 
+	/* replay sysfs init */
+//	replay_kobj = kobject_create_and_add("replay", NULL);
+//	if (!replay_kobj) {
+//		ts_err("failed create replay sysfs node!");
+//		goto err_out;
+//	}
+
 	ret = sysfs_create_group(parent, &replay_sysfs_group);
 	if (ret) {
 		ts_err("failed create replay sysfs files");
+//		kobject_put(replay_kobj);
 		goto err_out;
 	}
 
@@ -313,5 +324,6 @@ void replay_module_exit(void)
 	ts_info("replay module exit");
 
 	sysfs_remove_group(&cd->pdev->dev.kobj, &replay_sysfs_group);
+//	kobject_put(replay_kobj);
 	mutex_destroy(&rep_mutex);
 }
