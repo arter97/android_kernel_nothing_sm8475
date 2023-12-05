@@ -21,6 +21,7 @@
 #include "cam_req_mgr_workq.h"
 
 struct sync_device *sync_dev;
+static struct kmem_cache *kmem_payload_pool;
 
 /*
  * Flag to determine whether to enqueue cb of a
@@ -680,7 +681,7 @@ static int cam_sync_handle_register_user_payload(
 	if (sync_obj >= CAM_SYNC_MAX_OBJS || sync_obj <= 0)
 		return -EINVAL;
 
-	user_payload_kernel = kzalloc(sizeof(*user_payload_kernel), GFP_KERNEL);
+	user_payload_kernel = kmem_cache_zalloc(kmem_payload_pool, GFP_KERNEL);
 	if (!user_payload_kernel)
 		return -ENOMEM;
 
@@ -697,7 +698,7 @@ static int cam_sync_handle_register_user_payload(
 			row->name,
 			sync_obj);
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
-		kfree(user_payload_kernel);
+		kmem_cache_free(kmem_payload_pool, user_payload_kernel);
 		return -EINVAL;
 	}
 
@@ -713,7 +714,7 @@ static int cam_sync_handle_register_user_payload(
 			CAM_SYNC_COMMON_REG_PAYLOAD_EVENT);
 
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
-		kfree(user_payload_kernel);
+		kmem_cache_free(kmem_payload_pool, user_payload_kernel);
 		return 0;
 	}
 
@@ -727,7 +728,7 @@ static int cam_sync_handle_register_user_payload(
 				user_payload_kernel->payload_data[1]) {
 
 			spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
-			kfree(user_payload_kernel);
+			kmem_cache_free(kmem_payload_pool, user_payload_kernel);
 			return -EALREADY;
 		}
 	}
@@ -783,7 +784,7 @@ static int cam_sync_handle_deregister_user_payload(
 				user_payload_kernel->payload_data[1] ==
 				userpayload_info.payload[1]) {
 			list_del_init(&user_payload_kernel->list);
-			kfree(user_payload_kernel);
+			kmem_cache_free(kmem_payload_pool, user_payload_kernel);
 		}
 	}
 
@@ -1346,12 +1347,16 @@ struct platform_driver cam_sync_driver = {
 
 int cam_sync_init(void)
 {
+	kmem_payload_pool = KMEM_CACHE(sync_user_payload, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
+
 	return platform_driver_register(&cam_sync_driver);
 }
 
 void cam_sync_exit(void)
 {
 	platform_driver_unregister(&cam_sync_driver);
+
+	kmem_cache_destroy(kmem_payload_pool);
 }
 
 MODULE_DESCRIPTION("Camera sync driver");
