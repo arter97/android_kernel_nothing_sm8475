@@ -322,7 +322,7 @@ static int cc_cooling_probe(struct platform_device *pdev)
 	struct device_node *dev_phandle, *subsys_np = NULL;
 	struct device *cpu_dev;
 	int ret = 0, idx = 0, cpu;
-	u32 cpu_map[CPU_MAP_CT];
+	u32 cpu_map[CPU_MAP_CT] = { 0, };
 
 #if IS_ENABLED(CONFIG_QCOM_PRIME_CORE_ONLINE_HELPER)
 	/* CC failed when CPU7 offline */
