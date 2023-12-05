@@ -306,7 +306,7 @@ static int cc_cooling_probe(struct platform_device *pdev)
 	struct device_node *dev_phandle, *subsys_np = NULL;
 	struct device *cpu_dev;
 	int ret = 0, idx = 0, cpu;
-	u32 cpu_map[CPU_MAP_CT];
+	u32 cpu_map[CPU_MAP_CT] = { 0, };
 
 	for_each_available_child_of_node(np, subsys_np) {
 		for (idx = 0; idx < CPU_MAP_CT; idx++) {
