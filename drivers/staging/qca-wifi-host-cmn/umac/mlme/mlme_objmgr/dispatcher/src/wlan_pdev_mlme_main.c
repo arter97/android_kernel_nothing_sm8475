@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -76,10 +77,19 @@ static QDF_STATUS mlme_pdev_obj_destroy_handler(struct wlan_objmgr_pdev *pdev,
 						void *arg)
 {
 	struct pdev_mlme_obj *pdev_mlme;
+	struct wlan_objmgr_psoc *psoc;
 
 	pdev_mlme = wlan_pdev_mlme_get_cmpt_obj(pdev);
+
 	if (!pdev_mlme) {
-		mlme_info(" PDEV MLME component object is NULL");
+		mlme_err("PDEV MLME component object is NULL");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	psoc = wlan_pdev_get_psoc(pdev);
+
+	if (!psoc) {
+		mlme_err("PSOC object is NULL");
 		return QDF_STATUS_SUCCESS;
 	}
 
@@ -88,8 +98,7 @@ static QDF_STATUS mlme_pdev_obj_destroy_handler(struct wlan_objmgr_pdev *pdev,
 					      (void *)pdev_mlme);
 
 	wlan_minidump_remove(pdev_mlme, sizeof(*pdev_mlme),
-			     wlan_pdev_get_psoc(pdev),
-			     WLAN_MD_OBJMGR_PDEV_MLME, "pdev_mlme");
+			     psoc, WLAN_MD_OBJMGR_PDEV_MLME, "pdev_mlme");
 
 	qdf_mem_free(pdev_mlme);
 
