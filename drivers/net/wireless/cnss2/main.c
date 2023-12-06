@@ -15,6 +15,8 @@
 #include <linux/rwsem.h>
 #include <linux/suspend.h>
 #include <linux/timer.h>
+#include <linux/thermal.h>
+#include <linux/regulator/consumer.h>
 #if IS_ENABLED(CONFIG_QCOM_MINIDUMP)
 #include <soc/qcom/minidump.h>
 #endif
@@ -3791,6 +3793,7 @@ int cnss_set_wfc_mode(struct device *dev, struct cnss_wfc_cfg cfg)
 }
 EXPORT_SYMBOL(cnss_set_wfc_mode);
 
+static void msm_vreg_ldo_enable(struct platform_device *bcdev);
 static int cnss_probe(struct platform_device *plat_dev)
 {
 	int ret = 0;
@@ -3804,7 +3807,7 @@ static int cnss_probe(struct platform_device *plat_dev)
 		ret = -EEXIST;
 		goto out;
 	}
-
+	msm_vreg_ldo_enable(plat_dev);
 	of_id = of_match_device(cnss_of_match_table, &plat_dev->dev);
 	if (!of_id || !of_id->data) {
 		cnss_pr_err("Failed to find of match device!\n");
@@ -4036,6 +4039,43 @@ static void __exit cnss_exit(void)
 {
 	platform_driver_unregister(&cnss_platform_driver);
 	cnss_debug_deinit();
+}
+
+static void msm_vreg_ldo_enable(struct platform_device *bcdev)
+{
+	const char *supply_name;
+	int ret;
+	struct device *dev;
+	struct regulator *vreg_ldo;
+	int current_uA = 50000;
+	int vreg_default_vol = 2200000;
+	supply_name = "pmr735a_s3";
+	dev = &bcdev->dev;
+	pr_info("nt ldo config %s\n", __func__);
+	if (!bcdev) {
+		pr_err("bcdev %s\n", __func__);
+		return;
+	}
+
+	vreg_ldo = regulator_get(dev, supply_name);
+	if (IS_ERR_OR_NULL(vreg_ldo)) {
+		ret = PTR_ERR(vreg_ldo);
+		pr_err("regulator_get(%s) failed for %s, ret=%d\n", supply_name, supply_name, ret);
+		return;
+	}
+	ret = regulator_set_voltage(vreg_ldo, vreg_default_vol, vreg_default_vol);
+	if (ret) {
+		pr_err("regulator_set_voltage %s failed, ret=%d\n", supply_name, ret);
+	}
+	ret = regulator_set_load(vreg_ldo, current_uA);
+	if (ret < 0) {
+		pr_err("regulator_set_load %s failed, ret=%d\n", supply_name, ret);
+	}
+
+	ret = regulator_enable(vreg_ldo);
+	if (ret) {
+		pr_err("regulator_enable %s failed, ret=%d\n", supply_name, ret);
+	}
 }
 
 module_init(cnss_initialize);
