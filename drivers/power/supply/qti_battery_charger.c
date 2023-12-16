@@ -2279,26 +2279,76 @@ static struct power_supply_desc usb_psy_desc = {
 	.property_is_writeable	= usb_psy_prop_is_writeable,
 };
 
+static s32 fcc_user_limit_ma = BATTERY_MAX_CURRENT / 1000;
+static s32 fcc_system_limit_ma = BATTERY_MAX_CURRENT / 1000;
+static s32 fcc_last_limit_ma = BATTERY_MAX_CURRENT / 1000;
+static int __set_scenario_fcc(struct battery_chg_dev *bcdev)
+{
+	static DEFINE_MUTEX(fcc_mutex);
+	int rc;
+	u32 val;
+
+	mutex_lock(&fcc_mutex);
+
+	smp_mb();
+
+	/*
+	 * The ADSP uses the value of 1 to indicate power passthrough
+	 * while 0 removes input power altogether.
+	 */
+	if (fcc_user_limit_ma == 0)
+		fcc_user_limit_ma = 1;
+	// Reset to default if -1 is written
+	if (fcc_user_limit_ma == -1)
+		fcc_user_limit_ma = BATTERY_MAX_CURRENT / 1000;
+
+	pr_info("fcc_user_limit_ma=%d, fcc_system_limit_ma=%d, fcc_last_limit_ma=%d\n",
+			fcc_user_limit_ma, fcc_system_limit_ma, fcc_last_limit_ma);
+	if (fcc_user_limit_ma < fcc_system_limit_ma) {
+		pr_info("Using user limit\n");
+		val = fcc_user_limit_ma;
+	} else {
+		pr_info("Using system limit\n");
+		val = fcc_system_limit_ma;
+	}
+
+	/*
+	 * There is a firmware bug where the new value is not honored on a PPS charger.
+	 * Force an ADSP reset by writing 0 first, followed by a 100ms sleep.
+	 */
+	if (fcc_last_limit_ma != val) {
+		write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_USB], USB_SCENARIO_FCC, 0);
+		msleep(100);
+		fcc_last_limit_ma = val;
+	}
+
+	rc = write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_USB],
+				USB_SCENARIO_FCC, val);
+	if (rc < 0) {
+		pr_err("Failed to set FCC %u, rc=%d\n", val, rc);
+	} else {
+		pr_info("Charge current limited to %umA (last: %umA)\n", val, bcdev->last_fcc_ua / 1000);
+		bcdev->last_fcc_ua = val * 1000;
+	}
+
+	smp_mb();
+
+	mutex_unlock(&fcc_mutex);
+
+	return rc;
+}
+
 static int __battery_psy_set_charge_current(struct battery_chg_dev *bcdev,
 					u32 fcc_ua)
 {
-	int rc;
-
 	if (bcdev->restrict_chg_en) {
 		fcc_ua = min_t(u32, fcc_ua, bcdev->restrict_fcc_ua);
 		fcc_ua = min_t(u32, fcc_ua, bcdev->thermal_fcc_ua);
 	}
 
-	rc = write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_BATTERY],
-				BATT_CHG_CTRL_LIM, fcc_ua);
-	if (rc < 0) {
-		pr_err("Failed to set FCC %u, rc=%d\n", fcc_ua, rc);
-	} else {
-		pr_info("Charge current limited to %umA (last: %umA)\n", fcc_ua / 1000, bcdev->last_fcc_ua / 1000);
-		bcdev->last_fcc_ua = fcc_ua;
-	}
+	fcc_user_limit_ma = fcc_ua / 1000;
 
-	return rc;
+	return __set_scenario_fcc(bcdev);
 }
 
 static int battery_psy_set_charge_current(struct battery_chg_dev *bcdev,
@@ -3402,16 +3452,26 @@ static ssize_t scenario_fcc_store(struct class *c, struct class_attribute *attr,
 {
 	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
 						battery_class);
+	pid_t pid, ppid;
 	int rc;
-	u32 val;
+	s32 val;
 
-	if (kstrtou32(buf, 0, &val))
+	if (kstrtos32(buf, 0, &val))
 		return -EINVAL;
 
-	pr_info("%s,val:%d", __func__, val);
+	pid = task_pid_nr(current);
+	ppid = task_ppid_nr(current);
 
-	rc = write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_USB],
-				USB_SCENARIO_FCC, val);
+	pr_info("%s: %s(pid: %u, ppid: %u) val:%d", __func__, current->comm, pid, ppid, val);
+
+	if (unlikely(ppid >= 10000)) {
+		// Requested manually from the user
+		fcc_user_limit_ma = val;
+	} else {
+		fcc_system_limit_ma = val;
+	}
+
+	rc = __set_scenario_fcc(bcdev);
 	if (rc < 0)
 		return rc;
 
@@ -3421,16 +3481,19 @@ static ssize_t scenario_fcc_store(struct class *c, struct class_attribute *attr,
 static ssize_t scenario_fcc_show(struct class *c, struct class_attribute *attr,
 				char *buf)
 {
-	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
-						battery_class);
-	struct psy_state *pst = &bcdev->psy_list[PSY_TYPE_USB];
-	int rc;
+	pid_t ppid;
+	s32 val;
 
-	rc = read_property_id(bcdev, pst, USB_SCENARIO_FCC);
-	if (rc < 0)
-		return rc;
+	ppid = task_ppid_nr(current);
 
-	return scnprintf(buf, PAGE_SIZE, "%d\n", pst->prop[USB_SCENARIO_FCC]);
+	if (unlikely(ppid >= 10000)) {
+		// Requested manually from the user
+		val = fcc_user_limit_ma;
+	} else {
+		val = fcc_system_limit_ma;
+	}
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 static CLASS_ATTR_RW(scenario_fcc);
 #endif
