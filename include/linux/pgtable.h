@@ -250,7 +250,7 @@ static inline int pmdp_clear_flush_young(struct vm_area_struct *vma,
  */
 static inline bool arch_has_hw_pte_young(void)
 {
-	return false;
+	return IS_ENABLED(CONFIG_ARCH_HAS_HW_PTE_YOUNG);
 }
 #endif
 
