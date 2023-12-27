@@ -674,9 +674,7 @@ struct lru_gen_mm_list {
 
 void lru_gen_add_mm(struct mm_struct *mm);
 void lru_gen_del_mm(struct mm_struct *mm);
-#ifdef CONFIG_MEMCG
 void lru_gen_migrate_mm(struct mm_struct *mm);
-#endif
 
 static inline void lru_gen_init_mm(struct mm_struct *mm)
 {
@@ -707,11 +705,9 @@ static inline void lru_gen_del_mm(struct mm_struct *mm)
 {
 }
 
-#ifdef CONFIG_MEMCG
 static inline void lru_gen_migrate_mm(struct mm_struct *mm)
 {
 }
-#endif
 
 static inline void lru_gen_init_mm(struct mm_struct *mm)
 {
