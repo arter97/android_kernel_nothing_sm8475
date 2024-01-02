@@ -2964,12 +2964,46 @@ static void vmap_init_nodes(void)
 	}
 }
 
+static unsigned long
+vmap_node_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
+{
+	unsigned long count;
+	struct vmap_node *vn;
+	int i, j;
+
+	for (count = 0, i = 0; i < nr_vmap_nodes; i++) {
+		vn = &vmap_nodes[i];
+
+		for (j = 0; j < MAX_VA_SIZE_PAGES; j++)
+			count += READ_ONCE(vn->pool[j].len);
+	}
+
+	return count ? count : SHRINK_EMPTY;
+}
+
+static unsigned long
+vmap_node_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+{
+	int i;
+
+	for (i = 0; i < nr_vmap_nodes; i++)
+		decay_va_pool_node(&vmap_nodes[i], true);
+
+	return SHRINK_STOP;
+}
+
+static struct shrinker vmap_node_shrinker = {
+	.count_objects = vmap_node_shrink_count,
+	.scan_objects = vmap_node_shrink_scan,
+	.seeks = DEFAULT_SEEKS,
+};
+
 void __init vmalloc_init(void)
 {
 	struct vmap_area *va;
 	struct vmap_node *vn;
 	struct vm_struct *tmp;
-	int i;
+	int i, ret;
 
 	/*
 	 * Create the cache for vmap_area objects.
@@ -3013,6 +3047,12 @@ void __init vmalloc_init(void)
 	 */
 	vmap_init_free_space();
 	vmap_initialized = true;
+
+	ret = register_shrinker(&vmap_node_shrinker);
+	if (ret) {
+		pr_err("Failed to allocate vmap-node shrinker!\n");
+		return;
+	}
 }
 
 static inline void setup_vmalloc_vm_locked(struct vm_struct *vm,
