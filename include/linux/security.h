@@ -60,6 +60,8 @@ enum fs_value_type;
 struct watch;
 struct watch_notification;
 
+#define SELINUX_LABEL_LENGTH 80
+
 /* Default (no) options for the capable function */
 #define CAP_OPT_NONE 0x0
 /* If capable should audit the security request */
