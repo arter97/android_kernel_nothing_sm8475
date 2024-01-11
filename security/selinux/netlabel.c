@@ -29,6 +29,7 @@
 /**
  * selinux_netlbl_sidlookup_cached - Cache a SID lookup
  * @skb: the packet
+ * @family: the packet's address family
  * @secattr: the NetLabel security attributes
  * @sid: the SID
  *
@@ -45,7 +46,7 @@ static int selinux_netlbl_sidlookup_cached(struct sk_buff *skb,
 {
 	int rc;
 
-	rc = security_netlbl_secattr_to_sid(&selinux_state, secattr, sid);
+	rc = security_netlbl_secattr_to_sid(secattr, sid);
 	if (rc == 0 &&
 	    (secattr->flags & NETLBL_SECATTR_CACHEABLE) &&
 	    (secattr->flags & NETLBL_SECATTR_CACHE))
@@ -76,8 +77,7 @@ static struct netlbl_lsm_secattr *selinux_netlbl_sock_genattr(struct sock *sk)
 	secattr = netlbl_secattr_alloc(GFP_ATOMIC);
 	if (secattr == NULL)
 		return NULL;
-	rc = security_netlbl_sid_to_secattr(&selinux_state, sksec->sid,
-					    secattr);
+	rc = security_netlbl_sid_to_secattr(sksec->sid, secattr);
 	if (rc != 0) {
 		netlbl_secattr_free(secattr);
 		return NULL;
@@ -128,6 +128,7 @@ void selinux_netlbl_cache_invalidate(void)
 /**
  * selinux_netlbl_err - Handle a NetLabel packet error
  * @skb: the packet
+ * @family: the packet's address family
  * @error: the error code
  * @gateway: true if host is acting as a gateway, false otherwise
  *
@@ -160,7 +161,6 @@ void selinux_netlbl_sk_security_free(struct sk_security_struct *sksec)
 /**
  * selinux_netlbl_sk_security_reset - Reset the NetLabel fields
  * @sksec: the sk_security_struct
- * @family: the socket family
  *
  * Description:
  * Called when the NetLabel state of a sk_security_struct needs to be reset.
@@ -194,6 +194,7 @@ int selinux_netlbl_skbuff_getsid(struct sk_buff *skb,
 	struct netlbl_lsm_secattr secattr;
 
 	if (!netlbl_enabled()) {
+		*type = NETLBL_NLTYPE_NONE;
 		*sid = SECSID_NULL;
 		return 0;
 	}
@@ -244,8 +245,7 @@ int selinux_netlbl_skbuff_setsid(struct sk_buff *skb,
 	if (secattr == NULL) {
 		secattr = &secattr_storage;
 		netlbl_secattr_init(secattr);
-		rc = security_netlbl_sid_to_secattr(&selinux_state, sid,
-						    secattr);
+		rc = security_netlbl_sid_to_secattr(sid, secattr);
 		if (rc != 0)
 			goto skbuff_setsid_return;
 	}
@@ -282,8 +282,7 @@ int selinux_netlbl_sctp_assoc_request(struct sctp_endpoint *ep,
 		return 0;
 
 	netlbl_secattr_init(&secattr);
-	rc = security_netlbl_sid_to_secattr(&selinux_state,
-					    ep->secid, &secattr);
+	rc = security_netlbl_sid_to_secattr(ep->secid, &secattr);
 	if (rc != 0)
 		goto assoc_request_return;
 
@@ -313,6 +312,7 @@ assoc_request_return:
 /**
  * selinux_netlbl_inet_conn_request - Label an incoming stream connection
  * @req: incoming connection request socket
+ * @family: the request socket's address family
  *
  * Description:
  * A new incoming connection request is represented by @req, we need to label
@@ -330,8 +330,7 @@ int selinux_netlbl_inet_conn_request(struct request_sock *req, u16 family)
 		return 0;
 
 	netlbl_secattr_init(&secattr);
-	rc = security_netlbl_sid_to_secattr(&selinux_state, req->secid,
-					    &secattr);
+	rc = security_netlbl_sid_to_secattr(req->secid, &secattr);
 	if (rc != 0)
 		goto inet_conn_request_return;
 	rc = netlbl_req_setattr(req, &secattr);
@@ -343,6 +342,7 @@ inet_conn_request_return:
 /**
  * selinux_netlbl_inet_csk_clone - Initialize the newly created sock
  * @sk: the new sock
+ * @family: the sock's address family
  *
  * Description:
  * A new connection has been established using @sk, we've already labeled the
@@ -378,7 +378,7 @@ void selinux_netlbl_sctp_sk_clone(struct sock *sk, struct sock *newsk)
 
 /**
  * selinux_netlbl_socket_post_create - Label a socket using NetLabel
- * @sock: the socket to label
+ * @sk: the sock to label
  * @family: protocol family
  *
  * Description:
@@ -460,8 +460,7 @@ int selinux_netlbl_sock_rcv_skb(struct sk_security_struct *sksec,
 		perm = RAWIP_SOCKET__RECVFROM;
 	}
 
-	rc = avc_has_perm(&selinux_state,
-			  sksec->sid, nlbl_sid, sksec->sclass, perm, ad);
+	rc = avc_has_perm(sksec->sid, nlbl_sid, sksec->sclass, perm, ad);
 	if (rc == 0)
 		return 0;
 
