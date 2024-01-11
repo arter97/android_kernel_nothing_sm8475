@@ -334,16 +334,6 @@ config DEVMEM
 	  memory.
 	  When in doubt, say "Y".
 
-config DEVKMEM
-	bool "/dev/kmem virtual device support"
-	# On arm64, VMALLOC_START < PAGE_OFFSET, which confuses kmem read/write
-	depends on !ARM64
-	help
-	  Say Y here if you want to support the /dev/kmem device. The
-	  /dev/kmem device is rarely used, but can be used for certain
-	  kind of kernel debugging operations.
-	  When in doubt, say "N".
-
 config NVRAM
 	tristate "/dev/nvram support"
 	depends on X86 || HAVE_ARCH_NVRAM_OPS
@@ -525,5 +515,7 @@ config RANDOM_TRUST_BOOTLOADER
 	  Say Y here unless you have reason to mistrust your bootloader or
 	  believe its RNG facilities may be faulty. This may also be configured
 	  at boot time with "random.trust_bootloader=on/off".
+
+source "drivers/char/lrng/Kconfig"
 
 endmenu

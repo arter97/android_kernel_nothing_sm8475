@@ -132,8 +132,6 @@ int follow_pfn(struct vm_area_struct *vma, unsigned long address,
 }
 EXPORT_SYMBOL(follow_pfn);
 
-LIST_HEAD(vmap_area_list);
-
 void vfree(const void *addr)
 {
 	kfree(addr);
@@ -207,16 +205,6 @@ long vread(char *buf, char *addr, unsigned long count)
 		count = -(unsigned long) buf;
 
 	memcpy(buf, addr, count);
-	return count;
-}
-
-long vwrite(char *buf, char *addr, unsigned long count)
-{
-	/* Don't allow overflow */
-	if ((unsigned long) addr + count < count)
-		count = -(unsigned long) addr;
-
-	memcpy(addr, buf, count);
 	return count;
 }
 
