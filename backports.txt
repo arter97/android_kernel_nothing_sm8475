@@ -1,0 +1,122 @@
+e92072237e6c arm64: support huge vmalloc mappings
+559089e0a93d vmalloc: replace VM_NO_HUGE_VMAP with VM_ALLOW_HUGE_VMAP
+061478438d04 mm/page_alloc: further fix __alloc_pages_bulk() return value
+e5c15cea3391 mm/page_alloc: correct return value when failing at preparing
+66d9282523b3 mm/page_alloc: Correct return value of populated elements if bulk array is populated
+e2c789cab60a dm: get rid of GFP_NOIO workarounds for __vmalloc and kvmalloc
+30c19366636f mm: fix BUG splat with kvmalloc + GFP_ATOMIC
+c572e4888ad1 mm/page_alloc: always attempt to allocate at least one page during bulk allocation
+9becb6889130 kvmalloc: use vmalloc_huge for vmalloc allocations
+8dcb3060d81d memcg: page_alloc: skip bulk allocator for __GFP_ACCOUNT
+d8a719059b9d Revert "mm/pgtable: add stubs for {pmd/pub}_{set/clear}_huge"
+b3b64ebd3822 mm/page_alloc: do bulk array bounds check after checking populated elements
+b08e50dd6448 mm/page_alloc: __alloc_pages_bulk(): do bounds check before accessing array
+86d0c1642725 mm/ioremap: fix iomap_max_page_shift
+ca6c2ce1b481 mm/vmalloc: fix the unchecked dereference warning in vread_iter()
+0d1c81edc61e mm/vmalloc: vmalloc_to_page() use pte_offset_kernel()
+95a301eefa82 mm/vmalloc: do not output a spurious warning when huge vmalloc() fails
+b3f78e749865 mm: vmalloc must set pte via arch code
+77e50af07f14 mm/vmalloc: dont purge usable blocks unnecessarily
+7f48121e9fa8 mm/vmalloc: add missing READ/WRITE_ONCE() annotations
+43d7650234c6 mm/vmalloc: check free space in vmap_block lockless
+a09fad96ffb1 mm/vmalloc: prevent flushing dirty space over and over
+ca5e46c3400b mm/vmalloc: avoid iterating over per CPU vmap blocks twice
+fc1e0d980037 mm/vmalloc: prevent stale TLBs in fully utilized blocks
+fa1c77c13ca5 mm: vmalloc: rename addr_to_vb_xarray() function
+062eacf57ad9 mm: vmalloc: remove a global vmap_blocks xarray
+f349b15e183d mm: vmalloc: avoid warn_alloc noise caused by fatal signal
+e9c3cda4d86e mm, vmalloc: fix high order __GFP_NOFAIL allocations
+30a7a9b17c4b mm/vmalloc: skip the uninitilized vmalloc areas
+bba9697b42ea mm/vmalloc: explicitly identify vm_map_ram area when shown in /proc/vmcoreinfo
+06c8994626d1 mm/vmalloc.c: allow vread() to read out vm_map_ram areas
+869176a09606 mm/vmalloc.c: add flags to mark vm_map_ram area
+d76f99548cf0 mm/vmalloc.c: add used_map into vmap_block to track space of vmap_block
+7e4a32c0e8ad mm/vmalloc: replace BUG_ON with a simple if statement
+14687619e112 mm: vmalloc: replace BUG_ON() by WARN_ON_ONCE()
+edd898181e2f mm: vmalloc: avoid calling __find_vmap_area() twice in __vunmap()
+80b1d8fdfad1 mm: vmalloc: correct use of __GFP_NOWARN mask in __vmalloc_area_node()
+bd1264c37c15 mm/vmalloc: extend find_vmap_lowest_match_check with extra arguments
+08262ac50a7e mm/vmalloc.c: support HIGHMEM pages in vmap_pages_range_noflush()
+899c6efe58db mm/vmalloc: extend __find_vmap_area() with one more argument
+5d7a7c54d3d7 mm/vmalloc: initialize VA's list node after unlink
+f9863be49312 mm/vmalloc: extend __alloc_vmap_area() with extra arguments
+8eb510db2125 mm/vmalloc: make link_va()/unlink_va() common to different rb_root
+baa468a648b4 mm/vmalloc: fix typo in local variable name
+753df96be5d3 mm/vmalloc: remove the redundant boundary check
+1b23ff80b399 mm/vmalloc: invoke classify_va_fit_type() in adjust_va_to_fit_type()
+3f80492001aa mm/vmalloc: use raw_cpu_ptr() for vmap_block_queue access
+4fcdcc12915c vmap(): don't allow invalid pages
+3b8000ae185c mm/vmalloc: huge vmalloc backing pages should be split rather than compound
+ff11a7ce1f0f mm/vmalloc: fix comments about vmap_area struct
+c3385e845824 mm/vmalloc.c: fix "unused function" warning
+c3d77172dfc0 mm/vmalloc: eliminate an extra orig_gfp_mask
+9333fe98d0a6 mm/vmalloc: add adjust_search_size parameter
+690467c81b1a mm/vmalloc: Move draining areas out of caller context
+651d55ce0965 mm/vmalloc: remove unneeded function forward declaration
+704687deaae7 mm: make slab and vmalloc allocators __GFP_NOLOCKDEP aware
+a421ef303008 mm: allow !GFP_KERNEL allocations for kvmalloc
+9376130c390a mm/vmalloc: add support for __GFP_NOFAIL
+451769ebb7e7 mm/vmalloc: alloc GFP_NO{FS,IO} for vmalloc
+084f7e2377e8 mm/large system hash: avoid possible NULL deref in alloc_large_system_hash
+c00b6b961099 mm/vmalloc: introduce alloc_pages_bulk_array_mempolicy to accelerate memory allocation
+3252b1d8309e kasan: arm64: fix pcpu_page_first_chunk crash with KASAN_VMALLOC
+09cea6195073 arm64: support page mapping percpu first chunk allocator
+0eb68437a7f9 vmalloc: choose a better start address in vm_area_register_early()
+dd544141b9eb vmalloc: back off when the current task is OOM-killed
+066fed59d8a1 mm/vmalloc: check various alignments when debugging
+9f531973dff3 mm/vmalloc: do not adjust the search size for alignment overhead
+ffb29b1c255a mm/vmalloc: fix numa spreading for large hash tables
+f181234a5a21 mm/vmalloc: fix wrong behavior in vread
+f8bcbecfb6b4 lib/test_vmalloc.c: add a new 'nr_pages' parameter
+12e376a6f859 mm/vmalloc: remove gfpflags_allow_blocking() check
+343ab8178f31 mm/vmalloc: use batched page requests in bulk-allocator
+3382bbee0464 mm/vmalloc: enable mapping of huge pages at pte level in vmalloc
+f7ee1f13d606 mm/vmalloc: enable mapping of huge pages at pte level in vmap
+c742199a014d mm/pgtable: add stubs for {pmd/pub}_{set/clear}_huge
+79c1c594f49a mm/hugetlb: change parameters of arch_make_huge_pte()
+a850e932df65 mm: vmalloc: add cond_resched() in __vunmap()
+12b9f873a5d0 mm/vmalloc: fallback to a single page allocator
+f4bdfeaf18a4 mm/vmalloc: remove quoted strings split across lines
+cd61413baa10 mm/vmalloc: print a warning message first on failure
+5c1f4e690eec mm/vmalloc: switch to bulk allocator in __vmalloc_area_node()
+a2afc59fb250 mm/page_alloc: add an alloc_pages_bulk_array_node() helper
+15a64f5a8870 mm/vmalloc: add vmalloc_no_huge
+3b822017b636 mm/page_alloc: inline __rmqueue_pcplist
+ce76f9a1d9a2 mm/page_alloc: optimize code layout for __alloc_pages_bulk
+0f87d9d30f21 mm/page_alloc: add an array-based interface to the bulk page allocator
+387ba26fb1cb mm/page_alloc: add a bulk page allocator
+f7c8ce44ebb1 mm/vmalloc: remove vwrite()
+f2e762bab9f5 mm: remove xlate_dev_kmem_ptr()
+bbcd53c96071 drivers/char: remove /dev/kmem for good
+68d68ff6ebbf mm/mempool: minor coding style tweaks
+299420ba358c mm/vmalloc: remove an empty line
+187f8cc456f8 mm/vmalloc: refactor the preloading loagic
+7bc4ca3ea956 vm/test_vmalloc.sh: adapt for updated driver interface
+80f4759964cc lib/test_vmalloc.c: add a new 'nr_threads' parameter
+a803315858bf lib/test_vmalloc.c: remove two kvfree_rcu() tests
+d70bec8cc95a mm/vmalloc: improve allocation failure error messages
+4ad0ae8c64ac mm/vmalloc: remove unmap_kernel_range
+94f88d7b901c powerpc/xive: remove unnecessary unmap_kernel_range
+e82b9b3086b9 kernel/dma: remove unnecessary unmap_kernel_range
+b67177ecd956 mm/vmalloc: remove map_kernel_range
+121e6f3258fe mm/vmalloc: hugepage vmalloc mappings
+5d87510de15f mm/vmalloc: add vmap_range_noflush variant
+5e9e3d777b99 mm: move vmap_range from mm/ioremap.c to mm/vmalloc.c
+6f680e70b6ff mm/vmalloc: provide fallback arch huge vmap support functions
+97dc2a1548ab x86: inline huge vmap supported functions
+168a6333142b arm64: inline huge vmap supported functions
+8309c9d71702 powerpc: inline huge vmap supported functions
+bbc180a5adb0 mm: HUGE_VMAP arch support cleanup
+95f0ddf081af mm/ioremap: rename ioremap_*_range to vmap_*_range
+0a264884046f mm/vmalloc: rename vmap_*_range vmap_pages_*_range
+0c95cba49255 mm: apply_to_pte_range warn and fail if a large pte is encountered
+c0eb315ad971 mm/vmalloc: fix HUGE_VMAP regression by enabling huge pages in vmalloc_to_page
+972472c7466b ARM: mm: add missing pud_page define to 2-level page tables
+f608788cd2d6 mm/vmalloc: use rb_tree instead of list for vread() lookups
+0f71d7e14c21 mm: unexport remap_vmalloc_range_partial
+56db19fef3f1 docs/vm: remove unused 3 items explanation for /proc/vmstat
+e924d461f2c3 mm/vmalloc.c: remove unnecessary return statement
+799fa85d66e9 mm/vmalloc: add 'align' parameter explanation for pvm_determine_end_from_reverse
+96e2db456135 mm/vmalloc: rework the drain logic
+8945a723064a mm/vmalloc: use free_vm_area() if an allocation fails
+34fe653716b0 mm/vmalloc.c:__vmalloc_area_node(): avoid 32-bit overflow

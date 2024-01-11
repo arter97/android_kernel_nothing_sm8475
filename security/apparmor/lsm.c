@@ -144,7 +144,7 @@ static int apparmor_ptrace_traceme(struct task_struct *parent)
 }
 
 /* Derived from security/commoncap.c:cap_capget */
-static int apparmor_capget(struct task_struct *target, kernel_cap_t *effective,
+static int apparmor_capget(const struct task_struct *target, kernel_cap_t *effective,
 			   kernel_cap_t *inheritable, kernel_cap_t *permitted)
 {
 	struct aa_label *label;
@@ -689,7 +689,7 @@ fail:
  * apparmor_bprm_committing_creds - do task cleanup on committing new creds
  * @bprm: binprm for the exec  (NOT NULL)
  */
-static void apparmor_bprm_committing_creds(struct linux_binprm *bprm)
+static void apparmor_bprm_committing_creds(const struct linux_binprm *bprm)
 {
 	struct aa_label *label = aa_current_raw_label();
 	struct aa_label *new_label = cred_label(bprm->cred);
@@ -711,7 +711,7 @@ static void apparmor_bprm_committing_creds(struct linux_binprm *bprm)
  * apparmor_bprm_committed_cred - do cleanup after new creds committed
  * @bprm: binprm for the exec  (NOT NULL)
  */
-static void apparmor_bprm_committed_creds(struct linux_binprm *bprm)
+static void apparmor_bprm_committed_creds(const struct linux_binprm *bprm)
 {
 	/* clear out temporary/transitional state from the context */
 	aa_clear_task_ctx_trans(task_ctx(current));
@@ -1147,7 +1147,7 @@ static void apparmor_sock_graft(struct sock *sk, struct socket *parent)
 }
 
 #ifdef CONFIG_NETWORK_SECMARK
-static int apparmor_inet_conn_request(struct sock *sk, struct sk_buff *skb,
+static int apparmor_inet_conn_request(const struct sock *sk, struct sk_buff *skb,
 				      struct request_sock *req)
 {
 	struct aa_sk_ctx *ctx = SK_CTX(sk);
@@ -1163,13 +1163,13 @@ static int apparmor_inet_conn_request(struct sock *sk, struct sk_buff *skb,
 /*
  * The cred blob is a pointer to, not an instance of, an aa_label.
  */
-struct lsm_blob_sizes apparmor_blob_sizes __lsm_ro_after_init = {
+struct lsm_blob_sizes apparmor_blob_sizes __ro_after_init = {
 	.lbs_cred = sizeof(struct aa_label *),
 	.lbs_file = sizeof(struct aa_file_ctx),
 	.lbs_task = sizeof(struct aa_task_ctx),
 };
 
-static struct security_hook_list apparmor_hooks[] __lsm_ro_after_init = {
+static struct security_hook_list apparmor_hooks[] __ro_after_init = {
 	LSM_HOOK_INIT(ptrace_access_check, apparmor_ptrace_access_check),
 	LSM_HOOK_INIT(ptrace_traceme, apparmor_ptrace_traceme),
 	LSM_HOOK_INIT(capget, apparmor_capget),
@@ -1373,7 +1373,7 @@ static const struct kernel_param_ops param_ops_aaintbool = {
 	.get = param_get_aaintbool
 };
 /* Boot time disable flag */
-static int apparmor_enabled __lsm_ro_after_init = 1;
+static int apparmor_enabled __ro_after_init = 1;
 module_param_named(enabled, apparmor_enabled, aaintbool, 0444);
 
 static int __init apparmor_enabled_setup(char *str)

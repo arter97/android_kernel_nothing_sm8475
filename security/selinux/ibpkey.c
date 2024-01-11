@@ -40,7 +40,6 @@ struct sel_ib_pkey {
 	struct rcu_head rcu;
 };
 
-static LIST_HEAD(sel_ib_pkey_list);
 static DEFINE_SPINLOCK(sel_ib_pkey_lock);
 static struct sel_ib_pkey_bkt sel_ib_pkey_hash[SEL_PKEY_HASH_SIZE];
 
@@ -142,7 +141,7 @@ static int sel_ib_pkey_sid_slow(u64 subnet_prefix, u16 pkey_num, u32 *sid)
 		return 0;
 	}
 
-	ret = security_ib_pkey_sid(&selinux_state, subnet_prefix, pkey_num,
+	ret = security_ib_pkey_sid(subnet_prefix, pkey_num,
 				   sid);
 	if (ret)
 		goto out;
