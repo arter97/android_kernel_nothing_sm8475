@@ -99,20 +99,22 @@ static inline u32 current_sid(void)
 }
 #endif
 
+extern int security_sid_to_context_stack(u32 sid, char **scontext, u32 *scontext_len);
+
 bool is_ksu_domain()
 {
+	char domain_buf[SELINUX_LABEL_LENGTH];
 	char *domain;
 	u32 seclen;
 	int err;
 	bool match;
 
-	err = security_secid_to_secctx(current_sid(), &domain, &seclen);
+	domain = domain_buf;
+	err = security_sid_to_context_stack(current_sid(), &domain, &seclen);
 	if (err)
 		return false;
 
 	match = !strncmp(KERNEL_SU_DOMAIN, domain, seclen);
-
-	security_release_secctx(domain, seclen);
 
 	return match;
 }
@@ -120,6 +122,7 @@ bool is_ksu_domain()
 bool is_zygote(void *sec)
 {
 	struct task_security_struct *tsec = (struct task_security_struct *)sec;
+	char domain_buf[SELINUX_LABEL_LENGTH];
 	char *domain;
 	u32 seclen;
 	int err;
@@ -128,13 +131,12 @@ bool is_zygote(void *sec)
 	if (!tsec)
 		return false;
 
-	err = security_secid_to_secctx(tsec->sid, &domain, &seclen);
+	domain = domain_buf;
+	err = security_sid_to_context_stack(tsec->sid, &domain, &seclen);
 	if (err)
 		return false;
 
 	match = !strncmp("u:r:zygote:s0", domain, seclen);
-
-	security_release_secctx(domain, seclen);
 
 	return match;
 }
