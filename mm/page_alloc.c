@@ -3659,7 +3659,7 @@ struct page *rmqueue_buddy(struct zone *preferred_zone, struct zone *zone,
 static struct page *__rmqueue_pcplist(struct zone *zone, int migratetype,
 			unsigned int alloc_flags,
 			struct per_cpu_pages *pcp,
-			gfp_t gfp_flags, bool locked)
+			bool locked)
 {
 	struct page *page = NULL;
 	unsigned long __maybe_unused UP_flags;
@@ -3719,7 +3719,7 @@ out:
 
 /* Lock and remove page from the per-cpu list */
 static struct page *rmqueue_pcplist(struct zone *preferred_zone,
-			struct zone *zone, gfp_t gfp_flags,
+			struct zone *zone,
 			int migratetype, unsigned int alloc_flags)
 {
 	struct per_cpu_pages *pcp;
@@ -3728,8 +3728,7 @@ static struct page *rmqueue_pcplist(struct zone *preferred_zone,
 
 	local_irq_save(flags);
 	pcp = &this_cpu_ptr(zone->pageset)->pcp;
-	page = __rmqueue_pcplist(zone,  migratetype, alloc_flags, pcp,
-				 gfp_flags, false);
+	page = __rmqueue_pcplist(zone,  migratetype, alloc_flags, pcp, false);
 	if (page) {
 		__count_zid_vm_events(PGALLOC, page_zonenum(page), 1);
 		zone_statistics(preferred_zone, zone);
@@ -3750,7 +3749,7 @@ struct page *rmqueue(struct zone *preferred_zone,
 	struct page *page;
 
 	if (likely(order == 0)) {
-		page = rmqueue_pcplist(preferred_zone, zone, gfp_flags,
+		page = rmqueue_pcplist(preferred_zone, zone,
 				       migratetype, alloc_flags);
 		if (page)
 			goto out;
