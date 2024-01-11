@@ -1,3 +1,17 @@
+e92072237e6c arm64: support huge vmalloc mappings
+559089e0a93d vmalloc: replace VM_NO_HUGE_VMAP with VM_ALLOW_HUGE_VMAP
+061478438d04 mm/page_alloc: further fix __alloc_pages_bulk() return value
+e5c15cea3391 mm/page_alloc: correct return value when failing at preparing
+66d9282523b3 mm/page_alloc: Correct return value of populated elements if bulk array is populated
+e2c789cab60a dm: get rid of GFP_NOIO workarounds for __vmalloc and kvmalloc
+30c19366636f mm: fix BUG splat with kvmalloc + GFP_ATOMIC
+c572e4888ad1 mm/page_alloc: always attempt to allocate at least one page during bulk allocation
+9becb6889130 kvmalloc: use vmalloc_huge for vmalloc allocations
+8dcb3060d81d memcg: page_alloc: skip bulk allocator for __GFP_ACCOUNT
+d8a719059b9d Revert "mm/pgtable: add stubs for {pmd/pub}_{set/clear}_huge"
+b3b64ebd3822 mm/page_alloc: do bulk array bounds check after checking populated elements
+b08e50dd6448 mm/page_alloc: __alloc_pages_bulk(): do bounds check before accessing array
+86d0c1642725 mm/ioremap: fix iomap_max_page_shift
 ca6c2ce1b481 mm/vmalloc: fix the unchecked dereference warning in vread_iter()
 0d1c81edc61e mm/vmalloc: vmalloc_to_page() use pte_offset_kernel()
 95a301eefa82 mm/vmalloc: do not output a spurious warning when huge vmalloc() fails
