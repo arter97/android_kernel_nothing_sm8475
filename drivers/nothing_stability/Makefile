@@ -5,3 +5,5 @@ obj-$(CONFIG_NOTHING_DISK_USAGE)        += nothing_readahead_trace.o
 obj-$(CONFIG_NOTHING_RESTART_HANDLER)   += nothing_restart_handler.o
 obj-$(CONFIG_NOTHING_TASK_MEMINFO)      += nothing_task_meminfo.o
 obj-$(CONFIG_NOTHING_SECURE_ELEMENT)    += nothing_secure_element.o
+
+ccflags-y += -ftrivial-auto-var-init=zero

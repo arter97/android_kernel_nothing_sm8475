@@ -602,7 +602,7 @@ static int ramoops_init_prz(const char *name,
 }
 
 /* Read a u32 from a dt property and make sure it's safe for an int. */
-static int ramoops_parse_dt_u32(struct platform_device *pdev,
+static int __maybe_unused ramoops_parse_dt_u32(struct platform_device *pdev,
 				const char *propname,
 				u32 default_value, u32 *value)
 {
@@ -636,8 +636,6 @@ static int ramoops_parse_dt(struct platform_device *pdev,
 	struct device_node *parent_node;
 	struct reserved_mem *rmem;
 	struct resource *res;
-	u32 value;
-	int ret;
 
 	dev_dbg(&pdev->dev, "using Device Tree\n");
 
@@ -679,14 +677,14 @@ static int ramoops_parse_dt(struct platform_device *pdev,
 		field = value;						\
 	}
 
-	parse_u32("mem-type", pdata->mem_type, pdata->mem_type);
-	parse_u32("record-size", pdata->record_size, 0);
-	parse_u32("console-size", pdata->console_size, 0);
-	parse_u32("ftrace-size", pdata->ftrace_size, 0);
-	parse_u32("pmsg-size", pdata->pmsg_size, 0);
-	parse_u32("ecc-size", pdata->ecc_info.ecc_size, 0);
-	parse_u32("flags", pdata->flags, 0);
-	parse_u32("max-reason", pdata->max_reason, pdata->max_reason);
+	pdata->mem_type = 0;
+	pdata->record_size = SZ_2M;
+	pdata->console_size = 0;
+	pdata->ftrace_size = 0;
+	pdata->pmsg_size = 0;
+	pdata->ecc_info.ecc_size = 16;
+	pdata->flags = 0;
+	pdata->max_reason = 4;
 
 #undef parse_u32
 
@@ -779,13 +777,13 @@ static int ramoops_probe(struct platform_device *pdev)
 
 	dump_mem_sz = cxt->size - cxt->console_size - cxt->ftrace_size
 			- cxt->pmsg_size;
-	err = ramoops_init_przs("dmesg", dev, cxt, &cxt->dprzs, &paddr,
+	err = ramoops_init_przs("console", dev, cxt, &cxt->dprzs, &paddr,
 				dump_mem_sz, cxt->record_size,
 				&cxt->max_dump_cnt, 0, 0);
 	if (err)
 		goto fail_out;
 
-	err = ramoops_init_prz("console", dev, cxt, &cxt->cprz, &paddr,
+	err = ramoops_init_prz("unused", dev, cxt, &cxt->cprz, &paddr,
 			       cxt->console_size, 0);
 	if (err)
 		goto fail_init_cprz;
