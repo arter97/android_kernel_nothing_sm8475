@@ -358,7 +358,7 @@ static int tracepoint_add_func(struct tracepoint *tp,
 			lockdep_is_held(&tracepoints_mutex));
 	old = func_add(&tp_funcs, func, prio);
 	if (IS_ERR(old)) {
-		WARN_ON_ONCE(warn && PTR_ERR(old) != -ENOMEM);
+		WARN_ON(1);
 		return PTR_ERR(old);
 	}
 
