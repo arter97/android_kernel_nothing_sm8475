@@ -1350,6 +1350,11 @@ static inline void bio_issue_init(struct bio_issue *issue,
 			((u64)size << BIO_ISSUE_SIZE_SHIFT));
 }
 
+static inline u64 blk_time_get_ns(void)
+{
+	return ktime_get_ns();
+}
+
 #else /* CONFIG_BLOCK */
 struct blk_plug {
 };
