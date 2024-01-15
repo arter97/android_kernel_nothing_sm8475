@@ -1307,6 +1307,11 @@ static inline bool blk_needs_flush_plug(struct task_struct *tsk)
 
 int blkdev_issue_flush(struct block_device *, gfp_t);
 long nr_blockdev_pages(void);
+
+static inline u64 blk_time_get_ns(void)
+{
+	return ktime_get_ns();
+}
 #else /* CONFIG_BLOCK */
 struct blk_plug {
 };
