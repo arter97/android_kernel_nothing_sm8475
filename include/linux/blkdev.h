@@ -1256,6 +1256,7 @@ struct blk_plug {
 
 	/* if ios_left is > 1, we can batch tag/rq allocations */
 	struct request *cached_rq;
+	u64 cur_ktime;
 	unsigned short nr_ios;
 
 	unsigned short rq_count;
@@ -1310,7 +1311,15 @@ long nr_blockdev_pages(void);
 
 static inline u64 blk_time_get_ns(void)
 {
-	return ktime_get_ns();
+	struct blk_plug *plug = current->plug;
+
+	if (!plug)
+		return ktime_get_ns();
+	if (!(plug->cur_ktime & 1ULL)) {
+		plug->cur_ktime = ktime_get_ns();
+		plug->cur_ktime |= 1ULL;
+	}
+	return plug->cur_ktime;
 }
 #else /* CONFIG_BLOCK */
 struct blk_plug {
