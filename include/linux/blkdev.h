@@ -1264,13 +1264,13 @@ struct blk_plug {
 	bool multiple_queues;
 	bool nowait;
 
-	struct list_head cb_list; /* md requires an unplug callback */
+	struct hlist_head cb_list; /* md requires an unplug callback */
 };
 
 struct blk_plug_cb;
 typedef void (*blk_plug_cb_fn)(struct blk_plug_cb *, bool);
 struct blk_plug_cb {
-	struct list_head list;
+	struct hlist_node list;
 	blk_plug_cb_fn callback;
 	void *data;
 };
@@ -1303,7 +1303,7 @@ static inline bool blk_needs_flush_plug(struct task_struct *tsk)
 
 	return plug &&
 		 (!list_empty(&plug->mq_list) ||
-		 !list_empty(&plug->cb_list));
+		 !hlist_empty(&plug->cb_list));
 }
 
 int blkdev_issue_flush(struct block_device *, gfp_t);

@@ -1688,7 +1688,7 @@ void blk_start_plug_nr_ios(struct blk_plug *plug, unsigned char nr_ios)
 	plug->rq_count = 0;
 	plug->multiple_queues = false;
 	plug->nowait = false;
-	INIT_LIST_HEAD(&plug->cb_list);
+	INIT_HLIST_HEAD(&plug->cb_list);
 
 	/*
 	 * Store ordering should not be needed here, since a potential
@@ -1728,16 +1728,18 @@ EXPORT_SYMBOL(blk_start_plug);
 
 static void flush_plug_callbacks(struct blk_plug *plug, bool from_schedule)
 {
-	LIST_HEAD(callbacks);
+	HLIST_HEAD(callbacks);
 
-	while (!list_empty(&plug->cb_list)) {
-		list_splice_init(&plug->cb_list, &callbacks);
+	while (!hlist_empty(&plug->cb_list)) {
+		struct hlist_node *entry, *tmp;
 
-		while (!list_empty(&callbacks)) {
-			struct blk_plug_cb *cb = list_first_entry(&callbacks,
-							  struct blk_plug_cb,
-							  list);
-			list_del(&cb->list);
+		hlist_move_list(&plug->cb_list, &callbacks);
+
+		hlist_for_each_safe(entry, tmp, &callbacks) {
+			struct blk_plug_cb *cb;
+
+			cb = hlist_entry(entry, struct blk_plug_cb, list);
+			hlist_del(&cb->list);
 			cb->callback(cb, from_schedule);
 		}
 	}
@@ -1752,7 +1754,7 @@ struct blk_plug_cb *blk_check_plugged(blk_plug_cb_fn unplug, void *data,
 	if (!plug)
 		return NULL;
 
-	list_for_each_entry(cb, &plug->cb_list, list)
+	hlist_for_each_entry(cb, &plug->cb_list, list)
 		if (cb->callback == unplug && cb->data == data)
 			return cb;
 
@@ -1762,7 +1764,7 @@ struct blk_plug_cb *blk_check_plugged(blk_plug_cb_fn unplug, void *data,
 	if (cb) {
 		cb->data = data;
 		cb->callback = unplug;
-		list_add(&cb->list, &plug->cb_list);
+		hlist_add_head(&cb->list, &plug->cb_list);
 	}
 	return cb;
 }
