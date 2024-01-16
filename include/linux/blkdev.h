@@ -152,7 +152,10 @@ struct request {
 	struct bio *bio;
 	struct bio *biotail;
 
-	struct list_head queuelist;
+	union {
+		struct list_head queuelist;
+		struct request *rq_next;
+	};
 
 	/*
 	 * The hash is used inside the scheduler, and killed once the
@@ -1250,10 +1253,18 @@ extern void blk_set_queue_dying(struct request_queue *);
  */
 struct blk_plug {
 	struct list_head mq_list; /* blk-mq requests */
-	struct list_head cb_list; /* md requires an unplug callback */
+
+	/* if ios_left is > 1, we can batch tag/rq allocations */
+	struct request *cached_rq;
+	u64 cur_ktime;
+	unsigned short nr_ios;
+
 	unsigned short rq_count;
+
 	bool multiple_queues;
 	bool nowait;
+
+	struct list_head cb_list; /* md requires an unplug callback */
 };
 
 struct blk_plug_cb;
@@ -1266,6 +1277,7 @@ struct blk_plug_cb {
 extern struct blk_plug_cb *blk_check_plugged(blk_plug_cb_fn unplug,
 					     void *data, int size);
 extern void blk_start_plug(struct blk_plug *);
+extern void blk_start_plug_nr_ios(struct blk_plug *, unsigned short);
 extern void blk_finish_plug(struct blk_plug *);
 extern void blk_flush_plug_list(struct blk_plug *, bool);
 
@@ -1296,9 +1308,27 @@ static inline bool blk_needs_flush_plug(struct task_struct *tsk)
 
 int blkdev_issue_flush(struct block_device *, gfp_t);
 long nr_blockdev_pages(void);
+
+static inline u64 blk_time_get_ns(void)
+{
+	struct blk_plug *plug = current->plug;
+
+	if (!plug)
+		return ktime_get_ns();
+	if (!(plug->cur_ktime & 1ULL)) {
+		plug->cur_ktime = ktime_get_ns();
+		plug->cur_ktime |= 1ULL;
+	}
+	return plug->cur_ktime;
+}
 #else /* CONFIG_BLOCK */
 struct blk_plug {
 };
+
+static inline void blk_start_plug_nr_ios(struct blk_plug *plug,
+					 unsigned short nr_ios)
+{
+}
 
 static inline void blk_start_plug(struct blk_plug *plug)
 {
@@ -2059,5 +2089,34 @@ int fsync_bdev(struct block_device *bdev);
 
 int freeze_bdev(struct block_device *bdev);
 int thaw_bdev(struct block_device *bdev);
+
+#define rq_list_add(listptr, rq)	do {		\
+	(rq)->rq_next = *(listptr);			\
+	*(listptr) = rq;				\
+} while (0)
+
+#define rq_list_pop(listptr)				\
+({							\
+	struct request *__req = NULL;			\
+	if ((listptr) && *(listptr))	{		\
+		__req = *(listptr);			\
+		*(listptr) = __req->rq_next;		\
+	}						\
+	__req;						\
+})
+
+#define rq_list_peek(listptr)				\
+({							\
+	struct request *__req = NULL;			\
+	if ((listptr) && *(listptr))			\
+		__req = *(listptr);			\
+	__req;						\
+})
+
+#define rq_list_for_each(listptr, pos)			\
+	for (pos = rq_list_peek((listptr)); pos; pos = rq_list_next(pos)) \
+
+#define rq_list_next(rq)	(rq)->rq_next
+#define rq_list_empty(list)	((list) == (struct request *) NULL)
 
 #endif /* _LINUX_BLKDEV_H */
