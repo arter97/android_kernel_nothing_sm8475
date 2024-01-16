@@ -1671,7 +1671,7 @@ int kblockd_mod_delayed_work_on(int cpu, struct delayed_work *dwork,
 }
 EXPORT_SYMBOL(kblockd_mod_delayed_work_on);
 
-void blk_start_plug_nr_ios(struct blk_plug *plug, unsigned short nr_ios)
+void blk_start_plug_nr_ios(struct blk_plug *plug, unsigned char nr_ios)
 {
 	struct task_struct *tsk = current;
 
@@ -1684,7 +1684,7 @@ void blk_start_plug_nr_ios(struct blk_plug *plug, unsigned short nr_ios)
 	INIT_LIST_HEAD(&plug->mq_list);
 	plug->cur_ktime = 0;
 	plug->cached_rq = NULL;
-	plug->nr_ios = min_t(unsigned short, nr_ios, BLK_MAX_REQUEST_COUNT);
+	plug->nr_ios = min_t(unsigned char, nr_ios, BLK_MAX_REQUEST_COUNT);
 	plug->rq_count = 0;
 	plug->multiple_queues = false;
 	plug->nowait = false;
