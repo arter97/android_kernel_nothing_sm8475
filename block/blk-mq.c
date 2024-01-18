@@ -275,8 +275,24 @@ static inline bool blk_mq_need_time_stamp(struct request *rq)
 	return (rq->rq_flags & (RQF_IO_STAT | RQF_STATS)) || rq->q->elevator;
 }
 
+/* Set start and alloc time when the allocated request is actually used */
+static inline void blk_mq_rq_time_init(struct request *rq, u64 alloc_time_ns)
+{
+	if (blk_mq_need_time_stamp(rq))
+		rq->start_time_ns = ktime_get_ns();
+	else
+		rq->start_time_ns = 0;
+
+#ifdef CONFIG_BLK_RQ_ALLOC_TIME
+	if (blk_queue_rq_alloc_time(rq->q))
+		rq->alloc_time_ns = alloc_time_ns ?: rq->start_time_ns;
+	else
+		rq->alloc_time_ns = 0;
+#endif
+}
+
 static struct request *blk_mq_rq_ctx_init(struct blk_mq_alloc_data *data,
-		unsigned int tag, u64 alloc_time_ns)
+		unsigned int tag)
 {
 	struct blk_mq_tags *tags = blk_mq_tags_from_data(data);
 	struct request *rq = tags->static_rqs[tag];
@@ -304,11 +320,8 @@ static struct request *blk_mq_rq_ctx_init(struct blk_mq_alloc_data *data,
 	RB_CLEAR_NODE(&rq->rb_node);
 	rq->rq_disk = NULL;
 	rq->part = NULL;
-#ifdef CONFIG_BLK_RQ_ALLOC_TIME
-	rq->alloc_time_ns = alloc_time_ns;
-#endif
 	if (blk_mq_need_time_stamp(rq))
-		rq->start_time_ns = ktime_get_ns();
+		rq->start_time_ns = blk_time_get_ns();
 	else
 		rq->start_time_ns = 0;
 	rq->io_start_time_ns = 0;
@@ -343,20 +356,48 @@ static struct request *blk_mq_rq_ctx_init(struct blk_mq_alloc_data *data,
 	}
 
 	data->hctx->queued++;
-	trace_android_vh_blk_rq_ctx_init(rq, tags, data, alloc_time_ns);
 	return rq;
 }
 
-static struct request *__blk_mq_alloc_request(struct blk_mq_alloc_data *data)
+static inline struct request *
+__blk_mq_alloc_requests_batch(struct blk_mq_alloc_data *data)
+{
+	unsigned int tag, tag_offset;
+	struct request *rq;
+	unsigned long tags;
+	int i, nr = 0;
+
+	tags = blk_mq_get_tags(data, data->nr_tags, &tag_offset);
+	if (unlikely(!tags))
+		return NULL;
+
+	for (i = 0; tags; i++) {
+		if (!(tags & (1UL << i)))
+			continue;
+		tag = tag_offset + i;
+		tags &= ~(1UL << i);
+		rq = blk_mq_rq_ctx_init(data, tag);
+		rq_list_add(data->cached_rq, rq);
+		nr++;
+	}
+	/* caller already holds a reference, add for remainder */
+	percpu_ref_get_many(&data->q->q_usage_counter, nr - 1);
+	data->nr_tags -= nr;
+
+	return rq_list_pop(data->cached_rq);
+}
+
+static struct request *__blk_mq_alloc_requests(struct blk_mq_alloc_data *data)
 {
 	struct request_queue *q = data->q;
 	struct elevator_queue *e = q->elevator;
 	u64 alloc_time_ns = 0;
+	struct request *rq;
 	unsigned int tag;
 
 	/* alloc_time includes depth and tag waits */
 	if (blk_queue_rq_alloc_time(q))
-		alloc_time_ns = ktime_get_ns();
+		alloc_time_ns = blk_time_get_ns();
 
 	if (data->cmd_flags & REQ_NOWAIT)
 		data->flags |= BLK_MQ_REQ_NOWAIT;
@@ -380,6 +421,18 @@ retry:
 		blk_mq_tag_busy(data->hctx);
 
 	/*
+	 * Try batched alloc if we want more than 1 tag.
+	 */
+	if (data->nr_tags > 1) {
+		rq = __blk_mq_alloc_requests_batch(data);
+		if (rq) {
+			blk_mq_rq_time_init(rq, alloc_time_ns);
+			return rq;
+		}
+		data->nr_tags = 1;
+	}
+
+	/*
 	 * Waiting allocations only fail because of an inactive hctx.  In that
 	 * case just retry the hctx assignment and tag allocation as CPU hotplug
 	 * should have migrated us to an online CPU by now.
@@ -388,16 +441,19 @@ retry:
 	if (tag == BLK_MQ_NO_TAG) {
 		if (data->flags & BLK_MQ_REQ_NOWAIT)
 			return NULL;
-
 		/*
-		 * Give up the CPU and sleep for a random short time to ensure
-		 * that thread using a realtime scheduling class are migrated
-		 * off the CPU, and thus off the hctx that is going away.
+		 * Give up the CPU and sleep for a random short time to
+		 * ensure that thread using a realtime scheduling class
+		 * are migrated off the CPU, and thus off the hctx that
+		 * is going away.
 		 */
 		msleep(3);
 		goto retry;
 	}
-	return blk_mq_rq_ctx_init(data, tag, alloc_time_ns);
+
+	rq = blk_mq_rq_ctx_init(data, tag);
+	blk_mq_rq_time_init(rq, alloc_time_ns);
+	return rq;
 }
 
 struct request *blk_mq_alloc_request(struct request_queue *q, unsigned int op,
@@ -407,6 +463,7 @@ struct request *blk_mq_alloc_request(struct request_queue *q, unsigned int op,
 		.q		= q,
 		.flags		= flags,
 		.cmd_flags	= op,
+		.nr_tags	= 1,
 	};
 	struct request *rq;
 	int ret;
@@ -415,7 +472,7 @@ struct request *blk_mq_alloc_request(struct request_queue *q, unsigned int op,
 	if (ret)
 		return ERR_PTR(ret);
 
-	rq = __blk_mq_alloc_request(&data);
+	rq = __blk_mq_alloc_requests(&data);
 	if (!rq)
 		goto out_queue_exit;
 	rq->__data_len = 0;
@@ -435,7 +492,9 @@ struct request *blk_mq_alloc_request_hctx(struct request_queue *q,
 		.q		= q,
 		.flags		= flags,
 		.cmd_flags	= op,
+		.nr_tags	= 1,
 	};
+	struct request *rq;
 	u64 alloc_time_ns = 0;
 	unsigned int cpu;
 	unsigned int tag;
@@ -443,7 +502,7 @@ struct request *blk_mq_alloc_request_hctx(struct request_queue *q,
 
 	/* alloc_time includes depth and tag waits */
 	if (blk_queue_rq_alloc_time(q))
-		alloc_time_ns = ktime_get_ns();
+		alloc_time_ns = blk_time_get_ns();
 
 	/*
 	 * If the tag allocator sleeps we could get an allocation for a
@@ -482,7 +541,9 @@ struct request *blk_mq_alloc_request_hctx(struct request_queue *q,
 	tag = blk_mq_get_tag(&data);
 	if (tag == BLK_MQ_NO_TAG)
 		goto out_queue_exit;
-	return blk_mq_rq_ctx_init(&data, tag, alloc_time_ns);
+	rq = blk_mq_rq_ctx_init(&data, tag);
+	blk_mq_rq_time_init(rq, alloc_time_ns);
+	return rq;
 
 out_queue_exit:
 	blk_queue_exit(q);
@@ -539,12 +600,20 @@ void blk_mq_free_request(struct request *rq)
 }
 EXPORT_SYMBOL_GPL(blk_mq_free_request);
 
+void blk_mq_free_plug_rqs(struct blk_plug *plug)
+{
+	struct request *rq;
+
+	while ((rq = rq_list_pop(&plug->cached_rq)) != NULL)
+		blk_mq_free_request(rq);
+}
+
 inline void __blk_mq_end_request(struct request *rq, blk_status_t error)
 {
 	u64 now = 0;
 
 	if (blk_mq_need_time_stamp(rq))
-		now = ktime_get_ns();
+		now = blk_time_get_ns();
 
 	if (rq->rq_flags & RQF_STATS) {
 		blk_mq_poll_stats_start(rq->q);
@@ -729,7 +798,7 @@ void blk_mq_start_request(struct request *rq)
 	trace_block_rq_issue(q, rq);
 
 	if (test_bit(QUEUE_FLAG_STATS, &q->queue_flags)) {
-		rq->io_start_time_ns = ktime_get_ns();
+		rq->io_start_time_ns = blk_time_get_ns();
 		rq->stats_sectors = blk_rq_sectors(rq);
 		rq->rq_flags |= RQF_STATS;
 		rq_qos_issue(q, rq);
@@ -2169,6 +2238,8 @@ static void blk_add_rq_to_plug(struct blk_plug *plug, struct request *rq)
  */
 static inline unsigned short blk_plug_max_rq_count(struct blk_plug *plug)
 {
+	BUILD_BUG_ON(2 * BLK_MAX_REQUEST_COUNT > U8_MAX);
+
 	if (plug->multiple_queues)
 		return BLK_MAX_REQUEST_COUNT * 2;
 	return BLK_MAX_REQUEST_COUNT;
@@ -2196,6 +2267,7 @@ blk_qc_t blk_mq_submit_bio(struct bio *bio)
 	const int is_flush_fua = op_is_flush(bio->bi_opf);
 	struct blk_mq_alloc_data data = {
 		.q		= q,
+		.nr_tags	= 1,
 	};
 	struct request *rq;
 	struct blk_plug *plug;
@@ -2219,14 +2291,27 @@ blk_qc_t blk_mq_submit_bio(struct bio *bio)
 
 	rq_qos_throttle(q, bio);
 
-	data.cmd_flags = bio->bi_opf;
-	rq = __blk_mq_alloc_request(&data);
-	if (unlikely(!rq)) {
-		rq_qos_cleanup(q, bio);
-		if (bio->bi_opf & REQ_NOWAIT)
-			bio_wouldblock_error(bio);
-		goto queue_exit;
+	plug = blk_mq_plug(q, bio);
+	if (plug && plug->cached_rq && plug->cached_rq->q == q) {
+		rq = rq_list_pop(&plug->cached_rq);
+		INIT_LIST_HEAD(&rq->queuelist);
+		data.hctx = rq->mq_hctx;
+	} else {
+		data.cmd_flags = bio->bi_opf;
+		if (plug) {
+			data.nr_tags = plug->nr_ios;
+			plug->nr_ios = 1;
+			data.cached_rq = &plug->cached_rq;
+		}
+		rq = __blk_mq_alloc_requests(&data);
+		if (unlikely(!rq)) {
+			rq_qos_cleanup(q, bio);
+			if (bio->bi_opf & REQ_NOWAIT)
+				bio_wouldblock_error(bio);
+			goto queue_exit;
+		}
 	}
+	blk_mq_rq_time_init(rq, 0);
 
 	trace_block_getrq(q, bio, bio->bi_opf);
 
@@ -2244,7 +2329,6 @@ blk_qc_t blk_mq_submit_bio(struct bio *bio)
 		return BLK_QC_T_NONE;
 	}
 
-	plug = blk_mq_plug(q, bio);
 	if (unlikely(is_flush_fua)) {
 		/* Bypass scheduler for flush requests */
 		blk_insert_flush(rq);
@@ -2804,7 +2888,7 @@ blk_mq_alloc_hctx(struct request_queue *q, struct blk_mq_tag_set *set,
 		goto free_cpumask;
 
 	if (sbitmap_init_node(&hctx->ctx_map, nr_cpu_ids, ilog2(8),
-				gfp, node))
+				gfp, node, false, false))
 		goto free_ctxs;
 	hctx->nr_ctx = 0;
 

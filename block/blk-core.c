@@ -49,6 +49,7 @@
 #include "blk-mq.h"
 #include "blk-mq-sched.h"
 #include "blk-pm.h"
+#include "blk-throttle.h"
 #include "blk-rq-qos.h"
 
 struct dentry *blk_debugfs_root;
@@ -125,7 +126,7 @@ void blk_rq_init(struct request_queue *q, struct request *rq)
 	RB_CLEAR_NODE(&rq->rb_node);
 	rq->tag = BLK_MQ_NO_TAG;
 	rq->internal_tag = BLK_MQ_NO_TAG;
-	rq->start_time_ns = ktime_get_ns();
+	rq->start_time_ns = blk_time_get_ns();
 	rq->part = NULL;
 	blk_crypto_rq_set_defaults(rq);
 }
@@ -1670,6 +1671,32 @@ int kblockd_mod_delayed_work_on(int cpu, struct delayed_work *dwork,
 }
 EXPORT_SYMBOL(kblockd_mod_delayed_work_on);
 
+void blk_start_plug_nr_ios(struct blk_plug *plug, unsigned char nr_ios)
+{
+	struct task_struct *tsk = current;
+
+	/*
+	 * If this is a nested plug, don't actually assign it.
+	 */
+	if (tsk->plug)
+		return;
+
+	INIT_LIST_HEAD(&plug->mq_list);
+	plug->cur_ktime = 0;
+	plug->cached_rq = NULL;
+	plug->nr_ios = min_t(unsigned char, nr_ios, BLK_MAX_REQUEST_COUNT);
+	plug->rq_count = 0;
+	plug->multiple_queues = false;
+	plug->nowait = false;
+	INIT_HLIST_HEAD(&plug->cb_list);
+
+	/*
+	 * Store ordering should not be needed here, since a potential
+	 * preempt will imply a full memory barrier
+	 */
+	tsk->plug = plug;
+}
+
 /**
  * blk_start_plug - initialize blk_plug and track it inside the task_struct
  * @plug:	The &struct blk_plug that needs to be initialized
@@ -1695,40 +1722,24 @@ EXPORT_SYMBOL(kblockd_mod_delayed_work_on);
  */
 void blk_start_plug(struct blk_plug *plug)
 {
-	struct task_struct *tsk = current;
-
-	/*
-	 * If this is a nested plug, don't actually assign it.
-	 */
-	if (tsk->plug)
-		return;
-
-	INIT_LIST_HEAD(&plug->mq_list);
-	INIT_LIST_HEAD(&plug->cb_list);
-	plug->rq_count = 0;
-	plug->multiple_queues = false;
-	plug->nowait = false;
-
-	/*
-	 * Store ordering should not be needed here, since a potential
-	 * preempt will imply a full memory barrier
-	 */
-	tsk->plug = plug;
+	blk_start_plug_nr_ios(plug, 1);
 }
 EXPORT_SYMBOL(blk_start_plug);
 
 static void flush_plug_callbacks(struct blk_plug *plug, bool from_schedule)
 {
-	LIST_HEAD(callbacks);
+	HLIST_HEAD(callbacks);
 
-	while (!list_empty(&plug->cb_list)) {
-		list_splice_init(&plug->cb_list, &callbacks);
+	while (!hlist_empty(&plug->cb_list)) {
+		struct hlist_node *entry, *tmp;
 
-		while (!list_empty(&callbacks)) {
-			struct blk_plug_cb *cb = list_first_entry(&callbacks,
-							  struct blk_plug_cb,
-							  list);
-			list_del(&cb->list);
+		hlist_move_list(&plug->cb_list, &callbacks);
+
+		hlist_for_each_safe(entry, tmp, &callbacks) {
+			struct blk_plug_cb *cb;
+
+			cb = hlist_entry(entry, struct blk_plug_cb, list);
+			hlist_del(&cb->list);
 			cb->callback(cb, from_schedule);
 		}
 	}
@@ -1743,7 +1754,7 @@ struct blk_plug_cb *blk_check_plugged(blk_plug_cb_fn unplug, void *data,
 	if (!plug)
 		return NULL;
 
-	list_for_each_entry(cb, &plug->cb_list, list)
+	hlist_for_each_entry(cb, &plug->cb_list, list)
 		if (cb->callback == unplug && cb->data == data)
 			return cb;
 
@@ -1753,7 +1764,7 @@ struct blk_plug_cb *blk_check_plugged(blk_plug_cb_fn unplug, void *data,
 	if (cb) {
 		cb->data = data;
 		cb->callback = unplug;
-		list_add(&cb->list, &plug->cb_list);
+		hlist_add_head(&cb->list, &plug->cb_list);
 	}
 	return cb;
 }
@@ -1765,6 +1776,16 @@ void blk_flush_plug_list(struct blk_plug *plug, bool from_schedule)
 
 	if (!list_empty(&plug->mq_list))
 		blk_mq_flush_plug_list(plug, from_schedule);
+	/*
+	 * Unconditionally flush out cached requests, even if the unplug
+	 * event came from schedule. Since we know hold references to the
+	 * queue for cached requests, we don't want a blocked task holding
+	 * up a queue freeze/quiesce event.
+	 */
+	if (unlikely(!rq_list_empty(plug->cached_rq)))
+		blk_mq_free_plug_rqs(plug);
+
+	current->flags &= ~PF_BLOCK_TS;
 }
 
 /**
