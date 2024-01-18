@@ -1,3 +1,37 @@
+106397376c0369 sbitmap: fix batching wakeup
+b5fcf7871acb7f sbitmap: correct wake_batch recalculation to avoid potential IO hung
+678418c6128f11 sbitmap: add sbitmap_find_bit to remove repeat code in __sbitmap_get/__sbitmap_get_shallow
+08470a98a7d7e3 sbitmap: rewrite sbitmap_find_bit_in_index to reduce repeat code
+903e86f3a64d95 sbitmap: remove redundant check in __sbitmap_queue_get_batch
+f1591a8bb3e027 sbitmap: remove unnecessary calculation of alloc_hint in __sbitmap_get_shallow
+26edb30dd1c0c9 sbitmap: Try each queue to wake up at least one waiter
+976570b4ecd30d sbitmap: Advance the queue index before waking up a queue
+4f8126bb230806 sbitmap: Use single per-bitmap counting to wake up queued tags
+30514bd2dd4e86 sbitmap: fix lockup while swapping
+4acb83417cadfd sbitmap: fix batched wait_cnt accounting
+c35227d4e8cbc7 sbitmap: Use atomic_long_try_cmpxchg in __sbitmap_queue_get_batch
+48c033314f3724 sbitmap: Avoid leaving waitqueue in invalid state in __sbq_wake_up()
+ddbfc34fcf5d0b sbitmap: remove unnecessary code in __sbitmap_queue_get_batch
+040b83fcecfb86 sbitmap: fix possible io hung due to lost wakeup
+fbb564a5578094 lib/sbitmap: Fix invalid loop in __sbitmap_queue_get_batch()
+863a66cdb4df25 lib/sbitmap: allocate sb->map via kvzalloc_node
+3f607293b74d6a sbitmap: Delete old sbitmap_queue_get_shallow()
+3301bc53358a0e lib/sbitmap: kill 'depth' from sbitmap_word
+1fcbd5deac51f3 include/linux/sbitmap.h: replace kernel.h with the necessary inclusions
+9f8b93a7df4d8e sbitmap: silence data race warning
+1aec5e4a2962f7 sbitmap: add helper to clear a batch of tags
+9672b0d4378204 sbitmap: add __sbitmap_queue_get_batch()
+035e9f471691a1 scsi: sbitmap: Silence a debug kernel warning triggered by sbitmap_put()
+2d13b1ea9f4aff scsi: sbitmap: Add sbitmap_calculate_shift() helper
+cbb9950b41dd9d scsi: sbitmap: Export sbitmap_weight
+c548e62bcf6adc scsi: sbitmap: Move allocation hint into sbitmap
+bf2c4282a10a92 scsi: sbitmap: Add helpers for updating allocation hint
+efe1f3a1d5833c scsi: sbitmap: Maintain allocation round_robin in sbitmap
+4ec591790356f0 scsi: sbitmap: Remove sbitmap_clear_bit_unlock
+0eff1f1a38a95b sbitmap: simplify wrap check
+c3250c8d2451ff sbitmap: replace CAS with atomic and
+661d4f55a79483 sbitmap: remove swap_lock
+b78beea038a308 sbitmap: optimise sbitmap_deferred_clear()
 e92072237e6c arm64: support huge vmalloc mappings
 559089e0a93d vmalloc: replace VM_NO_HUGE_VMAP with VM_ALLOW_HUGE_VMAP
 061478438d04 mm/page_alloc: further fix __alloc_pages_bulk() return value
