@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/atomic.h>
@@ -1034,13 +1034,13 @@ int synx_merge(struct synx_session *session,
 			kfree(h_child_list);
 			goto clear;
 		}
+		kfree(h_child_list);
 	}
 
 	dprintk(SYNX_MEM,
 		"[sess :%llu] merge allocated %u, core %pK, fence %pK\n",
 		client->id, *params->h_merged_obj, synx_obj,
 		synx_obj->fence);
-	kfree(h_child_list);
 	synx_put_client(client);
 	return SYNX_SUCCESS;
 
