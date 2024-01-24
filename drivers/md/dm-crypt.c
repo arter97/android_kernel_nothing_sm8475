@@ -1669,6 +1669,7 @@ retry:
 		goto out;
 
 	clone_init(io, clone);
+	clone->bi_ioprio = io->base_bio->bi_ioprio;
 
 	remaining_size = size;
 
