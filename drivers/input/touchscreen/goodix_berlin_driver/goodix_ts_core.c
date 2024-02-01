@@ -1845,9 +1845,7 @@ static int goodix_ts_input_dev_config(struct goodix_ts_core *core_data)
 #endif
 #endif
 
-	input_set_capability(input_dev, EV_KEY, KEY_POWER);
 	input_set_capability(input_dev, EV_KEY, KEY_WAKEUP);
-	input_set_capability(input_dev, EV_KEY, KEY_GOTO);
 	input_set_capability(input_dev, EV_KEY, KEY_FINGER);
 
 	r = input_register_device(input_dev);

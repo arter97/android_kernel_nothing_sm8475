@@ -889,4 +889,62 @@ config INPUT_STPMIC1_ONKEY
 	  To compile this driver as a module, choose M here: the
 	  module will be called stpmic1_onkey.
 
+config INPUT_PWRKEY_SYNC
+	tristate "Trigger a sync on power button events"
+	depends on MAGIC_SYSRQ && PM_SLEEP
+	default y
+	help
+	  This software driver listens to power button events and performs
+	  sync when it's held down for long.
+
+	  This is to minimize data corruption when the system is not
+	  responding and the user wants to initiate a forced reboot.
+
+if INPUT_PWRKEY_SYNC
+
+config INPUT_PWRKEY_SYNC_DELAY
+	int "Trigger a sync after this amount of milliseconds"
+	range 100 10000
+	default 2000
+	help
+	  Triggers a sync after user holds down the power button for this
+	  amount of milliseconds.
+
+	  This must be lower than the threshold that the hardware uses for
+	  forced reset.
+
+	  If set too low, this may cause minor slowdowns on normal key
+	  presses.
+
+config INPUT_PWRKEY_SYNC_PANIC
+	bool "Trigger a kernel panic on long power button events"
+	help
+	  If the kernel is in a malfunctioning state, forcefully causing a
+	  kernel panic before the hardware resets itself may help debugging
+	  the issue further by storing its log to something like pstore.
+
+	  Additionally, this feature prints useful info like locks, stack
+	  backtrace and currently blocked tasks to the kernel log before
+	  triggering a kernel panic.
+
+if INPUT_PWRKEY_SYNC_PANIC
+
+config INPUT_PWRKEY_SYNC_PANIC_DELAY
+	int "Trigger a kernel panic after this amount of milliseconds"
+	range 100 20000
+	default 7000
+	help
+	  Triggers a kernel panic after the user holds down the power button
+	  for this amount of milliseconds.
+
+	  This must be lower than the threshold that the hardware uses for
+	  forced reset.
+
+	  If set too low, this may cause minor slowdowns on normal key
+	  presses.
+
+endif # INPUT_PWRKEY_SYNC_PANIC
+
+endif # INPUT_PWRKEY_SYNC
+
 endif

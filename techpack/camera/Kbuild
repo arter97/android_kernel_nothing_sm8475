@@ -70,6 +70,9 @@ ccflags-$(CONFIG_MSM_GLOBAL_SYNX) += -I$(KERNEL_ROOT)/drivers/media/platform/msm
 # Always initialize stack to zero
 ccflags-m += -ftrivial-auto-var-init=zero
 
+# Disable unused warnings
+ccflags-m += -Wno-unused-variable -Wno-unused-function
+
 # After creating lists, add content of 'ccflags-m' variable to 'ccflags-y' one.
 ccflags-y += ${ccflags-m}
 
@@ -83,7 +86,6 @@ camera-y := \
 	drivers/cam_req_mgr/cam_req_mgr_debug.o \
 	drivers/cam_utils/cam_soc_util.o \
 	drivers/cam_utils/cam_packet_util.o \
-	drivers/cam_utils/cam_debug_util.o \
 	drivers/cam_utils/cam_trace.o \
 	drivers/cam_utils/cam_common_util.o \
 	drivers/cam_utils/cam_compat.o \
