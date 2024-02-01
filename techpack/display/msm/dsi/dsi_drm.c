@@ -101,16 +101,7 @@ static void msm_parse_mode_priv_info(const struct msm_display_mode *msm_mode,
 void dsi_convert_to_drm_mode(const struct dsi_display_mode *dsi_mode,
 				struct drm_display_mode *drm_mode)
 {
-	char *panel_caps = "vid";
 	bool fsc_mode = dsi_mode->timing.fsc_mode;
-
-	if ((dsi_mode->panel_mode_caps & DSI_OP_VIDEO_MODE) &&
-		(dsi_mode->panel_mode_caps & DSI_OP_CMD_MODE))
-		panel_caps = "vid_cmd";
-	else if (dsi_mode->panel_mode_caps & DSI_OP_VIDEO_MODE)
-		panel_caps = "vid";
-	else if (dsi_mode->panel_mode_caps & DSI_OP_CMD_MODE)
-		panel_caps = "cmd";
 
 	memset(drm_mode, 0, sizeof(*drm_mode));
 
@@ -140,9 +131,7 @@ void dsi_convert_to_drm_mode(const struct dsi_display_mode *dsi_mode,
 		drm_mode->flags |= DRM_MODE_FLAG_PVSYNC;
 
 	/* set mode name */
-	snprintf(drm_mode->name, DRM_DISPLAY_MODE_LEN, "%dx%dx%d%s",
-			drm_mode->hdisplay, drm_mode->vdisplay,
-			drm_mode_vrefresh(drm_mode), panel_caps);
+	*drm_mode->name = '\0';
 }
 
 static void dsi_convert_to_msm_mode(const struct dsi_display_mode *dsi_mode,

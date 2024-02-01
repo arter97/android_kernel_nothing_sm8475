@@ -913,7 +913,8 @@ struct net_device *dev_get_by_name(struct net *net, const char *name)
 
 	rcu_read_lock();
 	dev = dev_get_by_name_rcu(net, name);
-	dev_hold(dev);
+	if (dev)
+		dev_hold(dev);
 	rcu_read_unlock();
 	return dev;
 }
@@ -986,7 +987,8 @@ struct net_device *dev_get_by_index(struct net *net, int ifindex)
 
 	rcu_read_lock();
 	dev = dev_get_by_index_rcu(net, ifindex);
-	dev_hold(dev);
+	if (dev)
+		dev_hold(dev);
 	rcu_read_unlock();
 	return dev;
 }
@@ -3525,6 +3527,14 @@ static netdev_features_t gso_features_check(const struct sk_buff *skb,
 
 	if (gso_segs > dev->gso_max_segs)
 		return features & ~NETIF_F_GSO_MASK;
+
+	if (unlikely(skb->len >= READ_ONCE(dev->gso_max_size)))
+		return features & ~NETIF_F_GSO_MASK;
+
+	if (!skb_shinfo(skb)->gso_type) {
+		skb_warn_bad_offload(skb);
+		return features & ~NETIF_F_GSO_MASK;
+	}
 
 	/* Support for GSO partial features requires software
 	 * intervention before we can actually process the packets
