@@ -10,10 +10,6 @@
 #include "cam_presil_hw_access.h"
 #include "cam_trace.h"
 
-extern unsigned long long debug_mdl;
-extern unsigned int debug_type;
-extern unsigned int debug_priority;
-
 #define CAM_IS_NULL_TO_STR(ptr) ((ptr) ? "Non-NULL" : "NULL")
 
 /* Module IDs used for debug logging */
@@ -192,14 +188,9 @@ enum cam_log_print_type {
  * @args: arguments corresponding to formatting string
  */
 
-void cam_print_log(int type, const char *fmt, ...);
+//void cam_print_log(int type, const char *fmt, ...);
 
-#define __CAM_LOG(type, tag, module_id, fmt, args...)                               \
-({                                                                                  \
-	cam_print_log(type, __CAM_LOG_FMT fmt,                                      \
-		__CAM_LOG_TAG_NAME(tag), __CAM_DBG_MOD_NAME(module_id), __func__,   \
-		__LINE__, ##args);                                                  \
-})
+#define __CAM_LOG(type, tag, module_id, fmt, args...) ((void)0)
 
 #define CAM_LOG(tag, module_id, fmt, args...) \
 __CAM_LOG(CAM_PRINT_BOTH, tag, module_id, fmt, ##args)
@@ -215,12 +206,7 @@ __CAM_LOG(CAM_PRINT_BOTH, tag, module_id, fmt, ##args)
 CAM_LOG_RL_CUSTOM(type, module_id, DEFAULT_RATELIMIT_INTERVAL, DEFAULT_RATELIMIT_BURST,  \
 fmt, ##args)
 
-#define __CAM_DBG(module_id, priority, fmt, args...)                                              \
-({                                                                                                \
-	if (unlikely((debug_mdl & BIT_ULL(module_id)) && (priority >= debug_priority))) {         \
-		CAM_LOG(CAM_TYPE_DBG, module_id, fmt, ##args);                                    \
-	}                                                                                         \
-})
+#define __CAM_DBG(module_id, priority, fmt, args...) ((void)0)
 
 /**
  * CAM_ERR / CAM_WARN / CAM_INFO / CAM_TRACE
@@ -298,8 +284,8 @@ __CAM_LOG(CAM_PRINT_TRACE, CAM_TYPE_TRACE, __module, fmt, ##args)
  * @fmt:           Formatted string which needs to be print in log
  * @args:          Arguments which needs to be print in log
  */
-void cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len, unsigned int tag,
-	unsigned long long module_id, const char *fmt, ...);
+//void cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len, unsigned int tag,
+//	unsigned long long module_id, const char *fmt, ...);
 
 /**
  * CAM_[ERR/WARN/INFO]_BUF
@@ -312,12 +298,9 @@ void cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len, unsigned
  * @fmt:           Formatted string which needs to be print in log
  * @args:          Arguments which needs to be print in log
  */
-#define CAM_ERR_BUF(module_id, buf, buf_size, len, fmt, args...)                                   \
-	cam_print_to_buffer(buf, buf_size, len, CAM_TYPE_ERR, module_id, fmt, ##args)
-#define CAM_WARN_BUF(module_id, buf, buf_size, len, fmt, args...)                                  \
-	cam_print_to_buffer(buf, buf_size, len, CAM_TYPE_WARN, module_id, fmt, ##args)
-#define CAM_INFO_BUF(module_id, buf, buf_size, len, fmt, args...)                                  \
-	cam_print_to_buffer(buf, buf_size, len, CAM_TYPE_INFO, module_id, fmt, ##args)
+#define CAM_ERR_BUF(module_id, buf, buf_size, len, fmt, args...) ((void)0)
+#define CAM_WARN_BUF(module_id, buf, buf_size, len, fmt, args...) ((void)0)
+#define CAM_INFO_BUF(module_id, buf, buf_size, len, fmt, args...) ((void)0)
 
 #define CAM_BOOL_TO_YESNO(val) ((val) ? "Y" : "N")
 
@@ -351,13 +334,19 @@ struct camera_debug_settings {
  * @brief : API to get camera debug settings
  * @return const struct camera_debug_settings pointer.
  */
-const struct camera_debug_settings *cam_debug_get_settings(void);
+static inline const struct camera_debug_settings *cam_debug_get_settings(void)
+{
+	return NULL;
+}
 
 /**
  * @brief : API to parse and store input from sysfs debug node
  * @return Number of bytes read from buffer on success, or -EPERM on error.
  */
-ssize_t cam_debug_sysfs_node_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count);
+static inline ssize_t cam_debug_sysfs_node_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	return 0;
+}
 
 #endif /* _CAM_DEBUG_UTIL_H_ */
