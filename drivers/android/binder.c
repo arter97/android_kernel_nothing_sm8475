@@ -200,7 +200,7 @@ static struct binder_transaction_log binder_transaction_log;
 static struct binder_transaction_log binder_transaction_log_failed;
 
 static struct kmem_cache *binder_node_pool;
-static struct kmem_cache *binder_proc_ext_pool;
+static struct kmem_cache *binder_proc_wrap_pool;
 static struct kmem_cache *binder_ref_death_pool;
 static struct kmem_cache *binder_ref_pool;
 static struct kmem_cache *binder_thread_pool;
@@ -2304,8 +2304,7 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 		ret = -EINVAL;
 		goto done;
 	}
-	if (security_binder_transfer_binder(binder_get_cred(proc),
-					    binder_get_cred(target_proc))) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2351,8 +2350,7 @@ static int binder_translate_handle(struct flat_binder_object *fp,
 				  proc->pid, thread->pid, fp->handle);
 		return -EINVAL;
 	}
-	if (security_binder_transfer_binder(binder_get_cred(proc),
-					    binder_get_cred(target_proc))) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2440,8 +2438,7 @@ static int binder_translate_fd(u32 fd, binder_size_t fd_offset,
 		ret = -EBADF;
 		goto err_fget;
 	}
-	ret = security_binder_transfer_file(binder_get_cred(proc),
-					    binder_get_cred(target_proc), file);
+	ret = security_binder_transfer_file(proc->cred, target_proc->cred, file);
 	if (ret < 0) {
 		ret = -EPERM;
 		goto err_security;
@@ -3205,8 +3202,8 @@ static void binder_transaction(struct binder_proc *proc,
 			goto err_invalid_target_handle;
 		}
 		trace_android_vh_binder_trans(target_proc, proc, thread, tr);
-		if (security_binder_transaction(binder_get_cred(proc),
-					binder_get_cred(target_proc)) < 0) {
+		if (security_binder_transaction(proc->cred,
+						target_proc->cred) < 0) {
 			return_error = BR_FAILED_REPLY;
 			return_error_param = -EPERM;
 			return_error_line = __LINE__;
@@ -3344,7 +3341,7 @@ static void binder_transaction(struct binder_proc *proc,
 		u32 secid;
 		size_t added_size;
 
-		security_cred_getsecid(binder_get_cred(proc), &secid);
+		security_cred_getsecid(proc->cred, &secid);
 
 		secctx = secctx_buf;
 		ret = security_sid_to_context_stack(secid, &secctx, &secctx_sz);
@@ -3369,7 +3366,7 @@ static void binder_transaction(struct binder_proc *proc,
 
 	t->buffer = binder_alloc_new_buf(&target_proc->alloc, tr->data_size,
 		tr->offsets_size, extra_buffers_size,
-		!reply && (t->flags & TF_ONE_WAY), current->tgid);
+		!reply && (t->flags & TF_ONE_WAY));
 	if (IS_ERR(t->buffer)) {
 		/*
 		 * -ESRCH indicates VMA cleared. The target is dying.
@@ -5029,9 +5026,8 @@ static struct binder_thread *binder_get_thread(struct binder_proc *proc)
 
 static void binder_free_proc(struct binder_proc *proc)
 {
+	struct binder_proc_wrap *proc_wrap;
 	struct binder_device *device;
-	struct binder_proc_ext *eproc =
-		container_of(proc, struct binder_proc_ext, proc);
 
 	BUG_ON(!list_empty(&proc->todo));
 	BUG_ON(!list_empty(&proc->delivered_death));
@@ -5045,10 +5041,11 @@ static void binder_free_proc(struct binder_proc *proc)
 	}
 	binder_alloc_deferred_release(&proc->alloc);
 	put_task_struct(proc->tsk);
-	put_cred(eproc->cred);
+	put_cred(proc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
 	trace_android_vh_binder_free_proc(proc);
-	kmem_cache_free(binder_proc_ext_pool, eproc);
+	proc_wrap = binder_proc_wrap_entry(proc);
+	kmem_cache_free(binder_proc_wrap_pool, proc_wrap);
 }
 
 static void binder_free_thread(struct binder_thread *thread)
@@ -5258,7 +5255,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp,
 		ret = -EBUSY;
 		goto out;
 	}
-	ret = security_binder_set_context_mgr(binder_get_cred(proc));
+	ret = security_binder_set_context_mgr(proc->cred);
 	if (ret < 0)
 		goto out;
 	if (uid_valid(context->binder_context_mgr_uid)) {
@@ -5733,8 +5730,8 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 
 static int binder_open(struct inode *nodp, struct file *filp)
 {
+	struct binder_proc_wrap *proc_wrap;
 	struct binder_proc *proc, *itr;
-	struct binder_proc_ext *eproc;
 	struct binder_device *binder_dev;
 	struct binderfs_info *info;
 	struct dentry *binder_binderfs_dir_entry_proc = NULL;
@@ -5743,15 +5740,16 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	binder_debug(BINDER_DEBUG_OPEN_CLOSE, "%s: %d:%d\n", __func__,
 		     current->group_leader->pid, current->pid);
 
-	eproc = kmem_cache_zalloc(binder_proc_ext_pool, GFP_KERNEL);
-	proc = &eproc->proc;
-	if (proc == NULL)
+	proc_wrap = kmem_cache_zalloc(binder_proc_wrap_pool, GFP_KERNEL);
+	if (proc_wrap == NULL)
 		return -ENOMEM;
+	proc = &proc_wrap->proc;
+
 	spin_lock_init(&proc->inner_lock);
 	spin_lock_init(&proc->outer_lock);
 	get_task_struct(current->group_leader);
 	proc->tsk = current->group_leader;
-	eproc->cred = get_cred(filp->f_cred);
+	proc->cred = get_cred(filp->f_cred);
 	INIT_LIST_HEAD(&proc->todo);
 	init_waitqueue_head(&proc->freeze_wait);
 	if (binder_supported_policy(current->policy)) {
@@ -6112,9 +6110,9 @@ static void print_binder_transaction_ilocked(struct seq_file *m,
 	}
 	if (buffer->target_node)
 		seq_printf(m, " node %d", buffer->target_node->debug_id);
-	seq_printf(m, " size %zd:%zd data %pK\n",
+	seq_printf(m, " size %zd:%zd offset %lx\n",
 		   buffer->data_size, buffer->offsets_size,
-		   buffer->user_data);
+		   proc->alloc.buffer - buffer->user_data);
 }
 
 static void print_binder_work_ilocked(struct seq_file *m,
@@ -6695,9 +6693,9 @@ static int __init binder_create_pools(void)
 	if (!binder_node_pool)
 		goto err_node_pool;
 
-	binder_proc_ext_pool = KMEM_CACHE(binder_proc_ext, SLAB_HWCACHE_ALIGN);
-	if (!binder_proc_ext_pool)
-		goto err_proc_ext_pool;
+	binder_proc_wrap_pool = KMEM_CACHE(binder_proc_wrap, SLAB_HWCACHE_ALIGN);
+	if (!binder_proc_wrap_pool)
+		goto err_proc_wrap_pool;
 
 	binder_ref_death_pool = KMEM_CACHE(binder_ref_death, SLAB_HWCACHE_ALIGN);
 	if (!binder_ref_death_pool)
@@ -6742,8 +6740,8 @@ err_thread_pool:
 err_ref_pool:
 	kmem_cache_destroy(binder_ref_death_pool);
 err_ref_death_pool:
-	kmem_cache_destroy(binder_proc_ext_pool);
-err_proc_ext_pool:
+	kmem_cache_destroy(binder_proc_wrap_pool);
+err_proc_wrap_pool:
 	kmem_cache_destroy(binder_node_pool);
 err_node_pool:
 	binder_buffer_pool_destroy();
@@ -6754,7 +6752,7 @@ static void __init binder_destroy_pools(void)
 {
 	binder_buffer_pool_destroy();
 	kmem_cache_destroy(binder_node_pool);
-	kmem_cache_destroy(binder_proc_ext_pool);
+	kmem_cache_destroy(binder_proc_wrap_pool);
 	kmem_cache_destroy(binder_ref_death_pool);
 	kmem_cache_destroy(binder_ref_pool);
 	kmem_cache_destroy(binder_thread_pool);
