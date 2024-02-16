@@ -859,6 +859,7 @@ static void kernfs_notify_workfn(struct work_struct *work)
 {
 	struct kernfs_node *kn;
 	struct kernfs_super_info *info;
+	struct kernfs_root *root;
 repeat:
 	/* pop one off the notify_list */
 	spin_lock_irq(&kernfs_notify_lock);
@@ -871,8 +872,9 @@ repeat:
 	kn->attr.notify_next = NULL;
 	spin_unlock_irq(&kernfs_notify_lock);
 
+	root = kernfs_root(kn);
 	/* kick fsnotify */
-	mutex_lock(&kernfs_mutex);
+	down_write(kernfs_rwsem(root));
 
 	list_for_each_entry(info, &kernfs_root(kn)->supers, node) {
 		struct kernfs_node *parent;
@@ -910,7 +912,7 @@ repeat:
 		iput(inode);
 	}
 
-	mutex_unlock(&kernfs_mutex);
+	up_write(kernfs_rwsem(root));
 	kernfs_put(kn);
 	goto repeat;
 }
