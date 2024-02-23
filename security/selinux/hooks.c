@@ -6259,48 +6259,48 @@ static void selinux_d_instantiate(struct dentry *dentry, struct inode *inode)
 static int selinux_getprocattr(struct task_struct *p,
 			       char *name, char **value)
 {
-	const struct task_security_struct *__tsec;
-	u32 sid;
+	const struct task_security_struct *tsec;
 	int error;
-	unsigned len;
+	u32 sid;
+	u32 len;
 
 	rcu_read_lock();
-	__tsec = selinux_cred(__task_cred(p));
-
-	if (current != p) {
-		error = avc_has_perm(current_sid(), __tsec->sid,
+	tsec = selinux_cred(__task_cred(p));
+	if (p != current) {
+		error = avc_has_perm(current_sid(), tsec->sid,
 				     SECCLASS_PROCESS, PROCESS__GETATTR, NULL);
 		if (error)
-			goto bad;
+			goto err_unlock;
 	}
-
 	if (!strcmp(name, "current"))
-		sid = __tsec->sid;
+		sid = tsec->sid;
 	else if (!strcmp(name, "prev"))
-		sid = __tsec->osid;
+		sid = tsec->osid;
 	else if (!strcmp(name, "exec"))
-		sid = __tsec->exec_sid;
+		sid = tsec->exec_sid;
 	else if (!strcmp(name, "fscreate"))
-		sid = __tsec->create_sid;
+		sid = tsec->create_sid;
 	else if (!strcmp(name, "keycreate"))
-		sid = __tsec->keycreate_sid;
+		sid = tsec->keycreate_sid;
 	else if (!strcmp(name, "sockcreate"))
-		sid = __tsec->sockcreate_sid;
+		sid = tsec->sockcreate_sid;
 	else {
 		error = -EINVAL;
-		goto bad;
+		goto err_unlock;
 	}
 	rcu_read_unlock();
 
-	if (!sid)
+	if (sid == SECSID_NULL) {
+		*value = NULL;
 		return 0;
+	}
 
 	error = security_sid_to_context(sid, value, &len);
 	if (error)
 		return error;
 	return len;
 
-bad:
+err_unlock:
 	rcu_read_unlock();
 	return error;
 }
