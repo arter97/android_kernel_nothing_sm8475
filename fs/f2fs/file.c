@@ -1657,10 +1657,12 @@ static int f2fs_insert_range(struct inode *inode, loff_t offset, loff_t len)
 	}
 	f2fs_up_write(&F2FS_I(inode)->i_mmap_sem);
 	f2fs_up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+	if (ret)
+		return ret;
 
 	/* write out all moved pages, if possible */
 	f2fs_down_write(&F2FS_I(inode)->i_mmap_sem);
-	filemap_write_and_wait_range(inode->i_mapping, offset, LLONG_MAX);
+	ret = filemap_write_and_wait_range(inode->i_mapping, offset, LLONG_MAX);
 	truncate_pagecache(inode, offset);
 	f2fs_up_write(&F2FS_I(inode)->i_mmap_sem);
 
