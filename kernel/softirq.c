@@ -709,6 +709,8 @@ void tasklet_kill_immediate(struct tasklet_struct *t, unsigned int cpu)
 
 static int takeover_tasklets(unsigned int cpu)
 {
+	workqueue_softirq_dead(cpu);
+
 	/* CPU is dead, so no lock needed. */
 	local_irq_disable();
 
