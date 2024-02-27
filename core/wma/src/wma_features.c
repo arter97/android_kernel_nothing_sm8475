@@ -4876,6 +4876,27 @@ QDF_STATUS wma_set_sar_limit(WMA_HANDLE handle,
 	return ret;
 }
 
+QDF_STATUS wma_set_tx_power_per_mcs(
+			   WMA_HANDLE handle,
+			   struct tx_power_per_mcs_rate *txpower_adjust_params)
+{
+	int ret;
+	tp_wma_handle wma = (tp_wma_handle) handle;
+	struct wmi_unified *wmi_handle;
+
+	if (wma_validate_handle(wma))
+		return QDF_STATUS_E_INVAL;
+
+	wmi_handle = wma->wmi_handle;
+	if (wmi_validate_handle(wmi_handle))
+		return QDF_STATUS_E_INVAL;
+
+	ret = wmi_unified_send_tx_power_per_mcs_cmd(wmi_handle,
+						    txpower_adjust_params);
+
+	return ret;
+}
+
 QDF_STATUS wma_send_coex_config_cmd(WMA_HANDLE wma_handle,
 				    struct coex_config_params *coex_cfg_params)
 {
