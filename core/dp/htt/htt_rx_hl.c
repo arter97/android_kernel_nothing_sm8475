@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -71,7 +72,7 @@ htt_set_checksum_result_hl(qdf_nbuf_t msdu,
 	int is_udp = flag & HTT_RX_IND_HL_FLAG_UDP ? 1 : 0;
 
 	qdf_nbuf_rx_cksum_t cksum = {
-		QDF_NBUF_RX_CKSUM_NONE,
+		QDF_NBUF_RX_CKSUM_ZERO,
 		QDF_NBUF_RX_CKSUM_NONE,
 		0
 	};
@@ -90,7 +91,7 @@ htt_set_checksum_result_hl(qdf_nbuf_t msdu,
 		cksum.l4_type = QDF_NBUF_RX_CKSUM_TCPIPV6;
 		break;
 	default:
-		cksum.l4_type = QDF_NBUF_RX_CKSUM_NONE;
+		cksum.l4_type = QDF_NBUF_RX_CKSUM_ZERO;
 		break;
 	}
 	if (cksum.l4_type != (qdf_nbuf_l4_rx_cksum_type_t)
