@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1257,6 +1257,82 @@ void wmi_blacklist_mgr_attach_tlv(struct wmi_unified *wmi_handle)
 #endif
 
 /**
+ * send_tx_power_per_mcs_cmd_tlv() - send tx power per mcs cmd to fw
+ * @wmi_handle: wmi handle
+ * @txpower_adjust_params: send tx power per mcs cmd params
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS send_tx_power_per_mcs_cmd_tlv(
+			wmi_unified_t wmi_handle,
+			struct tx_power_per_mcs_rate *txpower_adjust_params)
+{
+	wmi_buf_t buf;
+	QDF_STATUS qdf_status;
+	wmi_pdev_set_custom_tx_power_per_mcs_cmd_fixed_param *cmd;
+	int i, len_aligned;
+	uint8_t *buf_ptr, *txpower_array;
+	uint32_t len = sizeof(*cmd) + WMI_TLV_HDR_SIZE;
+
+	len_aligned = roundup(txpower_adjust_params->txpower_array_len,
+			      sizeof(uint32_t));
+	len += len_aligned;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		qdf_status = QDF_STATUS_E_NOMEM;
+		return qdf_status;
+	}
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+	cmd = (wmi_pdev_set_custom_tx_power_per_mcs_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&cmd->tlv_header,
+	WMITLV_TAG_STRUC_wmi_pdev_set_custom_tx_power_per_mcs_cmd_fixed_param,
+	WMITLV_GET_STRUCT_TLVLEN
+			(wmi_pdev_set_custom_tx_power_per_mcs_cmd_fixed_param));
+
+	cmd->pdev_id = txpower_adjust_params->pdev_id;
+	for (i = 0; i < WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_CHAIN_NUM; i++) {
+		cmd->bitmap_of_2GHz_band[i] =
+				txpower_adjust_params->bitmap_of_2G_band[i];
+		wmi_nofl_debug("2G_band[chain%d]: %d",
+			       i, cmd->bitmap_of_2GHz_band[i]);
+	}
+	for (i = 0; i < WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_CHAIN_NUM; i++) {
+		cmd->bitmap_of_5GHz_band[i] =
+				txpower_adjust_params->bitmap_of_5G_band[i];
+		cmd->bitmap_of_6GHz_band[i] =
+				txpower_adjust_params->bitmap_of_6G_band[i];
+		wmi_nofl_debug("5G_band[chain%d]: %d 6G_band[chain%d]: %d",
+			       i, cmd->bitmap_of_5GHz_band[i],
+			       i, cmd->bitmap_of_6GHz_band[i]);
+	}
+	cmd->txpower_array_len = txpower_adjust_params->txpower_array_len;
+
+	buf_ptr += sizeof(*cmd);
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, len_aligned);
+
+	txpower_array = buf_ptr + WMI_TLV_HDR_SIZE;
+	for (i = 0; i < cmd->txpower_array_len; i++)
+		txpower_array[i] = txpower_adjust_params->txpower_array[i];
+
+	wmi_debug("txpower array:");
+	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_WMI, QDF_TRACE_LEVEL_DEBUG,
+			   txpower_array,
+			   txpower_adjust_params->txpower_array_len);
+
+	wmi_mtrace(WMI_PDEV_SET_CUSTOM_TX_POWER_PER_MCS_CMDID, NO_SESSION, 0);
+	qdf_status = wmi_unified_cmd_send(
+				   wmi_handle, buf, len,
+				   WMI_PDEV_SET_CUSTOM_TX_POWER_PER_MCS_CMDID);
+
+	if (QDF_IS_STATUS_ERROR(qdf_status))
+		wmi_buf_free(buf);
+
+	return qdf_status;
+}
+
+/**
  * send_sar_limit_cmd_tlv() - send sar limit cmd to fw
  * @wmi_handle: wmi handle
  * @params: sar limit params
@@ -2441,6 +2517,7 @@ void wmi_sta_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_process_set_ie_info_cmd = send_process_set_ie_info_cmd_tlv;
 	ops->send_set_base_macaddr_indicate_cmd =
 		 send_set_base_macaddr_indicate_cmd_tlv;
+	ops->send_tx_power_per_mcs_cmd = send_tx_power_per_mcs_cmd_tlv;
 	ops->send_sar_limit_cmd = send_sar_limit_cmd_tlv;
 	ops->get_sar_limit_cmd = get_sar_limit_cmd_tlv;
 	ops->extract_sar_limit_event = extract_sar_limit_event_tlv;
