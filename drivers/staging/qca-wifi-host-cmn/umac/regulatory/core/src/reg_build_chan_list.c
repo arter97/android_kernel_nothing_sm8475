@@ -1852,7 +1852,7 @@ reg_modify_chan_list_for_avoid_chan_ext(struct wlan_regulatory_pdev_priv_obj
 }
 #endif
 
-#ifdef CONFIG_REG_CLIENT
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
 /*
  * reg_modify_sp_channels() - Mark 6 GHz channels NO_IR and set state DFS
  * if power type is SP
