@@ -1341,8 +1341,13 @@ hdd_cm_connect_success_pre_user_update(struct wlan_objmgr_vdev *vdev,
 		QDF_TRACE_DEFAULT_PDEV_ID,
 		QDF_PROTO_TYPE_MGMT, QDF_PROTO_MGMT_ASSOC));
 
-	if (is_roam)
+	if (is_roam) {
 		hdd_nud_indicate_roam(adapter);
+		if (adapter->keep_alive_interval)
+			hdd_vdev_send_sta_keep_alive_interval(adapter,
+						hdd_ctx,
+						adapter->keep_alive_interval);
+	}
 	 /* hdd_objmgr_set_peer_mlme_auth_state */
 }
 

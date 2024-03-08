@@ -823,7 +823,9 @@ void wma_set_sta_keep_alive(tp_wma_handle wma, uint8_t vdev_id,
 	params.timeperiod = timeperiod;
 	if (intr) {
 		if (intr->bss_max_idle_period) {
-			params.timeperiod = intr->bss_max_idle_period;
+			if (intr->bss_max_idle_period < timeperiod)
+				params.timeperiod = intr->bss_max_idle_period;
+
 			if (method == WMI_KEEP_ALIVE_NULL_PKT)
 				params.method = WMI_KEEP_ALIVE_MGMT_FRAME;
 		}
