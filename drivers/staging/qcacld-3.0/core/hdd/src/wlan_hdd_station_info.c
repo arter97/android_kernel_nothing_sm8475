@@ -1453,7 +1453,7 @@ static int hdd_get_connected_station_info(struct hdd_context *hdd_ctx,
 						  nl_buf_len);
 	if (!skb) {
 		hdd_err("cfg80211_vendor_cmd_alloc_reply_skb failed");
-		goto fail;
+		return -ENOMEM;
 	}
 
 	hdd_info("stainfo");
@@ -2173,7 +2173,7 @@ static int hdd_get_connected_station_info_ex(struct hdd_context *hdd_ctx,
 	skb = cfg80211_vendor_cmd_alloc_reply_skb(hdd_ctx->wiphy, nl_buf_len);
 	if (!skb) {
 		hdd_err_rl("cfg80211_vendor_cmd_alloc_reply_skb failed");
-		goto fail;
+		return -ENOMEM;
 	}
 
 	if (nla_put(skb, QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_MAC,

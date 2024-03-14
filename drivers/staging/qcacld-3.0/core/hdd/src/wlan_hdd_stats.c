@@ -1227,7 +1227,7 @@ static void hdd_llstats_post_radio_stats(struct hdd_adapter *adapter,
 	if (!vendor_event) {
 		hdd_err("cfg80211_vendor_cmd_alloc_reply_skb failed");
 		hdd_llstats_free_radio_stats(radiostat);
-		goto failure;
+		return;
 	}
 
 	if (nla_put_u32(vendor_event,
