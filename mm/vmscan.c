@@ -2624,14 +2624,6 @@ out:
 
 #ifdef CONFIG_LRU_GEN
 
-#ifdef CONFIG_LRU_GEN_ENABLED
-DEFINE_STATIC_KEY_ARRAY_TRUE(lru_gen_caps, NR_LRU_GEN_CAPS);
-#define get_cap(cap)	static_branch_likely(&lru_gen_caps[cap])
-#else
-DEFINE_STATIC_KEY_ARRAY_FALSE(lru_gen_caps, NR_LRU_GEN_CAPS);
-#define get_cap(cap)	static_branch_unlikely(&lru_gen_caps[cap])
-#endif
-
 /******************************************************************************
  *                          shorthand helpers
  ******************************************************************************/
@@ -3523,8 +3515,7 @@ static void walk_pmd_range_locked(pud_t *pud, unsigned long addr, struct vm_area
 			goto next;
 
 		if (!pmd_trans_huge(pmd[i])) {
-			if (IS_ENABLED(CONFIG_ARCH_HAS_NONLEAF_PMD_YOUNG) &&
-			    get_cap(LRU_GEN_NONLEAF_YOUNG))
+			if (IS_ENABLED(CONFIG_ARCH_HAS_NONLEAF_PMD_YOUNG))
 				pmdp_test_and_clear_young(vma, addr, pmd + i);
 			goto next;
 		}
@@ -3934,7 +3925,7 @@ static bool try_to_inc_max_seq(struct lruvec *lruvec, unsigned long seq,
 	 * handful of PTEs. Spreading the work out over a period of time usually
 	 * is less efficient, but it avoids bursty page faults.
 	 */
-	if (!arch_has_hw_pte_young() || !get_cap(LRU_GEN_MM_WALK)) {
+	if (!arch_has_hw_pte_young()) {
 		success = iterate_mm_list_nowalk(lruvec, seq);
 		goto done;
 	}
@@ -5048,121 +5039,6 @@ static bool __maybe_unused state_is_valid(struct lruvec *lruvec)
 	return true;
 }
 
-static bool fill_evictable(struct lruvec *lruvec)
-{
-	enum lru_list lru;
-	int remaining = MAX_LRU_BATCH;
-
-	for_each_evictable_lru(lru) {
-		int type = is_file_lru(lru);
-		bool active = is_active_lru(lru);
-		struct list_head *head = &lruvec->lists[lru];
-
-		while (!list_empty(head)) {
-			bool success;
-			struct page *page = lru_to_page(head);
-
-			VM_WARN_ON_ONCE_PAGE(PageUnevictable(page), page);
-			VM_WARN_ON_ONCE_PAGE(PageActive(page) != active, page);
-			VM_WARN_ON_ONCE_PAGE(page_is_file_lru(page) != type, page);
-			VM_WARN_ON_ONCE_PAGE(page_lru_gen(page) != -1, page);
-
-			del_page_from_lru_list(page, lruvec);
-			success = lru_gen_add_page(lruvec, page, false);
-			VM_WARN_ON_ONCE(!success);
-
-			if (!--remaining)
-				return false;
-		}
-	}
-
-	return true;
-}
-
-static bool drain_evictable(struct lruvec *lruvec)
-{
-	int gen, type, zone;
-	int remaining = MAX_LRU_BATCH;
-
-	for_each_gen_type_zone(gen, type, zone) {
-		struct list_head *head = &lruvec->lrugen.folios[gen][type][zone];
-
-		while (!list_empty(head)) {
-			bool success;
-			struct page *page = lru_to_page(head);
-
-			VM_WARN_ON_ONCE_PAGE(PageUnevictable(page), page);
-			VM_WARN_ON_ONCE_PAGE(PageActive(page), page);
-			VM_WARN_ON_ONCE_PAGE(page_is_file_lru(page) != type, page);
-			VM_WARN_ON_ONCE_PAGE(page_zonenum(page) != zone, page);
-
-			success = lru_gen_del_page(lruvec, page, false);
-			VM_WARN_ON_ONCE(!success);
-			add_page_to_lru_list(page, lruvec);
-
-			if (!--remaining)
-				return false;
-		}
-	}
-
-	return true;
-}
-
-static void lru_gen_change_state(bool enabled)
-{
-	static DEFINE_MUTEX(state_mutex);
-
-	struct mem_cgroup *memcg;
-
-	cgroup_lock();
-	cpus_read_lock();
-	get_online_mems();
-	mutex_lock(&state_mutex);
-
-	if (enabled == lru_gen_enabled())
-		goto unlock;
-
-	if (enabled)
-		static_branch_enable_cpuslocked(&lru_gen_caps[LRU_GEN_CORE]);
-	else
-		static_branch_disable_cpuslocked(&lru_gen_caps[LRU_GEN_CORE]);
-
-	memcg = mem_cgroup_iter(NULL, NULL, NULL);
-	do {
-		int nid;
-
-		for_each_node(nid) {
-			struct pglist_data *pgdat = NODE_DATA(nid);
-			struct lruvec *lruvec = get_lruvec(memcg, nid);
-
-			if (!lruvec)
-				continue;
-
-			spin_lock_irq(&pgdat->lru_lock);
-
-			VM_WARN_ON_ONCE(!seq_is_valid(lruvec));
-			VM_WARN_ON_ONCE(!state_is_valid(lruvec));
-
-			lruvec->lrugen.enabled = enabled;
-
-			while (!(enabled ? fill_evictable(lruvec) : drain_evictable(lruvec))) {
-				spin_unlock_irq(&pgdat->lru_lock);
-				cond_resched();
-				spin_lock_irq(&pgdat->lru_lock);
-			}
-
-			spin_unlock_irq(&pgdat->lru_lock);
-		}
-
-		cond_resched();
-	} while ((memcg = mem_cgroup_iter(NULL, memcg, NULL)));
-unlock:
-	mutex_unlock(&state_mutex);
-	put_online_mems();
-	cpus_read_unlock();
-	cgroup_unlock();
-}
-
 /******************************************************************************
  *                          sysfs interface
  ******************************************************************************/
@@ -5192,47 +5068,20 @@ static ssize_t enabled_show(struct kobject *kobj, struct kobj_attribute *attr, c
 {
 	unsigned int caps = 0;
 
-	if (get_cap(LRU_GEN_CORE))
-		caps |= BIT(LRU_GEN_CORE);
+#ifdef CONFIG_LRU_GEN
+	caps |= BIT(LRU_GEN_CORE);
 
-	if (arch_has_hw_pte_young() && get_cap(LRU_GEN_MM_WALK))
+	if (arch_has_hw_pte_young())
 		caps |= BIT(LRU_GEN_MM_WALK);
 
-	if (IS_ENABLED(CONFIG_ARCH_HAS_NONLEAF_PMD_YOUNG) && get_cap(LRU_GEN_NONLEAF_YOUNG))
+	if (IS_ENABLED(CONFIG_ARCH_HAS_NONLEAF_PMD_YOUNG))
 		caps |= BIT(LRU_GEN_NONLEAF_YOUNG);
+#endif
 
 	return snprintf(buf, PAGE_SIZE, "0x%04x\n", caps);
 }
 
-/* see Documentation/admin-guide/mm/multigen_lru.rst for details */
-static ssize_t enabled_store(struct kobject *kobj, struct kobj_attribute *attr,
-			     const char *buf, size_t len)
-{
-	int i;
-	unsigned int caps;
-
-	if (tolower(*buf) == 'n')
-		caps = 0;
-	else if (tolower(*buf) == 'y')
-		caps = -1;
-	else if (kstrtouint(buf, 0, &caps))
-		return -EINVAL;
-
-	for (i = 0; i < NR_LRU_GEN_CAPS; i++) {
-		bool enabled = caps & BIT(i);
-
-		if (i == LRU_GEN_CORE)
-			lru_gen_change_state(enabled);
-		else if (enabled)
-			static_branch_enable(&lru_gen_caps[i]);
-		else
-			static_branch_disable(&lru_gen_caps[i]);
-	}
-
-	return len;
-}
-
-static struct kobj_attribute lru_gen_enabled_attr = __ATTR_RW(enabled);
+static struct kobj_attribute lru_gen_enabled_attr = __ATTR_RO(enabled);
 
 static struct attribute *lru_gen_attrs[] = {
 	&lru_gen_min_ttl_attr.attr,

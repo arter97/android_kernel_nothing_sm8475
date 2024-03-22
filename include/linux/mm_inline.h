@@ -92,21 +92,7 @@ static __always_inline enum lru_list page_lru(struct page *page)
 
 #ifdef CONFIG_LRU_GEN
 
-#ifdef CONFIG_LRU_GEN_ENABLED
-static inline bool lru_gen_enabled(void)
-{
-	DECLARE_STATIC_KEY_TRUE(lru_gen_caps[NR_LRU_GEN_CAPS]);
-
-	return static_branch_likely(&lru_gen_caps[LRU_GEN_CORE]);
-}
-#else
-static inline bool lru_gen_enabled(void)
-{
-	DECLARE_STATIC_KEY_FALSE(lru_gen_caps[NR_LRU_GEN_CAPS]);
-
-	return static_branch_unlikely(&lru_gen_caps[LRU_GEN_CORE]);
-}
-#endif
+#define lru_gen_enabled() true
 
 static inline bool lru_gen_in_fault(void)
 {
