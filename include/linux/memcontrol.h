@@ -332,7 +332,7 @@ struct mem_cgroup {
 	struct deferred_split deferred_split_queue;
 #endif
 
-#ifdef CONFIG_LRU_GEN
+#ifdef CONFIG_LRU_GEN_WALKS_MMU
 	/* per-memcg mm_struct list */
 	struct lru_gen_mm_list mm_list;
 #endif
@@ -555,6 +555,11 @@ static inline void obj_cgroup_put(struct obj_cgroup *objcg)
 static inline struct mem_cgroup *obj_cgroup_memcg(struct obj_cgroup *objcg)
 {
 	return READ_ONCE(objcg->memcg);
+}
+
+static inline bool mem_cgroup_tryget(struct mem_cgroup *memcg)
+{
+	return !memcg || css_tryget(&memcg->css);
 }
 
 static inline void mem_cgroup_put(struct mem_cgroup *memcg)
@@ -1083,6 +1088,11 @@ static inline struct mem_cgroup *get_mem_cgroup_from_mm(struct mm_struct *mm)
 static inline struct mem_cgroup *get_mem_cgroup_from_page(struct page *page)
 {
 	return NULL;
+}
+
+static inline bool mem_cgroup_tryget(struct mem_cgroup *memcg)
+{
+	return true;
 }
 
 static inline void mem_cgroup_put(struct mem_cgroup *memcg)
