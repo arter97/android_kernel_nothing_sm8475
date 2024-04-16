@@ -663,6 +663,9 @@ util_scan_copy_beacon_data(struct scan_cache_entry *new_entry,
 	struct ie_list *ie_lst;
 	uint8_t i;
 
+	if (!scan_entry->raw_frame.ptr || !scan_entry->raw_frame.len)
+		return QDF_STATUS_E_EMPTY;
+
 	new_entry->raw_frame.ptr =
 		qdf_mem_malloc_atomic(scan_entry->raw_frame.len);
 	if (!new_entry->raw_frame.ptr)
