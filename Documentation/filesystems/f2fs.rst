@@ -126,9 +126,7 @@ norecovery		 Disable the roll-forward recovery routine, mounted read-
 discard/nodiscard	 Enable/disable real-time discard in f2fs, if discard is
 			 enabled, f2fs will issue discard/TRIM commands when a
 			 segment is cleaned.
-no_heap			 Disable heap-style segment allocation which finds free
-			 segments for data from the beginning of main area, while
-			 for node from the end of main area.
+heap/no_heap		 Deprecated.
 nouser_xattr		 Disable Extended User Attributes. Note: xattr is enabled
 			 by default if CONFIG_F2FS_FS_XATTR is selected.
 noacl			 Disable POSIX Access Control List. Note: acl is enabled
@@ -207,6 +205,7 @@ fault_type=%d		 Support configuring fault injection type, should be
 			 FAULT_LOCK_OP                    0x000020000
 			 FAULT_BLKADDR_VALIDITY           0x000040000
 			 FAULT_BLKADDR_CONSISTENCE        0x000080000
+			 FAULT_NO_SEGMENT                 0x000100000
 			 ===========================      ===========
 mode=%s			 Control block allocation mode which supports "adaptive"
 			 and "lfs". In "lfs" mode, there should be no random
@@ -229,8 +228,6 @@ mode=%s			 Control block allocation mode which supports "adaptive"
 			 option for more randomness.
 			 Please, use these options for your experiments and we strongly
 			 recommend to re-format the filesystem after using these options.
-io_bits=%u		 Set the bit size of write IO requests. It should be set
-			 with "mode=lfs".
 usrquota		 Enable plain user disk quota accounting.
 grpquota		 Enable plain group disk quota accounting.
 prjquota		 Enable plain project quota accounting.

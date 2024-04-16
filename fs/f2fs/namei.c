@@ -852,7 +852,7 @@ out:
 
 static int __f2fs_tmpfile(struct inode *dir,
 			  struct dentry *dentry, umode_t mode, bool is_whiteout,
-			  struct inode **new_inode)
+			  struct inode **new_inode, struct f2fs_filename *fname)
 {
 	struct f2fs_sb_info *sbi = F2FS_I_SB(dir);
 	struct inode *inode;
@@ -880,7 +880,7 @@ static int __f2fs_tmpfile(struct inode *dir,
 	if (err)
 		goto out;
 
-	err = f2fs_do_tmpfile(inode, dir);
+	err = f2fs_do_tmpfile(inode, dir, fname);
 	if (err)
 		goto release_out;
 
@@ -929,19 +929,20 @@ static int f2fs_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
 	if (!f2fs_is_checkpoint_ready(sbi))
 		return -ENOSPC;
 
-	return __f2fs_tmpfile(dir, dentry, mode, false, NULL);
+	return __f2fs_tmpfile(dir, dentry, mode, false, NULL, NULL);
 }
 
-static int f2fs_create_whiteout(struct inode *dir, struct inode **whiteout)
+static int f2fs_create_whiteout(struct inode *dir, struct inode **whiteout,
+				struct f2fs_filename *fname)
 {
 	return __f2fs_tmpfile(dir, NULL,
-				S_IFCHR | WHITEOUT_MODE, true, whiteout);
+				S_IFCHR | WHITEOUT_MODE, true, whiteout, fname);
 }
 
 int f2fs_get_tmpfile(struct inode *dir,
 		     struct inode **new_inode)
 {
-	return __f2fs_tmpfile(dir, NULL, S_IFREG, false, new_inode);
+	return __f2fs_tmpfile(dir, NULL, S_IFREG, false, new_inode, NULL);
 }
 
 static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
@@ -985,7 +986,14 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	}
 
 	if (flags & RENAME_WHITEOUT) {
-		err = f2fs_create_whiteout(old_dir, &whiteout);
+		struct f2fs_filename fname;
+
+		err = f2fs_setup_filename(old_dir, &old_dentry->d_name,
+							0, &fname);
+		if (err)
+			return err;
+
+		err = f2fs_create_whiteout(old_dir, &whiteout, &fname);
 		if (err)
 			return err;
 	}
