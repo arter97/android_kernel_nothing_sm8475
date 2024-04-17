@@ -12,6 +12,8 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
+#include "haptic_hv_reg.h"
+
 #define MAX_CMDLINE_PARAM_LEN                  5
 
 /*********************************************************
@@ -95,9 +97,9 @@
 /* #define AW_ENABLE_PIN_CONTROL */
 /* #define AW_SND_SOC_CODEC */
 /* #define AW869X_MUL_GET_F0 */
-#define AW869X_DRIVER_ENABLE
-#define AW869XX_DRIVER_ENABLE
-#define AW8671X_DRIVER_ENABLE
+//#define AW869X_DRIVER_ENABLE
+//#define AW869XX_DRIVER_ENABLE
+//#define AW8671X_DRIVER_ENABLE
 #define AW8692X_DRIVER_ENABLE
 
 #define AAC_RICHTAP_SUPPORT
@@ -527,7 +529,7 @@ struct aw_haptic_ctr {
 struct aw_i2c_info {
 	uint32_t flag;
 	uint32_t reg_num;
-	uint8_t *reg_data;
+	uint8_t reg_data[AW_HAPTIC_REG_MAX];
 };
 
 struct aw_haptic_audio {
@@ -623,6 +625,7 @@ struct aw_haptic {
 	uint8_t name[15];
 
 	int vmax;
+	int custom_gain;
 	int gain;
 	int rate;
 	int width;
@@ -779,8 +782,85 @@ extern struct aw_haptic_func aw8671x_func_list;
 extern struct aw_haptic_func aw8692x_func_list;
 #endif
 
-extern int haptic_hv_i2c_reads(struct aw_haptic *, uint8_t, uint8_t *, uint32_t);
-extern int haptic_hv_i2c_writes(struct aw_haptic *, uint8_t, uint8_t *, uint32_t);
-extern int haptic_hv_i2c_write_bits(struct aw_haptic *, uint8_t, uint32_t, uint8_t);
+/*********************************************************
+ *
+ * I2C Read/Write
+ *
+ *********************************************************/
+static inline int haptic_hv_i2c_reads(struct aw_haptic *aw_haptic, uint8_t reg_addr,
+			uint8_t *buf, uint32_t len)
+{
+	int ret;
+	struct i2c_msg msg[] = {
+		[0] = {
+			.addr = aw_haptic->i2c->addr,
+			.flags = 0,
+			.len = sizeof(uint8_t),
+			.buf = &reg_addr,
+			},
+		[1] = {
+			.addr = aw_haptic->i2c->addr,
+			.flags = I2C_M_RD,
+			.len = len,
+			.buf = buf,
+			},
+	};
+
+	ret = i2c_transfer(aw_haptic->i2c->adapter, msg, ARRAY_SIZE(msg));
+	if (ret < 0) {
+		aw_err("transfer failed.%d",ret);
+		return ret;
+	} else if (ret != AW_I2C_READ_MSG_NUM) {
+		aw_err("transfer failed(size error).");
+		return -ENXIO;
+	}
+
+	return ret;
+}
+
+static inline int haptic_hv_i2c_writes(struct aw_haptic *aw_haptic, uint8_t reg_addr,
+			 uint8_t *buf, uint32_t len)
+{
+	uint8_t __data[512 + 1];
+	uint8_t *data = &__data[0];
+	int ret = -1;
+
+	if (unlikely(len + 1 > sizeof(__data)))
+		data = kmalloc(len + 1, GFP_KERNEL);
+
+	data[0] = reg_addr;
+	memcpy(&data[1], buf, len);
+	ret = i2c_master_send(aw_haptic->i2c, data, len + 1);
+	if (ret < 0)
+		aw_err("i2c master send 0x%02x err", reg_addr);
+
+	if (unlikely(data != &__data[0]))
+		kfree(data);
+
+	return ret;
+}
+
+static inline int haptic_hv_i2c_write_bits(struct aw_haptic *aw_haptic, uint8_t reg_addr,
+			     uint32_t mask, uint8_t reg_data)
+{
+	uint8_t reg_val = 0;
+	int ret = -1;
+
+	ret = haptic_hv_i2c_reads(aw_haptic, reg_addr, &reg_val,
+				  AW_I2C_BYTE_ONE);
+	if (ret < 0) {
+		aw_err("i2c read error, ret=%d", ret);
+		return ret;
+	}
+	reg_val &= mask;
+	reg_val |= (reg_data & (~mask));
+	ret = haptic_hv_i2c_writes(aw_haptic, reg_addr, &reg_val,
+				   AW_I2C_BYTE_ONE);
+	if (ret < 0) {
+		aw_err("i2c write error, ret=%d", ret);
+		return ret;
+	}
+	return 0;
+}
 
 #endif

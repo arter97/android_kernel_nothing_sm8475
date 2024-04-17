@@ -20,7 +20,6 @@
 #include <linux/stat.h>
 
 #include "haptic_hv.h"
-#include "haptic_hv_reg.h"
 
 #ifdef AAC_RICHTAP_SUPPORT
 #include <linux/device.h>
@@ -51,81 +50,6 @@ struct aw_haptic *right;
 #elif defined(AAC_RICHTAP_SUPPORT)
 struct aw_haptic *g_aw_haptic = NULL;
 #endif
-
-/*********************************************************
- *
- * I2C Read/Write
- *
- *********************************************************/
-int haptic_hv_i2c_reads(struct aw_haptic *aw_haptic, uint8_t reg_addr,
-			uint8_t *buf, uint32_t len)
-{
-	int ret;
-	struct i2c_msg msg[] = {
-		[0] = {
-			.addr = aw_haptic->i2c->addr,
-			.flags = 0,
-			.len = sizeof(uint8_t),
-			.buf = &reg_addr,
-			},
-		[1] = {
-			.addr = aw_haptic->i2c->addr,
-			.flags = I2C_M_RD,
-			.len = len,
-			.buf = buf,
-			},
-	};
-
-	ret = i2c_transfer(aw_haptic->i2c->adapter, msg, ARRAY_SIZE(msg));
-	if (ret < 0) {
-		aw_err("transfer failed.%d",ret);
-		return ret;
-	} else if (ret != AW_I2C_READ_MSG_NUM) {
-		aw_err("transfer failed(size error).");
-		return -ENXIO;
-	}
-
-	return ret;
-}
-
-int haptic_hv_i2c_writes(struct aw_haptic *aw_haptic, uint8_t reg_addr,
-			 uint8_t *buf, uint32_t len)
-{
-	uint8_t *data = NULL;
-	int ret = -1;
-
-	data = kmalloc(len + 1, GFP_KERNEL);
-	data[0] = reg_addr;
-	memcpy(&data[1], buf, len);
-	ret = i2c_master_send(aw_haptic->i2c, data, len + 1);
-	if (ret < 0)
-		aw_err("i2c master send 0x%02x err", reg_addr);
-	kfree(data);
-	return ret;
-}
-
-int haptic_hv_i2c_write_bits(struct aw_haptic *aw_haptic, uint8_t reg_addr,
-			     uint32_t mask, uint8_t reg_data)
-{
-	uint8_t reg_val = 0;
-	int ret = -1;
-
-	ret = haptic_hv_i2c_reads(aw_haptic, reg_addr, &reg_val,
-				  AW_I2C_BYTE_ONE);
-	if (ret < 0) {
-		aw_err("i2c read error, ret=%d", ret);
-		return ret;
-	}
-	reg_val &= mask;
-	reg_val |= (reg_data & (~mask));
-	ret = haptic_hv_i2c_writes(aw_haptic, reg_addr, &reg_val,
-				   AW_I2C_BYTE_ONE);
-	if (ret < 0) {
-		aw_err("i2c write error, ret=%d", ret);
-		return ret;
-	}
-	return 0;
-}
 
 static int parse_dt_gpio(struct device *dev, struct aw_haptic *aw_haptic,
 			 struct device_node *np)
@@ -164,6 +88,15 @@ static int parse_dt_gpio(struct device *dev, struct aw_haptic *aw_haptic,
 #endif
 
 	return 0;
+}
+
+// Wrapper for custom_gain
+static void __set_gain(struct aw_haptic *aw_haptic, uint8_t gain)
+{
+	if (aw_haptic->custom_gain)
+		aw_info("custom_gain(%u) is enabled, skipping setting gain %u...", aw_haptic->custom_gain, gain);
+	else
+		aw_haptic->func->set_gain(aw_haptic, gain);
 }
 
 static void hw_reset(struct aw_haptic *aw_haptic)
@@ -458,14 +391,14 @@ static void ram_vbat_comp(struct aw_haptic *aw_haptic, bool flag)
 				temp_gain = 128 * AW_VBAT_REFER / AW_VBAT_MIN;
 				aw_dbg("gain limit=%d", temp_gain);
 			}
-			aw_haptic->func->set_gain(aw_haptic, temp_gain);
+			__set_gain(aw_haptic, temp_gain);
 			aw_info("ram vbat comp open");
 		} else {
-			aw_haptic->func->set_gain(aw_haptic, aw_haptic->gain);
+			__set_gain(aw_haptic, aw_haptic->gain);
 			aw_info("ram vbat comp close");
 		}
 	} else {
-		aw_haptic->func->set_gain(aw_haptic, aw_haptic->gain);
+		__set_gain(aw_haptic, aw_haptic->gain);
 		aw_info("ram vbat comp close");
 	}
 }
@@ -779,7 +712,7 @@ static void input_gain_work_routine(struct work_struct *work)
 						   gain_work);
 
 	mutex_lock(&aw_haptic->lock);
-	aw_haptic->func->set_gain(aw_haptic, aw_haptic->gain);
+	__set_gain(aw_haptic, aw_haptic->gain);
 	mutex_unlock(&aw_haptic->lock);
 }
 
@@ -1114,7 +1047,7 @@ static int wait_enter_rtp_mode(struct aw_haptic *aw_haptic)
 			break;
 		}
 		cnt--;
-		aw_info("wait for RTP_GO, glb_state=0x%02X", ret);
+		aw_dbg("wait for RTP_GO, glb_state=0x%02X", ret);
 		usleep_range(2000, 2500);
 	}
 	if (!rtp_work_flag) {
@@ -1216,7 +1149,7 @@ static void richtap_update_fifo_data(struct aw_haptic *aw_haptic, uint32_t fifo_
 {
 	int32_t samples_left = 0, pos = 0, retry = 30;
 	
-	pr_err("richtap_update_fifo_data start\n");
+	aw_dbg("start");
 	do
 	{
 		if (aw_haptic->curr_buf->status == MMAP_BUF_DATA_VALID) {
@@ -1242,7 +1175,7 @@ static void richtap_update_fifo_data(struct aw_haptic *aw_haptic, uint32_t fifo_
 		} else {
 			if((retry-- <= 0) || !atomic_read(&aw_haptic->richtap_rtp_mode)) {
 				atomic_set(&aw_haptic->richtap_rtp_mode, false);
-				pr_err("aac richtap invalid data or stop retry %d\n", retry);
+				aw_err("aac richtap invalid data or stop retry %d", retry);
 				return;
 			} else {
 				usleep_range(1000,1000);
@@ -1252,7 +1185,7 @@ static void richtap_update_fifo_data(struct aw_haptic *aw_haptic, uint32_t fifo_
 	if (pos <= 0)
 		return;
 	aw_haptic->func->set_rtp_data(aw_haptic, aw_haptic->rtp_ptr, pos);
-	pr_err("richtap_update_fifo_data data %d,samples_left = %d\n", pos, samples_left);
+	aw_dbg("data %d,samples_left = %d", pos, samples_left);
 }
 
 static bool richtap_rtp_start(struct aw_haptic *aw_haptic)
@@ -1271,11 +1204,11 @@ static bool richtap_rtp_start(struct aw_haptic *aw_haptic)
 		if ((reg_val & AW_GLBRD_STATE_MASK) == AW_STATE_RTP) {
 			cnt = 0;
 			rtp_work_flag = true;
-			pr_info("richtap_rtp_start:RTP_GO! glb_state=0x08\n");
+			aw_dbg("RTP_GO! glb_state=0x08");
 			break;
 		} else if (atomic_read(&aw_haptic->richtap_rtp_mode)){
 			cnt--;
-			pr_info("richtap_rtp_start: wait for RTP_GO, glb_state=0x%02X\n", reg_val);
+			aw_dbg("wait for RTP_GO, glb_state=0x%02X", reg_val);
 			usleep_range(2000, 2500);
 		}
 	}
@@ -1321,12 +1254,12 @@ static void richtap_rtp_work(struct work_struct *work)
 		msleep(1);
 	} while(tmp_len < aw_haptic->ram.base_addr && retry++ < 30);
 
-	pr_info("richtap_rtp_work rtp 1837 tm_len = %d\n", tmp_len);
+	aw_dbg("rtp 1837 tm_len = %d", tmp_len);
 
 	if (tmp_len <= 0)
 		return;
 	if (richtap_rtp_start(aw_haptic)) {
-		pr_info("richtap_rtp_work start richtap play\n");
+		aw_dbg("richtap work play");
 		pm_qos_enable(aw_haptic, true);
 		aw_haptic->func->set_rtp_data(aw_haptic, aw_haptic->rtp_ptr, tmp_len);
 		aw_haptic->func->set_rtp_aei(aw_haptic, false);
@@ -1341,7 +1274,7 @@ static void richtap_rtp_work(struct work_struct *work)
 
 			glb_state_val = aw_haptic->func->get_glb_state(aw_haptic);
 			if((glb_state_val & AW_GLBRD_STATE_MASK) == AW_STATE_STANDBY){
-				pr_err("debugrichtap work break\n");
+				aw_err("richtap work break");
 				break;
 			}
 		}
@@ -1380,7 +1313,7 @@ static int richtap_file_open(struct inode *inode, struct file *file)
 		file->private_data = (void *)right;
 	}else{
 		file->private_data = (void *)NULL;
-		pr_err("richtap_file_open: file private_data err!");
+		aw_err("file private_data err!");
 	}
 #else
 	file->private_data = (void *)g_aw_haptic;
@@ -1400,7 +1333,7 @@ static long richtap_file_unlocked_ioctl(struct file *filp, unsigned int cmd, uns
 	struct aw_haptic *aw_haptic = (struct aw_haptic *)filp->private_data;
 	int ret = 0, tmp;
 
-	pr_info("richtap_file_unlocked_ioctl: cmd=0x%x, arg=0x%lx\n", cmd, arg);
+	aw_dbg("cmd=0x%x, arg=0x%lx", cmd, arg);
 
 	switch (cmd) {
 		case RICHTAP_GET_HWINFO:
@@ -1438,7 +1371,7 @@ static long richtap_file_unlocked_ioctl(struct file *filp, unsigned int cmd, uns
 			if(arg > 0x80)
 				arg = 0x80;
 			//aw_haptic->func->enable_gain(aw_haptic, 1);
-			aw_haptic->func->set_gain(aw_haptic, (uint8_t)arg);
+			__set_gain(aw_haptic, (uint8_t)arg);
 			break;
 		case RICHTAP_STREAM_MODE:
 			if (!nt_hold_wake) {
@@ -1707,10 +1640,10 @@ static int audio_ctrl_list_ins(struct aw_haptic *aw_haptic,
 	struct aw_haptic_ctr *p_new = NULL;
 	struct aw_haptic_audio *haptic_audio = &aw_haptic->haptic_audio;
 
-	p_new = (struct aw_haptic_ctr *)kzalloc(
+	p_new = (struct aw_haptic_ctr *)kmalloc(
 		sizeof(struct aw_haptic_ctr), GFP_KERNEL);
 	if (p_new == NULL) {
-		aw_err("kzalloc memory fail");
+		aw_err("kmalloc memory fail");
 		return -ENOMEM;
 	}
 	/* update new list info */
@@ -1747,7 +1680,7 @@ static void audio_off(struct aw_haptic *aw_haptic)
 {
 	aw_info("enter");
 	mutex_lock(&aw_haptic->lock);
-	aw_haptic->func->set_gain(aw_haptic, 0x80);
+	__set_gain(aw_haptic, 0x80);
 	aw_haptic->func->play_stop(aw_haptic);
 	audio_ctrl_list_clr(&aw_haptic->haptic_audio);
 	mutex_unlock(&aw_haptic->lock);
@@ -1912,7 +1845,7 @@ static void audio_work_routine(struct work_struct *work)
 			aw_haptic->func->set_wav_seq(aw_haptic, 0x01, 0x00);
 			aw_haptic->func->set_wav_loop(aw_haptic, 0x00,
 						      ctr->loop);
-			aw_haptic->func->set_gain(aw_haptic, ctr->gain);
+			__set_gain(aw_haptic, ctr->gain);
 			aw_haptic->func->play_go(aw_haptic, true);
 			mutex_unlock(&aw_haptic->lock);
 		} else if (ctr->play == AW_PLAY_STOP) {
@@ -1921,7 +1854,7 @@ static void audio_work_routine(struct work_struct *work)
 			mutex_unlock(&aw_haptic->lock);
 		} else if (ctr->play == AW_PLAY_GAIN) {
 			mutex_lock(&aw_haptic->lock);
-			aw_haptic->func->set_gain(aw_haptic, ctr->gain);
+			__set_gain(aw_haptic, ctr->gain);
 			mutex_unlock(&aw_haptic->lock);
 		}
 	}
@@ -2182,6 +2115,36 @@ static ssize_t vmax_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+static ssize_t custom_gain_show(struct device *dev, struct device_attribute *attr,
+			 char *buf)
+{
+	cdev_t *cdev = dev_get_drvdata(dev);
+	struct aw_haptic *aw_haptic = container_of(cdev, struct aw_haptic,
+						   vib_dev);
+
+	return snprintf(buf, PAGE_SIZE, "custom_gain = 0x%02X\n", aw_haptic->custom_gain);
+}
+
+static ssize_t custom_gain_store(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t count)
+{
+	cdev_t *cdev = dev_get_drvdata(dev);
+	struct aw_haptic *aw_haptic = container_of(cdev, struct aw_haptic,
+						   vib_dev);
+	uint32_t val = 0;
+	int rc = 0;
+
+	rc = kstrtouint(buf, 0, &val);
+	if (rc < 0)
+		return rc;
+	aw_info("value=0x%02x", val);
+	mutex_lock(&aw_haptic->lock);
+	aw_haptic->custom_gain = val;
+	aw_haptic->func->set_gain(aw_haptic, aw_haptic->custom_gain);
+	mutex_unlock(&aw_haptic->lock);
+	return count;
+}
+
 static ssize_t gain_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
 {
@@ -2204,10 +2167,11 @@ static ssize_t gain_store(struct device *dev, struct device_attribute *attr,
 	rc = kstrtouint(buf, 0, &val);
 	if (rc < 0)
 		return rc;
+
 	aw_info("value=0x%02x", val);
 	mutex_lock(&aw_haptic->lock);
 	aw_haptic->gain = val;
-	aw_haptic->func->set_gain(aw_haptic, aw_haptic->gain);
+	__set_gain(aw_haptic, aw_haptic->gain);
 	mutex_unlock(&aw_haptic->lock);
 	return count;
 }
@@ -2793,7 +2757,7 @@ static ssize_t haptic_audio_store(struct device *dev,
 						   vib_dev);
 
 	uint32_t databuf[6] = { 0 };
-	struct aw_haptic_ctr *hap_ctr = NULL;
+	struct aw_haptic_ctr hap_ctr;
 
 	if (!aw_haptic->ram_init) {
 		aw_err("ram init failed, not allow to play!");
@@ -2807,21 +2771,15 @@ static ssize_t haptic_audio_store(struct device *dev,
 				databuf[4], databuf[5]);
 		}
 
-		hap_ctr = (struct aw_haptic_ctr *)kzalloc(
-			sizeof(struct aw_haptic_ctr), GFP_KERNEL);
-		if (hap_ctr == NULL) {
-			aw_err("kzalloc memory fail");
-			return count;
-		}
 		mutex_lock(&aw_haptic->haptic_audio.lock);
-		hap_ctr->cnt = (uint8_t)databuf[0];
-		hap_ctr->cmd = (uint8_t)databuf[1];
-		hap_ctr->play = (uint8_t)databuf[2];
-		hap_ctr->wavseq = (uint8_t)databuf[3];
-		hap_ctr->loop = (uint8_t)databuf[4];
-		hap_ctr->gain = (uint8_t)databuf[5];
-		audio_ctrl_list_ins(aw_haptic, hap_ctr);
-		if (hap_ctr->cmd == 0xff) {
+		hap_ctr.cnt = (uint8_t)databuf[0];
+		hap_ctr.cmd = (uint8_t)databuf[1];
+		hap_ctr.play = (uint8_t)databuf[2];
+		hap_ctr.wavseq = (uint8_t)databuf[3];
+		hap_ctr.loop = (uint8_t)databuf[4];
+		hap_ctr.gain = (uint8_t)databuf[5];
+		audio_ctrl_list_ins(aw_haptic, &hap_ctr);
+		if (hap_ctr.cmd == 0xff) {
 			aw_info("haptic_audio stop");
 			if (hrtimer_active(&aw_haptic->haptic_audio.timer)) {
 				aw_info("cancel haptic_audio_timer");
@@ -2845,7 +2803,6 @@ static ssize_t haptic_audio_store(struct device *dev,
 			}
 		}
 		mutex_unlock(&aw_haptic->haptic_audio.lock);
-		kfree(hap_ctr);
 	}
 	return count;
 }
@@ -2959,7 +2916,7 @@ static ssize_t awrw_show(struct device *dev, struct device_attribute *attr,
 		aw_err("no read mode");
 		return -ERANGE;
 	}
-	if (aw_haptic->i2c_info.reg_data == NULL) {
+	if (aw_haptic->i2c_info.reg_num == 0 || aw_haptic->i2c_info.reg_num > AW_HAPTIC_REG_MAX) {
 		aw_err("awrw lack param");
 		return -ERANGE;
 	}
@@ -2986,15 +2943,12 @@ static ssize_t awrw_store(struct device *dev, struct device_attribute *attr,
 						   vib_dev);
 
 	if (sscanf(buf, "%x %x %x", &flag, &reg_num, &reg_addr) == 3) {
-		if (!reg_num) {
+		if (reg_num == 0 || reg_num > AW_HAPTIC_REG_MAX) {
 			aw_err("param error");
 			return -ERANGE;
 		}
 		aw_haptic->i2c_info.flag = flag;
 		aw_haptic->i2c_info.reg_num = reg_num;
-		if (aw_haptic->i2c_info.reg_data != NULL)
-			kfree(aw_haptic->i2c_info.reg_data);
-		aw_haptic->i2c_info.reg_data = kmalloc(reg_num, GFP_KERNEL);
 		if (flag == AW_SEQ_WRITE) {
 			if ((reg_num * 5) != (strlen(buf) - 3 * 5)) {
 				aw_err("param error");
@@ -3318,6 +3272,7 @@ static DEVICE_ATTR(ram_f0, S_IWUSR | S_IRUGO, ram_f0_show, NULL);
 static DEVICE_ATTR(seq, S_IWUSR | S_IRUGO, seq_show, seq_store);
 static DEVICE_ATTR(reg, S_IWUSR | S_IRUGO, reg_show, reg_store);
 static DEVICE_ATTR(vmax, S_IWUSR | S_IRUGO, vmax_show, vmax_store);
+static DEVICE_ATTR(custom_gain, S_IWUSR | S_IRUGO, custom_gain_show, custom_gain_store);
 static DEVICE_ATTR(gain, S_IWUSR | S_IRUGO, gain_show, gain_store);
 static DEVICE_ATTR(loop, S_IWUSR | S_IRUGO, loop_show, loop_store);
 static DEVICE_ATTR(rtp, S_IWUSR | S_IRUGO, rtp_show, rtp_store);
@@ -3371,6 +3326,7 @@ static struct attribute *vibrator_attributes[] = {
 	&dev_attr_activate_mode.attr,
 	&dev_attr_index.attr,
 	&dev_attr_vmax.attr,
+	&dev_attr_custom_gain.attr,
 	&dev_attr_gain.attr,
 	&dev_attr_seq.attr,
 	&dev_attr_loop.attr,
