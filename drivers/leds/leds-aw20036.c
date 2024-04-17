@@ -274,7 +274,7 @@ static void aw20036_brightness_work(struct work_struct *work)
 	struct aw20036 *aw20036 = container_of(work, struct aw20036,
 					       brightness_work);
 
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	if (aw20036->cdev.brightness > aw20036->cdev.max_brightness)
 		aw20036->cdev.brightness = aw20036->cdev.max_brightness;
@@ -329,7 +329,7 @@ static void aw20036_update_cfg_array(struct aw20036 *aw20036,
 
 static int aw20036_cfg_update_array(struct aw20036 *aw20036)
 {
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	aw20036_update_cfg_array(aw20036,
 				 (aw20036_cfg_array[aw20036->effect].p),
@@ -346,7 +346,7 @@ static void aw20036_cfg_loaded(const struct firmware *cont, void *context)
 	unsigned char reg_addr = 0;
 	unsigned char reg_val = 0;
 
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	if (!cont) {
 		pr_info("%s: failed to read %s\n", __func__,
@@ -385,7 +385,7 @@ static int aw20036_cfg_update(struct aw20036 *aw20036)
 {
 	int ret;
 
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 	ret = 0;
 
 	if (aw20036->effect < (sizeof(aw20036_cfg_name) / AW20036_CFG_NAME_MAX)) {
@@ -445,7 +445,7 @@ static int aw20036_rgbcolor_config(struct aw20036 *aw20036)
 
 static int aw20036_hw_reset(struct aw20036 *aw20036)
 {
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	if (aw20036 && gpio_is_valid(aw20036->reset_gpio)) {
 		gpio_set_value_cansleep(aw20036->reset_gpio, 0);
@@ -455,13 +455,13 @@ static int aw20036_hw_reset(struct aw20036 *aw20036)
 	} else {
 		dev_err(aw20036->dev, "%s:  failed\n", __func__);
 	}
-	pr_info("%s: enter out\n", __func__);
+	pr_debug("%s: enter out\n", __func__);
 	return 0;
 }
 
 static int aw20036_hw_off(struct aw20036 *aw20036)
 {
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 	if (aw20036 && gpio_is_valid(aw20036->reset_gpio)) {
 		gpio_set_value_cansleep(aw20036->reset_gpio, 0);
 		msleep(1);
@@ -479,7 +479,7 @@ static int aw20036_hw_off(struct aw20036 *aw20036)
  ******************************************************/
 static int aw20036_led_init(struct aw20036 *aw20036)
 {
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	aw20036_reg_page_cfg(aw20036, AW20036_REG_PAGE0);
 	aw20036_i2c_write(aw20036, 0x02, 0x01);
@@ -532,11 +532,10 @@ static irqreturn_t aw20036_irq(int irq, void *data)
 	struct aw20036 *aw20036 = data;
 	unsigned char reg_val;
 
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	aw20036_i2c_read(aw20036, REG_ISRFLT, &reg_val);
-	pr_info("%s: reg INTST=0x%x\n", __func__, reg_val);
-	pr_info("%s exit\n", __func__);
+	pr_debug("%s: reg INTST=0x%x\n", __func__, reg_val);
 
 	return IRQ_HANDLED;
 }
@@ -613,7 +612,7 @@ static void aw20036_breath_pattern_0(struct aw20036 *aw20036,  unsigned char *da
 	unsigned char allON = 0x3F;
 	unsigned int i;
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	T1 = data[0];
 	T2 = data[1];
@@ -687,7 +686,7 @@ static void aw20036_breath_pattern_1(struct aw20036 *aw20036, unsigned char *dat
 	unsigned char allON = 0x3F;
 	unsigned int i;
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	T1 = data[0];
 	T2 = data[1];
@@ -762,7 +761,7 @@ static void aw20036_breath_pattern_2(struct aw20036 *aw20036,  unsigned char *da
 	unsigned char allON = 0x3F;
 	unsigned int i;
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	T1 = data[0];
 	T2 = data[1];
@@ -1086,7 +1085,7 @@ static ssize_t aw20036_frame_brightness_store(struct device *dev,
 	unsigned char brightness_1[13] = {0};
 	unsigned char brightness_2[22] = {0};
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	pm_stay_awake(aw20036->dev);
 
@@ -1210,7 +1209,7 @@ static ssize_t aw20036_operating_mode_store(struct device *dev,
 
 	sscanf(buf, "%d", &val);
 
-	pr_info("%s: var %d mode %d\n", __func__, val, aw20036->operating_mode);
+	pr_debug("%s: var %d mode %d\n", __func__, val, aw20036->operating_mode);
 
 	if(val ==1){/*active*/
 		if(aw20036->operating_mode ==0){
@@ -1251,7 +1250,7 @@ static ssize_t aw20036_operating_mode_store(struct device *dev,
 static ssize_t aw20036_hwid_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	return sprintf(buf, "%s\n", hw_ver);
 }
@@ -1263,7 +1262,7 @@ static ssize_t aw20036_hwid_store(struct device *dev,
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct aw20036 *aw20036 = container_of(led_cdev, struct aw20036, cdev);
 
-	pr_info("%s %s %d\n", __func__, buf, len);
+	pr_info("%s: \"%s\" (%d)\n", __func__, buf, len);
 
 	if(len > sizeof(hw_ver)){
 		pr_info("%s: invalid hwid \n", __func__);
@@ -1297,7 +1296,7 @@ static ssize_t aw20036_hwid_store(struct device *dev,
 static ssize_t aw20036_dev_color_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	return sprintf(buf, "%s\n", dev_color);
 }
@@ -1309,7 +1308,7 @@ static ssize_t aw20036_dev_color_store(struct device *dev,
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct aw20036 *aw20036 = container_of(led_cdev, struct aw20036, cdev);
 
-	pr_info("%s %s %d\n", __func__, buf, len);
+	pr_info("%s: \"%s\" (%d)\n", __func__, buf, len);
 
 	if(len > sizeof(dev_color)){
 		pr_info("%s: invalid hwid \n", __func__);
@@ -1333,7 +1332,7 @@ int factory_led1=0, factory_led2=0, factory_led3=0, factory_led4=0, factory_led5
 static ssize_t aw20036_factory_test_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	return sprintf(buf, "%d %d %d %d %d\n", factory_led1, factory_led2, factory_led3, factory_led4, factory_led5);
 }
@@ -1353,7 +1352,7 @@ static ssize_t aw20036_factory_test_store(struct device *dev,
 	int led4 =13;
 	int ret = 0;
 
-	pr_info("%s enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	aw20036_hw_reinit(aw20036);
 
@@ -1460,12 +1459,12 @@ static ssize_t aw20036_factory_test_store(struct device *dev,
 	struct aw20036 *aw20036 = container_of(led_cdev, struct aw20036, cdev);
 	int state, id;
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	aw20036_hw_reinit(aw20036);
 
 	if (sscanf(buf, "%d %d", &state, &id) == 2){
-		pr_info("%s state:%d, id:%d\n", __func__, state, id);
+		pr_info("%s: state:%d, id:%d\n", __func__, state, id);
 		if(aw20036->vip_notification != state){
 			if(state == 1){
 				atomic_set(&aw20036->breath_config, 0);
@@ -1475,14 +1474,14 @@ static ssize_t aw20036_factory_test_store(struct device *dev,
 			}else if(state == 0){
 				aw20036->vip_notification = 0;
 				if(atomic_read(&aw20036->breath_config) ==0){
-					pr_info("%s breath_config 0\n", __func__);
+					pr_info("%s: breath_config 0\n", __func__);
 					wait_for_completion(&aw20036->completion);
 				}
 				aw20036_reg_page_cfg(aw20036, AW20036_REG_PAGE0);
 				aw20036_i2c_write(aw20036, REG_PATE, 0x00); //set pattern disable
 				aw20036_i2c_write(aw20036, REG_PATGO, 0x00); //set run disable
 				aw20036_i2c_write_bits(aw20036, REG_GCCR, BIT_ALLON_MASK, BIT_GCR_ALLON_ENABLE);
-				pr_info("%s state:%d end\n", __func__, state);
+				pr_info("%s: state:%d end\n", __func__, state);
 			}
 		}
 	}
@@ -1495,7 +1494,7 @@ static ssize_t aw20036_always_on_show(struct device *dev,
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct aw20036 *aw20036 = container_of(led_cdev, struct aw20036, cdev);
 
-	pr_info("%s aw20036->always_on:%d\n", __func__, aw20036->always_on);
+	pr_info("%s: aw20036->always_on:%d\n", __func__, aw20036->always_on);
 
 	return sprintf(buf, "%d\n", aw20036->always_on);
 }
@@ -1510,7 +1509,7 @@ static ssize_t aw20036_always_on_store(struct device *dev,
 
 	sscanf(buf, "%d", &val);
 
-	pr_info("%s val:%d\n", __func__, val);
+	pr_info("%s: val:%d\n", __func__, val);
 
 	aw20036->always_on = val;
 	return len;
@@ -1559,7 +1558,7 @@ static int aw20036_init_led_cdev(struct aw20036 *aw20036,
 	struct device_node *temp;
 	int ret = -1;
 
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	for_each_child_of_node(np, temp) {
 		ret = of_property_read_string(temp, "aw20036,name",
@@ -1634,7 +1633,7 @@ static void aw20036_vip_notification_work(struct work_struct *work)
 	struct aw20036_breath_group breath_effect[]= {
 		{pat0_0, pat1_0, pat2_0}
 	};
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	pm_stay_awake(aw20036->dev);
 	if(aw20036->vip_notification_id > (sizeof(breath_effect)/sizeof(breath_effect[0])-1)){
@@ -1713,13 +1712,13 @@ static void aw20036_leds_effect_work(struct work_struct *work)
 	int led3[8] = {21, 33, 10, 22, 34, 11, 23, 35};
 	int led_33[33] = {12, 0, 24, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 19, 20, 26, 27, 28, 29, 30, 31, 32, 9, 21, 33, 10, 22, 34, 11, 23, 35};
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	pm_stay_awake(aw20036->dev);
 	aw20036->curr_buf = aw20036->start_buf;
 	do {
 		if(aw20036->curr_buf->status == MMAP_BUF_DATA_VALID) {
-			pr_info("%s aw20036->curr_buf->length:%d\n", __func__,  aw20036->curr_buf->length);
+			pr_debug("%s aw20036->curr_buf->length:%d\n", __func__,  aw20036->curr_buf->length);
 			if(aw20036->sec_num == 5){
 				for (i = 0; i < aw20036->curr_buf->length; i += 5){
 					start = ktime_get();
@@ -1758,29 +1757,29 @@ static void aw20036_leds_effect_work(struct work_struct *work)
 					/*led4*/
 					brightness_1[9] = aw20036->curr_buf->data[i+4]*aw20036->curr_buf->brightness/MAX_BRIGHTNESS;
 					if(aw20036->stream_mode ==0){
-						pr_info("%s break 1-0\n", __func__);
+						pr_debug("%s break 1-0\n", __func__);
 						break;
 					}
 					aw20036_reg_page_cfg(aw20036, AW20036_REG_PAGE2);
 					aw20036_i2c_write_block(aw20036, 0x00, 13, brightness_1); /*led(0-12)*/
 					aw20036_i2c_write_block(aw20036, 0x0E, 22, brightness_2); /*led(14-35)*/
 					if(aw20036->stream_mode ==0){
-						pr_info("%s break 1-1\n", __func__);
+						pr_debug("%s break 1-1\n", __func__);
 						break;
 					}
 					runtime  = ktime_sub(ktime_get(), start);
 					delay = 16666*1000 - runtime;//ns
 					if(delay > 0){
-						//pr_info("%s delay:%d\n", __func__, delay/1000);
+						//pr_debug("%s delay:%d\n", __func__, delay/1000);
 						usleep_range(delay/1000, delay/1000);
 					}
 					if(aw20036->stream_mode ==0){
-						pr_info("%s break 1-2\n", __func__);
+						pr_debug("%s break 1-2\n", __func__);
 						break;
 					}
 				}
 				if((aw20036->curr_buf->length < 500) ||(aw20036->stream_mode ==0)){
-					pr_info("%s break 3\n", __func__);
+					pr_debug("%s break 3\n", __func__);
 					break;
 				}
 			}else if(aw20036->sec_num == 33){
@@ -1798,29 +1797,29 @@ static void aw20036_leds_effect_work(struct work_struct *work)
 					       };
 					}
 					if(aw20036->stream_mode ==0){
-						pr_info("%s break 2-0\n", __func__);
+						pr_debug("%s break 2-0\n", __func__);
 						break;
 					}
 					aw20036_reg_page_cfg(aw20036, AW20036_REG_PAGE2);
 					aw20036_i2c_write_block(aw20036, 0x00, 13, brightness_1); /*led(0-12)*/
 					aw20036_i2c_write_block(aw20036, 0x0E, 22, brightness_2); /*led(14-35)*/
 					if(aw20036->stream_mode ==0){
-						pr_info("%s break 2-1\n", __func__);
+						pr_debug("%s break 2-1\n", __func__);
 						break;
 					}
 					runtime  = ktime_sub(ktime_get(), start);
 					delay = 16666*1000 - runtime;//ns
 					if(delay > 0){
-						//pr_info("%s delay:%d\n", __func__, delay/1000);
+						//pr_debug("%s delay:%d\n", __func__, delay/1000);
 						usleep_range(delay/1000, delay/1000);
 					}
 					if(aw20036->stream_mode ==0){
-						pr_info("%s break 2-2\n", __func__);
+						pr_debug("%s break 2-2\n", __func__);
 						break;
 					}
 				}
 				if((aw20036->curr_buf->length < 495) ||(aw20036->stream_mode ==0)){
-					pr_info("%s break 2-3\n", __func__);
+					pr_debug("%s break 2-3\n", __func__);
 					break;
 				}
 			}
@@ -1829,18 +1828,18 @@ static void aw20036_leds_effect_work(struct work_struct *work)
 			aw20036->curr_buf = aw20036->curr_buf->kernel_next;
 			retry =0;
 		} else if (aw20036->curr_buf->status == MMAP_BUF_DATA_FINISHED) {
-			pr_info("%s break 4\n", __func__);
+			pr_debug("%s break 4\n", __func__);
 			break;
 		} else {
 			if(aw20036->stream_mode ==0){
-				pr_info("%s break 5\n", __func__);
+				pr_debug("%s break 5\n", __func__);
 				break;
 			}
-			pr_info("%s msleep 1\n", __func__);
+			pr_debug("%s msleep 1\n", __func__);
 			msleep(1);
 		}
 		if(aw20036->stream_mode ==0){
-			pr_info("%s break 6\n", __func__);
+			pr_debug("%s break 6\n", __func__);
 			break;
 		}
 	} while( retry++ < 30);
@@ -1853,7 +1852,7 @@ static void aw20036_leds_effect_work(struct work_struct *work)
 
 	ev_happen = 1;
 	ev_code = '1';
-	pr_info("%s ev_happen:%d ev_code:%c\n",__func__,ev_happen, ev_code);
+	pr_debug("%s ev_happen:%d ev_code:%c\n",__func__,ev_happen, ev_code);
 	wake_up_interruptible(&aw20036_waitq);
 	aw20036_clean_buf(aw20036, MMAP_BUF_DATA_FINISHED);
 	pm_relax(aw20036->dev);
@@ -1862,12 +1861,12 @@ static void aw20036_leds_effect_work(struct work_struct *work)
 static int justOpenOnce = 0;
 static int aw20036_open(struct inode *inode, struct file *filp)
 {
-	pr_info("enter\n");
+	pr_debug("%s: enter\n", __func__);
 	if (justOpenOnce == 0){
 		justOpenOnce++;
 	}
 	else{
-		pr_info("%s err\n", __func__);
+		pr_err("%s: err\n", __func__);
 	}
 	return 0;
 
@@ -1875,10 +1874,10 @@ static int aw20036_open(struct inode *inode, struct file *filp)
 static int aw20036_release(struct inode *inode, struct file *filp)
 {
 	if( justOpenOnce > 0){
-		pr_info("Now the led_strips has been closed!\n");
+		pr_info("%s: Now the led_strips has been closed!\n", __func__);
 		justOpenOnce = 0;
 	} else{
-		pr_info("The the led_strips has already been closed!\n");
+		pr_info("%s: The the led_strips has already been closed!\n", __func__);
 	}
 
 	return 0;
@@ -1888,7 +1887,7 @@ static ssize_t aw20036_read(struct file *file, char __user *user, size_t size,lo
 {
 	int ret =0;
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 	if (size != 1)
 		return -EINVAL;
 	wait_event_interruptible(aw20036_waitq, ev_happen);
@@ -1929,7 +1928,7 @@ static int aw20036_mmap(struct file *filp, struct vm_area_struct *vma)
 	}
 #endif
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	phys = virt_to_phys(aw20036->start_buf);
 
@@ -1947,7 +1946,7 @@ static unsigned int aw20036_poll(struct file *file, poll_table *wait)
 {
 	unsigned int mask = 0;
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 	poll_wait(file, &aw20036_waitq, wait);
 	if(ev_happen == 1)
 	{
@@ -1967,32 +1966,32 @@ long aw20036_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch(cmd){
 		case LED_STRIPS_STREAM_MODE:
-			pr_info("%s LED_STRIPS_STREAM_MODE\n", __func__);
+			pr_debug("%s LED_STRIPS_STREAM_MODE\n", __func__);
 			if(copy_from_user(&aw20036->sec_num, argp, 1)){
 				return -EFAULT;
 			}
-			pr_info("%s aw20036->sec_num:%d \n", __func__, aw20036->sec_num);
+			pr_debug("%s aw20036->sec_num:%d \n", __func__, aw20036->sec_num);
 			aw20036->stream_mode =1;
 			queue_work(aw20036->leds_workqueue, &aw20036->leds_effect_work);
 			break;
 		case LED_STRIPS_STOP_MODE:
-			pr_info("%s LED_STRIPS_STOP_MODE\n", __func__);
+			pr_debug("%s LED_STRIPS_STOP_MODE\n", __func__);
 			aw20036->stream_mode =0;
 			aw20036_clean_buf(aw20036, MMAP_BUF_DATA_FINISHED);
 			break;
 		case LED_STRIPS_ALWAYS_ON:
-			pr_info("%s LED_STRIPS_ALWAYS_ON \n", __func__);
+			pr_debug("%s LED_STRIPS_ALWAYS_ON \n", __func__);
 			if(copy_from_user(&aw20036->always_on, argp, 1)){
 				return -EFAULT;
 			}
-			pr_info("%s aw20036->always_on:%d \n", __func__, aw20036->always_on);
+			pr_debug("%s aw20036->always_on:%d \n", __func__, aw20036->always_on);
 			break;
 	      case LED_STRIPS_FREQ_SET:
-			pr_info("%s LED_STRIPS_FREQ_SET \n", __func__);
+			pr_debug("%s LED_STRIPS_FREQ_SET \n", __func__);
 			if(copy_from_user(&buf, argp, 1)){
 				return -EFAULT;
 			}
-			pr_info("%s %d \n", __func__, buf);
+			pr_debug("%s %d \n", __func__, buf);
 			aw20036_reg_page_cfg(aw20036, AW20036_REG_PAGE0);
 			if(buf == 0){
 				aw20036_i2c_write_block(aw20036, 0x83, 4, data0);
@@ -2001,7 +2000,7 @@ long aw20036_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			}
 			break;
 		default:
-			pr_info("%s:No match Mode.\n", __func__);
+			pr_err("%s: No match Mode.\n", __func__);
 			break;
 	}
 	return 0;
@@ -2039,7 +2038,7 @@ static int aw20036_i2c_probe(struct i2c_client *i2c,
 	int ret;
 	int irq_flags;
 
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	if (!i2c_check_functionality(i2c->adapter, I2C_FUNC_I2C)) {
 		dev_err(&i2c->dev, "check_functionality failed\n");
@@ -2197,7 +2196,7 @@ static int aw20036_i2c_remove(struct i2c_client *i2c)
 {
 	struct aw20036 *aw20036 = i2c_get_clientdata(i2c);
 
-	pr_info("%s enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 	sysfs_remove_group(&aw20036->cdev.dev->kobj, &aw20036_attribute_group);
 	led_classdev_unregister(&aw20036->cdev);
 
@@ -2220,10 +2219,10 @@ static int aw20036_i2c_remove(struct i2c_client *i2c)
 static int aw20036_suspend(struct device *dev)
 {
 	struct aw20036 *aw20036 = dev_get_drvdata(dev);
-	pr_info("%s vip %d fact %d always %d (%d)\n", __func__, aw20036->vip_notification,
+	pr_debug("%s vip %d fact %d always %d (%d)\n", __func__, aw20036->vip_notification,
 		aw20036->factory_test, aw20036->always_on, aw20036->suspend);
 	if((aw20036->vip_notification !=1) && (aw20036->factory_test !=1) && (aw20036->always_on !=1)){
-		pr_info("%s goto suspend\n", __func__);
+		pr_debug("%s goto suspend\n", __func__);
 		atomic_set(&aw20036->hw_init, 1);
 		aw20036_hw_off(aw20036);
 		aw20036->operating_mode =0;
@@ -2234,9 +2233,9 @@ static int aw20036_suspend(struct device *dev)
 static int aw20036_resume(struct device *dev)
 {
 	struct aw20036 *aw20036 = dev_get_drvdata(dev);
-	pr_info("%s (%d)\n", __func__, aw20036->suspend);
+	pr_debug("%s (%d)\n", __func__, aw20036->suspend);
 	if(aw20036->suspend == 1){
-		pr_info("%s is suspend\n", __func__);
+		pr_debug("%s is suspend\n", __func__);
 
 #ifdef POWER_SAVE_MODE
 		aw20036->operating_mode =2;
