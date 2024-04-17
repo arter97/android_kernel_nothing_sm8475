@@ -171,6 +171,15 @@ static int parse_dt_gpio(struct device *dev, struct aw_haptic *aw_haptic,
 	return 0;
 }
 
+// Wrapper for custom_gain
+static void __set_gain(struct aw_haptic *aw_haptic, uint8_t gain)
+{
+	if (aw_haptic->custom_gain)
+		aw_info("custom_gain(%u) is enabled, skipping setting gain %u...", aw_haptic->custom_gain, gain);
+	else
+		aw_haptic->func->set_gain(aw_haptic, gain);
+}
+
 static void hw_reset(struct aw_haptic *aw_haptic)
 {
 	aw_info("enter");
@@ -463,14 +472,14 @@ static void ram_vbat_comp(struct aw_haptic *aw_haptic, bool flag)
 				temp_gain = 128 * AW_VBAT_REFER / AW_VBAT_MIN;
 				aw_dbg("gain limit=%d", temp_gain);
 			}
-			aw_haptic->func->set_gain(aw_haptic, temp_gain);
+			__set_gain(aw_haptic, temp_gain);
 			aw_info("ram vbat comp open");
 		} else {
-			aw_haptic->func->set_gain(aw_haptic, aw_haptic->gain);
+			__set_gain(aw_haptic, aw_haptic->gain);
 			aw_info("ram vbat comp close");
 		}
 	} else {
-		aw_haptic->func->set_gain(aw_haptic, aw_haptic->gain);
+		__set_gain(aw_haptic, aw_haptic->gain);
 		aw_info("ram vbat comp close");
 	}
 }
@@ -784,7 +793,7 @@ static void input_gain_work_routine(struct work_struct *work)
 						   gain_work);
 
 	mutex_lock(&aw_haptic->lock);
-	aw_haptic->func->set_gain(aw_haptic, aw_haptic->gain);
+	__set_gain(aw_haptic, aw_haptic->gain);
 	mutex_unlock(&aw_haptic->lock);
 }
 
@@ -1443,7 +1452,7 @@ static long richtap_file_unlocked_ioctl(struct file *filp, unsigned int cmd, uns
 			if(arg > 0x80)
 				arg = 0x80;
 			//aw_haptic->func->enable_gain(aw_haptic, 1);
-			aw_haptic->func->set_gain(aw_haptic, (uint8_t)arg);
+			__set_gain(aw_haptic, (uint8_t)arg);
 			break;
 		case RICHTAP_STREAM_MODE:
 			if (!nt_hold_wake) {
@@ -1752,7 +1761,7 @@ static void audio_off(struct aw_haptic *aw_haptic)
 {
 	aw_info("enter");
 	mutex_lock(&aw_haptic->lock);
-	aw_haptic->func->set_gain(aw_haptic, 0x80);
+	__set_gain(aw_haptic, 0x80);
 	aw_haptic->func->play_stop(aw_haptic);
 	audio_ctrl_list_clr(&aw_haptic->haptic_audio);
 	mutex_unlock(&aw_haptic->lock);
@@ -1917,7 +1926,7 @@ static void audio_work_routine(struct work_struct *work)
 			aw_haptic->func->set_wav_seq(aw_haptic, 0x01, 0x00);
 			aw_haptic->func->set_wav_loop(aw_haptic, 0x00,
 						      ctr->loop);
-			aw_haptic->func->set_gain(aw_haptic, ctr->gain);
+			__set_gain(aw_haptic, ctr->gain);
 			aw_haptic->func->play_go(aw_haptic, true);
 			mutex_unlock(&aw_haptic->lock);
 		} else if (ctr->play == AW_PLAY_STOP) {
@@ -1926,7 +1935,7 @@ static void audio_work_routine(struct work_struct *work)
 			mutex_unlock(&aw_haptic->lock);
 		} else if (ctr->play == AW_PLAY_GAIN) {
 			mutex_lock(&aw_haptic->lock);
-			aw_haptic->func->set_gain(aw_haptic, ctr->gain);
+			__set_gain(aw_haptic, ctr->gain);
 			mutex_unlock(&aw_haptic->lock);
 		}
 	}
@@ -2187,6 +2196,36 @@ static ssize_t vmax_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+static ssize_t custom_gain_show(struct device *dev, struct device_attribute *attr,
+			 char *buf)
+{
+	cdev_t *cdev = dev_get_drvdata(dev);
+	struct aw_haptic *aw_haptic = container_of(cdev, struct aw_haptic,
+						   vib_dev);
+
+	return snprintf(buf, PAGE_SIZE, "custom_gain = 0x%02X\n", aw_haptic->custom_gain);
+}
+
+static ssize_t custom_gain_store(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t count)
+{
+	cdev_t *cdev = dev_get_drvdata(dev);
+	struct aw_haptic *aw_haptic = container_of(cdev, struct aw_haptic,
+						   vib_dev);
+	uint32_t val = 0;
+	int rc = 0;
+
+	rc = kstrtouint(buf, 0, &val);
+	if (rc < 0)
+		return rc;
+	aw_info("value=0x%02x", val);
+	mutex_lock(&aw_haptic->lock);
+	aw_haptic->custom_gain = val;
+	aw_haptic->func->set_gain(aw_haptic, aw_haptic->custom_gain);
+	mutex_unlock(&aw_haptic->lock);
+	return count;
+}
+
 static ssize_t gain_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
 {
@@ -2209,10 +2248,11 @@ static ssize_t gain_store(struct device *dev, struct device_attribute *attr,
 	rc = kstrtouint(buf, 0, &val);
 	if (rc < 0)
 		return rc;
+
 	aw_info("value=0x%02x", val);
 	mutex_lock(&aw_haptic->lock);
 	aw_haptic->gain = val;
-	aw_haptic->func->set_gain(aw_haptic, aw_haptic->gain);
+	__set_gain(aw_haptic, aw_haptic->gain);
 	mutex_unlock(&aw_haptic->lock);
 	return count;
 }
@@ -3313,6 +3353,7 @@ static DEVICE_ATTR(ram_f0, S_IWUSR | S_IRUGO, ram_f0_show, NULL);
 static DEVICE_ATTR(seq, S_IWUSR | S_IRUGO, seq_show, seq_store);
 static DEVICE_ATTR(reg, S_IWUSR | S_IRUGO, reg_show, reg_store);
 static DEVICE_ATTR(vmax, S_IWUSR | S_IRUGO, vmax_show, vmax_store);
+static DEVICE_ATTR(custom_gain, S_IWUSR | S_IRUGO, custom_gain_show, custom_gain_store);
 static DEVICE_ATTR(gain, S_IWUSR | S_IRUGO, gain_show, gain_store);
 static DEVICE_ATTR(loop, S_IWUSR | S_IRUGO, loop_show, loop_store);
 static DEVICE_ATTR(rtp, S_IWUSR | S_IRUGO, rtp_show, rtp_store);
@@ -3366,6 +3407,7 @@ static struct attribute *vibrator_attributes[] = {
 	&dev_attr_activate_mode.attr,
 	&dev_attr_index.attr,
 	&dev_attr_vmax.attr,
+	&dev_attr_custom_gain.attr,
 	&dev_attr_gain.attr,
 	&dev_attr_seq.attr,
 	&dev_attr_loop.attr,
