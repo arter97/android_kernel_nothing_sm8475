@@ -154,20 +154,19 @@ static bool __is_bitmap_valid(struct f2fs_sb_info *sbi, block_t blkaddr,
 	if (unlikely(f2fs_cp_error(sbi)))
 		return exist;
 
-	if ((exist && type == DATA_GENERIC_ENHANCE_UPDATE) ||
-		(!exist && type == DATA_GENERIC_ENHANCE))
-		goto out_err;
-	if (!exist && type != DATA_GENERIC_ENHANCE_UPDATE)
-		goto out_handle;
-	return exist;
+	if (exist && type == DATA_GENERIC_ENHANCE_UPDATE) {
+		f2fs_err(sbi, "Inconsistent error blkaddr:%u, sit bitmap:%d",
+			 blkaddr, exist);
+		set_sbi_flag(sbi, SBI_NEED_FSCK);
+		return exist;
+	}
 
-out_err:
-	f2fs_err(sbi, "Inconsistent error blkaddr:%u, sit bitmap:%d",
-		 blkaddr, exist);
-	set_sbi_flag(sbi, SBI_NEED_FSCK);
-	dump_stack();
-out_handle:
-	f2fs_handle_error(sbi, ERROR_INVALID_BLKADDR);
+	if (!exist && type == DATA_GENERIC_ENHANCE) {
+		f2fs_err(sbi, "Inconsistent error blkaddr:%u, sit bitmap:%d",
+			 blkaddr, exist);
+		set_sbi_flag(sbi, SBI_NEED_FSCK);
+		dump_stack();
+	}
 	return exist;
 }
 
@@ -179,22 +178,22 @@ static bool __f2fs_is_valid_blkaddr(struct f2fs_sb_info *sbi,
 		break;
 	case META_SIT:
 		if (unlikely(blkaddr >= SIT_BLK_CNT(sbi)))
-			goto err;
+			return false;
 		break;
 	case META_SSA:
 		if (unlikely(blkaddr >= MAIN_BLKADDR(sbi) ||
 			blkaddr < SM_I(sbi)->ssa_blkaddr))
-			goto err;
+			return false;
 		break;
 	case META_CP:
 		if (unlikely(blkaddr >= SIT_I(sbi)->sit_base_addr ||
 			blkaddr < __start_cp_addr(sbi)))
-			goto err;
+			return false;
 		break;
 	case META_POR:
 		if (unlikely(blkaddr >= MAX_BLKADDR(sbi) ||
 			blkaddr < MAIN_BLKADDR(sbi)))
-			goto err;
+			return false;
 		break;
 	case DATA_GENERIC:
 	case DATA_GENERIC_ENHANCE:
@@ -211,7 +210,7 @@ static bool __f2fs_is_valid_blkaddr(struct f2fs_sb_info *sbi,
 				  blkaddr);
 			set_sbi_flag(sbi, SBI_NEED_FSCK);
 			dump_stack();
-			goto err;
+			return false;
 		} else {
 			return __is_bitmap_valid(sbi, blkaddr, type);
 		}
@@ -219,16 +218,13 @@ static bool __f2fs_is_valid_blkaddr(struct f2fs_sb_info *sbi,
 	case META_GENERIC:
 		if (unlikely(blkaddr < SEG0_BLKADDR(sbi) ||
 			blkaddr >= MAIN_BLKADDR(sbi)))
-			goto err;
+			return false;
 		break;
 	default:
 		BUG();
 	}
 
 	return true;
-err:
-	f2fs_handle_error(sbi, ERROR_INVALID_BLKADDR);
-	return false;
 }
 
 bool f2fs_is_valid_blkaddr(struct f2fs_sb_info *sbi,
