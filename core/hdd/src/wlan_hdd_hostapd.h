@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -326,11 +326,15 @@ int wlan_hdd_cfg80211_stop_ap(struct wiphy *wiphy,
 int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 			       struct net_device *dev,
 			       struct cfg80211_ap_settings *params);
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
+				    struct net_device *dev,
+				    struct cfg80211_ap_update *params);
+#else
 int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
 				    struct net_device *dev,
 				    struct cfg80211_beacon_data *params);
-
+#endif
 /**
  * hdd_is_peer_associated - is peer connected to softap
  * @adapter: pointer to softap adapter

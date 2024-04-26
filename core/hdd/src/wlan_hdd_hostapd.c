@@ -7527,6 +7527,33 @@ static int __wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
 	return status;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+/**
+ * wlan_hdd_cfg80211_change_beacon() - change beacon content in sap mode
+ * @wiphy: Pointer to wiphy
+ * @dev: Pointer to netdev
+ * @params: Pointer to ap update parameters
+ *
+ * Return: zero for success non-zero for failure
+ */
+int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
+				    struct net_device *dev,
+				    struct cfg80211_ap_update *params)
+{
+	int errno;
+	struct osif_vdev_sync *vdev_sync;
+
+	errno = osif_vdev_sync_op_start(dev, &vdev_sync);
+	if (errno)
+		return errno;
+
+	errno = __wlan_hdd_cfg80211_change_beacon(wiphy, dev, &params->beacon);
+
+	osif_vdev_sync_op_stop(vdev_sync);
+
+	return errno;
+}
+#else
 /**
  * wlan_hdd_cfg80211_change_beacon() - change beacon content in sap mode
  * @wiphy: Pointer to wiphy
@@ -7552,6 +7579,7 @@ int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
 
 	return errno;
 }
+#endif
 
 /**
  * hdd_sap_indicate_disconnect_for_sta() - Indicate disconnect indication
