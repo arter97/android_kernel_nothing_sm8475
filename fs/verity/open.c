@@ -209,6 +209,12 @@ struct fsverity_info *fsverity_create_info(const struct inode *inode,
 		goto fail;
 	}
 
+	err = fsverity_hash_block(&vi->tree_params, inode,
+				  page_address(ZERO_PAGE(0)),
+				  vi->zero_block_hash);
+	if (err)
+		goto fail;
+
 	err = fsverity_verify_signature(vi, desc->signature,
 					le32_to_cpu(desc->sig_size));
 	if (err)

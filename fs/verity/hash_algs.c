@@ -82,8 +82,11 @@ const struct fsverity_hash_alg *fsverity_get_hash_alg(const struct inode *inode,
 	if (WARN_ON_ONCE(alg->block_size != crypto_shash_blocksize(tfm)))
 		goto err_free_tfm;
 
-	pr_info("%s using implementation \"%s\"\n",
-		alg->name, crypto_shash_driver_name(tfm));
+	alg->supports_multibuffer = (crypto_shash_mb_max_msgs(tfm) >= 2);
+
+	pr_info("%s using implementation \"%s\"%s\n",
+		alg->name, crypto_shash_driver_name(tfm),
+		alg->supports_multibuffer ? " (multibuffer)" : "");
 
 	/* pairs with smp_load_acquire() above */
 	smp_store_release(&alg->tfm, tfm);
@@ -192,6 +195,31 @@ int fsverity_hash_block(const struct merkle_tree_params *params,
 	}
 	if (err)
 		fsverity_err(inode, "Error %d computing block hash", err);
+	return err;
+}
+
+int fsverity_hash_2_blocks(const struct merkle_tree_params *params,
+			   const struct inode *inode, const void *data1,
+			   const void *data2, u8 *out1, u8 *out2)
+{
+	const u8 *data[2] = { data1, data2 };
+	u8 *outs[2] = { out1, out2 };
+	SHASH_DESC_ON_STACK(desc, params->hash_alg->tfm);
+	int err;
+
+	desc->tfm = params->hash_alg->tfm;
+
+	if (params->hashstate)
+		err = crypto_shash_import(desc, params->hashstate);
+	else
+		err = crypto_shash_init(desc);
+	if (err) {
+		fsverity_err(inode, "Error %d importing hash state", err);
+		return err;
+	}
+	err = crypto_shash_finup_mb(desc, data, params->block_size, outs, 2);
+	if (err)
+		fsverity_err(inode, "Error %d computing block hashes", err);
 	return err;
 }
 
