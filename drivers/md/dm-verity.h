@@ -57,6 +57,7 @@ struct dm_verity {
 	unsigned char version;
 	bool hash_failed:1;	/* set if hash of any block failed */
 	bool use_bh_wq:1;	/* try to verify in BH wq before normal work-queue */
+	bool use_finup_mb:1;	/* use crypto_shash_finup_mb() */
 	unsigned digest_size;	/* digest size for the current hash algorithm */
 	unsigned int hash_reqsize; /* the size of temporary space for crypto */
 	enum verity_mode mode;	/* mode for handling verification errors */
@@ -94,17 +95,10 @@ struct dm_verity_io {
 	char *recheck_buffer;
 
 	/*
-	 * Three variably-size fields follow this struct:
-	 *
-	 * u8 hash_req[v->hash_reqsize];
-	 * u8 real_digest[v->digest_size];
-	 * u8 want_digest[v->digest_size];
-	 *
-	 * To access them use: verity_io_hash_req(), verity_io_real_digest()
-	 * and verity_io_want_digest().
-	 *
-	 * hash_req is either a struct ahash_request or a struct shash_desc,
-	 * depending on whether ahash_tfm or shash_tfm is being used.
+	 * This struct is followed by a variable-sized hash request of size
+	 * v->hash_reqsize, either a struct ahash_request or a struct shash_desc
+	 * (depending on whether ahash_tfm or shash_tfm is being used).  To
+	 * access it, use verity_io_hash_req().
 	 */
 };
 
@@ -112,18 +106,6 @@ static inline void *verity_io_hash_req(struct dm_verity *v,
 				       struct dm_verity_io *io)
 {
 	return io + 1;
-}
-
-static inline u8 *verity_io_real_digest(struct dm_verity *v,
-					struct dm_verity_io *io)
-{
-	return (u8 *)(io + 1) + v->hash_reqsize;
-}
-
-static inline u8 *verity_io_want_digest(struct dm_verity *v,
-					struct dm_verity_io *io)
-{
-	return (u8 *)(io + 1) + v->hash_reqsize + v->digest_size;
 }
 
 extern int verity_for_bv_block(struct dm_verity *v, struct dm_verity_io *io,

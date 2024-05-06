@@ -186,14 +186,14 @@ error:
 static int fec_is_erasure(struct dm_verity *v, struct dm_verity_io *io,
 			  u8 *want_digest, u8 *data)
 {
+	u8 real_digest[HASH_MAX_DIGESTSIZE];
+
 	if (unlikely(verity_compute_hash_virt(v, io, data,
 					      1 << v->data_dev_block_bits,
-					      verity_io_real_digest(v, io),
-					      true)))
+					      real_digest, true)))
 		return 0;
 
-	return memcmp(verity_io_real_digest(v, io), want_digest,
-		      v->digest_size) != 0;
+	return memcmp(real_digest, want_digest, v->digest_size) != 0;
 }
 
 /*
@@ -364,10 +364,11 @@ static void fec_init_bufs(struct dm_verity *v, struct dm_verity_fec_io *fio)
  */
 static int fec_decode_rsb(struct dm_verity *v, struct dm_verity_io *io,
 			  struct dm_verity_fec_io *fio, u64 rsb, u64 offset,
-			  bool use_erasures)
+			  const u8 *want_digest, bool use_erasures)
 {
 	int r, neras = 0;
 	unsigned pos;
+	u8 real_digest[HASH_MAX_DIGESTSIZE];
 
 	r = fec_alloc_bufs(v, fio);
 	if (unlikely(r < 0))
@@ -391,12 +392,11 @@ static int fec_decode_rsb(struct dm_verity *v, struct dm_verity_io *io,
 	/* Always re-validate the corrected block against the expected hash */
 	r = verity_compute_hash_virt(v, io, fio->output,
 				     1 << v->data_dev_block_bits,
-				     verity_io_real_digest(v, io), true);
+				     real_digest, true);
 	if (unlikely(r < 0))
 		return r;
 
-	if (memcmp(verity_io_real_digest(v, io), verity_io_want_digest(v, io),
-		   v->digest_size)) {
+	if (memcmp(real_digest, want_digest, v->digest_size)) {
 		DMERR_LIMIT("%s: FEC %llu: failed to correct (%d erasures)",
 			    v->data_dev->name, (unsigned long long)rsb, neras);
 		return -EILSEQ;
@@ -421,8 +421,8 @@ static int fec_bv_copy(struct dm_verity *v, struct dm_verity_io *io, u8 *data,
  * otherwise to a bio_vec starting from iter.
  */
 int verity_fec_decode(struct dm_verity *v, struct dm_verity_io *io,
-		      enum verity_block_type type, sector_t block, u8 *dest,
-		      struct bvec_iter *iter)
+		      enum verity_block_type type, sector_t block,
+		      const u8 *want_digest, u8 *dest, struct bvec_iter *iter)
 {
 	int r;
 	struct dm_verity_fec_io *fio = fec_io(io);
@@ -465,9 +465,9 @@ int verity_fec_decode(struct dm_verity *v, struct dm_verity_io *io,
 	 * them first. Do a second attempt with erasures if the corruption is
 	 * bad enough.
 	 */
-	r = fec_decode_rsb(v, io, fio, rsb, offset, false);
+	r = fec_decode_rsb(v, io, fio, rsb, offset, want_digest, false);
 	if (r < 0) {
-		r = fec_decode_rsb(v, io, fio, rsb, offset, true);
+		r = fec_decode_rsb(v, io, fio, rsb, offset, want_digest, true);
 		if (r < 0)
 			goto done;
 	}
