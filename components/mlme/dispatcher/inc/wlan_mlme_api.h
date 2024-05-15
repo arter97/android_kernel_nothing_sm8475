@@ -3620,4 +3620,22 @@ wlan_mlme_get_peer_ch_width(struct wlan_objmgr_psoc *psoc, uint8_t *mac);
  */
 bool
 wlan_mlme_is_vendor_roam_score_algo_set(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * wlan_mlme_set_keepalive_period() - Save keep alive period
+ * @vdev: VDEV object
+ * @keep_alive_period: Keep alive period
+ *
+ * Return: None
+ */
+void wlan_mlme_set_keepalive_period(struct wlan_objmgr_vdev *vdev,
+				    uint16_t keep_alive_period);
+
+/**
+ * wlan_mlme_get_keepalive_period() - Get keep alive period
+ * @vdev: VDEV object
+ *
+ * Return: Keep alive period.
+ */
+uint16_t wlan_mlme_get_keepalive_period(struct wlan_objmgr_vdev *vdev);
 #endif /* _WLAN_MLME_API_H_ */

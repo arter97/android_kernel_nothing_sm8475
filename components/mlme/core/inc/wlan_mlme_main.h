@@ -454,6 +454,7 @@ struct mlme_ap_config {
  * @bss_color_change_wakelock: wakelock to complete bss color change
  *				operation on bss color collision detection
  * @bss_color_change_runtime_lock: runtime lock to complete bss color change
+ * @keep_alive_period: KEEPALIVE period in seconds
  */
 struct mlme_legacy_priv {
 	bool chan_switch_in_progress;
@@ -501,6 +502,7 @@ struct mlme_legacy_priv {
 	struct mlme_ap_config mlme_ap;
 	qdf_wake_lock_t bss_color_change_wakelock;
 	qdf_runtime_lock_t bss_color_change_runtime_lock;
+	uint16_t keep_alive_period;
 };
 
 /**

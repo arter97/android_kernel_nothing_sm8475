@@ -829,6 +829,8 @@ void wma_set_sta_keep_alive(tp_wma_handle wma, uint8_t vdev_id,
 			if (method == WMI_KEEP_ALIVE_NULL_PKT)
 				params.method = WMI_KEEP_ALIVE_MGMT_FRAME;
 		}
+
+		wlan_mlme_set_keepalive_period(intr->vdev, params.timeperiod);
 	}
 
 	if (hostv4addr)
