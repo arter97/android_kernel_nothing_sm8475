@@ -1,3 +1,97 @@
+88d7b12068b9 highmem: round down the address passed to kunmap_flush_on_unmap()
+c0371782500c vringh: replace kmap_atomic() with kmap_local_page()
+f7ef5fe74aaf mm/memory: replace kmap() with kmap_local_page()
+489c693bd04a PM: hibernate: Use kmap_local_page() in copy_data_page()
+73829b713470 zram: use kmap_local_page()
+829c3151f0f8 mm/swapfile: replace kmap_atomic() with kmap_local_page()
+003ae2fb0b36 mm/zswap: replace kmap_atomic() with kmap_local_page()
+f542b8e582ab mm/page_poison: replace kmap_atomic() with kmap_local_page()
+f2bcc99a5e90 mm/mempool: replace kmap_atomic() with kmap_local_page()
+24d2613a6356 mm/memory: use kmap_local_page() in __wp_page_copy_user()
+b33519896664 mm/ksm: use kmap_local_page() in calc_checksum()
+2f7537620f38 mm/util: use kmap_local_page() in memcmp_pages()
+ae96e0cdc78c lib: replace kmap() with kmap_local_page()
+da1a055d01ed lib/test_bpf: Call page_address() on page acquired with GFP_KERNEL flag
+3fda49e89f17 mm/swapfile: delete outdated pte_offset_map() comment
+46c475bd676b mm/pgtable: kmap_local_page() instead of kmap_atomic()
+0d508c1f0e2c userfaultfd: use kmap_local_page() in copy_huge_page_from_user()
+1683ed16ff1a fs/nfs: Replace kmap_atomic() with kmap_local_page() in dir.c
+0d78954a2d80 dm: prefer kmap_local_page() instead of deprecated kmap_atomic()
+92b64bd01fe9 mm/highmem: add notes about conversions from kmap{,_atomic}()
+e0820368d010 hostfs: Replace kmap() with kmap_local_page()
+8eb29c4fbf96 dm flakey: fix a bug with 32-bit highmem systems
+a3e2e248fd77 scsi: ipr: Replace kmap() with kmap_local_page()
+7edd053b3327 scsi: ips: Replace kmap_atomic() with kmap_local_page()
+d07bd950b91e crypto: skcipher - Use scatterwalk (un)map interface for dst and src buffers
+f27c942e3e3e fs/cramfs: Convert kmap() to kmap_local_data()
+aa9695157f65 crypto: scatterwalk - use kmap_local() not kmap_atomic()
+a1db2f7edef0 fs/fuse: Replace kmap() with kmap_local_page()
+5521de7dddd2 mm/userfaultfd: replace kmap/kmap_atomic() with kmap_local_page()
+ef6e06b2ef87 highmem: fix kmap_to_page() for kmap_local_page() addresses
+1d61261bfe8a swiotlb: replace kmap_atomic() with memcpy_{from,to}_page()
+8377e8a24bba fs-verity: use kmap_local_page() instead of kmap()
+c987918a3fdf fs-verity: use memcpy_from_page()
+3a608cfee97e exec: Replace kmap{,_atomic}() with kmap_local_page()
+a9e9c93966af Documentation/mm: add details about kmap_local_page() and preemption
+72f1c55adf70 highmem: delete a sentence from kmap_local_page() kdocs
+84b86f6054c4 Documentation/mm: rrefer kmap_local_page() and avoid kmap()
+6b3afe2eeec2 Documentation/mm: avoid invalid use of addresses from kmap_local_page()
+516ea046ec55 Documentation/mm: don't kmap*() pages which can't come from HIGHMEM
+383bbef28392 highmem: specify that kmap_local_page() is callable from interrupts
+729337bc2087 highmem: remove unneeded spaces in kmap_local_page() kdocs
+1dd55358efc4 f2fs: Delete f2fs_copy_page() and replace with memcpy_page()
+f2d57765b798 firmware_loader: Replace kmap() with kmap_local_page()
+c6e8e36c6ae4 exec: Call kmap_local_page() in copy_string_kernel()
+9384d79249d0 mm/highmem: delete memmove_page()
+403d50341cce block: take destination bvec offsets into account in bio_copy_data_iter
+110bf7a52307 Documentation/vm: rework "Temporary Virtual Mappings" section
+85a85e760126 Documentation/vm: move "Using kmap-atomic" to highmem.h
+e88a6a8fece9 binder: Use memcpy_{to,from}_page() in binder_alloc_do_buffer_copy()
+1d625960e419 binder: Use kmap_local_page() in binder_alloc_copy_user_to_buffer()
+26eff2d66aff binder: Use memset_page() in binder_alloc_clear_buf()
+66f133ceab74 highmem: fix checks in __kmap_local_sched_{in,out}
+d7ca25c53e25 highmem: document kunmap_local()
+1cef171abd39 dm integrity: fix data corruption due to improper use of bvec_kmap_local
+825c43f50e3a kmap_local: don't assume kmap PTEs are linear arrays in memory
+d2c20e51e396 mm/highmem: remove deprecated kmap_atomic
+30495e688d9d dm verity: use bvec_kmap_local in verity_for_bv_block
+25058d1c725c dm integrity: use bvec_kmap_local in __journal_read_write
+c12d205dae09 dm integrity: use bvec_kmap_local in integrity_metadata
+5fe0fc9f1de6 fuse: use kmap_local_page()
+513861202d12 highmem: don't disable preemption on RT in kmap_atomic()
+ab069d5fdcd1 iomap: Use kmap_local_page instead of kmap_atomic
+b405435b419c iomap: Support inline data with block size < page size
+503469b5b30f block: use bvec_kmap_local in bio_integrity_process
+8aec120a9ca8 block: use bvec_kmap_local in t10_pi_type1_{prepare,complete}
+f8b679a070c5 block: rewrite bio_copy_data_iter to use bvec_kmap_local and memcpy_to_bvec
+18a6234ccf06 dm-writecache: use bvec_kmap_local instead of bvec_kmap_irq
+e6e7471706dc bvec: add a bvec_kmap_local helper
+d9a42b53bdf7 mm: use kmap_local_page in memzero_page
+8dad53a11f8d mm: call flush_dcache_page() in memcpy_to_page() and memzero_page()
+2a510a744beb clean up copy_mc_pipe_to_iter()
+893839fd5733 pipe_zero(): we don't need no stinkin' kmap_atomic()...
+2495bdcc86dc iov_iter: clean csum_and_copy_...() primitives up a bit
+55ca375c5dcc copy_page_from_iter(): don't need kmap_atomic() for kvec/bvec cases
+c1d4d6a9ae88 copy_page_to_iter(): don't bother with kmap_atomic() for bvec/kvec cases
+487cfade12fa mm/highmem: fix CONFIG_DEBUG_KMAP_LOCAL_FORCE_MAP
+6a0996db6879 mm/highmem: Introduce memcpy_page(), memmove_page(), and memset_page()
+61b205f57991 mm/highmem: Convert memcpy_[to|from]_page() to kmap_local_page()
+a1dce7fd2ade mm/highmem: prepare for overriding set_pte_at()
+29766bcffad0 net: support kmap_local forced debugging in skb_frag_foreach
+f3ba3c710ac5 mm/highmem: Provide kmap_local*
+5fbda3ecd14a sched: highmem: Store local kmaps in task struct
+0e91a0c6984c mm/highmem: Provide CONFIG_DEBUG_KMAP_LOCAL_FORCE_MAP
+6e799cb69a70 mm/highmem: Provide and use CONFIG_DEBUG_KMAP_LOCAL
+2a656cad337e mm/highmem: Take kmap_high_get() properly into account
+13f876ba77eb highmem: High implementation details and document API
+3c1016b53c31 mm/highmem: Remove the old kmap_atomic cruft
+d7029e454969 highmem: Get rid of kmap_types.h
+e8f147dc3f1f fs: Remove asm/kmap_types.h includes
+157e118b5511 x86/mm/highmem: Use generic kmap atomic implementation
+389755c25081 highmem: Make DEBUG_HIGHMEM functional
+298fa1ad5571 highmem: Provide generic variant of kmap_atomic*
+b819fd9da385 highmem: Remove unused functions
+4f8b96cd47b0 asm-generic: Provide kmap_size.h
 106397376c0369 sbitmap: fix batching wakeup
 b5fcf7871acb7f sbitmap: correct wake_batch recalculation to avoid potential IO hung
 678418c6128f11 sbitmap: add sbitmap_find_bit to remove repeat code in __sbitmap_get/__sbitmap_get_shallow
