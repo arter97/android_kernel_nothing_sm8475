@@ -746,7 +746,7 @@ static int dm_bow_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	mutex_init(&bc->ranges_lock);
 	bc->ranges = RB_ROOT;
 	bc->bufio = dm_bufio_client_create(bc->dev->bdev, bc->block_size, 1, 0,
-					   NULL, NULL);
+					   NULL, NULL, 0);
 	if (IS_ERR(bc->bufio)) {
 		ti->error = "Cannot initialize dm-bufio";
 		ret = PTR_ERR(bc->bufio);

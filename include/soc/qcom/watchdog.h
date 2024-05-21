@@ -150,11 +150,13 @@ struct msm_watchdog_data {
 	int cpu_idle_pc_state[NR_CPUS];
 	bool freeze_in_progress;
 	spinlock_t freeze_lock;
+#ifdef CONFIG_QCOM_IRQ_STAT
 	struct work_struct irq_counts_work;
 	struct qcom_irq_info irq_counts[NR_TOP_HITTERS];
 	struct qcom_irq_info ipi_counts[WDOG_NR_IPI];
 	unsigned int tot_irq_count[NR_CPUS];
 	atomic_t irq_counts_running;
+#endif
 	struct timer_list user_pet_timer;
 };
 

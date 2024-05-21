@@ -912,6 +912,12 @@ config ARCH_HAS_HUGEPD
 config MAPPING_DIRTY_HELPERS
         bool
 
+config KMAP_LOCAL
+	bool
+
+config KMAP_LOCAL_NON_LINEAR_PTE_ARRAY
+	bool
+
 # Some architectures want callbacks for all IO mappings in order to
 # track the physical addresses that get used as devices.
 config ARCH_HAS_IOREMAP_PHYS_HOOKS
@@ -941,12 +947,6 @@ config LRU_GEN
 	  A high performance LRU implementation to overcommit memory. See
 	  Documentation/admin-guide/mm/multigen_lru.rst for details.
 
-config LRU_GEN_ENABLED
-	bool "Enable by default"
-	depends on LRU_GEN
-	help
-	  This option enables the multi-gen LRU by default.
-
 config LRU_GEN_STATS
 	bool "Full stats for debugging"
 	depends on LRU_GEN
@@ -955,6 +955,10 @@ config LRU_GEN_STATS
 	  from evicted generations for debugging purpose.
 
 	  This option has a per-memcg and per-node memory overhead.
+
+config LRU_GEN_WALKS_MMU
+	def_bool y
+	depends on LRU_GEN && ARCH_HAS_HW_PTE_YOUNG
 # }
 
 source "mm/damon/Kconfig"

@@ -185,6 +185,18 @@ static inline void bvec_advance(const struct bio_vec *bvec,
 }
 
 /**
+ * bvec_kmap_local - map a bvec into the kernel virtual address space
+ * @bvec: bvec to map
+ *
+ * Must be called on single-page bvecs only.  Call kunmap_local on the returned
+ * address to unmap.
+ */
+static inline void *bvec_kmap_local(struct bio_vec *bvec)
+{
+	return kmap_local_page(bvec->bv_page) + bvec->bv_offset;
+}
+
+/**
  * memcpy_from_bvec - copy data from a bvec
  * @bvec: bvec to copy from
  *

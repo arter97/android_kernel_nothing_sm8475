@@ -42,7 +42,7 @@ static int fsverity_read_merkle_tree(struct inode *inode,
 		unsigned int bytes_to_copy = min_t(u64, end_offset - offset,
 						   PAGE_SIZE - offs_in_page);
 		struct page *page;
-		const void *virt;
+		void *virt;
 
 		page = vops->read_merkle_tree_page(inode, index, num_ra_pages);
 		if (IS_ERR(page)) {
@@ -53,14 +53,14 @@ static int fsverity_read_merkle_tree(struct inode *inode,
 			break;
 		}
 
-		virt = kmap(page);
+		virt = kmap_local_page(page);
 		if (copy_to_user(buf, virt + offs_in_page, bytes_to_copy)) {
-			kunmap(page);
+			kunmap_local(virt);
 			put_page(page);
 			err = -EFAULT;
 			break;
 		}
-		kunmap(page);
+		kunmap_local(virt);
 		put_page(page);
 
 		retval += bytes_to_copy;

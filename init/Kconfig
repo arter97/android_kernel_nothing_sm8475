@@ -114,7 +114,7 @@ config CONSTRUCTORS
 	depends on !UML
 
 config IRQ_WORK
-	bool
+	def_bool y if SMP
 
 config BUILDTIME_TABLE_SORT
 	bool
