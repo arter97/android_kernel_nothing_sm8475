@@ -26,8 +26,8 @@ asmlinkage void sha256_block_data_order(u32 *digest, const void *data,
 					unsigned int num_blks);
 EXPORT_SYMBOL(sha256_block_data_order);
 
-static void __sha256_block_data_order(struct sha256_state *sst, u8 const *src,
-				      int blocks)
+static void sha256_arm64_transform(struct sha256_state *sst, u8 const *src,
+				   int blocks)
 {
 	sha256_block_data_order(sst->state, src, blocks);
 }
@@ -35,8 +35,8 @@ static void __sha256_block_data_order(struct sha256_state *sst, u8 const *src,
 asmlinkage void sha256_block_neon(u32 *digest, const void *data,
 				  unsigned int num_blks);
 
-static void __sha256_block_neon(struct sha256_state *sst, u8 const *src,
-				int blocks)
+static void sha256_neon_transform(struct sha256_state *sst, u8 const *src,
+				  int blocks)
 {
 	sha256_block_neon(sst->state, src, blocks);
 }
@@ -44,17 +44,15 @@ static void __sha256_block_neon(struct sha256_state *sst, u8 const *src,
 static int crypto_sha256_arm64_update(struct shash_desc *desc, const u8 *data,
 				      unsigned int len)
 {
-	return sha256_base_do_update(desc, data, len,
-				     __sha256_block_data_order);
+	return sha256_base_do_update(desc, data, len, sha256_arm64_transform);
 }
 
 static int crypto_sha256_arm64_finup(struct shash_desc *desc, const u8 *data,
 				     unsigned int len, u8 *out)
 {
 	if (len)
-		sha256_base_do_update(desc, data, len,
-				      __sha256_block_data_order);
-	sha256_base_do_finalize(desc, __sha256_block_data_order);
+		sha256_base_do_update(desc, data, len, sha256_arm64_transform);
+	sha256_base_do_finalize(desc, sha256_arm64_transform);
 
 	return sha256_base_finish(desc, out);
 }
@@ -97,7 +95,7 @@ static int sha256_update_neon(struct shash_desc *desc, const u8 *data,
 
 	if (!crypto_simd_usable())
 		return sha256_base_do_update(desc, data, len,
-				__sha256_block_data_order);
+				sha256_arm64_transform);
 
 	while (len > 0) {
 		unsigned int chunk = len;
@@ -113,7 +111,7 @@ static int sha256_update_neon(struct shash_desc *desc, const u8 *data,
 				sctx->count % SHA256_BLOCK_SIZE;
 
 		kernel_neon_begin();
-		sha256_base_do_update(desc, data, chunk, __sha256_block_neon);
+		sha256_base_do_update(desc, data, chunk, sha256_neon_transform);
 		kernel_neon_end();
 		data += chunk;
 		len -= chunk;
@@ -127,13 +125,13 @@ static int sha256_finup_neon(struct shash_desc *desc, const u8 *data,
 	if (!crypto_simd_usable()) {
 		if (len)
 			sha256_base_do_update(desc, data, len,
-				__sha256_block_data_order);
-		sha256_base_do_finalize(desc, __sha256_block_data_order);
+				sha256_arm64_transform);
+		sha256_base_do_finalize(desc, sha256_arm64_transform);
 	} else {
 		if (len)
 			sha256_update_neon(desc, data, len);
 		kernel_neon_begin();
-		sha256_base_do_finalize(desc, __sha256_block_neon);
+		sha256_base_do_finalize(desc, sha256_neon_transform);
 		kernel_neon_end();
 	}
 	return sha256_base_finish(desc, out);
