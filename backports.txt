@@ -1,3 +1,391 @@
+bf52b1ac6ab4 async: Use a dedicated unbound workqueue with raised min_active
+5097cbcb38e6 sched/isolation: Prevent boot crash when the boot CPU is nohz_full
+7f016edaa0f3 fscrypt: try to avoid refing parent dentry in fscrypt_file_open
+8c62f31eddb7 fscrypt: shrink the size of struct fscrypt_inode_info slightly
+83e57e47906c fscrypt: optimize fscrypt_initialize()
+c1d760a47163 crypto: mscode_parser - remove sha224 authenticode support
+1be7505933a5 crypto: arm64/sha512 - clean up backwards function names
+455951b5e172 crypto: arm64/sha256 - clean up backwards function names
+5f720a3df346 crypto: arm64/sha512-ce - clean up backwards function names
+ba30d31121fe crypto: arm64/sha2-ce - clean up backwards function names
+1f9f3a5218b1 crypto: arm64/sha1-ce - clean up backwards function names
+796b06f5c9d6 crypto: x86/nhpoly1305 - implement ->digest
+ddefde7b2af8 crypto: arm64/nhpoly1305 - implement ->digest
+5f929b4e6906 crypto: arm/nhpoly1305 - implement ->digest
+dadf5e56c967 crypto: adiantum - add fast path for single-page messages
+01aed663e6c4 crypto: qat - fix double free during reset
+fdcac2ddc759 crypto: x86/sha256 - implement ->digest for sha256
+1efcbf0eff10 crypto: arm64/sha2-ce - implement ->digest for sha256
+313a4074d78f crypto: shash - optimize the default digest and finup
+bb40d32689d7 crypto: xts - use 'spawn' for underlying single-block cipher
+8e43fb06e10d fsverity: remove hash page spin lock
+5d37a1198068 fsverity: explicitly check that there is no algorithm 0
+13e2408d02dd fsverity: simplify error handling in verify_data_block()
+d1f0c5ea04cd fsverity: don't use bio_first_page_all() in fsverity_verify_bio()
+32ab3c5e6226 fsverity: constify fsverity_hash_alg
+8fcd94add6c5 fsverity: use shash API instead of ahash API
+04839139213c fsverity: reject FS_IOC_ENABLE_VERITY on mode 3 fds
+39049b69ec9f fsverity: explicitly check for buffer overflow in build_merkle_tree()
+8eb8af4b3df5 fsverity: use WARN_ON_ONCE instead of WARN_ON
+db85d14dc5c5 ext4: allow verity with fs block size < PAGE_SIZE
+4fa512ce7051 fs/buffer.c: support fsverity in block_read_full_folio()
+feb0576a361a f2fs: simplify f2fs_readpage_limit()
+5e122148a3d5 ext4: simplify ext4_readpage_limit()
+56124d6c87fd fsverity: support enabling with tree block size < PAGE_SIZE
+5306892a50bf fsverity: support verification with tree block size < PAGE_SIZE
+f45555bf23cf fsverity: replace fsverity_hash_page() with fsverity_hash_block()
+55eed69cc8fd fsverity: use EFBIG for file too large to enable verity
+579a12f78d88 fsverity: store log2(digest_size) precomputed
+9098f36b739d fsverity: simplify Merkle tree readahead size calculation
+284d5db5f99e fsverity: use unsigned long for level_start
+98dc08bae678 fsverity: stop using PG_error to track error status
+c987918a3fdf fs-verity: use memcpy_from_page()
+86f66569baca fsverity: remove debug messages and CONFIG_FS_VERITY_DEBUG
+72ea15f0ddd2 fsverity: pass pos and size to ->write_merkle_tree_block
+9642946c6c85 fsverity: optimize fsverity_cleanup_inode() on non-verity files
+01d90c07a592 fsverity: optimize fsverity_prepare_setattr() on non-verity files
+a6528a960b78 fsverity: optimize fsverity_file_open() on non-verity files
+c375b2233388 dm-verity: Convert from tasklet to BH workqueue
+9356fcfe0ac4 dm verity: set DM_TARGET_SINGLETON feature flag
+5d8d40815314 dm crypt: Fix IO priority lost when queuing write bios
+d95e2c34a3ca dm verity: Fix IO priority lost when reading FEC and hash
+e9b2238e47cb dm bufio: Support IO priority
+6e5f0f6383b4 dm io: Support IO priority
+66ad2fbcdbea dm-integrity, dm-verity: reduce stack usage for recheck
+787f1b280046 dm-verity, dm-crypt: align "struct bvec_iter" correctly
+9177f3c0dea6 dm-verity: recheck the hash after a failure
+0a9bab391e33 dm-crypt, dm-verity: disable tasklets
+7be05bdfb4ef dm verity: initialize fec io before freeing it
+28f07f2ab4b3 dm-verity: don't use blocking calls from tasklets
+c25da5b7baf1 dm verity: stop using WQ_UNBOUND for verify_wq
+afd41fff9c73 dm verity: enable WQ_HIGHPRI on verify_wq
+916ef6232cc4 dm: verity-loadpin: Only trust verity targets with enforcement
+f876df9f12cd dm verity: fix verity_parse_opt_args parsing
+8c22816dbc87 dm verity: fix DM_VERITY_OPTS_MAX value yet again
+12907efde6ad dm verity: have verify_wq use WQ_HIGHPRI if "try_verify_in_tasklet"
+43fa47cb116d dm verity: remove WQ_CPU_INTENSIVE flag since using WQ_UNBOUND
+e9307e3deb52 dm verity: only copy bvec_iter in verity_verify_io if in_tasklet
+0a36463f4ca2 dm verity: optimize verity_verify_io if FEC not configured
+ba2cce82ba1b dm verity: conditionally enable branching for "try_verify_in_tasklet"
+df326e7a0699 dm verity: allow optional args to alter primary args handling
+5721d4e5a9cd dm verity: Add optional "try_verify_in_tasklet" feature
+b6c1c5745ccc dm: Add verity helpers for LoadPin
+20e6fc85621c dm verity: fix checkpatch close brace error
+219a9b5e738b dm verity: allow only one error handling mode
+4da8f8c8a1e0 dm verity: Add support for signature verification with 2nd keyring
+2a695062a5a4 dm-bufio: fix no-sleep mode
+363b7fd76c91 dm: improve hash_locks sizing and hash function
+b6279f82eb11 dm bio prison v1: intelligently size dm_bio_prison's prison_regions
+c6273411d180 dm bio prison v1: prepare to intelligently size dm_bio_prison's prison_regions
+1e84c4b7322d dm bufio: intelligently size dm_buffer_cache's buffer_trees
+36c18b863908 dm bufio: prepare to intelligently size dm_buffer_cache's buffer_trees
+0bac3f2f28b8 dm: add dm_num_hash_locks()
+3f8d3f543207 dm bio prison v1: add dm_cell_key_has_valid_range
+e2dd8aca2d76 dm bio prison v1: improve concurrent IO performance
+06961c487a33 dm: split discards further if target sets max_discard_granularity
+bb46c56165fa dm thin: speed up cell_defer_no_holder()
+56c5de4406f8 dm bufio: use multi-page bio vector
+f5f93541202f dm bufio: use waitqueue_active in __free_buffer_wake
+530f683ddcd2 dm bufio: move dm_bufio_client members to avoid spanning cachelines
+791188065be0 dm bufio: add lock_history optimization for cache iterators
+450e8dee51aa dm bufio: improve concurrent IO performance
+2cd7a6d41fe8 dm bufio: add dm_buffer_cache abstraction
+be845babda1b dm bufio: add LRU abstraction
+b75a80f4f5a9 dm bufio: don't bug for clear developer oversight
+0511228752ea dm bufio: never crash if dm_bufio_in_request()
+555977dd6818 dm bufio: use WARN_ON in dm_bufio_client_destroy and dm_bufio_exit
+0dfc1f4ceae8 dm bufio: Fix missing decrement of no_sleep_enabled if dm_bufio_client_create failed
+141b3523e9be dm bufio: use the acquire memory barrier when testing for B_READING
+8238b4579866 wait_on_bit: add an acquire memory barrier
+e3a7c2947b9e dm bufio: fix some cases where the code sleeps with spinlock held
+b33b6fdca3f0 dm bufio: simplify DM_BUFIO_CLIENT_NO_SLEEP locking
+3c1c875d0586 dm bufio: conditionally enable branching for DM_BUFIO_CLIENT_NO_SLEEP
+b32d45824aa7 dm bufio: Add DM_BUFIO_CLIENT_NO_SLEEP flag
+0fcb100d5083 dm bufio: Add flags argument to dm_bufio_client_create
+ea3dba305252 dm: Remove redundant flush_workqueue() calls
+53889bcaf536 block: make __get_task_ioprio() easier to read
+3b7cb745473a block: move __get_task_ioprio() into header file
+c7b4b23b36ed block: uapi: Fix compilation errors using ioprio.h with C++
+01584c1e2337 scsi: block: Improve ioprio value validity checks
+6c913257226a scsi: block: Introduce ioprio hints
+eca2040972b4 scsi: block: ioprio: Clean up interface definition
+4b838d9ee950 block: Fix handling of tasks without ioprio in ioprio_get(2)
+fc25545e17bd block: Make ioprio_best() static
+893e5d32d583 block: Generalize get_current_ioprio() for any task
+f7eda402878b block: Return effective IO priority from get_current_ioprio()
+e589f4644596 block: fix default IO priority handling again
+e70344c05995 block: fix default IO priority handling
+202bc942c5cd block: Introduce IOPRIO_NR_LEVELS
+ba05200fcce0 block: fix IOPRIO_PRIO_CLASS() and IOPRIO_PRIO_VALUE() macros
+a553a835ca57 block: change ioprio_valid() to an inline function
+25bca50e523c block: improve ioprio class description comment
+06447ae5e33b ioprio: move user space relevant ioprio bits to UAPI includes
+40c7fd3fdfba block: Fix sys_ioprio_set(.which=IOPRIO_WHO_PGRP) task iteration
+91f098704c25 workqueue: Fix divide error in wq_update_node_max_active()
+d40f92020c7a workqueue: The default node_nr_active should have its max set to max_active
+57a01eafdcf7 workqueue: Fix selection of wake_cpu in kick_pool()
+51da7f68edae workqueue: Use "@..." in function comment to describe variable length argument
+31103f40b1b5 workqueue: Add destroy_work_on_stack() in workqueue_softirq_dead()
+474a549ff4c9 workqueue: Introduce enable_and_queue_work() convenience function
+d6a7bbdde672 workqueue: add function in event of workqueue_activate_work
+d70f5d5778e8 workqueue: Use list_last_entry() to get the last idle worker
+ae1296a7bfe4 workqueue: Move attrs->cpumask out of worker_pool's properties when attrs->affn_strict
+e7cc3be6fdb5 workqueue: Use INIT_WORK_ONSTACK in workqueue_softirq_dead()
+134874e2eee9 workqueue: Allow cancel_work_sync() and disable_work() from atomic contexts on BH work items
+456a78eef267 workqueue: Remember whether a work item was on a BH workqueue
+f09b10b6f442 workqueue: Remove WORK_OFFQ_CANCELING
+86898fa6b8cd workqueue: Implement disable/enable for (delayed) work items
+1211f3b21c2a workqueue: Preserve OFFQ bits in cancel[_sync] paths
+1acd92d95fa2 workqueue: Drain BH work items on hot-unplugged CPUs
+60b2ebf48526 workqueue: Introduce from_work() helper for cleaner callback declarations
+ccdec92198df workqueue: Control intensive warning threshold through cmdline
+c0e8c5b59949 workqueue: Use global variant for add_timer()
+8e7e247f64a1 timers: Introduce add_timer() variants which modify timer flags
+bccdc1faafaf workqueue: Make @flags handling consistent across set_work_data() and friends
+afe928c1dc61 workqueue: Remove clear_work_data()
+978b8409eab1 workqueue: Factor out work_grab_pending() from __cancel_work_sync()
+e9a8e01f9b13 workqueue: Clean up enum work_bits and related constants
+c5f5b9422a49 workqueue: Introduce work_cancel_flags
+c26e2f2e2fcf workqueue: Use variable name irq_flags for saving local irq flags
+cdc6e4b329bc workqueue: Reorganize flush and cancel[_sync] functions
+c5140688d19a workqueue: Rename __cancel_work_timer() to __cancel_timer_sync()
+d355001fa937 workqueue: Use rcu_read_lock_any_held() instead of rcu_read_lock_held()
+c7a40c49af92 workqueue: Cosmetic changes
+fd0a68a2337b workqueue, irq_work: Build fix for !CONFIG_IRQ_WORK
+2f34d7337d98 workqueue: Fix queue_work_on() with BH workqueues
+8f172181f24b workqueue: Implement workqueue_set_min_active()
+516d3dc99f4f workqueue: Fix kernel-doc comment of unplug_oldest_pwq()
+49584bb8ddbe workqueue: Bind unbound workqueue rescuer to wq_unbound_cpumask
+d64f2fa064f8 kernel/workqueue: Let rescuers follow unbound wq cpumask changes
+4c065dbce1e8 workqueue: Enable unbound cpumask update on ordered workqueues
+26fb7e3dda4c workqueue: Link pwq's into wq->pwqs from oldest to newest
+aac8a59537df Revert "workqueue: Override implicit ordered attribute in workqueue_apply_unbound_cpumask()"
+3bc1e711c26b workqueue: Don't implicitly make UNBOUND workqueues w/ @max_active==1 ordered
+8eb17dc1a6b5 workqueue: Skip __WQ_DESTROYING workqueues when updating global unbound cpumask
+96068b603039 workqueue: fix a typo in comment
+4cb1ef64609f workqueue: Implement BH workqueues to eventually replace tasklets
+2fcdb1b44491 workqueue: Factor out init_cpu_worker_pool()
+c35aea39d1e1 workqueue: Update lock debugging code
+c70e1779b73a workqueue: Fix pwq->nr_in_flight corruption in try_to_grab_pending()
+c5f8cd6c62ce workqueue: Avoid premature init of wq->node_nr_active[].max
+15930da42f89 workqueue: Don't call cpumask_test_cpu() with -1 CPU in wq_update_node_max_active()
+aae17ebb53cd workqueue: Avoid using isolated cpus' timers on queue_delayed_work
+5797b1c18919 workqueue: Implement system-wide nr_active enforcement for unbound workqueues
+91ccc6e7233b workqueue: Introduce struct wq_node_nr_active
+dd6c3c544126 workqueue: Move pwq_dec_nr_in_flight() to the end of work item handling
+9f66cff212bb workqueue: RCU protect wq->dfl_pwq and implement accessors for it
+c5404d4e6df6 workqueue: Make wq_adjust_max_active() round-robin pwqs while activating
+1c270b79ce0b workqueue: Move nr_active handling into helpers
+4c6380305d21 workqueue: Replace pwq_activate_inactive_work() with [__]pwq_activate_work()
+afa87ce85379 workqueue: Factor out pwq_is_empty()
+a045a272d887 workqueue: Move pwq->max_active to wq->max_active
+e563d0a7cdc1 workqueue: Break up enum definitions and give names to the types
+6a229b0e2ff6 workqueue: Drop unnecessary kick_pool() in create_worker()
+8318d6a6362f workqueue: Shorten events_freezable_power_efficient name
+7bd20b6b8718 workqueue: mark power efficient workqueue as unbounded if nohz_full enabled
+1a65a6d17cbc workqueue: Add rcu lock check at the end of work item execution
+85f0ab43f9de kernel/workqueue: Bind rescuer to unbound cpumask for WQ_UNBOUND
+31c89007285d workqueue.c: Increase workqueue name length
+b2fa8443db32 workqueue: Split out workqueue_types.h
+4a6c5607d450 workqueue: Make sure that wq_unbound_cpumask is never empty
+49277a5b7637 workqueue: Move workqueue_set_unbound_cpumask() and its helpers inside CONFIG_SYSFS
+fe28f631fa94 workqueue: Add workqueue_unbound_exclude_cpumask() to exclude CPUs from wq_unbound_cpumask
+265f3ed07703 workqueue: Provide one lock class key per work_on_cpu() callsite
+5d9c7a1e3e8e workqueue: fix -Wformat-truncation in create_worker
+7b42f401fc65 workqueue: Use the kmem_cache_free() instead of kfree() to release pwq
+643445531829 workqueue: Fix UAF report by KASAN in pwq_release_workfn()
+dd64c873ed11 workqueue: Fix missed pwq_release_worker creation in wq_cpu_intensive_thresh_init()
+a6828214480e workqueue: Removed double allocation of wq_update_pod_attrs_buf
+fe48ba7daefe workqueue: fix data race with the pwq->stats[] increment
+b6a46f7263bd workqueue: Rename rescuer kworker
+523a301e66af workqueue: Make default affinity_scope dynamically updatable
+7dbf15c5c05e workqueue: Add "Affinity Scopes and Performance" section to documentation
+8639ecebc9b1 workqueue: Implement non-strict affinity scope for unbound workqueues
+14e292f8d453 sched,rt: Use cpumask_any*_distribute()
+9546b29e4a6a workqueue: Add workqueue_attrs->__pod_cpumask
+0219a3528d72 workqueue: Factor out need_more_worker() check and worker wake-up
+873eaca6eaf8 workqueue: Factor out work to worker assignment and collision handling
+63c5484e7495 workqueue: Add multiple affinity scopes and interface to select them
+025e16845877 workqueue: Modularize wq_pod_type initialization
+7f7dc377a3b2 workqueue: Add tools/workqueue/wq_dump.py which prints out workqueue configuration
+84193c07105c workqueue: Generalize unbound CPU pods
+5de7a03cac14 workqueue: Factor out clearing of workqueue-only attrs fields
+0f36ee24cd43 workqueue: Factor out actual cpumask calculation to reduce subtlety in wq_update_pod()
+2930155b2e27 workqueue: Initialize unbound CPU pods later in the boot
+a86feae6195a workqueue: Move wq_pod_init() below workqueue_init()
+fef59c9cab6a workqueue: Rename NUMA related names to use pod instead
+af73f5c9febe workqueue: Rename workqueue_attrs->no_numa to ->ordered
+636b927eba5b workqueue: Make unbound workqueues to use per-cpu pool_workqueues
+4cbfd3de737b workqueue: Call wq_update_unbound_numa() on all CPUs in NUMA node on CPU hotplug
+687a9aa56f81 workqueue: Make per-cpu pool_workqueues allocated and released like unbound ones
+967b494e2fd1 workqueue: Use a kthread_worker to release pool_workqueues
+fcecfa8f271a workqueue: Remove module param disable_numa and sysfs knobs pool_ids and numa
+797e8345cbb0 workqueue: Relocate worker and work management functions
+ee1ceef72754 workqueue: Rename wq->cpu_pwqs to wq->cpu_pwq
+fe089f87cccb workqueue: Not all work insertion needs to wake up a worker
+c0ab017d43f4 workqueue: Cleanups around process_scheduled_works()
+bc8b50c2dfac workqueue: Drop the special locking rule for worker->flags and worker_pool->flags
+9680540c0c56 workqueue: use LIST_HEAD to initialize cull_list
+aa6fde93f3a4 workqueue: Scale up wq_cpu_intensive_thresh_us if BogoMIPS is below 4000
+ace3c5499e61 workqueue: add cmdline parameter `workqueue.unbound_cpus` to further constrain wq_unbound_cpumask at boot time
+20bdedafd2f6 workqueue: Warn attempt to flush system-wide workqueues.
+18c8ae813156 workqueue: Disable per-cpu CPU hog detection when wq_cpu_intensive_thresh_us is 0
+c8f6219be2e5 workqueue: Fix WARN_ON_ONCE() triggers in worker_enter_idle()
+8a1dd1e547c1 workqueue: Track and monitor per-workqueue CPU time usage
+636384500520 workqueue: Report work funcs that trigger automatic CPU_INTENSIVE mechanism
+616db8779b1e workqueue: Automatically mark CPU-hogging work items CPU_INTENSIVE
+bdf8b9bfc131 workqueue: Improve locking rule description for worker fields
+c54d5046a06b workqueue: Move worker_set/clr_flags() upwards
+3a46c9833c1f workqueue: Re-order struct worker fields
+725e8ec59c56 workqueue: Add pwq->stats[] and a monitoring script
+854f5cc5b735 Further upgrade queue_work_on() comment
+704bc669e1dd workqueue: Introduce show_freezable_workqueues
+4c0736a76a18 workqueue: Warn when a rescuer could not be created
+60f540389a5d workqueue: Interrupted create_worker() is not a repeated event
+3f0ea0b86456 workqueue: Warn when a new worker could not be created
+335a42ebb0ca workqueue: Fix hung time report of worker pools
+a8ec5880bd82 workqueue: Simplify a pr_warn() call in wq_select_unbound_cpu()
+c63a2e52d5e0 workqueue: Fold rebind_worker() within rebind_workers()
+e02b93124855 workqueue: Unbind kworkers before sending them to exit()
+9ab03be42b8f workqueue: Don't hold any lock while rcuwait'ing for !POOL_MANAGER_ACTIVE
+3f959aa3b338 workqueue: Convert the idle_timer to a timer + work_struct
+793777bc193b workqueue: Factorize unbind/rebind_workers() logic
+99c621ef243b workqueue: Protects wq_unbound_cpumask with wq_pool_attach_mutex
+c76feb0d5dfd workqueue: Make show_pwq() use run-length encoding
+33e3f0a3358b workqueue: Add a new flag to spot the potential UAF error
+46a4d679ef88 workqueue: Avoid a false warning in unbind_workers()
+8bee9dd953b6 workqueue: Switch to new kerneldoc syntax for named variable macro argument
+873a400938b3 workqueue: Fix type of cpu in trace event
+c4f135d64382 workqueue: Wrap flush_workqueue() using a macro
+10a5a651e3af workqueue: Restrict kworker in the offline CPU pool running on housekeeping CPUs
+7b45b51e7780 workqueue: Decouple HK_FLAG_WQ and HK_FLAG_DOMAIN cpumask fetch
+bc35f7ef9628 workqueue: Convert the type of pool->nr_running to int
+cc5bff38463e workqueue: Use wake_up_worker() in wq_worker_sleeping() instead of open code
+2c1f1a9180bf workqueue: Change the comments of the synchronization about the idle_list
+21b195c05cf6 workqueue: Remove the mb() pair between wq_worker_sleeping() and insert_work()
+84f91c62d675 workqueue: Remove the cacheline_aligned for nr_running
+989442d73757 workqueue: Move the code of waking a worker up in unbind_workers()
+b4ac9384ac05 workqueue: Remove schedule() in unbind_workers()
+11b45b0bf402 workqueue: Remove outdated comment about exceptional workers in unbind_workers()
+3e5f39ea33b1 workqueue: Remove the advanced kicking of the idle workers in rebind_workers()
+ccf45156fd16 workqueue: Remove the outdated comment before wq_worker_sleeping()
+45c753f5f24d workqueue: Fix unbind_workers() VS wq_worker_sleeping() race
+443378f0664a workqueue: Upgrade queue_work_on() comment
+f9eaaa82b474 workqueue: doc: Call out the non-reentrance conditions
+55df0933be74 workqueue: Introduce show_one_worker_pool and show_one_workqueue.
+57116ce17b04 workqueue: fix state-dump console deadlock
+80f0a1f99983 workqueue: annotate alloc_workqueue() as printf
+bdb0a6548d22 workqueue: Remove unused WORK_NO_COLOR
+d812796eb390 workqueue: Assign a color to barrier work items
+018f3a13dd63 workqueue: Mark barrier work with WORK_STRUCT_INACTIVE
+d21cece0dbb4 workqueue: Change the code of calculating work_flags in insert_wq_barrier()
+c4560c2c88a4 workqueue: Change arguement of pwq_dec_nr_in_flight()
+f97a4a1a3f87 workqueue: Rename "delayed" (delayed by active management) to "inactive"
+ffd8bea81fbb workqueue: Replace deprecated CPU-hotplug functions.
+e441b56fe438 workqueue: Replace deprecated ida_simple_*() with ida_alloc()/ida_free()
+67dc83253708 workqueue: Fix typo in comments
+89e28ce60cb6 workqueue/watchdog: Make unbound workqueues aware of touch_softlockup_watchdog() 84;0;0c84;0;0c There are two workqueue-specific watchdog timestamps:
+83b62687a052 workqueue/tracing: Copy workqueue name to buffer in trace event
+e9ad2eb3d9ae workqueue: Use %s instead of function name
+5c25b5ff89f0 workqueue: Tag bound workers with KTHREAD_IS_PER_CPU
+547a77d02f8c workqueue: Use cpu_possible_mask instead of cpu_active_mask to break affinity
+7bf9c4a88e3e workqueue: tracing the name of the workqueue instead of it's address
+93e86295f5e9 workqueue: fix annotation for WQ_SYSFS
+06249738a41a workqueue: Manually break affinity on hotplug
+88d7b12068b9 highmem: round down the address passed to kunmap_flush_on_unmap()
+c0371782500c vringh: replace kmap_atomic() with kmap_local_page()
+f7ef5fe74aaf mm/memory: replace kmap() with kmap_local_page()
+489c693bd04a PM: hibernate: Use kmap_local_page() in copy_data_page()
+73829b713470 zram: use kmap_local_page()
+829c3151f0f8 mm/swapfile: replace kmap_atomic() with kmap_local_page()
+003ae2fb0b36 mm/zswap: replace kmap_atomic() with kmap_local_page()
+f542b8e582ab mm/page_poison: replace kmap_atomic() with kmap_local_page()
+f2bcc99a5e90 mm/mempool: replace kmap_atomic() with kmap_local_page()
+24d2613a6356 mm/memory: use kmap_local_page() in __wp_page_copy_user()
+b33519896664 mm/ksm: use kmap_local_page() in calc_checksum()
+2f7537620f38 mm/util: use kmap_local_page() in memcmp_pages()
+ae96e0cdc78c lib: replace kmap() with kmap_local_page()
+da1a055d01ed lib/test_bpf: Call page_address() on page acquired with GFP_KERNEL flag
+3fda49e89f17 mm/swapfile: delete outdated pte_offset_map() comment
+46c475bd676b mm/pgtable: kmap_local_page() instead of kmap_atomic()
+0d508c1f0e2c userfaultfd: use kmap_local_page() in copy_huge_page_from_user()
+1683ed16ff1a fs/nfs: Replace kmap_atomic() with kmap_local_page() in dir.c
+0d78954a2d80 dm: prefer kmap_local_page() instead of deprecated kmap_atomic()
+92b64bd01fe9 mm/highmem: add notes about conversions from kmap{,_atomic}()
+e0820368d010 hostfs: Replace kmap() with kmap_local_page()
+8eb29c4fbf96 dm flakey: fix a bug with 32-bit highmem systems
+a3e2e248fd77 scsi: ipr: Replace kmap() with kmap_local_page()
+7edd053b3327 scsi: ips: Replace kmap_atomic() with kmap_local_page()
+d07bd950b91e crypto: skcipher - Use scatterwalk (un)map interface for dst and src buffers
+f27c942e3e3e fs/cramfs: Convert kmap() to kmap_local_data()
+aa9695157f65 crypto: scatterwalk - use kmap_local() not kmap_atomic()
+a1db2f7edef0 fs/fuse: Replace kmap() with kmap_local_page()
+5521de7dddd2 mm/userfaultfd: replace kmap/kmap_atomic() with kmap_local_page()
+ef6e06b2ef87 highmem: fix kmap_to_page() for kmap_local_page() addresses
+1d61261bfe8a swiotlb: replace kmap_atomic() with memcpy_{from,to}_page()
+8377e8a24bba fs-verity: use kmap_local_page() instead of kmap()
+c987918a3fdf fs-verity: use memcpy_from_page()
+3a608cfee97e exec: Replace kmap{,_atomic}() with kmap_local_page()
+a9e9c93966af Documentation/mm: add details about kmap_local_page() and preemption
+72f1c55adf70 highmem: delete a sentence from kmap_local_page() kdocs
+84b86f6054c4 Documentation/mm: rrefer kmap_local_page() and avoid kmap()
+6b3afe2eeec2 Documentation/mm: avoid invalid use of addresses from kmap_local_page()
+516ea046ec55 Documentation/mm: don't kmap*() pages which can't come from HIGHMEM
+383bbef28392 highmem: specify that kmap_local_page() is callable from interrupts
+729337bc2087 highmem: remove unneeded spaces in kmap_local_page() kdocs
+1dd55358efc4 f2fs: Delete f2fs_copy_page() and replace with memcpy_page()
+f2d57765b798 firmware_loader: Replace kmap() with kmap_local_page()
+c6e8e36c6ae4 exec: Call kmap_local_page() in copy_string_kernel()
+9384d79249d0 mm/highmem: delete memmove_page()
+403d50341cce block: take destination bvec offsets into account in bio_copy_data_iter
+110bf7a52307 Documentation/vm: rework "Temporary Virtual Mappings" section
+85a85e760126 Documentation/vm: move "Using kmap-atomic" to highmem.h
+e88a6a8fece9 binder: Use memcpy_{to,from}_page() in binder_alloc_do_buffer_copy()
+1d625960e419 binder: Use kmap_local_page() in binder_alloc_copy_user_to_buffer()
+26eff2d66aff binder: Use memset_page() in binder_alloc_clear_buf()
+66f133ceab74 highmem: fix checks in __kmap_local_sched_{in,out}
+d7ca25c53e25 highmem: document kunmap_local()
+1cef171abd39 dm integrity: fix data corruption due to improper use of bvec_kmap_local
+825c43f50e3a kmap_local: don't assume kmap PTEs are linear arrays in memory
+d2c20e51e396 mm/highmem: remove deprecated kmap_atomic
+30495e688d9d dm verity: use bvec_kmap_local in verity_for_bv_block
+25058d1c725c dm integrity: use bvec_kmap_local in __journal_read_write
+c12d205dae09 dm integrity: use bvec_kmap_local in integrity_metadata
+5fe0fc9f1de6 fuse: use kmap_local_page()
+513861202d12 highmem: don't disable preemption on RT in kmap_atomic()
+ab069d5fdcd1 iomap: Use kmap_local_page instead of kmap_atomic
+b405435b419c iomap: Support inline data with block size < page size
+503469b5b30f block: use bvec_kmap_local in bio_integrity_process
+8aec120a9ca8 block: use bvec_kmap_local in t10_pi_type1_{prepare,complete}
+f8b679a070c5 block: rewrite bio_copy_data_iter to use bvec_kmap_local and memcpy_to_bvec
+18a6234ccf06 dm-writecache: use bvec_kmap_local instead of bvec_kmap_irq
+e6e7471706dc bvec: add a bvec_kmap_local helper
+d9a42b53bdf7 mm: use kmap_local_page in memzero_page
+8dad53a11f8d mm: call flush_dcache_page() in memcpy_to_page() and memzero_page()
+2a510a744beb clean up copy_mc_pipe_to_iter()
+893839fd5733 pipe_zero(): we don't need no stinkin' kmap_atomic()...
+2495bdcc86dc iov_iter: clean csum_and_copy_...() primitives up a bit
+55ca375c5dcc copy_page_from_iter(): don't need kmap_atomic() for kvec/bvec cases
+c1d4d6a9ae88 copy_page_to_iter(): don't bother with kmap_atomic() for bvec/kvec cases
+487cfade12fa mm/highmem: fix CONFIG_DEBUG_KMAP_LOCAL_FORCE_MAP
+6a0996db6879 mm/highmem: Introduce memcpy_page(), memmove_page(), and memset_page()
+61b205f57991 mm/highmem: Convert memcpy_[to|from]_page() to kmap_local_page()
+a1dce7fd2ade mm/highmem: prepare for overriding set_pte_at()
+29766bcffad0 net: support kmap_local forced debugging in skb_frag_foreach
+f3ba3c710ac5 mm/highmem: Provide kmap_local*
+5fbda3ecd14a sched: highmem: Store local kmaps in task struct
+0e91a0c6984c mm/highmem: Provide CONFIG_DEBUG_KMAP_LOCAL_FORCE_MAP
+6e799cb69a70 mm/highmem: Provide and use CONFIG_DEBUG_KMAP_LOCAL
+2a656cad337e mm/highmem: Take kmap_high_get() properly into account
+13f876ba77eb highmem: High implementation details and document API
+3c1016b53c31 mm/highmem: Remove the old kmap_atomic cruft
+d7029e454969 highmem: Get rid of kmap_types.h
+e8f147dc3f1f fs: Remove asm/kmap_types.h includes
+157e118b5511 x86/mm/highmem: Use generic kmap atomic implementation
+389755c25081 highmem: Make DEBUG_HIGHMEM functional
+298fa1ad5571 highmem: Provide generic variant of kmap_atomic*
+b819fd9da385 highmem: Remove unused functions
+4f8b96cd47b0 asm-generic: Provide kmap_size.h
 106397376c0369 sbitmap: fix batching wakeup
 b5fcf7871acb7f sbitmap: correct wake_batch recalculation to avoid potential IO hung
 678418c6128f11 sbitmap: add sbitmap_find_bit to remove repeat code in __sbitmap_get/__sbitmap_get_shallow

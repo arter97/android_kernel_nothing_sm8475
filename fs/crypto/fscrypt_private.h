@@ -203,15 +203,21 @@ struct fscrypt_info {
 	struct fscrypt_prepared_key ci_enc_key;
 
 	/* True if ci_enc_key should be freed when this fscrypt_info is freed */
-	bool ci_owns_key;
+	u8 ci_owns_key : 1;
 
 #ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
 	/*
 	 * True if this inode will use inline encryption (blk-crypto) instead of
 	 * the traditional filesystem-layer encryption.
 	 */
-	bool ci_inlinecrypt;
+	u8 ci_inlinecrypt : 1;
 #endif
+
+	/* True if ci_dirhash_key is initialized */
+	u8 ci_dirhash_key_initialized : 1;
+
+	/* Hashed inode number.  Only set for IV_INO_LBLK_32 */
+	u32 ci_hashed_ino;
 
 	/*
 	 * Encryption mode used for this inode.  It corresponds to either the
@@ -247,16 +253,12 @@ struct fscrypt_info {
 	 * the plaintext filenames -- currently just casefolded directories.
 	 */
 	siphash_key_t ci_dirhash_key;
-	bool ci_dirhash_key_initialized;
 
 	/* The encryption policy used by this inode */
 	union fscrypt_policy ci_policy;
 
 	/* This inode's nonce, copied from the fscrypt_context */
 	u8 ci_nonce[FSCRYPT_FILE_NONCE_SIZE];
-
-	/* Hashed inode number.  Only set for IV_INO_LBLK_32 */
-	u32 ci_hashed_ino;
 };
 
 typedef enum {
@@ -266,7 +268,7 @@ typedef enum {
 
 /* crypto.c */
 extern struct kmem_cache *fscrypt_info_cachep;
-int fscrypt_initialize(unsigned int cop_flags);
+int fscrypt_initialize(struct super_block *sb);
 int fscrypt_crypt_block(const struct inode *inode, fscrypt_direction_t rw,
 			u64 lblk_num, struct page *src_page,
 			struct page *dest_page, unsigned int len,

@@ -167,10 +167,10 @@ void nfs_readdir_init_array(struct page *page)
 {
 	struct nfs_cache_array *array;
 
-	array = kmap_atomic(page);
+	array = kmap_local_page(page);
 	memset(array, 0, sizeof(struct nfs_cache_array));
 	array->eof_index = -1;
-	kunmap_atomic(array);
+	kunmap_local(array);
 }
 
 /*
@@ -182,11 +182,11 @@ void nfs_readdir_clear_array(struct page *page)
 	struct nfs_cache_array *array;
 	int i;
 
-	array = kmap_atomic(page);
+	array = kmap_local_page(page);
 	for (i = 0; i < array->size; i++)
 		kfree(array->array[i].string.name);
 	array->size = 0;
-	kunmap_atomic(array);
+	kunmap_local(array);
 }
 
 /*
@@ -347,7 +347,7 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
 	struct nfs_cache_array *array;
 	int status;
 
-	array = kmap(desc->page);
+	array = kmap_local_page(desc->page);
 
 	if (*desc->dir_cookie == 0)
 		status = nfs_readdir_search_for_pos(array, desc);
@@ -359,7 +359,7 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
 		desc->current_index += array->size;
 		desc->page_index++;
 	}
-	kunmap(desc->page);
+	kunmap_local(array);
 	return status;
 }
 

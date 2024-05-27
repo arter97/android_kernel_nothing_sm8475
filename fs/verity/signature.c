@@ -65,7 +65,7 @@ int __fsverity_verify_signature(const struct inode *inode, const u8 *signature,
 				unsigned int digest_algorithm)
 {
 	struct fsverity_formatted_digest *d;
-	struct fsverity_hash_alg *hash_alg = fsverity_get_hash_alg(inode,
+	const struct fsverity_hash_alg *hash_alg = fsverity_get_hash_alg(inode,
 							digest_algorithm);
 	int err;
 
@@ -125,8 +125,6 @@ int __fsverity_verify_signature(const struct inode *inode, const u8 *signature,
 		return err;
 	}
 
-	pr_debug("Valid signature for file digest %s:%*phN\n",
-		 hash_alg->name, hash_alg->digest_size, file_digest);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(__fsverity_verify_signature);
