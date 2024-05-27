@@ -197,8 +197,8 @@ static int lzo_compress_pages(struct compress_ctx *cc)
 	ret = lzo1x_1_compress(cc->rbuf, cc->rlen, cc->cbuf->cdata,
 					&cc->clen, cc->private);
 	if (ret != LZO_E_OK) {
-		printk_ratelimited("%sF2FS-fs (%s): lzo compress failed, ret:%d\n",
-				KERN_ERR, F2FS_I_SB(cc->inode)->sb->s_id, ret);
+		f2fs_err_ratelimited(F2FS_I_SB(cc->inode),
+				"lzo compress failed, ret:%d", ret);
 		return -EIO;
 	}
 	return 0;
@@ -211,17 +211,15 @@ static int lzo_decompress_pages(struct decompress_io_ctx *dic)
 	ret = lzo1x_decompress_safe(dic->cbuf->cdata, dic->clen,
 						dic->rbuf, &dic->rlen);
 	if (ret != LZO_E_OK) {
-		printk_ratelimited("%sF2FS-fs (%s): lzo decompress failed, ret:%d\n",
-				KERN_ERR, F2FS_I_SB(dic->inode)->sb->s_id, ret);
+		f2fs_err_ratelimited(F2FS_I_SB(dic->inode),
+				"lzo decompress failed, ret:%d", ret);
 		return -EIO;
 	}
 
 	if (dic->rlen != PAGE_SIZE << dic->log_cluster_size) {
-		printk_ratelimited("%sF2FS-fs (%s): lzo invalid rlen:%zu, "
-					"expected:%lu\n", KERN_ERR,
-					F2FS_I_SB(dic->inode)->sb->s_id,
-					dic->rlen,
-					PAGE_SIZE << dic->log_cluster_size);
+		f2fs_err_ratelimited(F2FS_I_SB(dic->inode),
+				"lzo invalid rlen:%zu, expected:%lu",
+				dic->rlen, PAGE_SIZE << dic->log_cluster_size);
 		return -EIO;
 	}
 	return 0;
@@ -293,16 +291,15 @@ static int lz4_decompress_pages(struct decompress_io_ctx *dic)
 	ret = LZ4_decompress_safe(dic->cbuf->cdata, dic->rbuf,
 						dic->clen, dic->rlen);
 	if (ret < 0) {
-		printk_ratelimited("%sF2FS-fs (%s): lz4 decompress failed, ret:%d\n",
-				KERN_ERR, F2FS_I_SB(dic->inode)->sb->s_id, ret);
+		f2fs_err_ratelimited(F2FS_I_SB(dic->inode),
+				"lz4 decompress failed, ret:%d", ret);
 		return -EIO;
 	}
 
 	if (ret != PAGE_SIZE << dic->log_cluster_size) {
-		printk_ratelimited("%sF2FS-fs (%s): lz4 invalid ret:%d, "
-					"expected:%lu\n", KERN_ERR,
-					F2FS_I_SB(dic->inode)->sb->s_id, ret,
-					PAGE_SIZE << dic->log_cluster_size);
+		f2fs_err_ratelimited(F2FS_I_SB(dic->inode),
+				"lz4 invalid ret:%d, expected:%lu",
+				ret, PAGE_SIZE << dic->log_cluster_size);
 		return -EIO;
 	}
 	return 0;
@@ -349,9 +346,8 @@ static int zstd_init_compress_ctx(struct compress_ctx *cc)
 
 	stream = ZSTD_initCStream(params, 0, workspace, workspace_size);
 	if (!stream) {
-		printk_ratelimited("%sF2FS-fs (%s): %s ZSTD_initCStream failed\n",
-				KERN_ERR, F2FS_I_SB(cc->inode)->sb->s_id,
-				__func__);
+		f2fs_err_ratelimited(F2FS_I_SB(cc->inode),
+				"%s ZSTD_initCStream failed", __func__);
 		kvfree(workspace);
 		return -EIO;
 	}
@@ -389,16 +385,16 @@ static int zstd_compress_pages(struct compress_ctx *cc)
 
 	ret = ZSTD_compressStream(stream, &outbuf, &inbuf);
 	if (ZSTD_isError(ret)) {
-		printk_ratelimited("%sF2FS-fs (%s): %s ZSTD_compressStream failed, ret: %d\n",
-				KERN_ERR, F2FS_I_SB(cc->inode)->sb->s_id,
+		f2fs_err_ratelimited(F2FS_I_SB(cc->inode),
+				"%s ZSTD_compressStream failed, ret: %d",
 				__func__, ZSTD_getErrorCode(ret));
 		return -EIO;
 	}
 
 	ret = ZSTD_endStream(stream, &outbuf);
 	if (ZSTD_isError(ret)) {
-		printk_ratelimited("%sF2FS-fs (%s): %s ZSTD_endStream returned %d\n",
-				KERN_ERR, F2FS_I_SB(cc->inode)->sb->s_id,
+		f2fs_err_ratelimited(F2FS_I_SB(cc->inode),
+				"%s ZSTD_endStream returned %d",
 				__func__, ZSTD_getErrorCode(ret));
 		return -EIO;
 	}
@@ -431,9 +427,8 @@ static int zstd_init_decompress_ctx(struct decompress_io_ctx *dic)
 
 	stream = ZSTD_initDStream(max_window_size, workspace, workspace_size);
 	if (!stream) {
-		printk_ratelimited("%sF2FS-fs (%s): %s ZSTD_initDStream failed\n",
-				KERN_ERR, F2FS_I_SB(dic->inode)->sb->s_id,
-				__func__);
+		f2fs_err_ratelimited(F2FS_I_SB(dic->inode),
+				"%s ZSTD_initDStream failed", __func__);
 		kvfree(workspace);
 		return -EIO;
 	}
@@ -468,16 +463,15 @@ static int zstd_decompress_pages(struct decompress_io_ctx *dic)
 
 	ret = ZSTD_decompressStream(stream, &outbuf, &inbuf);
 	if (ZSTD_isError(ret)) {
-		printk_ratelimited("%sF2FS-fs (%s): %s ZSTD_compressStream failed, ret: %d\n",
-				KERN_ERR, F2FS_I_SB(dic->inode)->sb->s_id,
+		f2fs_err_ratelimited(F2FS_I_SB(dic->inode),
+				"%s ZSTD_decompressStream failed, ret: %d",
 				__func__, ZSTD_getErrorCode(ret));
 		return -EIO;
 	}
 
 	if (dic->rlen != outbuf.pos) {
-		printk_ratelimited("%sF2FS-fs (%s): %s ZSTD invalid rlen:%zu, "
-				"expected:%lu\n", KERN_ERR,
-				F2FS_I_SB(dic->inode)->sb->s_id,
+		f2fs_err_ratelimited(F2FS_I_SB(dic->inode),
+				"%s ZSTD invalid rlen:%zu, expected:%lu",
 				__func__, dic->rlen,
 				PAGE_SIZE << dic->log_cluster_size);
 		return -EIO;
@@ -1030,6 +1024,31 @@ static void set_cluster_writeback(struct compress_ctx *cc)
 	}
 }
 
+static void cancel_cluster_writeback(struct compress_ctx *cc,
+			struct compress_io_ctx *cic, int submitted)
+{
+	int i;
+
+	/* Wait for submitted IOs. */
+	if (submitted > 1) {
+		f2fs_submit_merged_write(F2FS_I_SB(cc->inode), DATA);
+		while (atomic_read(&cic->pending_pages) !=
+					(cc->valid_nr_cpages - submitted + 1))
+			f2fs_io_schedule_timeout(DEFAULT_IO_TIMEOUT);
+	}
+
+	/* Cancel writeback and stay locked. */
+	for (i = 0; i < cc->cluster_size; i++) {
+		if (i < submitted) {
+			inode_inc_dirty_pages(cc->inode);
+			lock_page(cc->rpages[i]);
+		}
+		clear_page_private_gcing(cc->rpages[i]);
+		if (PageWriteback(cc->rpages[i]))
+			end_page_writeback(cc->rpages[i]);
+	}
+}
+
 static void set_cluster_dirty(struct compress_ctx *cc)
 {
 	int i;
@@ -1231,7 +1250,6 @@ static int f2fs_write_compressed_pages(struct compress_ctx *cc,
 		.page = NULL,
 		.encrypted_page = NULL,
 		.compressed_page = NULL,
-		.submitted = 0,
 		.io_type = io_type,
 		.io_wbc = wbc,
 		.encrypted = fscrypt_inode_uses_fs_layer_crypto(cc->inode) ?
@@ -1357,7 +1375,16 @@ static int f2fs_write_compressed_pages(struct compress_ctx *cc,
 			fio.compressed_page = cc->cpages[i - 1];
 
 		cc->cpages[i - 1] = NULL;
+		fio.submitted = 0;
 		f2fs_outplace_write_data(&dn, &fio);
+		if (unlikely(!fio.submitted)) {
+			cancel_cluster_writeback(cc, cic, i);
+
+			/* To call fscrypt_finalize_bounce_page */
+			i = cc->valid_nr_cpages;
+			*submitted = 0;
+			goto out_destroy_crypt;
+		}
 		(*submitted)++;
 unlock_continue:
 		inode_dec_dirty_pages(cc->inode);
@@ -1391,8 +1418,11 @@ unlock_continue:
 out_destroy_crypt:
 	page_array_free(cc->inode, cic->rpages, cc->cluster_size);
 
-	for (--i; i >= 0; i--)
+	for (--i; i >= 0; i--) {
+		if (!cc->cpages[i])
+			continue;
 		fscrypt_finalize_bounce_page(&cc->cpages[i]);
+	}
 out_put_cic:
 	kmem_cache_free(cic_entry_slab, cic);
 out_put_dnode:
