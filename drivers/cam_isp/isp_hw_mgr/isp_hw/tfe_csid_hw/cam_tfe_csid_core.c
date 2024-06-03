@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -1206,7 +1206,6 @@ static int cam_tfe_csid_enable_hw(struct cam_tfe_csid_hw  *csid_hw)
 	csid_hw->fatal_err_detected = false;
 	csid_hw->device_enabled = 1;
 	spin_unlock_irqrestore(&csid_hw->spin_lock, flags);
-	cam_tasklet_start(csid_hw->tasklet);
 
 	if (csid_hw->pxl_pipe_enable ) {
 		path_data = (struct cam_tfe_csid_path_cfg  *)
@@ -1219,7 +1218,6 @@ static int cam_tfe_csid_enable_hw(struct cam_tfe_csid_hw  *csid_hw)
 			csid_hw->rdi_res[i].res_priv;
 		path_data->res_sof_cnt = 0;
 	}
-
 
 	return rc;
 
@@ -1268,8 +1266,6 @@ static int cam_tfe_csid_disable_hw(struct cam_tfe_csid_hw *csid_hw)
 	/* Disable the top IRQ interrupt */
 	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_top_irq_mask_addr);
-
-	cam_tasklet_stop(csid_hw->tasklet);
 
 	rc = cam_tfe_csid_disable_soc_resources(soc_info);
 	if (rc)
