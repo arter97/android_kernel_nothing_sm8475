@@ -380,14 +380,15 @@ static int gpr_device_remove(struct device *dev)
 	struct gpr_device *adev = to_gpr_device(dev);
 	struct gpr_driver *adrv;
 	struct gpr *gpr = dev_get_drvdata(adev->dev.parent);
+	unsigned long flags;
 
 	if (dev->driver) {
 		adrv = to_gpr_driver(dev->driver);
 		if (adrv->remove)
 			adrv->remove(adev);
-		spin_lock(&gpr->svcs_lock);
+		spin_lock_irqsave(&gpr->svcs_lock, flags);
 		idr_remove(&gpr->svcs_idr, adev->svc_id);
-		spin_unlock(&gpr->svcs_lock);
+		spin_unlock_irqrestore(&gpr->svcs_lock, flags);
 	}
 
 	return 0;
@@ -420,6 +421,7 @@ static int gpr_add_device(struct device *dev, struct device_node *np,
 	struct gpr *gpr = dev_get_drvdata(dev);
 	struct gpr_device *adev = NULL;
 	int ret;
+	unsigned long flags;
 
 	adev = kzalloc(sizeof(*adev), GFP_KERNEL);
 	if (!adev)
@@ -444,10 +446,10 @@ static int gpr_add_device(struct device *dev, struct device_node *np,
 	adev->dev.release = gpr_dev_release;
 	adev->dev.driver = NULL;
 
-	spin_lock(&gpr->svcs_lock);
+	spin_lock_irqsave(&gpr->svcs_lock, flags);
 	idr_alloc(&gpr->svcs_idr, adev, id->svc_id,
 		  id->svc_id + 1, GFP_ATOMIC);
-	spin_unlock(&gpr->svcs_lock);
+	spin_unlock_irqrestore(&gpr->svcs_lock, flags);
 
 	dev_info(dev, "Adding GPR dev: %s\n", dev_name(&adev->dev));
 
