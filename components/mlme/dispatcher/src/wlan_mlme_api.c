@@ -5718,3 +5718,44 @@ uint16_t wlan_mlme_get_keepalive_period(struct wlan_objmgr_vdev *vdev)
 
 	return mlme_priv->keep_alive_period;
 }
+
+void wlan_mlme_reset_sta_keepalive_period(struct wlan_objmgr_psoc *psoc,
+					  struct wlan_objmgr_vdev *vdev)
+{
+	struct mlme_legacy_priv *mlme_priv;
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+	if (!mlme_obj) {
+		mlme_err("invalid mlem object");
+		return;
+	}
+	mlme_obj->cfg.sta.sta_keep_alive_period =
+		cfg_default(CFG_INFRA_STA_KEEP_ALIVE_PERIOD);
+	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
+	if (!mlme_priv) {
+		mlme_err("vdev legacy private object is NULL");
+		return;
+	}
+
+	mlme_priv->keep_alive_period =
+		cfg_default(CFG_INFRA_STA_KEEP_ALIVE_PERIOD);
+}
+
+QDF_STATUS
+wlan_mlme_get_sta_keep_alive_period(struct wlan_objmgr_psoc *psoc,
+				    uint32_t *keep_alive_period)
+{
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+	if (!mlme_obj) {
+		*keep_alive_period =
+				cfg_default(CFG_INFRA_STA_KEEP_ALIVE_PERIOD);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	*keep_alive_period = mlme_obj->cfg.sta.sta_keep_alive_period;
+
+	return QDF_STATUS_SUCCESS;
+}
