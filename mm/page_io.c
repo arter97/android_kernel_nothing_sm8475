@@ -392,7 +392,12 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc)
 	VM_BUG_ON_PAGE(!PageSwapCache(page), page);
 	if (data_race(sis->flags & SWP_FS_OPS))
 		return swap_writepage_fs(page, wbc);
-	else if (sis->flags & SWP_SYNCHRONOUS_IO)
+	/*
+	 * ->flags can be updated non-atomicially (scan_swap_map_slots),
+	 * but that will never affect SWP_SYNCHRONOUS_IO, so the data_race
+	 * is safe.
+	 */
+	else if (data_race(sis->flags & SWP_SYNCHRONOUS_IO))
 		swap_writepage_bdev_sync(page, wbc, sis);
 	else
 		swap_writepage_bdev_async(page, wbc, sis);
