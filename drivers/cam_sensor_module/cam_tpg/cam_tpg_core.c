@@ -465,6 +465,7 @@ static int cam_tpg_validate_cmd_desc_fill_config(
 		goto end;
 	}
 end:
+	cam_mem_put_cpu_buf(cmd_desc->mem_handle);
 	return rc;
 }
 
@@ -584,6 +585,7 @@ static int cam_tpg_packet_parse(
 		break;
 	}
 end:
+	cam_mem_put_cpu_buf(config->packet_handle);
 	return rc;
 }
 
