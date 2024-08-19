@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of_platform.h>
@@ -26,6 +26,9 @@
 #endif
 #if defined(CONFIG_MSM_VIDC_KHAJE)
 #include "msm_vidc_khaje.h"
+#endif
+#if defined(CONFIG_MSM_VIDC_SCUBA)
+#include "msm_vidc_scuba.h"
 #endif
 #if defined(CONFIG_MSM_VIDC_MONACO)
 #include "msm_vidc_monaco.h"
@@ -233,6 +236,15 @@ static int msm_vidc_deinit_platform_variant(struct msm_vidc_core *core, struct d
 	}
 #endif
 
+#if defined(CONFIG_MSM_VIDC_SCUBA)
+	if (of_device_is_compatible(dev->of_node, "qcom,msm-vidc-scuba")) {
+		rc = msm_vidc_deinit_platform_scuba(core, dev);
+		if (rc)
+			d_vpr_e("%s: failed with %d\n", __func__, rc);
+		return rc;
+	}
+#endif
+
 #if defined(CONFIG_MSM_VIDC_MONACO)
 	if (of_device_is_compatible(dev->of_node, "qcom,msm-vidc-monaco")) {
 		rc = msm_vidc_deinit_platform_monaco(core, dev);
@@ -333,6 +345,16 @@ static int msm_vidc_init_platform_variant(struct msm_vidc_core *core, struct dev
 			d_vpr_e("%s: failed msm-vidc-neo with %d\n",
 				__func__, rc);
 		return rc;
+	}
+#endif
+#if defined(CONFIG_MSM_VIDC_SCUBA)
+	if (of_device_is_compatible(dev->of_node, "qcom,msm-vidc-scuba")) {
+		rc = msm_vidc_init_platform_scuba(core, dev);
+		if (rc) {
+			d_vpr_e("%s: failed msm-vidc-scuba with %d\n",
+				__func__, rc);
+			return rc;
+		}
 	}
 #endif
 
