@@ -191,10 +191,12 @@ typedef enum {
   WLAN_MODULE_PHYLIB_RRI,               /* 0x94 */
   WLAN_MODULE_PHYLIB_SSCAN,             /* 0x95 */
   WLAN_MODULE_PHYLIB_RSVD,              /* 0x96 */
+  WLAN_MODULE_USD,                      /* 0x97 */
 
 
   WLAN_MODULE_ID_MAX,
   WLAN_MODULE_ID_INVALID = WLAN_MODULE_ID_MAX,
+  WLAN_MODULE_ID_ALL = 0xffff /* wildcard to indicate all modules */
 } WLAN_MODULE_ID;
 
 

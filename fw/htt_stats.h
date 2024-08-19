@@ -3377,6 +3377,19 @@ typedef struct {
 typedef htt_stats_txbf_ofdma_be_steer_mpdu_stats_tlv
     htt_txbf_ofdma_be_steer_mpdu_stats_tlv;
 
+/* HTT_STATS_TXBF_OFDMA_BE_PARBW_TAG stats TLV:
+ * Sent by target in response to HTT_DBG_EXT_STATS_TXBF_OFDMA stats ID request.
+ */
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    /* Num of EHT TxBF Partial Bandwidth soundings */
+    A_UINT32 be_ofdma_parbw_user_snd;
+    /* Num of EHT Partial Bandwidth Sounded CVs received */
+    A_UINT32 be_ofdma_parbw_cv;
+    /* Num of 11BE EHT Total CVs received */
+    A_UINT32 be_ofdma_total_cv;
+} htt_stats_txbf_ofdma_be_parbw_tlv;
+
 /* STATS_TYPE : HTT_DBG_EXT_STATS_TXBF_OFDMA
  * TLV_TAGS:
  *      - HTT_STATS_TXBF_OFDMA_NDPA_STATS_TAG
@@ -5996,6 +6009,25 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_rx_pdev_ppdu_dur_tlv htt_rx_pdev_ppdu_dur_stats_tlv;
 
+#define HTT_STATS_RX_RSSI_HIST_BINS 24
+#define HTT_STATS_RX_RSSI_HIST_OFFSET_DBM -30
+#define HTT_STATS_RX_RSSI_DB_PER_BIN -3
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+
+    /** rssi_in_dbm_ppdu_cnt :
+     * Number of PPDUs received within each RSSI range
+     * rssi_in_dbm_ppdu_cnt[0]  : number of PPDUs received > -30 dBm
+     * rssi_in_dbm_ppdu_cnt[1]  : number of PPDUs received from [-30 to -32] dBm
+     * rssi_in_dbm_ppdu_cnt[2]  : number of PPDUs received from [-33 to -35] dBm
+     * ...
+     * rssi_in_dbm_ppdu_cnt[22] : number of PPDUs received from [-93 to -95] dBm
+     * rssi_in_dbm_ppdu_cnt[23] : number of PPDUs received <= -96 dBm
+     **/
+    A_UINT32 rssi_in_dbm_ppdu_cnt[HTT_STATS_RX_RSSI_HIST_BINS];
+} htt_stats_rx_pdev_rssi_hist_tlv;
+
 /* STATS_TYPE : HTT_DBG_EXT_STATS_PDEV_RX_RATE
  * TLV_TAGS:
  *      - HTT_STATS_RX_PDEV_RATE_STATS_TAG
@@ -6008,6 +6040,7 @@ typedef htt_stats_rx_pdev_ppdu_dur_tlv htt_rx_pdev_ppdu_dur_stats_tlv;
 typedef struct {
     htt_stats_rx_pdev_rate_stats_tlv rate_tlv;
     htt_stats_rx_pdev_ppdu_dur_tlv rx_ppdu_dur_tlv;
+    htt_stats_rx_pdev_rssi_hist_tlv rx_ppdu_rssi_hist_tlv;
 } htt_rx_pdev_rate_stats_t;
 #endif /* ATH_TARGET */
 
@@ -9085,6 +9118,19 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_phy_counters_tlv htt_phy_counters_tlv;
 
+#define HTT_STATS_ANI_MODE_M 0x000000ff
+#define HTT_STATS_ANI_MODE_S 0
+
+#define HTT_STATS_ANI_MODE_GET(_var) \
+    (((_var) & HTT_STATS_ANI_MODE_M) >> \
+     HTT_STATS_ANI_MODE_S)
+
+#define HTT_STATS_ANI_MODE_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ANI_MODE, _val); \
+        ((_var) |= ((_val) << HTT_STATS_ANI_MODE_S)); \
+    } while (0)
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
     /** per chain hw noise floor values in dBm */
@@ -9138,6 +9184,23 @@ typedef struct {
     A_UINT32 band_center_frequency_DBW;
 
     /** DFS SW based progressive stats - end **/
+
+    /* BIT [ 7 :  0]   :- ani_mode
+     * BIT [31 :  8]   :- reserved
+     *
+     * ani_mode:
+     *     1 for static ANI
+     *     0 for dynamic ANI
+     *     0xFF for ANI disabled
+     */
+    union {
+        A_UINT32 dword__ani_mode;
+        struct {
+            A_UINT32
+                ani_mode: 8,
+                reserved: 24;
+        };
+    };
 } htt_stats_phy_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_phy_stats_tlv htt_phy_stats_tlv;
