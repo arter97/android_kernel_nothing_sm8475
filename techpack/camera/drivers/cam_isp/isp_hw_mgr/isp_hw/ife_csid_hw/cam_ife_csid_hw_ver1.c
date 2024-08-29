@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -2708,7 +2708,6 @@ static int cam_ife_csid_ver1_enable_hw(struct cam_ife_csid_ver1_hw *csid_hw)
 	csid_hw->flags.fatal_err_detected = false;
 	csid_hw->flags.device_enabled = true;
 	spin_unlock_irqrestore(&csid_hw->lock_state, flags);
-	cam_tasklet_start(csid_hw->tasklet);
 
 	return rc;
 
@@ -2873,7 +2872,6 @@ static int cam_ife_csid_ver1_disable_hw(
 	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->top_irq_mask_addr);
 
-	cam_tasklet_stop(csid_hw->tasklet);
 	rc = cam_ife_csid_disable_soc_resources(soc_info);
 	if (rc)
 		CAM_ERR(CAM_ISP, "CSID:%d Disable CSID SOC failed",

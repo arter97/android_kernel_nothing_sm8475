@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -532,6 +532,7 @@ int32_t cam_actuator_i2c_pkt_parse(struct cam_actuator_ctrl_t *a_ctrl,
 			cmd_buf = (uint32_t *)generic_ptr;
 			if (!cmd_buf) {
 				CAM_ERR(CAM_ACTUATOR, "invalid cmd buf");
+				cam_mem_put_cpu_buf(cmd_desc[i].mem_handle);
 				rc = -EINVAL;
 				goto end;
 			}
@@ -540,6 +541,7 @@ int32_t cam_actuator_i2c_pkt_parse(struct cam_actuator_ctrl_t *a_ctrl,
 				sizeof(struct common_header)))) {
 				CAM_ERR(CAM_ACTUATOR,
 					"Invalid length for sensor cmd");
+				cam_mem_put_cpu_buf(cmd_desc[i].mem_handle);
 				rc = -EINVAL;
 				goto end;
 			}
@@ -556,6 +558,7 @@ int32_t cam_actuator_i2c_pkt_parse(struct cam_actuator_ctrl_t *a_ctrl,
 				if (rc < 0) {
 					CAM_ERR(CAM_ACTUATOR,
 					"Failed to parse slave info: %d", rc);
+					cam_mem_put_cpu_buf(cmd_desc[i].mem_handle);
 					goto end;
 				}
 				break;
@@ -571,6 +574,7 @@ int32_t cam_actuator_i2c_pkt_parse(struct cam_actuator_ctrl_t *a_ctrl,
 					CAM_ERR(CAM_ACTUATOR,
 					"Failed:parse power settings: %d",
 					rc);
+					cam_mem_put_cpu_buf(cmd_desc[i].mem_handle);
 					goto end;
 				}
 				break;
@@ -591,6 +595,7 @@ int32_t cam_actuator_i2c_pkt_parse(struct cam_actuator_ctrl_t *a_ctrl,
 					CAM_ERR(CAM_ACTUATOR,
 					"Failed:parse init settings: %d",
 					rc);
+					cam_mem_put_cpu_buf(cmd_desc[i].mem_handle);
 					goto end;
 				}
 				break;
