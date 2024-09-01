@@ -1988,7 +1988,7 @@ int rproc_set_firmware(struct rproc *rproc, const char *fw_name)
 		return -EINVAL;
 	}
 
-	if (rproc->state != RPROC_OFFLINE) {
+	if (rproc->state != RPROC_OFFLINE && rproc->state != RPROC_DETACHED) {
 		dev_err(dev, "can't change firmware while running\n");
 		ret = -EBUSY;
 		goto out;
