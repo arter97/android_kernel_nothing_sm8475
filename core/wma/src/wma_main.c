@@ -8631,8 +8631,11 @@ static QDF_STATUS wma_mc_process_msg(struct scheduler_msg *msg)
 		break;
 #endif /* FEATURE_WLAN_AUTO_SHUTDOWN */
 	case WMA_DHCP_START_IND:
+		wma_process_dhcp_ind(wma_handle, (tAniDHCPInd *)msg->bodyptr);
+		qdf_mem_free(msg->bodyptr);
+		break;
 	case WMA_DHCP_STOP_IND:
-		wma_process_dhcp_ind(wma_handle, (tAniDHCPInd *) msg->bodyptr);
+		wma_process_dhcp_ind(wma_handle, (tAniDHCPInd *)msg->bodyptr);
 		qdf_mem_free(msg->bodyptr);
 		break;
 	case WMA_INIT_THERMAL_INFO_CMD:
@@ -9060,6 +9063,16 @@ static QDF_STATUS wma_mc_process_msg(struct scheduler_msg *msg)
 		wma_twt_process_nudge_dialog(wma_handle, msg->bodyptr);
 		qdf_mem_free(msg->bodyptr);
 		break;
+#ifdef FEATURE_WLAN_APF
+	case WMA_ENABLE_ACTIVE_APF_MODE_IND:
+		wma_enable_active_apf_mode(wma_handle, (tAniDHCPInd *)msg->bodyptr);
+		qdf_mem_free(msg->bodyptr);
+		break;
+	case WMA_DISABLE_ACTIVE_APF_MODE_IND:
+		wma_disable_active_apf_mode(wma_handle, (tAniDHCPInd *)msg->bodyptr);
+		qdf_mem_free(msg->bodyptr);
+		break;
+#endif
 	default:
 		wma_debug("Unhandled WMA message of type %d", msg->type);
 		if (msg->bodyptr)
