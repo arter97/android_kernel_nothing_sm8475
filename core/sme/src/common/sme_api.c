@@ -15388,6 +15388,7 @@ void sme_update_score_config(mac_handle_t mac_handle, eCsrPhyMode phy_mode,
 	ucfg_mlme_get_channel_bonding_5ghz(mac_ctx->psoc,
 					   &channel_bonding_mode);
 	config.bw_above_20_5ghz = channel_bonding_mode;
+	config.max_chan_switch_ie = mlme_max_chan_switch_is_set(mac_ctx->psoc);
 
 	wlan_psoc_set_phy_config(mac_ctx->psoc, &config);
 }
