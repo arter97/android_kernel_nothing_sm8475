@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2010-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __KGSL_PWRCTRL_H
 #define __KGSL_PWRCTRL_H
@@ -44,11 +44,6 @@ struct kgsl_clk_stats {
 struct kgsl_pwr_constraint {
 	unsigned int type;
 	unsigned int sub_type;
-	union {
-		struct {
-			unsigned int level;
-		} pwrlevel;
-	} hint;
 	unsigned long expires;
 	uint32_t owner_id;
 	u32 owner_timestamp;

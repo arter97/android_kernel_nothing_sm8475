@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2010-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk/qcom.h>
@@ -298,14 +298,14 @@ void kgsl_pwrctrl_set_constraint(struct kgsl_device *device,
 
 	/*
 	 * If a constraint is already set, set a new constraint only
-	 * if it is faster.  If the requested constraint is the same
+	 * if it is faster. If the requested constraint is the same
 	 * as the current one, update ownership and timestamp.
 	 */
 	if ((pwrc_old->type == KGSL_CONSTRAINT_NONE) ||
-		(constraint < pwrc_old->hint.pwrlevel.level)) {
+		(pwrc_old->sub_type == KGSL_CONSTRAINT_PWR_MIN &&
+		 pwrc->sub_type == KGSL_CONSTRAINT_PWR_MAX)) {
 		pwrc_old->type = pwrc->type;
 		pwrc_old->sub_type = pwrc->sub_type;
-		pwrc_old->hint.pwrlevel.level = constraint;
 		pwrc_old->owner_id = id;
 		pwrc_old->expires = jiffies +
 			msecs_to_jiffies(device->pwrctrl.interval_timeout);
@@ -313,8 +313,7 @@ void kgsl_pwrctrl_set_constraint(struct kgsl_device *device,
 		kgsl_pwrctrl_pwrlevel_change(device, constraint);
 		/* Trace the constraint being set by the driver */
 		trace_kgsl_constraint(device, pwrc_old->type, constraint, 1);
-	} else if ((pwrc_old->type == pwrc->type) &&
-		(pwrc_old->hint.pwrlevel.level == constraint)) {
+	} else if (pwrc_old->type == pwrc->type) {
 		pwrc_old->owner_id = id;
 		pwrc_old->owner_timestamp = ts;
 		pwrc_old->expires = jiffies +
