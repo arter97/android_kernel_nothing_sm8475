@@ -3940,6 +3940,12 @@ typedef struct {
     /* Total number of "real" max_active_vdevs that FW supports. */
     A_UINT32 num_max_active_vdevs;
 
+    /**  max_num_ml_peers:
+     * Number of ml_peers for a SOC; used by Host to derive
+     * max number of peers in the system
+     */
+    A_UINT32 max_num_ml_peers;
+
 /*
  * This fixed_param TLV is followed by these additional TLVs:
  * mac_addr_list[num_extra_mac_addr];
@@ -46225,6 +46231,9 @@ typedef struct {
     A_UINT32 mld_group_id;
     /** pdev_id for identifying the MAC, See macros starting with WMI_PDEV_ID_ for values. */
     A_UINT32 pdev_id;
+
+    A_UINT32 max_num_ml_peers;
+
 /*
  * Followed by TLVs:
  *     A_UINT32 hw_link_ids[];
