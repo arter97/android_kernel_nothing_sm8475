@@ -338,6 +338,12 @@ EXPORT_SYMBOL(cam_mem_get_io_buf);
 int cam_mem_get_cpu_buf(int32_t buf_handle, uintptr_t *vaddr_ptr, size_t *len)
 {
 	int idx, rc = 0;
+	/* Check to avoid kernel panic - cannot call mutex in softirq/atomic context */
+	if (!in_task()) {
+		CAM_ERR(CAM_MEM, "Calling from softirq/atomic context");
+		dump_stack();
+		return -EINVAL;
+	}
 
 	if (!atomic_read(&cam_mem_mgr_state)) {
 		CAM_ERR(CAM_MEM, "failed. mem_mgr not initialized");
@@ -1473,6 +1479,13 @@ void cam_mem_put_cpu_buf(int32_t buf_handle)
 	bool unmap = false;
 	uint64_t ms, hrs, min, sec;
 	struct timespec64 current_ts;
+
+	/* Check to avoid kernel panic - cannot call mutex in softirq/atomic context */
+	if (!in_task()) {
+		CAM_ERR(CAM_MEM, "Calling from softirq/atomic context");
+		dump_stack();
+		return;
+	}
 
 	if (!buf_handle) {
 		CAM_ERR(CAM_MEM, "Invalid buf_handle");
