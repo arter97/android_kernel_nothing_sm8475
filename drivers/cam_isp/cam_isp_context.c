@@ -224,9 +224,8 @@ static int __cam_isp_ctx_dump_event_record(
 			return -ENOSPC;
 		}
 
-		min_len = sizeof(struct cam_isp_context_dump_header) +
-			((num_entries * CAM_ISP_CTX_DUMP_EVENT_NUM_WORDS) *
-				sizeof(uint64_t));
+		min_len = (sizeof(struct cam_isp_context_dump_header) +
+			(CAM_ISP_CTX_DUMP_EVENT_NUM_WORDS * sizeof(uint64_t))) * num_entries;
 		remain_len = dump_args->buf_len - dump_args->offset;
 
 		if (remain_len < min_len) {
@@ -4577,6 +4576,14 @@ static int __cam_isp_ctx_dump_in_top_state(
 	struct cam_hw_cmd_args              hw_cmd_args;
 	struct cam_isp_hw_cmd_args          isp_hw_cmd_args;
 
+	rc  = cam_mem_get_cpu_buf(dump_info->buf_handle,
+		&cpu_addr, &buf_len);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Invalid handle %u rc %d, ctx_idx: %u, link: 0x%x",
+			dump_info->buf_handle, rc, ctx->ctx_id, ctx->link_hdl);
+		return rc;
+	}
+
 	spin_lock_bh(&ctx->lock);
 	list_for_each_entry_safe(req, req_temp,
 		&ctx->active_req_list, list) {
@@ -4596,14 +4603,6 @@ static int __cam_isp_ctx_dump_in_top_state(
 	}
 	goto end;
 hw_dump:
-	rc  = cam_mem_get_cpu_buf(dump_info->buf_handle,
-		&cpu_addr, &buf_len);
-	if (rc) {
-		CAM_ERR(CAM_ISP, "Invalid handle %u rc %d",
-			dump_info->buf_handle, rc);
-		spin_unlock_bh(&ctx->lock);
-		return rc;
-	}
 	if (buf_len <= dump_info->offset) {
 		spin_unlock_bh(&ctx->lock);
 		CAM_WARN(CAM_ISP, "Dump buffer overshoot len %zu offset %zu",
@@ -4617,9 +4616,10 @@ hw_dump:
 		(CAM_ISP_CTX_DUMP_NUM_WORDS * sizeof(uint64_t));
 
 	if (remain_len < min_len) {
+		CAM_WARN(CAM_ISP,
+		    "Dump buffer exhaust remain %zu min %u, ctx_idx: %u, link: 0x%x",
+		    remain_len, min_len, ctx->ctx_id, ctx->link_hdl);
 		spin_unlock_bh(&ctx->lock);
-		CAM_WARN(CAM_ISP, "Dump buffer exhaust remain %zu min %u",
-			remain_len, min_len);
 		cam_mem_put_cpu_buf(dump_info->buf_handle);
 		return -ENOSPC;
 	}
@@ -4653,6 +4653,18 @@ hw_dump:
 	}
 	dump_info->offset = dump_args.offset;
 
+	min_len = sizeof(struct cam_isp_context_dump_header) +
+		(CAM_ISP_CTX_DUMP_NUM_WORDS * sizeof(int32_t));
+	remain_len = buf_len - dump_info->offset;
+	if (remain_len < min_len) {
+		CAM_WARN(CAM_ISP,
+		    "Dump buffer exhaust remain %zu min %u, ctx_idx: %u, link: 0x%x",
+		    remain_len, min_len, ctx->ctx_id, ctx->link_hdl);
+		spin_unlock_bh(&ctx->lock);
+		cam_mem_put_cpu_buf(dump_info->buf_handle);
+		return -ENOSPC;
+	}
+
 	/* Dump stream info */
 	ctx->ctxt_to_hw_map = ctx_isp->hw_ctx;
 	if (ctx->hw_mgr_intf->hw_dump) {
@@ -4665,6 +4677,17 @@ hw_dump:
 			CAM_ERR(CAM_ISP, "ISP CTX stream info dump fail %lld, rc: %d",
 				req->request_id, rc);
 			goto end;
+		}
+
+		dump_info->offset = dump_args.offset;
+		remain_len = buf_len - dump_info->offset;
+		if (remain_len < min_len) {
+			CAM_WARN(CAM_ISP,
+				"Dump buffer exhaust remain %zu min %u, ctx_idx: %u, link: 0x%x",
+				remain_len, min_len, ctx->ctx_id, ctx->link_hdl);
+			spin_unlock_bh(&ctx->lock);
+			cam_mem_put_cpu_buf(dump_info->buf_handle);
+			return -ENOSPC;
 		}
 
 		/* Dump second part of stream info from ife hw manager */
