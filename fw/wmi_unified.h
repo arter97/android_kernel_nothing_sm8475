@@ -41515,6 +41515,9 @@ typedef struct {
 #define WMI_MLO_LINK_INFO_GET_IEEE_LINK_ID(link_info)      WMI_GET_BITS(link_info, 10, 4)
 #define WMI_MLO_LINK_INFO_SET_IEEE_LINK_ID(link_info, val) WMI_SET_BITS(link_info, 10, 4, val)
 
+#define WMI_MLO_LINK_INFO_GET_FREQ(link_info)              WMI_GET_BITS(link_info, 14, 16)
+#define WMI_MLO_LINK_INFO_SET_FREQ(link_info, val)         WMI_SET_BITS(link_info, 14, 16, val)
+
 typedef struct {
     A_UINT32 tlv_header;    /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_mlo_link_info_tlv_param */
     wmi_mac_addr link_addr;
@@ -41527,6 +41530,7 @@ typedef struct {
      *            1 - rejected
      * b[7-9]   : Band - link band info (band value is from wmi_mlo_band_info)
      * b[10-13] : IEEE link id - Link id associated with AP
+     * b[14-29] : Frequency - Link channel frequency in MHz units
      */
 } wmi_mlo_link_info;
 
