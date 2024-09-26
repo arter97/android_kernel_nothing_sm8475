@@ -1453,6 +1453,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_pdev_power_boost_event_fixed_param,
     WMITLV_TAG_STRUC_wmi_pdev_power_boost_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_pdev_power_boost_mem_addr_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_c2c_detect_event_fixed_param,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -2338,6 +2339,7 @@ typedef enum {
     OP(WMI_MLO_PEER_TID_TO_LINK_MAP_EVENTID) \
     OP(WMI_USD_SERVICE_EVENTID) \
     OP(WMI_PDEV_POWER_BOOST_EVENTID) \
+    OP(WMI_C2C_DETECT_EVENTID) \
     /* add new EVT_LIST elements above this line */
 
 
@@ -6888,6 +6890,11 @@ WMITLV_CREATE_PARAM_STRUC(WMI_REG_CHAN_LIST_CC_EXT_EVENTID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_6g_afc_channel_info, channel_info_array, WMITLV_SIZE_VAR)\
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_afc_chan_eirp_power_info, chan_eirp_power_info_array, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_AFC_EVENTID);
+
+/* Indicate LPI AP detect or not to Host */
+#define WMITLV_TABLE_WMI_C2C_DETECT_EVENTID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_c2c_detect_event_fixed_param, wmi_c2c_detect_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_C2C_DETECT_EVENTID);
 
 /* FIPS event */
 #define WMITLV_TABLE_WMI_PDEV_FIPS_EVENTID(id,op,buf,len) \

@@ -2504,6 +2504,7 @@ typedef enum {
     WMI_REG_CHAN_LIST_CC_EXT_EVENTID,
     WMI_AFC_EVENTID,
     WMI_REG_CHAN_LIST_CC_EXT2_EVENTID, /* DEPRECATED */
+    WMI_C2C_DETECT_EVENTID,
 
     /** Events for TWT(Target Wake Time) of STA and AP  */
     WMI_TWT_ENABLE_COMPLETE_EVENTID = WMI_EVT_GRP_START_ID(WMI_GRP_TWT),
@@ -3959,6 +3960,15 @@ typedef struct {
  */
 } wmi_ready_event_fixed_param;
 
+typedef enum {
+    WMI_C2C_INT_TYPE_STA      = 0,
+    WMI_C2C_INT_TYPE_SAP      = 1,
+    WMI_C2C_INT_TYPE_P2P      = 2,
+    WMI_C2C_INT_TYPE_NAN      = 3,
+    WMI_C2C_INT_TYPE_TDLS     = 4,
+    WMI_C2C_INT_TYPE_XPAN_SAP = 5,
+} WMI_C2C_INT_TYPE;
+
 typedef struct {
     A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_resource_config */
     /**
@@ -4939,6 +4949,20 @@ typedef struct {
      * number of max active partner links of a ML BSS
      */
     A_UINT32 num_max_active_mlo_link_per_ml_bss;
+
+    /**
+     * @brief c2c_int_type_config
+     * C2C interface type configuration,
+     * interface type defined in enum WMI_C2C_INT_TYPE:
+     *     BIT 0 set -> Interface type STA enable C2C
+     *     BIT 1 set -> Interface type SAP enable C2C
+     *     BIT 2 set -> Interface type P2P enable C2C
+     *     BIT 3 set -> Interface type NAN enable C2C
+     *     BIT 4 set -> Interface type TDLS enable C2C
+     *     BIT 5 set -> Interface type XPAN_SAP enable C2C
+     *     BIT 6 : 31 Reserved
+     */
+    A_UINT32 c2c_int_type_config;
 } wmi_resource_config;
 
 #define WMI_MSDU_FLOW_AST_ENABLE_GET(msdu_flow_config0, ast_x) \
@@ -6321,6 +6345,8 @@ typedef struct {
 #define WMI_APPEND_TO_EXISTING_CHAN_LIST    0x1
 #define WMI_CHANNEL_MAX_BANDWIDTH_VALID     0x2
 #define WMI_HONOR_HOST_6GHZ_CHANNEL_PASSIVE 0x4
+#define WMI_SCAN_TO_DETECT_6GHZ_C2C_AP      0x8
+
 /*
  * To preserve backwards compatibility, retain old names (without WMI_ prefix)
  * as aliases for the corrected names (with WMI_ prefix).
@@ -24233,6 +24259,9 @@ typedef enum wake_reason_e {
     WOW_REASON_P2P_CLI_DFS_AP_BMISS_DETECTED,
     /* if Page Fault blocking feature enabled and PF observed under WoW */
     WOW_REASON_PF_BLOCKING_LAST_TIME,
+    /* C2C scan report LPI AP detect or not event */
+    WOW_REASON_C2C_DETECT_EVENT,
+
 
     /* add new WOW_REASON_ defs before this line */
     WOW_REASON_MAX,
@@ -38864,6 +38893,12 @@ typedef struct {
     A_UINT32  tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_11d_new_country_event_fixed_param */
     A_UINT32  new_alpha2; /** alpha2 characters representing the country code */
 } wmi_11d_new_country_event_fixed_param;
+
+/** FW indicating LPI AP detect or not to Host */
+typedef struct {
+    A_UINT32  tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_c2c_detect_event_fixed_param */
+    A_UINT32  lpi_ap_detect; /** flag to indicate LPI AP detect or not */
+} wmi_c2c_detect_event_fixed_param;
 
 typedef struct {
     /** TLV tag and len; tag equals
