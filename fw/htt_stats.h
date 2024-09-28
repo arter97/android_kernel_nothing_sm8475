@@ -786,6 +786,30 @@ enum htt_dbg_ext_stats_type {
      */
     HTT_DBG_EXT_STATS_TX_VDEV_NSS = 69,
 
+    /** HTT_DBG_EXT_STATS_PDEV_RTT_DELAY
+     * PARAMS:
+     *    - No Params
+     * RESP MSG:
+     *    - htt_stats_pdev_rtt_delay_tlv
+     */
+    HTT_DBG_EXT_STATS_PDEV_RTT_DELAY = 70,
+
+    /** HTT_DBG_EXT_STATS_PDEV_SPECTRAL
+     * PARAMS:
+     *    - No Params
+     * RESP MSG:
+     *    - htt_stats_pdev_spectral_tlv
+     */
+    HTT_DBG_EXT_STATS_PDEV_SPECTRAL = 71,
+
+    /** HTT_DBG_EXT_STATS_PDEV_AOA
+     * PARAMS:
+     *    - No Params
+     * RESP MSG:
+     *    - htt_stats_pdev_aoa_tlv
+     */
+    HTT_DBG_EXT_STATS_PDEV_AOA = 72,
+
 
     /* keep this last */
     HTT_DBG_NUM_EXT_STATS = 256,
@@ -8887,6 +8911,121 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_pktlog_and_htt_ring_stats_tlv
     htt_pktlog_and_htt_ring_stats_tlv;
+
+/* STATS_TYPE: HTT_DBG_EXT_STATS_PDEV_SPECTRAL
+ * TLV_TAGS:
+ *  HTT_STATS_PDEV_SPECTRAL_TAG
+ */
+#define HTT_STATS_PDEV_SPECTRAL_PCFG_MAX_DET (3)
+#define HTT_STATS_PDEV_SPECTRAL_MAX_PCSS_RING_FOR_IPC (3)
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+
+    A_UINT32 dbg_num_buf;
+    A_UINT32 dbg_num_events;
+
+    /* HOST_ring_HI */
+    A_UINT32 host_head_idx;
+    A_UINT32 host_tail_idx;
+    A_UINT32 host_shadow_tail_idx;
+
+    /* SHADOW_ring_HI */
+    A_UINT32 in_ring_head_idx;
+    A_UINT32 in_ring_tail_idx;
+    A_UINT32 in_ring_shadow_tail_idx;
+    A_UINT32 in_ring_shadow_head_idx;
+
+    /* OUT_ring_HI */
+    A_UINT32 out_ring_head_idx;
+    A_UINT32 out_ring_tail_idx;
+    A_UINT32 out_ring_shadow_tail_idx;
+    A_UINT32 out_ring_shadow_head_idx;
+
+    /* IPC_ring MAX_PCSS_RING_FOR_IPC */
+    struct {
+        A_UINT32 head_idx;
+        A_UINT32 tail_idx;
+        A_UINT32 shadow_tail_idx;
+        A_UINT32 shadow_head_idx;
+    } ipc_rings[HTT_STATS_PDEV_SPECTRAL_MAX_PCSS_RING_FOR_IPC];
+
+    /* VREG Counters */
+    struct {
+        A_UINT32 scan_priority;
+        A_UINT32 scan_count;
+        A_UINT32 scan_period;
+        A_UINT32 scan_chn_mask;
+        A_UINT32 scan_ena;
+        A_UINT32 scan_update_mask;
+        A_UINT32 scan_ready_intrpt;
+        A_UINT32 scans_performed;
+        A_UINT32 intrpts_sent;
+        A_UINT32 scan_pending_count;
+        A_UINT32 num_pcss_elem_zero;
+        A_UINT32 num_in_elem_zero;
+        A_UINT32 num_out_elem_zero;
+        A_UINT32 num_elem_moved;
+    } pcfg_stats_det[HTT_STATS_PDEV_SPECTRAL_PCFG_MAX_DET];
+
+    struct {
+        A_UINT32 scan_no_ipc_buf_avail;
+        A_UINT32 agile_scan_no_ipc_buf_avail;
+        A_UINT32 scan_FFT_discard_count;
+        A_UINT32 scan_recapture_FFT_discard_count;
+        A_UINT32 scan_recapture_count;
+    } pcfg_stats_vreg;
+} htt_stats_pdev_spectral_tlv;
+
+/* STATS_TYPE: HTT_DBG_EXT_STATS_PDEV_RTT_DELAY
+ * TLV_TAGS:
+ *  HTT_STATS_PDEV_RTT_DELAY_TAG
+ */
+#define HTT_STATS_PDEV_RTT_DELAY_NUM_INSTANCES (2)
+/* HTT_STATS_PDEV_RTT_DELAY_PKT_BW:
+ *   0 ->  20 MHz
+ *   1 ->  40 MHz
+ *   2 ->  80 MHz
+ *   3 -> 160 MHz
+ *   4 -> 320 MHz
+ *   5: reserved
+ */
+#define HTT_STATS_PDEV_RTT_DELAY_PKT_BW (6)
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+
+    struct {
+        /* base_delay: picosecond units */
+        A_UINT32 base_delay[HTT_STATS_PDEV_RTT_DELAY_PKT_BW];
+        /* final_delay: picosecond units */
+        A_UINT32 final_delay[HTT_STATS_PDEV_RTT_DELAY_PKT_BW];
+        A_UINT32 per_chan_bias;
+        A_UINT32 off_chan_bias;
+        A_UINT32 chan_bw_bias;
+        A_UINT32 digital_block_status;
+        A_UINT32 chan_freq; /* MHz units */
+        A_UINT32 bandwidth; /* MHz units */
+    } rtt_delay[HTT_STATS_PDEV_RTT_DELAY_NUM_INSTANCES];
+} htt_stats_pdev_rtt_delay_tlv;
+
+/* STATS_TYPE: HTT_DBG_EXT_STATS_PDEV_AOA
+ * TLV_TAGS:
+ *  HTT_STATS_PDEV_AOA_TAG
+ */
+#define HTT_STATS_PDEV_AOA_MAX_HISTOGRAM (10)
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+
+    A_UINT32 gain_idx[HTT_STATS_PDEV_AOA_MAX_HISTOGRAM];
+    /* gain table element values:
+     *   0 -> default gain
+     *   1 -> low gain
+     *   2 -> very low gain
+     */
+    A_UINT32 gain_table[HTT_STATS_PDEV_AOA_MAX_HISTOGRAM];
+    A_UINT32 phase_calculated[HTT_STATS_PDEV_AOA_MAX_HISTOGRAM];
+    A_UINT32 phase_in_degree[HTT_STATS_PDEV_AOA_MAX_HISTOGRAM];
+} htt_stats_pdev_aoa_tlv;
 
 #define HTT_DLPAGER_STATS_MAX_HIST            10
 #define HTT_DLPAGER_ASYNC_LOCKED_PAGE_COUNT_M 0x000000FF
