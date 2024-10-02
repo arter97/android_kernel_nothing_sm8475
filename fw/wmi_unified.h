@@ -3610,24 +3610,24 @@ typedef enum {
 #define WMI_SUPPORTED_WIFI_4_GENERATION_GET(wifi_generations) \
         WMI_GET_BITS(wifi_generations, 0, 1)
 #define WMI_SUPPORTED_WIFI_5_GENERATION_GET(wifi_generations) \
-        WMI_GET_BITS(supported_wifi_generations, 1, 1)
+        WMI_GET_BITS(wifi_generations, 1, 1)
 #define WMI_SUPPORTED_WIFI_6_GENERATION_GET(wifi_generations) \
-        WMI_GET_BITS(supported_wifi_generations, 2, 1)
+        WMI_GET_BITS(wifi_generations, 2, 1)
 #define WMI_SUPPORTED_WIFI_7_GENERATION_GET(wifi_generations) \
-        WMI_GET_BITS(supported_wifi_generations, 3, 1)
+        WMI_GET_BITS(wifi_generations, 3, 1)
 #define WMI_SUPPORTED_WIFI_8_GENERATION_GET(wifi_generations) \
-        WMI_GET_BITS(supported_wifi_generations, 4, 1)
+        WMI_GET_BITS(wifi_generations, 4, 1)
 
 #define WMI_SUPPORTED_WIFI_4_GENERATION_SET(wifi_generations, value) \
-        WMI_SET_BITS(supported_wifi_generations, 0, 1, value)
+        WMI_SET_BITS(wifi_generations, 0, 1, value)
 #define WMI_SUPPORTED_WIFI_5_GENERATION_SET(wifi_generations, value) \
-        WMI_SET_BITS(supported_wifi_generations, 1, 1, value)
+        WMI_SET_BITS(wifi_generations, 1, 1, value)
 #define WMI_SUPPORTED_WIFI_6_GENERATION_SET(wifi_generations, value) \
-        WMI_SET_BITS(supported_wifi_generations, 2, 1, value)
+        WMI_SET_BITS(wifi_generations, 2, 1, value)
 #define WMI_SUPPORTED_WIFI_7_GENERATION_SET(wifi_generations, value) \
-        WMI_SET_BITS(supported_wifi_generations, 3, 1, value)
+        WMI_SET_BITS(wifi_generations, 3, 1, value)
 #define WMI_SUPPORTED_WIFI_8_GENERATION_SET(wifi_generations, value) \
-        WMI_SET_BITS(supported_wifi_generations, 4, 1, value)
+        WMI_SET_BITS(wifi_generations, 4, 1, value)
 
 /*
  * supported_wifi_certified_generations GET/SET APIs
@@ -3643,16 +3643,16 @@ typedef enum {
 #define WMI_SUPPORTED_WIFI_8_CERTIFIED_GENERATION_GET(wifi_generations) \
         WMI_GET_BITS(wifi_generations, 4, 1)
 
-#define WMI_SUPPORTED_WIFI_4_CERTIFIED_GENERATION_SET(wifi_certified_generations, value) \
-        WMI_SET_BITS(wifi_certified_generations, 0, 1, value)
-#define WMI_SUPPORTED_WIFI_5_CERTIFIED_GENERATION_SET(wifi_certified_generations, value) \
-        WMI_SET_BITS(wifi_certified_generations, 1, 1, value)
-#define WMI_SUPPORTED_WIFI_6_CERTIFIED_GENERATION_SET(wifi_certified_generations, value) \
-        WMI_SET_BITS(wifi_certified_generations, 2, 1, value)
-#define WMI_SUPPORTED_WIFI_7_CERTIFIED_GENERATION_SET(wifi_certified_generations, value) \
-        WMI_SET_BITS(wifi_certified_generations, 3, 1, value)
-#define WMI_SUPPORTED_WIFI_8_CERTIFIED_GENERATION_SET(wifi_certified_generations, value) \
-        WMI_SET_BITS(wifi_certified_generations, 4, 1, value)
+#define WMI_SUPPORTED_WIFI_4_CERTIFIED_GENERATION_SET(wifi_generations, value) \
+        WMI_SET_BITS(wifi_generations, 0, 1, value)
+#define WMI_SUPPORTED_WIFI_5_CERTIFIED_GENERATION_SET(wifi_generations, value) \
+        WMI_SET_BITS(wifi_generations, 1, 1, value)
+#define WMI_SUPPORTED_WIFI_6_CERTIFIED_GENERATION_SET(wifi_generations, value) \
+        WMI_SET_BITS(wifi_generations, 2, 1, value)
+#define WMI_SUPPORTED_WIFI_7_CERTIFIED_GENERATION_SET(wifi_generations, value) \
+        WMI_SET_BITS(wifi_generations, 3, 1, value)
+#define WMI_SUPPORTED_WIFI_8_CERTIFIED_GENERATION_SET(wifi_generations, value) \
+        WMI_SET_BITS(wifi_generations, 4, 1, value)
 
 
 typedef struct {
@@ -30023,14 +30023,36 @@ typedef struct {
     A_UINT32 offset; /* offset of the stats from partner_link_data for this vdev */
 } wmi_partner_link_stats;
 
+typedef enum WMI_STATS_EXT_EVENT_DATA_TYPE {
+    /* OPAQUE:
+     * The data[] bytestream in the WMI_STATS_EXT_EVENT message contains
+     * opaque contents that the host driver cannot interpret.
+     */
+    WMI_STATS_EXT_EVENT_DATA_TYPE_OPAQUE,
+    /* VDEV_STATS_EXT:
+     * The data[] bytestream in the WMI_STATS_EXT_EVENT message contains
+     * wmi_stats_ext_event_vdev_ext struct(s).
+     */
+    WMI_STATS_EXT_EVENT_DATA_TYPE_VDEV_EXT,
+} WMI_STATS_EXT_EVENT_DATA_TYPE_E;
+
 typedef struct {
     A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_stats1_event_fix_param */
     A_UINT32 vdev_id; /** vdev ID */
     A_UINT32 data_len; /** length in byte of data[]. */
+    /** data_type:
+     * Contains a WMI_STATS_EXT_EVENT_DATA_TYPE_E value to show whether
+     * the host can interpret the data[] contents, and if so, how to
+     * interpret them.
+     */
+    A_UINT32 data_type;
     /* This structure is used to send REQ binary blobs
-     * from firmware to application/service where Host drv is pass through .
+     * from firmware to application/service where Host drv is pass through.
+     * Alternatively, by specifying in the data_type field what kind of
+     * information is placed in data[], the target can allow the host to
+     * interpret the data[] contents.
      * Following this structure is the TLV:
-     *     A_UINT8 data[]; <-- length in byte given by field data_len.
+     *     A_UINT8 data[]; <-- length in bytes given by field data_len.
      */
     /* This structure is used to send information of partner links.
      * Following this structure is the TLV:
@@ -30045,6 +30067,71 @@ typedef struct {
      *                                            wmi_partner_link_stats.
      */
 } wmi_stats_ext_event_fixed_param;
+
+#define WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS 32
+#define WMI_EXT_STATS_VDEV_EXT_MAX_OPAQUE_DBG_WORDS32 1
+
+typedef enum wmi_stats_ext_event_vdev_ext_bw_counters {
+   WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_20MHz = 0,
+   WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_40MHz,
+   WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_80MHz,
+   WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_160MHz,
+   WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_320MHz,
+   /* values 5-7 reserved */
+   WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_MAX = 8
+} wmi_stats_ext_event_vdev_ext_bw_counters_t;
+
+#define WMI_STATS_EXT_EVENT_VDEV_EXT_FREQ_GET(word) \
+    WMI_GET_BITS(word, 0, 16)
+#define WMI_STATS_EXT_EVENT_VDEV_EXT_FREQ_SET(word, val) \
+    WMI_SET_BITS(word, 0, 16, val)
+#define WMI_STATS_EXT_EVENT_VDEV_EXT_VDEV_ID_GET(word) \
+    WMI_GET_BITS(word, 16, 16)
+#define WMI_STATS_EXT_EVENT_VDEV_EXT_VDEV_ID_SET(word, val) \
+    WMI_SET_BITS(word, 16, 16, val)
+
+typedef struct wmi_stats_ext_event_vdev_ext {
+    /* version
+     *     version = 1 means will use old/legacy struct
+     *     version = 0 means will use new (wmi_stats_ext_event_vdev_ext) struct
+     * Some legacy target code branches use the old structure.
+     * Hence, control the backward compatibility through this
+     * version numbering.
+     */
+    A_UINT32 version;
+    /* Number of MPDUs entering the queue */
+    A_UINT32 mpdu_enqueue;
+    /* Number of MPDUs retried from SW */
+    A_UINT32 mpdu_requeued;
+    /* Set of TX MCS counters */
+    A_UINT32 tx_mcs[WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS];
+    /* Set of TX BW counters */
+    A_UINT32 tx_bw[WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS];
+    /* Set of RX MCS counters */
+    A_UINT32 rx_mcs[WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS];
+    /* Set of RX BW counters */
+    A_UINT32 rx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_MAX];
+    /* Beacon RSSI (dBm units) */
+    A_INT32 beacon_rssi;
+    /* Total number of bytes transmitted */
+    A_UINT32 tx_bytes;
+    /* Total number of bytes received */
+    A_UINT32 rx_bytes;
+    /*
+     * home channel frequency and vdev id:
+     * lower 16bits is frequency, upper 16bits is vdev_id
+     */
+    union {
+        A_UINT32 freq__vdev_id__word32;
+        struct {
+            A_UINT32
+                freq:    16, /* MHz units */
+                vdev_id: 16;
+        };
+    };
+    /* opaque / unspecified contents, for debugging, etc */
+    A_UINT32 opaque_dbg[WMI_EXT_STATS_VDEV_EXT_MAX_OPAQUE_DBG_WORDS32];
+} wmi_stats_ext_event_vdev_ext_t;
 
 typedef enum {
     /** Default: no replay required. */
