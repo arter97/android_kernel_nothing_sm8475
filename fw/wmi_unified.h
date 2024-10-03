@@ -1350,6 +1350,9 @@ typedef enum {
     /** Unsynchronized Service Discovery */
     WMI_USD_SERVICE_CMDID,
 
+    /** WMI command to get scan cached result */
+    WMI_GET_SCAN_CACHE_RESULT_CMDID,
+
 
     /*  Offload 11k related requests */
     WMI_11K_OFFLOAD_REPORT_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_11K_OFFLOAD),
@@ -2385,6 +2388,9 @@ typedef enum {
      * Send USD event with USD mode status as success or fail.
      */
     WMI_USD_SERVICE_EVENTID,
+
+    /* WMI event to send scan cached results */
+    WMI_SCAN_CACHE_RESULT_EVENTID,
 
 
     /* GPIO Event */
@@ -38379,6 +38385,7 @@ static INLINE A_UINT8 *wmi_id_to_name(A_UINT32 wmi_command)
         WMI_RETURN_STRING(WMI_USD_SERVICE_CMDID);
         WMI_RETURN_STRING(WMI_PDEV_POWER_BOOST_CMDID);
         WMI_RETURN_STRING(WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID);
+        WMI_RETURN_STRING(WMI_GET_SCAN_CACHE_RESULT_CMDID);
     }
 
     return (A_UINT8 *) "Invalid WMI cmd";
@@ -49333,6 +49340,72 @@ typedef struct {
     /* Size of the buffer been allocated by the Host in units of KB */
     A_UINT32 size;
 } wmi_pdev_power_boost_mem_addr_cmd_fixed_param;
+
+typedef struct {
+    /* WMITLV_TAG_STRUC_wmi_get_scan_cache_result_cmd_fixed_param */
+    A_UINT32 tlv_header;
+} wmi_get_scan_cache_result_cmd_fixed_param;
+
+/* Element ID 61 (HT Operation) is present (see HT 7.3.2) */
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_HT_OPS_PRESENT_GET(flags)  WMI_GET_BITS(flags, 0, 1)
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_HT_OPS_PRESENT_SET(flags, value) WMI_SET_BITS(flags, 0, 1, value)
+
+/* Element ID 192 (VHT Operation) is present (see VHT 8.4.2)  */
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_VHT_OPS_PRESENT_GET(flags)  WMI_GET_BITS(flags, 1, 1)
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_VHT_OPS_PRESENT_SET(flags, value) WMI_SET_BITS(flags, 1, 1, value)
+
+/* Element ID 255 + Extension 36 (HE Operation) is present (see 802.11ax 9.4.2.1) */
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_HE_OPS_PRESENT_GET(flags)  WMI_GET_BITS(flags, 2, 1)
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_HE_OPS_PRESENT_SET(flags, value) WMI_SET_BITS(flags, 2, 1, value)
+
+/* Element ID 255 + Extension 106 (EHT Operation) is present(see 802.11be D1.5 9.4.2.1) */
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_EHT_OPS_PRESENT_GET(flags)  WMI_GET_BITS(flags, 3, 1)
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_EHT_OPS_PRESENT_SET(flags, value) WMI_SET_BITS(flags, 3, 1, value)
+
+/* Element ID 127 (Extended Capabilities) is present, and bit 70 (Fine Timing Measurement Responder) is set to 1 (see IEEE Std 802.11-2016 9.4.2.27) */
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_IS_FTM_RESPONDER_GET(flags)  WMI_GET_BITS(flags, 4, 1)
+#define WIFI_CACHED_SCAN_RESULT_FLAGS_IS_FTM_RESPONDER_SET(flags, value) WMI_SET_BITS(flags, 4, 1, value)
+
+
+typedef struct {
+    wmi_channel_width width;
+    A_UINT32 center_frequency0; /* Frequency value in MHz */
+    A_UINT32 center_frequency1; /* Frequency value in MHz */
+    A_UINT32 primary_frequency; /* Frequency value in MHz */
+} wifi_channel_spec;
+
+typedef struct {
+    A_UINT32 tlv_header;  /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_scan_cache_info */
+    /* age_ms:
+     * Number of milliseconds prior to WMI_GET_SCAN_CACHE_RESULT_CMDID
+     * from when the probe response or beacon frame that was used to
+     * populate this info.
+     */
+    A_UINT32 age_ms;
+
+    /* The Capability Information field from beacon or probe response frame */
+    A_UINT32 capability;
+
+    wmi_ssid ssid;
+
+    wmi_mac_addr bssid;
+
+    /* A set of flags from WIFI_CACHED_SCAN_RESULT_FLAGS_* */
+    A_UINT32 flags;
+
+    A_INT32 rssi; /* units = dBm */
+
+    wifi_channel_spec chanspec;
+} wmi_scan_cache_info;
+
+typedef struct {
+    A_UINT32 tlv_header;  /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_scan_cache_result_event_fixed_param */
+
+    /* The below TLVs follow this TLV in the WMI_SCAN_CACHE_RESULT_EVENT msg:
+     *   - A_UINT32 scan_freq_list[];
+     *   - struct wmi_scan_cache_info scan_cache_info[];
+     */
+} wmi_scan_cache_result_fixed_param;
 
 
 

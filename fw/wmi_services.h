@@ -687,7 +687,7 @@ typedef  enum  {
     WMI_SERVICE_USD_SUPPORT = 428, /* Indicates FW supports Unsynchronized Service Discovery */
     WMI_SERVICE_THERM_THROT_5_LEVELS = 429, /* Indicates FW support 5 thermal throttling levels */
     WMI_SERVICE_PROTECTED_TWT = 430, /* Indicates FW supports protected TWT operation */
-
+    WMI_SERVICE_SCAN_CACHE_REPORT_SUPPORT = 431, /* Indicates FW supports for sending scan cache report */
 
     WMI_MAX_EXT2_SERVICE
 
