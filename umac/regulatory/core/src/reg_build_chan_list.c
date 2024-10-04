@@ -1155,6 +1155,10 @@ reg_append_mas_chan_list_for_6g_sp(struct wlan_regulatory_pdev_priv_obj
 			       *pdev_priv_obj)
 {
 	struct regulatory_channel *master_chan_list_6g_client_sp;
+	struct wlan_objmgr_pdev *pdev = pdev_priv_obj->pdev_ptr;
+
+	if (!wlan_reg_is_afc_power_event_received(pdev))
+		return;
 
 	master_chan_list_6g_client_sp = pdev_priv_obj->afc_chan_list;
 
@@ -1280,6 +1284,8 @@ static void
 reg_append_mas_chan_list_for_6g(struct wlan_regulatory_pdev_priv_obj
 				*pdev_priv_obj)
 {
+	struct wlan_objmgr_pdev *pdev = pdev_priv_obj->pdev_ptr;
+
 	if (pdev_priv_obj->reg_cur_6g_ap_pwr_type >= REG_CURRENT_MAX_AP_TYPE ||
 	    pdev_priv_obj->reg_cur_6g_client_mobility_type >=
 	    REG_MAX_CLIENT_TYPE) {
@@ -1293,6 +1299,9 @@ reg_append_mas_chan_list_for_6g(struct wlan_regulatory_pdev_priv_obj
 	 * gindoor_channel_support ini value
 	 */
 
+	if (wlan_reg_is_afc_power_event_received(pdev))
+		reg_append_mas_chan_list_for_6g_sp(pdev_priv_obj);
+
 	if (pdev_priv_obj->indoor_chan_enabled) {
 		reg_append_mas_chan_list_for_6g_lpi(pdev_priv_obj);
 		reg_append_mas_chan_list_for_6g_vlp(pdev_priv_obj);
@@ -1301,7 +1310,8 @@ reg_append_mas_chan_list_for_6g(struct wlan_regulatory_pdev_priv_obj
 		reg_append_mas_chan_list_for_6g_lpi(pdev_priv_obj);
 	}
 
-	reg_append_mas_chan_list_for_6g_sp(pdev_priv_obj);
+	if (!wlan_reg_is_afc_power_event_received(pdev))
+		reg_append_mas_chan_list_for_6g_sp(pdev_priv_obj);
 }
 
 static void
