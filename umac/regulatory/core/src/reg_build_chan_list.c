@@ -1982,18 +1982,30 @@ static void reg_append_6g_reg_rules_in_pdev(
 			struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj)
 {
 	struct reg_rule_info *pdev_reg_rules;
-	enum reg_6g_ap_type cur_pwr_type = REG_INDOOR_AP;
+	enum reg_6g_ap_type cur_pwr_type;
 	uint8_t num_reg_rules;
+	uint8_t *num_6ghz_reg_rules;
 
 	pdev_reg_rules = &pdev_priv_obj->reg_rules;
 
 	num_reg_rules = pdev_reg_rules->num_of_reg_rules;
+	num_6ghz_reg_rules = pdev_reg_rules->num_of_6g_client_reg_rules;
+
+	if (num_6ghz_reg_rules[REG_INDOOR_AP])
+		cur_pwr_type = REG_INDOOR_AP;
+	else if (num_6ghz_reg_rules[REG_VERY_LOW_POWER_AP])
+		cur_pwr_type = REG_VERY_LOW_POWER_AP;
+	else if (num_6ghz_reg_rules[REG_STANDARD_POWER_AP])
+		cur_pwr_type = REG_STANDARD_POWER_AP;
+	else
+		return;
+
 	pdev_reg_rules->num_of_reg_rules +=
 		pdev_reg_rules->num_of_6g_client_reg_rules[cur_pwr_type];
 
 	qdf_mem_copy(&pdev_reg_rules->reg_rules[num_reg_rules],
 		     pdev_reg_rules->reg_rules_6g_client[cur_pwr_type],
-		     pdev_reg_rules->num_of_6g_client_reg_rules[cur_pwr_type] *
+		     num_6ghz_reg_rules[cur_pwr_type] *
 		     sizeof(struct cur_reg_rule));
 }
 
