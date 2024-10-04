@@ -3543,11 +3543,6 @@ typedef struct {
 #define WMI_TARGET_CAP_MPDU_STATS_PER_TX_NSS_SUPPORT_SET(target_cap_flags, value)\
     WMI_SET_BITS(target_cap_flags, 16, 1, value)
 
-#define WMI_TARGET_CAP_POWER_BOOST_SUPPORT_GET(target_cap_flags) \
-    WMI_GET_BITS(target_cap_flags, 17, 1)
-#define WMI_TARGET_CAP_POWER_BOOST_SUPPORT_SET(target_cap_flags) \
-    WMI_SET_BITS(target_cap_flags, 17, 1, value)
-
 
 /*
  * wmi_htt_msdu_idx_to_htt_msdu_qtype GET/SET APIs
@@ -3747,8 +3742,7 @@ typedef struct {
      * Bit 14 - Support for ML monitor mode
      * Bit 15 - Support for Qdata Tx LCE filter installation
      * Bit 16 - Support for MPDU stats per tx Nss capability
-     * Bit 17 - Support for Power Boost capability
-     * Bits 31:18 - Reserved
+     * Bits 31:17 - Reserved
      */
     A_UINT32 target_cap_flags;
 
@@ -3850,6 +3844,7 @@ typedef struct {
      *     wmi_dbs_or_sbs_cap_ext             dbs_or_sbs_cap_ext;
      *     A_INT32 hw_tx_power_signed[WMI_HW_TX_POWER_CAPS_MAX];
      *     wmi_aux_dev_capabilities           aux_dev_caps[];
+     *     WMI_POWER_BOOST_CAPABILITIES       power_boost_capabilities[];
      */
 } wmi_service_ready_ext2_event_fixed_param;
 
@@ -49406,6 +49401,30 @@ typedef struct {
      *   - struct wmi_scan_cache_info scan_cache_info[];
      */
 } wmi_scan_cache_result_fixed_param;
+
+#define WMI_POWER_BOOST_CAPABILITIES_PHY_ID_GET(word32)        WMI_GET_BITS(word32, 0, 4)
+#define WMI_POWER_BOOST_CAPABILITIES_PHY_ID_SET(word32, value) WMI_SET_BITS(word32, 0, 4, value)
+#define WMI_POWER_BOOST_CAPABILITIES_POWER_BOOST_ENABLE_GET(word32)        WMI_GET_BITS(word32, 4, 1)
+#define WMI_POWER_BOOST_CAPABILITIES_POWER_BOOST_ENABLE_SET(word32, value) WMI_SET_BITS(word32, 4, 1, value)
+
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_POWER_BOOST_CAPABILITIES */
+    union {
+        A_UINT32 phy_id__power_boost_enable__word32;
+        struct {
+            /*
+             * bits  3:0  -> PHY ID
+             * bit    4   -> power boost enable flag
+             * bits 31:5  -> reserved
+             */
+            A_UINT32
+                phy_id: 4,
+                /* Power Boost feature is enabled or not */
+                power_boost_enable: 1,
+                reserved: 27;
+        };
+    };
+} WMI_POWER_BOOST_CAPABILITIES;
 
 
 
