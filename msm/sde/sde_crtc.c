@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
@@ -4249,6 +4249,7 @@ static int _sde_crtc_vblank_enable(
 		}
 
 		mutex_unlock(&sde_crtc->crtc_lock);
+		sde_kms_cpu_vote_for_irq(_sde_crtc_get_kms(crtc), true);
 	} else {
 		mutex_lock(&sde_crtc->crtc_lock);
 		drm_for_each_encoder_mask(enc, crtc->dev,
@@ -4259,6 +4260,7 @@ static int _sde_crtc_vblank_enable(
 		}
 
 		mutex_unlock(&sde_crtc->crtc_lock);
+		sde_kms_cpu_vote_for_irq(_sde_crtc_get_kms(crtc), false);
 		pm_runtime_put_sync(crtc->dev->dev);
 	}
 
