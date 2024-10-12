@@ -1205,6 +1205,13 @@ typedef struct {
     A_UINT32 pdev_up_time_us_high;
     /** count of ofdma sequences flushed */
     A_UINT32 ofdma_seq_flush;
+    /* bytes (size of MPDUs) transmitted */
+    struct {
+        /* lower 32 bits of the tx_bytes value */
+        A_UINT32 low_32;
+        /* upper 32 bits of the tx_bytes value */
+        A_UINT32 high_32;
+    } bytes_sent;
 } htt_stats_tx_pdev_cmn_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_cmn_tlv htt_tx_pdev_stats_cmn_tlv;
@@ -6902,6 +6909,16 @@ typedef struct {
     A_UINT32 rx_flush_cnt;
     /** Num rx recovery */
     A_UINT32 rx_recovery_reset_cnt;
+    /* Num prom filter disable */
+    A_UINT32 rx_lwm_prom_filter_dis;
+    /* Num prom filter enable */
+    A_UINT32 rx_hwm_prom_filter_en;
+    struct {
+        /* lower 32 bits of the rx_bytes value */
+        A_UINT32 low_32;
+        /* upper 32 bits of the rx_bytes value */
+        A_UINT32 high_32;
+    } bytes_received;
 } htt_stats_rx_pdev_fw_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_rx_pdev_fw_stats_tlv htt_rx_pdev_fw_stats_tlv;
