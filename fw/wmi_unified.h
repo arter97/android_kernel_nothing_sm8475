@@ -34322,6 +34322,33 @@ typedef enum {
      *  ==============================================================
      */
 
+    BIOS_PARAM_TYPE_COUNTRY_CTL_MCS_DATA,
+    /*
+     *  BIOS_PARAM_TYPE_COUNTRY_CTL_MCS_DATA structure contains
+     *    - fix length parameter:
+     *       version, entryNum
+     *    - variable length array - countryCtlMcsData[entryNum]
+     *
+     *  A_UINT8 version;
+     *  A_UINT8 entryNum; // 0~15
+     *  countryCtlMcsData countryCtlMcsData[entryNum]; // variable array,
+     *                                                 // 12 bytes * entryNum
+     *  ====================struct countryCtlMcsData ======================
+     * A_UINT16 countryCode;
+     * A_UINT8  frequencyBand;
+     * A_UINT8  powerMode;
+     * A_UINT8  ocbIndex;
+     * A_UINT8  mcs;
+     * A_UINT8  bf;
+     * A_UINT8  nss;
+     * A_UINT8  txChainNum;
+     * A_UINT8  compareCtl;
+     * A_UINT8  powerLimit; // per chain, 1/4 db
+     * A_UINT8  reserved;
+     *  ==============================================================
+     */
+
+
     BIOS_PARAM_TYPE_MAX,
 } bios_param_type_e;
 
