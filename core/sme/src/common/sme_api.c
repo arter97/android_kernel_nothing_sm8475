@@ -3785,6 +3785,116 @@ QDF_STATUS sme_generic_change_country_code(mac_handle_t mac_handle,
 	return status;
 }
 
+#ifdef FEATURE_WLAN_APF
+QDF_STATUS sme_enable_active_apf_mode_ind(mac_handle_t mac_handle,
+					  uint8_t device_mode,
+					  uint8_t *macAddr, uint8_t sessionId)
+{
+	QDF_STATUS status;
+	QDF_STATUS qdf_status;
+	struct mac_context *mac = MAC_CONTEXT(mac_handle);
+	struct scheduler_msg message = {0};
+	tAniDHCPInd *pMsg;
+	struct csr_roam_session *pSession;
+
+	status = sme_acquire_global_lock(&mac->sme);
+	if (status == QDF_STATUS_SUCCESS) {
+		pSession = CSR_GET_SESSION(mac, sessionId);
+
+		if (!pSession) {
+			sme_err("Session: %d not found", sessionId);
+			sme_release_global_lock(&mac->sme);
+			return QDF_STATUS_E_FAILURE;
+		}
+		pSession->dhcp_done = false;
+
+		pMsg = qdf_mem_malloc(sizeof(tAniDHCPInd));
+		if (!pMsg) {
+			sme_release_global_lock(&mac->sme);
+			return QDF_STATUS_E_NOMEM;
+		}
+		pMsg->msgType = WMA_ENABLE_ACTIVE_APF_MODE_IND;
+		pMsg->msgLen = (uint16_t)sizeof(tAniDHCPInd);
+		pMsg->device_mode = device_mode;
+		qdf_mem_copy(pMsg->adapterMacAddr.bytes, macAddr,
+			     QDF_MAC_ADDR_SIZE);
+		wlan_mlme_get_bssid_vdev_id(mac->pdev, sessionId,
+					    &pMsg->peerMacAddr);
+
+		message.type = WMA_ENABLE_ACTIVE_APF_MODE_IND;
+		message.bodyptr = pMsg;
+		message.reserved = 0;
+		MTRACE(qdf_trace(QDF_MODULE_ID_SME, TRACE_CODE_SME_TX_WMA_MSG,
+				 sessionId, message.type));
+		qdf_status = scheduler_post_message(QDF_MODULE_ID_SME,
+						    QDF_MODULE_ID_WMA,
+						    QDF_MODULE_ID_WMA,
+						    &message);
+		if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
+			sme_err("Post enable APF mode MSG fail");
+			qdf_mem_free(pMsg);
+			status = QDF_STATUS_E_FAILURE;
+		}
+		sme_release_global_lock(&mac->sme);
+	}
+	return status;
+}
+
+QDF_STATUS sme_disable_active_apf_mode_ind(mac_handle_t mac_handle,
+					   uint8_t device_mode,
+					   uint8_t *macAddr, uint8_t sessionId)
+{
+	QDF_STATUS status;
+	QDF_STATUS qdf_status;
+	struct mac_context *mac = MAC_CONTEXT(mac_handle);
+	struct scheduler_msg message = {0};
+	tAniDHCPInd *pMsg;
+	struct csr_roam_session *pSession;
+
+	status = sme_acquire_global_lock(&mac->sme);
+	if (status == QDF_STATUS_SUCCESS) {
+		pSession = CSR_GET_SESSION(mac, sessionId);
+
+		if (!pSession) {
+			sme_err("Session: %d not found", sessionId);
+			sme_release_global_lock(&mac->sme);
+			return QDF_STATUS_E_FAILURE;
+		}
+		pSession->dhcp_done = false;
+
+		pMsg = qdf_mem_malloc(sizeof(tAniDHCPInd));
+		if (!pMsg) {
+			sme_release_global_lock(&mac->sme);
+			return QDF_STATUS_E_NOMEM;
+		}
+		pMsg->msgType = WMA_DISABLE_ACTIVE_APF_MODE_IND;
+		pMsg->msgLen = (uint16_t)sizeof(tAniDHCPInd);
+		pMsg->device_mode = device_mode;
+		qdf_mem_copy(pMsg->adapterMacAddr.bytes, macAddr,
+			     QDF_MAC_ADDR_SIZE);
+		wlan_mlme_get_bssid_vdev_id(mac->pdev, sessionId,
+					    &pMsg->peerMacAddr);
+
+		message.type = WMA_DISABLE_ACTIVE_APF_MODE_IND;
+		message.bodyptr = pMsg;
+		message.reserved = 0;
+		MTRACE(qdf_trace(QDF_MODULE_ID_SME, TRACE_CODE_SME_TX_WMA_MSG,
+				 sessionId, message.type));
+		qdf_status = scheduler_post_message(QDF_MODULE_ID_SME,
+						    QDF_MODULE_ID_WMA,
+						    QDF_MODULE_ID_WMA,
+						    &message);
+		if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
+			sme_err("Post disable APF mode MSG fail");
+			qdf_mem_free(pMsg);
+			status = QDF_STATUS_E_FAILURE;
+		}
+		sme_release_global_lock(&mac->sme);
+	}
+	return status;
+}
+#endif
+
 /*
  * sme_dhcp_start_ind() -
  * API to signal the FW about the DHCP Start event.
@@ -15278,6 +15388,7 @@ void sme_update_score_config(mac_handle_t mac_handle, eCsrPhyMode phy_mode,
 	ucfg_mlme_get_channel_bonding_5ghz(mac_ctx->psoc,
 					   &channel_bonding_mode);
 	config.bw_above_20_5ghz = channel_bonding_mode;
+	config.max_chan_switch_ie = mlme_max_chan_switch_is_set(mac_ctx->psoc);
 
 	wlan_psoc_set_phy_config(mac_ctx->psoc, &config);
 }

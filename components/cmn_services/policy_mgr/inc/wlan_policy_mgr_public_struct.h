@@ -966,7 +966,6 @@ enum policy_mgr_band {
 /**
  * enum policy_mgr_conn_update_reason: Reason for conc connection update
  * @POLICY_MGR_UPDATE_REASON_SET_OPER_CHAN: Set probable operating channel
- * @POLICY_MGR_UPDATE_REASON_UT: Unit test related
  * @POLICY_MGR_UPDATE_REASON_START_AP: Start AP
  * @POLICY_MGR_UPDATE_REASON_NORMAL_STA: Connection to Normal STA
  * @POLICY_MGR_UPDATE_REASON_OPPORTUNISTIC: Opportunistic HW mode update
@@ -984,7 +983,6 @@ enum policy_mgr_band {
  */
 enum policy_mgr_conn_update_reason {
 	POLICY_MGR_UPDATE_REASON_SET_OPER_CHAN,
-	POLICY_MGR_UPDATE_REASON_UT,
 	POLICY_MGR_UPDATE_REASON_START_AP,
 	POLICY_MGR_UPDATE_REASON_NORMAL_STA,
 	POLICY_MGR_UPDATE_REASON_OPPORTUNISTIC,
