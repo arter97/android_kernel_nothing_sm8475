@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -621,9 +621,8 @@ void mlme_set_ops_register_cb(mlme_get_global_ops_cb ops_cb)
 	glbl_ops_cb = ops_cb;
 }
 
-bool mlme_max_chan_switch_is_set(struct wlan_objmgr_vdev *vdev)
+bool mlme_max_chan_switch_is_set(struct wlan_objmgr_psoc *psoc)
 {
-	struct wlan_objmgr_psoc *psoc = wlan_vdev_get_psoc(vdev);
 	struct psoc_mlme_obj *mlme_psoc_obj;
 	struct psoc_phy_config *phy_config;
 
