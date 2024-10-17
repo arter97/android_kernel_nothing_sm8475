@@ -9008,20 +9008,30 @@ typedef struct {
  *   5: reserved
  */
 #define HTT_STATS_PDEV_RTT_DELAY_PKT_BW (6)
+/* HTT_STATS_PDEV_RTT_TX_RX_INSTANCES
+ *   idx 0 -> Tx instance
+ *   idx 1 -> Rx instance
+ */
+#define HTT_STATS_PDEV_RTT_TX_RX_INSTANCES (2)
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
     struct {
         /* base_delay: picosecond units */
-        A_UINT32 base_delay[HTT_STATS_PDEV_RTT_DELAY_PKT_BW];
+        A_INT32 base_delay[HTT_STATS_PDEV_RTT_TX_RX_INSTANCES][HTT_STATS_PDEV_RTT_DELAY_PKT_BW];
         /* final_delay: picosecond units */
-        A_UINT32 final_delay[HTT_STATS_PDEV_RTT_DELAY_PKT_BW];
-        A_UINT32 per_chan_bias;
-        A_UINT32 off_chan_bias;
-        A_UINT32 chan_bw_bias;
-        A_UINT32 digital_block_status;
+        A_INT32 final_delay[HTT_STATS_PDEV_RTT_TX_RX_INSTANCES][HTT_STATS_PDEV_RTT_DELAY_PKT_BW];
+        A_INT32 per_chan_bias[HTT_STATS_PDEV_RTT_TX_RX_INSTANCES];
+        A_INT32 off_chan_bias[HTT_STATS_PDEV_RTT_TX_RX_INSTANCES];
+        A_INT32 chan_bw_bias[HTT_STATS_PDEV_RTT_TX_RX_INSTANCES];
+        A_UINT32 rtt_11mc_chain_idx[HTT_STATS_PDEV_RTT_TX_RX_INSTANCES];
         A_UINT32 chan_freq; /* MHz units */
         A_UINT32 bandwidth; /* MHz units */
+        A_UINT32 vreg_cache;
+        A_UINT32 rtt_11mc_vreg_set_cnt;
+        A_UINT32 cfr_vreg_set_cnt;
+        A_UINT32 cir_vreg_set_cnt;
+        A_UINT32 digital_block_status;
     } rtt_delay[HTT_STATS_PDEV_RTT_DELAY_NUM_INSTANCES];
 } htt_stats_pdev_rtt_delay_tlv;
 
@@ -9030,6 +9040,7 @@ typedef struct {
  *  HTT_STATS_PDEV_AOA_TAG
  */
 #define HTT_STATS_PDEV_AOA_MAX_HISTOGRAM (10)
+#define HTT_STATS_PDEV_AOA_MAX_CHAINS (4)
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
@@ -9040,9 +9051,40 @@ typedef struct {
      *   2 -> very low gain
      */
     A_UINT32 gain_table[HTT_STATS_PDEV_AOA_MAX_HISTOGRAM];
-    A_UINT32 phase_calculated[HTT_STATS_PDEV_AOA_MAX_HISTOGRAM];
-    A_UINT32 phase_in_degree[HTT_STATS_PDEV_AOA_MAX_HISTOGRAM];
+    A_UINT32 phase_calculated[HTT_STATS_PDEV_AOA_MAX_HISTOGRAM][HTT_STATS_PDEV_AOA_MAX_CHAINS];
+    A_INT32 phase_in_degree[HTT_STATS_PDEV_AOA_MAX_HISTOGRAM][HTT_STATS_PDEV_AOA_MAX_CHAINS];
 } htt_stats_pdev_aoa_tlv;
+
+/* RTT VREG MASK */
+#define HTT_STATS_RTT_CHAN_CAPTURE_MASK                       0x00000001
+#define HTT_STATS_RTT_HW_FAC_MASK                             0x00000002
+#define HTT_STATS_RTT_11AZ_DELAYED_FEEDBACK_MASK              0x00000004
+#define HTT_STATS_RTT_11AZ_DROP_FIRST_LMR_MASK                0x00000008
+#define HTT_STATS_RTT_CAPTURE_CFR_MASK                        0x00000010
+#define HTT_STATS_RTT_CAPTURE_CIR_MASK                        0x00000020
+#define HTT_STATS_RTT_DET0_REPETITIVE_CHAN_CAPTURE_EN_MASK    0x00000040
+#define HTT_STATS_RTT_CAPTURE_SPARE_1_MASK                    0x00000080
+#define HTT_STATS_RTT_CAPTURE_SPARE_2_MASK                    0x00000100
+
+/* RTT Digital block compensation mask */
+#define HTT_STATS_RTT_TX_IQCORR_COMP_MASK                     0x00000001
+#define HTT_STATS_RTT_TX_PREEMP_FIR_COMP_MASK                 0x00000002
+#define HTT_STATS_RTT_LPC_FILTER_COMP_MASK                    0x00000004
+#define HTT_STATS_RTT_SM_CFR_COMP_MASK                        0x00000008
+#define HTT_STATS_RTT_CAL_PDC_DIS_COMP_MASK                   0x00000010
+#define HTT_STATS_RTT_CAL_PAPRD_COMP_MASK                     0x00000020
+#define HTT_STATS_RTT_CAL_RXCORR_IQCORR_COMP_MASK             0x00000040
+#define HTT_STATS_RTT_CAL_RXCORR_PHASE_COMP_MASK              0x00000080
+#define HTT_STATS_RTT_PHYRF_ICI_CORR_COMP_MASK                0x00000100
+#define HTT_STATS_RTT_VSRC_PRE_FIR_SEL_COMP_MASK              0x00000200
+#define HTT_STATS_RTT_CVSRC_PRE_FIR_SEL2_COMP_MASK            0x00000400
+#define HTT_STATS_RTT_CAL_ENABLE_GAINDEPCORR_COMP_MASK        0x00000800
+#define HTT_STATS_RTT_CAL_DC_NOTCH_FILTER_COMP_MASK           0x00001000
+#define HTT_STATS_RTT_CAL_DET_PATH_COMP_MASK                  0x00002000
+#define HTT_STATS_RTT_CAL_RXCORR_ADC_DC_COMP_MASK             0x00004000
+#define HTT_STATS_RTT_CAL_RXCORR_ADC_GAIN_COMP_MASK           0x00008000
+#define HTT_STATS_RTT_CAL_SPUR_FILTER_PRI_DET_COMP_MASK       0x00010000
+#define HTT_STATS_RTT_CAL_SPUR_FILTER_PRI_COMP_MASK           0x00020000
 
 #define HTT_DLPAGER_STATS_MAX_HIST            10
 #define HTT_DLPAGER_ASYNC_LOCKED_PAGE_COUNT_M 0x000000FF
