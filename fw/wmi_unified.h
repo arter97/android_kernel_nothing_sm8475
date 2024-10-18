@@ -16892,6 +16892,8 @@ typedef struct {
 #define WMI_MLO_FLAGS_SET_LINK_ADD_CANCEL(mlo_flags, value) WMI_SET_BITS(mlo_flags, 15, 1, value)
 #define WMI_MLO_FLAGS_GET_LINK_DEL_CANCEL(mlo_flags)        WMI_GET_BITS(mlo_flags, 16, 1)
 #define WMI_MLO_FLAGS_SET_LINK_DEL_CANCEL(mlo_flags, value) WMI_SET_BITS(mlo_flags, 16, 1, value)
+#define WMI_MLO_FLAGS_GET_START_AS_ACTIVE(mlo_flags)        WMI_GET_BITS(mlo_flags, 17, 1)
+#define WMI_MLO_FLAGS_SET_START_AS_ACTIVE(mlo_flags, value) WMI_SET_BITS(mlo_flags, 17, 1, value)
 
 /* this structure used for passing MLO flags */
 typedef struct {
@@ -16920,7 +16922,8 @@ typedef struct {
                      mlo_bridge_link:1, /* indicate link is bridge link */
                      mlo_link_add_cancel:1, /* rollback of previous dynamic link addition */
                      mlo_link_del_cancel:1, /* rollback of previous dynamic link deletion */
-                     unused: 15;
+                     start_as_active:1, /* indicate link should be started in active status */
+                     unused: 14;
         };
         A_UINT32 mlo_flags;
     };
@@ -46282,6 +46285,7 @@ typedef enum {
     WMI_MLO_LINK_FORCE_REASON_LINK_REMOVAL     = 3, /* Set force specific links because of AP-side link removal */
     WMI_MLO_LINK_FORCE_REASON_TDLS             = 4, /* Set force specific links because of 11BE MLO TDLS setup/teardown */
     WMI_MLO_LINK_FORCE_REASON_REVERT_FAILURE   = 5, /* Set force specific links for revert previous failed due to host reject */
+    WMI_MLO_LINK_FORCE_REASON_LINK_DELETE      = 6, /* Set force specific links because link is deleted from associated link set */
 } WMI_MLO_LINK_FORCE_REASON;
 
 #define WMI_MLO_CONTROL_FLAGS_GET_OVERWRITE_FORCE_ACTIVE(mlo_flags) \
@@ -48625,6 +48629,7 @@ typedef enum _WMI_VDEV_PAUSE_TYPE
     WMI_VDEV_PAUSE_TYPE_UNKNOWN = 0,
     WMI_VDEV_PAUSE_TYPE_MLO_LINK = 1,
     WMI_VDEV_PAUSE_TYPE_TX = 2,
+    WMI_VDEV_PAUSE_TYPE_TX_DATA = 3,
 } WMI_VDEV_PAUSE_TYPE;
 
 typedef struct {
@@ -48639,10 +48644,18 @@ typedef struct {
     A_UINT32 pause_dur_ms;
 } wmi_vdev_pause_cmd_fixed_param;
 
+typedef enum _WMI_MLO_link_BSS_OP_CODE
+{
+    MLO_LINK_BSS_OP_UPDATE = 0,
+    MLO_LINK_BSS_OP_ADD = 1,
+    MLO_LINK_BSS_OP_DEL = 2,
+} WMI_MLO_link_BSS_OP_CODE;
+
 typedef struct {
     A_UINT32 tlv_header;
     A_UINT32 ieee_link_id; /* key to identify a link */
     wmi_channel wmi_chan;
+    A_UINT32 op_code; /* see definition of WMI_MLO_link_BSS_OP_CODE */
 } wmi_mlo_link_bss_param;
 
 typedef struct {
