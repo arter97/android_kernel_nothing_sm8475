@@ -536,8 +536,8 @@ static int cam_cdm_util_cmd_buf_validation(void __iomem *base_addr,
 
 		for (i = 0; i < reg_random->count; i++) {
 			offset = data[0];
-			if (offset > *size) {
-				CAM_ERR(CAM_CDM, "Offset out of mapped range! size:%llu offset:%u",
+			if (offset > (*size - sizeof(uint32_t))) {
+				CAM_ERR(CAM_CDM, "Offset out of mapped range, size:%llu offset:%u",
 					*size, offset);
 				return -EINVAL;
 			}
@@ -557,7 +557,7 @@ static int cam_cdm_util_cmd_buf_validation(void __iomem *base_addr,
 			return -EINVAL;
 		}
 
-		if ((reg_cont->offset > *size) && ((reg_cont->offset +
+		if ((reg_cont->offset > (*size - sizeof(uint32_t))) || ((reg_cont->offset +
 			(reg_cont->count * sizeof(uint32_t))) > *size)) {
 			CAM_ERR(CAM_CDM, "Offset out of mapped range! size: %lu, offset: %u",
 				*size, reg_cont->offset);
@@ -568,18 +568,22 @@ static int cam_cdm_util_cmd_buf_validation(void __iomem *base_addr,
 		break;
 	case CAM_CDM_CMD_SWD_DMI_64: {
 		struct cdm_dmi_cmd *swd_dmi = (struct cdm_dmi_cmd *) buf;
+		uint32_t count = 0, low_off = 0, high_off = 0;
 
 		if (cmd_buf_size < (cam_cdm_required_size_dmi() + swd_dmi->length + 1)) {
 			CAM_ERR(CAM_CDM, "invalid CDM_SWD_DMI length %d", swd_dmi->length + 1);
 			return -EINVAL;
 		}
 
-		if ((swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_LO_OFFSET > *size) ||
-			(swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_HI_OFFSET > *size)) {
+		count = (swd_dmi->length + 1)/8;
+		low_off = swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_LO_OFFSET;
+		high_off = swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_HI_OFFSET;
+
+		if ((low_off + (count * sizeof(uint64_t)) - sizeof(uint32_t) > *size) ||
+			(high_off + (count * sizeof(uint64_t)) > *size)) {
 			CAM_ERR(CAM_CDM,
 				"Offset out of mapped range! size:%llu lo_offset:%u hi_offset:%u",
-				*size, swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_LO_OFFSET,
-				swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_LO_OFFSET);
+				*size, low_off, high_off);
 			return -EINVAL;
 		}
 
@@ -587,15 +591,19 @@ static int cam_cdm_util_cmd_buf_validation(void __iomem *base_addr,
 		break;
 	case CAM_CDM_CMD_SWD_DMI_32: {
 		struct cdm_dmi_cmd *swd_dmi = (struct cdm_dmi_cmd *) buf;
+		uint32_t count = 0, low_off = 0;
 
 		if (cmd_buf_size < (cam_cdm_required_size_dmi() + swd_dmi->length + 1)) {
 			CAM_ERR(CAM_CDM, "invalid CDM_SWD_DMI length %d", swd_dmi->length + 1);
 			return -EINVAL;
 		}
 
-		if (swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_LO_OFFSET > *size) {
+		count = (swd_dmi->length + 1)/4;
+		low_off = swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_LO_OFFSET;
+
+		if (low_off + (count * sizeof(uint32_t)) > *size) {
 			CAM_ERR(CAM_CDM, "Offset out of mapped range! size:%llu lo_offset:%u",
-				*size, swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_LO_OFFSET);
+				*size, low_off);
 			return -EINVAL;
 		}
 
@@ -603,15 +611,19 @@ static int cam_cdm_util_cmd_buf_validation(void __iomem *base_addr,
 		break;
 	case CAM_CDM_CMD_DMI: {
 		struct cdm_dmi_cmd *swd_dmi = (struct cdm_dmi_cmd *) buf;
+		uint32_t count = 0, data_off = 0;
 
 		if (cmd_buf_size < (cam_cdm_required_size_dmi() + swd_dmi->length + 1)) {
 			CAM_ERR(CAM_CDM, "invalid CDM_SWD_DMI length %d", swd_dmi->length + 1);
 			return -EINVAL;
 		}
 
-		if (swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_OFFSET > *size) {
+		count = (swd_dmi->length + 1)/4;
+		data_off = swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_OFFSET;
+
+		if (data_off + (count * sizeof(uint32_t)) > *size) {
 			CAM_ERR(CAM_CDM, "Offset out of mapped range! size:%llu offset:%u",
-				*size, swd_dmi->DMIAddr + CAM_CDM_DMI_DATA_OFFSET);
+				*size, data_off);
 			return -EINVAL;
 		}
 
