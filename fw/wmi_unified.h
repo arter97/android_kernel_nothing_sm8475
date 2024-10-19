@@ -3845,6 +3845,8 @@ typedef struct {
      *     A_INT32 hw_tx_power_signed[WMI_HW_TX_POWER_CAPS_MAX];
      *     wmi_aux_dev_capabilities           aux_dev_caps[];
      *     WMI_POWER_BOOST_CAPABILITIES       power_boost_capabilities[];
+     *     WMI_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES
+     *         rssi_accuracy_improvement_capabilities[];
      */
 } wmi_service_ready_ext2_event_fixed_param;
 
@@ -49476,6 +49478,29 @@ typedef struct {
         };
     };
 } WMI_POWER_BOOST_CAPABILITIES;
+
+#define WMI_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES_PHY_ID_GET(word32)        WMI_GET_BITS(word32, 0, 4)
+#define WMI_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES_PHY_ID_SET(word32, value) WMI_SET_BITS(word32, 0, 4, value)
+#define WMI_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES_RSSI_ACCURACY_ENABLE_GET(word32)        WMI_GET_BITS(word32, 4, 1)
+#define WMI_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES_RSSI_ACCURACY_ENABLE_SET(word32, value) WMI_SET_BITS(word32, 4, 1, value)
+
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_RSSI_ACCURACY_CAPABILITIES */
+    union {
+        struct {
+            /*
+             * bits  3:0  -> PHY ID
+             * bit    4   -> rssi accuracy enhancement using MultiGainRSSI
+             *               offset correction enable flag
+             * bits 31:5  -> reserved
+             */
+            A_UINT32
+                phy_id: 4,
+                rssi_accuracy_enable: 1,
+                reserved: 27;
+        };
+    };
+} WMI_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES;
 
 
 

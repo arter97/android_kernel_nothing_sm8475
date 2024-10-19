@@ -1458,6 +1458,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_scan_cache_result_event_fixed_param,
     WMITLV_TAG_STRUC_wmi_scan_cache_info,
     WMITLV_TAG_STRUC_wmi_POWER_BOOST_CAPABILITIES,
+    WMITLV_TAG_STRUC_wmi_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -5755,7 +5756,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_SERVICE_READY_EXT_EVENTID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_enhanced_aoa_caps_param, aoa_caps_param, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_enhanced_aoa_per_band_caps_param, aoa_per_band_caps_param, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_sar_flag_tlv_param, sar_flags, WMITLV_SIZE_VAR) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, WMI_POWER_BOOST_CAPABILITIES, power_boost_capabilities, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, WMI_POWER_BOOST_CAPABILITIES, power_boost_capabilities, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, WMI_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES, rssi_accuracy_improvement_capabilities, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_SERVICE_READY_EXT2_EVENTID);
 
 #define WMITLV_TABLE_WMI_SPECTRAL_CAPABILITIES_EVENTID(id,op,buf,len) \
