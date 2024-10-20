@@ -49328,6 +49328,11 @@ typedef struct {
      * training has been done
      */
     A_UINT32 phy_mode;
+    /* size_kb:
+     * Size of the buffer consumed to write the I/Q samples data by uCode,
+     * in units of KB
+     */
+    A_UINT32 size_kb;
 } wmi_pdev_power_boost_event_fixed_param;
 
 typedef enum {
