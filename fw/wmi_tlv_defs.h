@@ -1459,6 +1459,11 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_scan_cache_info,
     WMITLV_TAG_STRUC_wmi_POWER_BOOST_CAPABILITIES,
     WMITLV_TAG_STRUC_wmi_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES,
+    WMITLV_TAG_STRUC_wmi_mlo_link_reconfig_start_indication_event_fixed_param,
+    WMITLV_TAG_STRUC_wmi_mlo_link_reconfig_fixed_param,
+    WMITLV_TAG_STRUC_wmi_mlo_link_reconfig_complete_fixed_param,
+    WMITLV_TAG_STRUC_wmi_mlo_link_add_param,
+    WMITLV_TAG_STRUC_wmi_mlo_link_del_param,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -2016,6 +2021,8 @@ typedef enum {
     OP(WMI_PDEV_POWER_BOOST_CMDID) \
     OP(WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID) \
     OP(WMI_GET_SCAN_CACHE_RESULT_CMDID) \
+    OP(WMI_MLO_LINK_RECONFIG_CMDID) \
+    OP(WMI_MLO_LINK_RECONFIG_COMPLETE_CMDID) \
     /* add new CMD_LIST elements above this line */
 
 
@@ -2347,6 +2354,7 @@ typedef enum {
     OP(WMI_PDEV_POWER_BOOST_EVENTID) \
     OP(WMI_C2C_DETECT_EVENTID) \
     OP(WMI_SCAN_CACHE_RESULT_EVENTID) \
+    OP(WMI_MLO_LINK_RECONFIG_START_INDICATION_EVENTID) \
     /* add new EVT_LIST elements above this line */
 
 
@@ -5340,6 +5348,18 @@ WMITLV_CREATE_PARAM_STRUC(WMI_MLO_AP_VDEV_TID_TO_LINK_MAP_CMDID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_mlo_peer_recommended_links, mlo_peer_recommended_links, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_MLO_LINK_RECOMMENDATION_CMDID);
 
+/** WMI cmd to start STA initialized link reconfig */
+#define WMITLV_TABLE_WMI_MLO_LINK_RECONFIG_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_mlo_link_reconfig_fixed_param, wmi_mlo_link_reconfig_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_mlo_link_add_param, link_add_param, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_mlo_link_del_param, link_del_param, WMITLV_SIZE_VAR)
+WMITLV_CREATE_PARAM_STRUC(WMI_MLO_LINK_RECONFIG_CMDID);
+
+/** WMI cmd to notify fw completion of link reconfig */
+#define WMITLV_TABLE_WMI_MLO_LINK_RECONFIG_COMPLETE_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_mlo_link_reconfig_complete_fixed_param, wmi_mlo_link_reconfig_complete_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_MLO_LINK_RECONFIG_COMPLETE_CMDID);
+
 /* Mcast ipv4 address filter list cmd */
 #define WMITLV_TABLE_WMI_VDEV_IGMP_OFFLOAD_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id, op, buf, len, WMITLV_TAG_STRUC_wmi_igmp_offload_fixed_param, wmi_igmp_offload_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
@@ -7765,6 +7785,13 @@ WMITLV_CREATE_PARAM_STRUC(WMI_MGMT_SRNG_REAP_EVENTID);
 #define WMITLV_TABLE_WMI_MLO_PEER_TID_TO_LINK_MAP_EVENTID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_mlo_peer_tid_to_link_map_event_fixed_param, wmi_mlo_peer_tid_to_link_map_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_MLO_PEER_TID_TO_LINK_MAP_EVENTID);
+
+/** Indicate host to start link reconfigure */
+#define WMITLV_TABLE_WMI_MLO_LINK_RECONFIG_START_INDICATION_EVENTID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_mlo_link_reconfig_start_indication_event_fixed_param, wmi_mlo_link_reconfig_start_indication_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_mlo_link_add_param, link_add_param, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_mlo_link_del_param, link_del_param, WMITLV_SIZE_VAR)
+WMITLV_CREATE_PARAM_STRUC(WMI_MLO_LINK_RECONFIG_START_INDICATION_EVENTID);
 
 /* USD Service Event */
 #define WMITLV_TABLE_WMI_USD_SERVICE_EVENTID(id,op,buf,len) \
