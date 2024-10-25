@@ -1895,6 +1895,12 @@ typedef enum {
     /* Event to indicate ANN Power Boost update status from Target */
     WMI_PDEV_POWER_BOOST_EVENTID,
 
+    /*
+     * WMI event to share Wi-Fi Radar -
+     * monostatic Wi-Fi sensing technique capabalites
+     */
+    WMI_PDEV_WIFI_RADAR_CAPABILITIES_EVENTID,
+
 
     /* VDEV specific events */
     /** VDEV started event in response to VDEV_START request */
@@ -40718,6 +40724,48 @@ typedef struct {
         A_UINT32 supported_flags;
     };
 } wmi_spectral_fft_size_capabilities;
+
+typedef struct {
+    /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_pdev_wifi_radar_cap_evt_fixed_param */
+    A_UINT32 tlv_header;
+    /* ID of pdev to which capability is sent */
+    A_UINT32 pdev_id;
+} wmi_pdev_wifi_radar_cap_evt_fixed_param;
+
+typedef struct {
+   /** TLV tag and len; tag equals
+     * WMITLV_TAG_STRUC_wmi_wifi_radar_ltf_length_capabilities */
+   A_UINT32 tlv_header;
+
+   /* LTF at Tx configuration */
+   A_UINT32 ltf_max_num_tx;
+
+   /* LTF at Rx configuration in 2 power exponent number */
+   A_UINT32 ltf_max_expo_num_rx;
+
+   /* LTF to initially skip */
+   A_UINT32 ltf_max_num_initial_skip_rx;
+
+   /**
+    * This TLV contains target LTF capability for Wi-Fi Radar sensing feature.
+    */
+} wmi_wifi_radar_ltf_length_capabilities;
+
+typedef struct {
+   /** TLV tag and len; tag equals
+     * WMITLV_TAG_STRUC_wmi_wifi_radar_chain_capabilities */
+   A_UINT32 tlv_header;
+
+   /* Max num of Rx chain can be used to capture at a time */
+   A_UINT32 max_num_rx_chain;
+
+   /* Chain-to-Chain Isolation based chain pair support */
+   A_UINT32 best_isolated_chain_pair_sel;
+
+   /**
+    * This TLV contains target chain capability for Wi-Fi Radar sensing feature.
+    */
+} wmi_wifi_radar_chain_capabilities;
 
 typedef struct {
     A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_pdev_ctl_failsafe_event_params */

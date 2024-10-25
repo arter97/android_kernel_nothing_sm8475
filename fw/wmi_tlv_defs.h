@@ -1464,6 +1464,9 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_mlo_link_reconfig_complete_fixed_param,
     WMITLV_TAG_STRUC_wmi_mlo_link_add_param,
     WMITLV_TAG_STRUC_wmi_mlo_link_del_param,
+    WMITLV_TAG_STRUC_wmi_pdev_wifi_radar_cap_evt_fixed_param,
+    WMITLV_TAG_STRUC_wmi_wifi_radar_ltf_length_capabilities,
+    WMITLV_TAG_STRUC_wmi_wifi_radar_chain_capabilities,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -2355,6 +2358,7 @@ typedef enum {
     OP(WMI_C2C_DETECT_EVENTID) \
     OP(WMI_SCAN_CACHE_RESULT_EVENTID) \
     OP(WMI_MLO_LINK_RECONFIG_START_INDICATION_EVENTID) \
+    OP(WMI_PDEV_WIFI_RADAR_CAPABILITIES_EVENTID) \
     /* add new EVT_LIST elements above this line */
 
 
@@ -5784,6 +5788,12 @@ WMITLV_CREATE_PARAM_STRUC(WMI_SERVICE_READY_EXT2_EVENTID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_spectral_scan_bw_capabilities, sscan_bw_caps, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_spectral_fft_size_capabilities, fft_size_caps, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_SPECTRAL_CAPABILITIES_EVENTID);
+
+#define WMITLV_TABLE_WMI_PDEV_WIFI_RADAR_CAPABILITIES_EVENTID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_pdev_wifi_radar_cap_evt_fixed_param, wmi_pdev_wifi_radar_cap_evt_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_wifi_radar_ltf_length_capabilities, wr_ltf_caps, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_wifi_radar_chain_capabilities, wr_chain_caps, WMITLV_SIZE_VAR)
+WMITLV_CREATE_PARAM_STRUC(WMI_PDEV_WIFI_RADAR_CAPABILITIES_EVENTID);
 
 #define WMITLV_TABLE_WMI_CHAN_RF_CHARACTERIZATION_INFO_EVENTID(id,op,buf,len) \
      WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_chan_rf_characterization_info_event_fixed_param, wmi_chan_rf_characterization_info_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
