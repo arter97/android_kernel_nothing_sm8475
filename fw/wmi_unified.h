@@ -30134,7 +30134,7 @@ typedef struct wmi_stats_ext_event_vdev_ext {
     /* Set of TX MCS counters */
     A_UINT32 tx_mcs[WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS];
     /* Set of TX BW counters */
-    A_UINT32 tx_bw[WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS];
+    A_UINT32 tx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_MAX];
     /* Set of RX MCS counters */
     A_UINT32 rx_mcs[WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS];
     /* Set of RX BW counters */
