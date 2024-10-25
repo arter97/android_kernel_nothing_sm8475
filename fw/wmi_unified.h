@@ -44379,6 +44379,13 @@ typedef struct {
 
 /****** End of 11BE EHT MAC Capabilities Information field ******/
 
+/****** 11BE EHT OPS Information field ******/
+
+/* Bit 0 is for MCS15. If bit0 is 1 then we enable mcs15 */
+#define WMI_EHT_OPS_SUPMCS15_GET(eht_ops) WMI_GET_BITS(eht_ops, 0, 1)
+#define WMI_EHT_OPS_SUPMCS15_SET(eht_ops, value) WMI_SET_BITS(eht_ops, 0, 1, value)
+
+/****** End of 11BE EHT OPS Information field ******/
 
 typedef struct {
     /** TLV tag and len; tag equals
