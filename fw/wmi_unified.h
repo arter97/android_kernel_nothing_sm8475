@@ -4813,13 +4813,16 @@ typedef struct {
      *      0 -> disable the feature
      *      1 -> enable the feature
      *     Refer to below WMI_RSRC_CFG_FLAGS2_ENABLE_WDS_NULL_FRAME_SUPPORT
-     *  Bit 23 - enable feature optimize power
-     *      0 -> disable the feature
-     *      1 -> enable the feature
+     *  Bits 24:23 - enable feature optimize power
+     *      00 -> default value
+     *            (target will auto-select whether to enable the feature)
+     *      01 -> disable the feature
+     *      10 -> enable the feature
+     *      11 -> reserved
      *      Refer to the below WMI_RSRC_CFG_FLAGS2_OPTIMIZE_POWER_GET/SET
      *      macros.
      *
-     *  Bits 31:24 - Reserved
+     *  Bits 31:25 - Reserved
      */
     A_UINT32 flags2;
     /** @brief host_service_flags - can be used by Host to indicate
@@ -5350,9 +5353,9 @@ typedef struct {
     WMI_SET_BITS(flags2, 22, 1, value)
 
 #define WMI_RSRC_CFG_FLAGS2_OPTIMIZE_POWER_GET(flags2) \
-    WMI_GET_BITS(flags2, 23, 1)
+    WMI_GET_BITS(flags2, 23, 2)
 #define WMI_RSRC_CFG_FLAGS2_OPTIMIZE_POWER_SET(flags2, value) \
-    WMI_SET_BITS(flags2, 23, 1, value)
+    WMI_SET_BITS(flags2, 23, 2, value)
 
 
 #define WMI_RSRC_CFG_HOST_SERVICE_FLAG_NAN_IFACE_SUPPORT_GET(host_service_flags) \
@@ -26086,6 +26089,13 @@ typedef enum
     /* alias for the above (less suitable, since it is less precise) */
     WMI_VENDOR_OUI_ACTION_RESTRICT_MAX_MLO_LINKS =
         WMI_VENDOR_OUI_ACTION_RESTRICT_MAX_2_MLO_LINKS,
+
+    /*
+     * Send Auth, Assoc request, Reassoc request frame with 6Mbps rate
+     * if specific vendor OUI recevied in beacon on 2GHz.
+     */
+    WMI_VENDOR_OUI_ACTION_AUTH_ASSOC_6MBPS_2GHZ = 17,
+
 
     /* Add any action before this line */
     WMI_VENDOR_OUI_ACTION_MAX_ACTION_ID
