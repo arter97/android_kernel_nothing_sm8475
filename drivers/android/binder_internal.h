@@ -129,12 +129,13 @@ enum binder_stat_types {
 	BINDER_STAT_DEATH,
 	BINDER_STAT_TRANSACTION,
 	BINDER_STAT_TRANSACTION_COMPLETE,
+	BINDER_STAT_FREEZE,
 	BINDER_STAT_COUNT
 };
 
 struct binder_stats {
-	atomic_t br[_IOC_NR(BR_ONEWAY_SPAM_SUSPECT) + 1];
-	atomic_t bc[_IOC_NR(BC_REPLY_SG) + 1];
+	atomic_t br[_IOC_NR(BR_CLEAR_FREEZE_NOTIFICATION_DONE) + 1];
+	atomic_t bc[_IOC_NR(BC_FREEZE_NOTIFICATION_DONE) + 1];
 	atomic_t obj_created[BINDER_STAT_COUNT];
 	atomic_t obj_deleted[BINDER_STAT_COUNT];
 };
@@ -158,6 +159,8 @@ struct binder_work {
 		BINDER_WORK_DEAD_BINDER,
 		BINDER_WORK_DEAD_BINDER_AND_CLEAR,
 		BINDER_WORK_CLEAR_DEATH_NOTIFICATION,
+		BINDER_WORK_FROZEN_BINDER,
+		BINDER_WORK_CLEAR_FREEZE_NOTIFICATION,
 	} type;
 };
 
@@ -279,6 +282,14 @@ struct binder_ref_death {
 	binder_uintptr_t cookie;
 };
 
+struct binder_ref_freeze {
+	struct binder_work work;
+	binder_uintptr_t cookie;
+	bool is_frozen:1;
+	bool sent:1;
+	bool resend:1;
+};
+
 /**
  * struct binder_ref_data - binder_ref counts and id
  * @debug_id:        unique ID for the ref
@@ -311,6 +322,8 @@ struct binder_ref_data {
  *               @node indicates the node must be freed
  * @death:       pointer to death notification (ref_death) if requested
  *               (protected by @node->lock)
+ * @freeze:      pointer to freeze notification (ref_freeze) if requested
+ *               (protected by @node->lock)
  *
  * Structure to track references from procA to target node (on procB). This
  * structure is unsafe to access without holding @proc->outer_lock.
@@ -327,6 +340,7 @@ struct binder_ref {
 	struct binder_proc *proc;
 	struct binder_node *node;
 	struct binder_ref_death *death;
+	struct binder_ref_freeze *freeze;
 };
 
 /**
@@ -400,6 +414,8 @@ enum binder_prio_state {
  *                        (atomics, no lock needed)
  * @delivered_death:      list of delivered death notification
  *                        (protected by @inner_lock)
+ * @delivered_freeze:     list of delivered freeze notification
+ *                        (protected by @inner_lock)
  * @max_threads:          cap on number of binder threads
  *                        (protected by @inner_lock)
  * @requested_threads:    number of binder threads requested but not
@@ -447,6 +463,7 @@ struct binder_proc {
 	struct list_head todo;
 	struct binder_stats stats;
 	struct list_head delivered_death;
+	struct list_head delivered_freeze;
 	int max_threads;
 	int requested_threads;
 	int requested_threads_started;
@@ -460,66 +477,6 @@ struct binder_proc {
 	struct dentry *binderfs_entry;
 	bool oneway_spam_detection_enabled;
 };
-
-struct binder_proc_wrap {
-	struct binder_proc proc;
-	spinlock_t lock;
-};
-
-static inline struct binder_proc *
-binder_proc_entry(struct binder_alloc *alloc)
-{
-	return container_of(alloc, struct binder_proc, alloc);
-}
-
-static inline struct binder_proc_wrap *
-binder_proc_wrap_entry(struct binder_proc *proc)
-{
-	return container_of(proc, struct binder_proc_wrap, proc);
-}
-
-static inline struct binder_proc_wrap *
-binder_alloc_to_proc_wrap(struct binder_alloc *alloc)
-{
-	return binder_proc_wrap_entry(binder_proc_entry(alloc));
-}
-
-static inline void binder_alloc_lock_init(struct binder_alloc *alloc)
-{
-	spin_lock_init(&binder_alloc_to_proc_wrap(alloc)->lock);
-}
-
-static inline void binder_alloc_lock(struct binder_alloc *alloc)
-{
-	spin_lock(&binder_alloc_to_proc_wrap(alloc)->lock);
-}
-
-static inline void binder_alloc_unlock(struct binder_alloc *alloc)
-{
-	spin_unlock(&binder_alloc_to_proc_wrap(alloc)->lock);
-}
-
-static inline int binder_alloc_trylock(struct binder_alloc *alloc)
-{
-	return spin_trylock(&binder_alloc_to_proc_wrap(alloc)->lock);
-}
-
-/**
- * binder_alloc_get_free_async_space() - get free space available for async
- * @alloc:	binder_alloc for this proc
- *
- * Return:	the bytes remaining in the address-space for async transactions
- */
-static inline size_t
-binder_alloc_get_free_async_space(struct binder_alloc *alloc)
-{
-	size_t free_async_space;
-
-	binder_alloc_lock(alloc);
-	free_async_space = alloc->free_async_space;
-	binder_alloc_unlock(alloc);
-	return free_async_space;
-}
 
 /**
  * struct binder_thread - binder thread bookkeeping

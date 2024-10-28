@@ -1041,7 +1041,6 @@ int synx_merge(struct synx_session *session,
 		"[sess :%llu] merge allocated %u, core %pK, fence %pK\n",
 		client->id, *params->h_merged_obj, synx_obj,
 		synx_obj->fence);
-	kfree(h_child_list);
 	synx_put_client(client);
 	return SYNX_SUCCESS;
 
