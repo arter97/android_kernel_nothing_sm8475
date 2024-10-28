@@ -9898,6 +9898,9 @@ typedef enum {
     WMI_PDEV_PARAM_DSTALL_CONSECUTIVE_TX_NO_ACK_THRESHOLD,
 
     WMI_PDEV_PARAM_MGMT_SRNG_REAP_EVENT_THRESHOLD,
+
+    /* To enable/disable DFS radar detection for scan radio */
+    WMI_PDEV_PARAM_ENABLE_SCAN_RADIO_DFS,
 } WMI_PDEV_PARAM;
 
 #define WMI_PDEV_ONLY_BSR_TRIG_IS_ENABLED(trig_type) WMI_GET_BITS(trig_type, 0, 1)
