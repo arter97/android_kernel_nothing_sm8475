@@ -200,7 +200,7 @@ static struct binder_transaction_log binder_transaction_log;
 static struct binder_transaction_log binder_transaction_log_failed;
 
 static struct kmem_cache *binder_node_pool;
-static struct kmem_cache *binder_proc_wrap_pool;
+static struct kmem_cache *binder_proc_pool;
 static struct kmem_cache *binder_ref_death_pool;
 static struct kmem_cache *binder_ref_freeze_pool;
 static struct kmem_cache *binder_ref_pool;
@@ -5271,7 +5271,6 @@ static struct binder_thread *binder_get_thread(struct binder_proc *proc)
 
 static void binder_free_proc(struct binder_proc *proc)
 {
-	struct binder_proc_wrap *proc_wrap;
 	struct binder_device *device;
 
 	BUG_ON(!list_empty(&proc->todo));
@@ -5288,9 +5287,7 @@ static void binder_free_proc(struct binder_proc *proc)
 	put_task_struct(proc->tsk);
 	put_cred(proc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
-	trace_android_vh_binder_free_proc(proc);
-	proc_wrap = binder_proc_wrap_entry(proc);
-	kmem_cache_free(binder_proc_wrap_pool, proc_wrap);
+	kmem_cache_free(binder_proc_pool, proc);
 }
 
 static void binder_free_thread(struct binder_thread *thread)
@@ -6020,7 +6017,6 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 
 static int binder_open(struct inode *nodp, struct file *filp)
 {
-	struct binder_proc_wrap *proc_wrap;
 	struct binder_proc *proc, *itr;
 	struct binder_device *binder_dev;
 	struct binderfs_info *info;
@@ -6030,11 +6026,9 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	binder_debug(BINDER_DEBUG_OPEN_CLOSE, "%s: %d:%d\n", __func__,
 		     current->group_leader->pid, current->pid);
 
-	proc_wrap = kmem_cache_zalloc(binder_proc_wrap_pool, GFP_KERNEL);
-	if (proc_wrap == NULL)
+	proc = kmem_cache_zalloc(binder_proc_pool, GFP_KERNEL);
+	if (proc == NULL)
 		return -ENOMEM;
-	proc = &proc_wrap->proc;
-
 	spin_lock_init(&proc->inner_lock);
 	spin_lock_init(&proc->outer_lock);
 	get_task_struct(current->group_leader);
@@ -6991,9 +6985,9 @@ static int __init binder_create_pools(void)
 	if (!binder_node_pool)
 		goto err_node_pool;
 
-	binder_proc_wrap_pool = KMEM_CACHE(binder_proc_wrap, SLAB_HWCACHE_ALIGN);
-	if (!binder_proc_wrap_pool)
-		goto err_proc_wrap_pool;
+	binder_proc_pool = KMEM_CACHE(binder_proc, SLAB_HWCACHE_ALIGN);
+	if (!binder_proc_pool)
+		goto err_proc_pool;
 
 	binder_ref_death_pool = KMEM_CACHE(binder_ref_death, SLAB_HWCACHE_ALIGN);
 	if (!binder_ref_death_pool)
@@ -7044,8 +7038,8 @@ err_ref_pool:
 err_ref_freeze_pool:
 	kmem_cache_destroy(binder_ref_death_pool);
 err_ref_death_pool:
-	kmem_cache_destroy(binder_proc_wrap_pool);
-err_proc_wrap_pool:
+	kmem_cache_destroy(binder_proc_pool);
+err_proc_pool:
 	kmem_cache_destroy(binder_node_pool);
 err_node_pool:
 	binder_buffer_pool_destroy();
@@ -7056,7 +7050,7 @@ static void __init binder_destroy_pools(void)
 {
 	binder_buffer_pool_destroy();
 	kmem_cache_destroy(binder_node_pool);
-	kmem_cache_destroy(binder_proc_wrap_pool);
+	kmem_cache_destroy(binder_proc_pool);
 	kmem_cache_destroy(binder_ref_freeze_pool);
 	kmem_cache_destroy(binder_ref_death_pool);
 	kmem_cache_destroy(binder_ref_pool);
