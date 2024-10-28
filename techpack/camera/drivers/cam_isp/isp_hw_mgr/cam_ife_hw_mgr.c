@@ -558,8 +558,7 @@ static inline bool cam_ife_hw_mgr_is_ife_out_port(uint32_t res_id)
 	bool is_ife_out = false;
 
 	if ((res_id >= CAM_ISP_IFE_OUT_RES_BASE) &&
-		(res_id <= (CAM_ISP_IFE_OUT_RES_BASE +
-		max_ife_out_res)))
+		(res_id < (CAM_ISP_IFE_OUT_RES_BASE + max_ife_out_res)))
 		is_ife_out = true;
 
 	return is_ife_out;

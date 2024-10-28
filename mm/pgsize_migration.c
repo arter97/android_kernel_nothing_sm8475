@@ -18,6 +18,7 @@
 #include <linux/kstrtox.h>
 #include <linux/sched/task_stack.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 #include <linux/sysfs.h>
 
 typedef void (*show_pad_maps_fn)	(struct seq_file *m, struct vm_area_struct *vma);
@@ -125,7 +126,7 @@ unsigned long vma_pad_pages(struct vm_area_struct *vma)
 	if (!is_pgsize_migration_enabled())
 		return 0;
 
-	return vma->vm_flags >> VM_PAD_SHIFT;
+	return (vma->vm_flags & VM_PAD_MASK) >> VM_PAD_SHIFT;
 }
 
 static __always_inline bool str_has_suffix(const char *str, const char *suffix)
@@ -182,7 +183,15 @@ static inline bool linker_ctx(void)
 		memset(buf, 0, bufsize);
 		path = d_path(&file->f_path, buf, bufsize);
 
-		if (!strcmp(path, "/system/bin/linker64"))
+		/*
+		 * Depending on interpreter requested, valid paths could be any of:
+		 *   1. /system/bin/bootstrap/linker64
+		 *   2. /system/bin/linker64
+		 *   3. /apex/com.android.runtime/bin/linker64
+		 *
+		 * Check the base name (linker64).
+		 */
+		if (!strcmp(kbasename(path), "linker64"))
 			return true;
 	}
 
@@ -388,12 +397,32 @@ void split_pad_vma(struct vm_area_struct *vma, struct vm_area_struct *new,
 	nr_vma2_pages = vma_pages(second);
 
 	if (nr_vma2_pages >= nr_pad_pages) { 			/* Case 1 & 3 */
-		first->vm_flags &= ~VM_PAD_MASK;
+		vma_set_pad_pages(first, 0);
 		vma_set_pad_pages(second, nr_pad_pages);
 	} else {						/* Case 2 */
 		vma_set_pad_pages(first, nr_pad_pages - nr_vma2_pages);
 		vma_set_pad_pages(second, nr_vma2_pages);
 	}
 }
+
+/*
+ * Merging of padding VMAs is uncommon, as padding is only allowed
+ * from the linker context.
+ *
+ * To simplify the semantics, adjacent VMAs with padding are not
+ * allowed to merge.
+ */
+bool is_mergable_pad_vma(struct vm_area_struct *vma,
+			 unsigned long vm_flags)
+{
+	/* Padding VMAs cannot be merged with other padding or real VMAs */
+	return !((vma->vm_flags | vm_flags) & VM_PAD_MASK);
+}
+
+unsigned long vma_data_pages(struct vm_area_struct *vma)
+{
+	return vma_pages(vma) - vma_pad_pages(vma);
+}
+
 #endif /* PAGE_SIZE == SZ_4K */
 #endif /* CONFIG_64BIT */

@@ -1,3 +1,12 @@
+214e01ad4ed7 kthread: unpark only parked kthread
+3e3de7947c75 mm: vmalloc: ensure vmap_block is initialised before adding to queue
+61ebe5a747da mm/vmalloc: fix page mapping if vm_area_alloc_pages() with high order fallback to order 0
+8bc35475ef1a workqueue: Fix spruious data race in __flush_work()
+38f7e14519d3 workqueue: Fix UBSAN 'subtraction overflow' error in shift_and_mask()
+58629d4871e8 workqueue: Always queue work items to the newest PWQ for order workqueues
+3708c7269593 dm-verity: fix dm_is_verity_target() when dm-verity is builtin
+a34acf30b19b mm: vmalloc: check if a hash-index is in cpu_possible_mask
+841658832335 workqueue: Update cpumasks after only applying it successfully
 8c61291fd850 mm: fix incorrect vbq reference in purge_fragmented_block
 07c54cc5988f tick/nohz_full: Don't abuse smp_call_function_single() in tick_setup_device()
 f87cbcb345d0 timekeeping: Use READ/WRITE_ONCE() for tick_do_timer_cpu
