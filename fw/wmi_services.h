@@ -689,6 +689,7 @@ typedef  enum  {
     WMI_SERVICE_PROTECTED_TWT = 430, /* Indicates FW supports protected TWT operation */
     WMI_SERVICE_SCAN_CACHE_REPORT_SUPPORT = 431, /* Indicates FW supports for sending scan cache report */
     WMI_SERVICE_SCC_TPC_POWER_SUPPORT = 432, /* Indicates FW supports setting TPC power for SCC vdevs */
+    WMI_SERVICE_DYNAMIC_TWT_MODE_SUPPORT = 433, /* Indicates FW supports Dynamic TWT mode for vdevs */
 
     WMI_MAX_EXT2_SERVICE
 
