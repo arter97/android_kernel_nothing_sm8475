@@ -806,26 +806,6 @@ int qcom_scm_get_sec_dump_state(u32 *dump_state)
 }
 EXPORT_SYMBOL(qcom_scm_get_sec_dump_state);
 
-int qcom_scm_get_secure_status(u64 *secure_status)
-{
-	int ret;
-	struct qcom_scm_desc desc = {
-		.svc = QCOM_SCM_SVC_INFO,
-		.cmd = QCOM_SCM_UTIL_GET_SECURE_STATUS,
-		.owner = ARM_SMCCC_OWNER_SIP
-	};
-	struct qcom_scm_res res;
-
-	if (!secure_status)
-		return -EINVAL;
-
-	ret = qcom_scm_call(__scm ? __scm->dev : NULL, &desc, &res);
-	*secure_status = res.result[0];
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(qcom_scm_get_secure_status);
-
 int __qcom_scm_get_llcc_missrate(struct device *dev, phys_addr_t in_buf,
 	size_t in_buf_size, phys_addr_t out_buf, size_t out_buf_size)
 {
