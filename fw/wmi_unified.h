@@ -18056,6 +18056,10 @@ typedef enum {
  * Disassoc Imminent bit set to 1.
  */
 #define WMI_VDEV_ROAM_11KV_CTRL_DONOT_SEND_DISASSOC_ON_BTM_DI_SET       0x4
+/* WMI_VDEV_PARAM_ROAM_11KV_BTM_REJECT:
+ * DUT send BTM response with reject status code if the bit set to 1.
+ */
+#define WMI_VDEV_PARAM_ROAM_11KV_BTM_REJECT                             0x8
 
 
 /** NAN vdev config Feature flags */
