@@ -1467,6 +1467,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_pdev_wifi_radar_cap_evt_fixed_param,
     WMITLV_TAG_STRUC_wmi_wifi_radar_ltf_length_capabilities,
     WMITLV_TAG_STRUC_wmi_wifi_radar_chain_capabilities,
+    WMITLV_TAG_STRUC_wmi_sawf_ezmesh_hop_count_cmd_fixed_param,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -2026,6 +2027,7 @@ typedef enum {
     OP(WMI_GET_SCAN_CACHE_RESULT_CMDID) \
     OP(WMI_MLO_LINK_RECONFIG_CMDID) \
     OP(WMI_MLO_LINK_RECONFIG_COMPLETE_CMDID) \
+    OP(WMI_SAWF_EZMESH_HOP_COUNT_CMDID) \
     /* add new CMD_LIST elements above this line */
 
 
@@ -5719,6 +5721,10 @@ WMITLV_CREATE_PARAM_STRUC(WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID);
 #define WMITLV_TABLE_WMI_GET_SCAN_CACHE_RESULT_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_get_scan_cache_result_cmd_fixed_param, wmi_get_scan_cache_result_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_GET_SCAN_CACHE_RESULT_CMDID);
+
+#define WMITLV_TABLE_WMI_SAWF_EZMESH_HOP_COUNT_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_sawf_ezmesh_hop_count_cmd_fixed_param, wmi_sawf_ezmesh_hop_count_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_SAWF_EZMESH_HOP_COUNT_CMDID);
 
 
 

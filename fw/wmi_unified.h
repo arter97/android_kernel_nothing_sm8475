@@ -1706,6 +1706,8 @@ typedef enum {
     WMI_SAWF_SVC_CLASS_CFG_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_SAWF),
     /** disable a service class */
     WMI_SAWF_SVC_CLASS_DISABLE_CMDID,
+    /** update hop count value for SDWF-Ezmesh scenario */
+    WMI_SAWF_EZMESH_HOP_COUNT_CMDID,
 
     /* WMI commands specific to ODD */
     WMI_ODD_LIVEDUMP_REQUEST_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_ODD),
@@ -38477,6 +38479,7 @@ static INLINE A_UINT8 *wmi_id_to_name(A_UINT32 wmi_command)
         WMI_RETURN_STRING(WMI_GET_SCAN_CACHE_RESULT_CMDID);
         WMI_RETURN_STRING(WMI_MLO_LINK_RECONFIG_CMDID);
         WMI_RETURN_STRING(WMI_MLO_LINK_RECONFIG_COMPLETE_CMDID);
+        WMI_RETURN_STRING(WMI_SAWF_EZMESH_HOP_COUNT_CMDID);
     }
 
     return (A_UINT8 *) "Invalid WMI cmd";
@@ -47590,6 +47593,19 @@ typedef struct {
     A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_sawf_svc_class_disable_cmd_fixed_param */
     A_UINT32 svc_class_id; /* which service class is being disabled */
 } wmi_sawf_svc_class_disable_cmd_fixed_param;
+
+/* Used to store Hop count info for SDWF-Ezmesh scenario based on topology changes */
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals  WMITLV_TAG_STRUC_wmi_sawf_ezmesh_hop_count_cmd_fixed_param */
+    A_UINT32 peer_id;
+    A_UINT32 hop_count;
+    /* delay_bound:
+     * Placeholder for future functionality where delay bound will be directly
+     * passed to FW from host.
+     * (units = ms)
+     */
+    A_UINT32 delay_bound;
+} wmi_sawf_ezmesh_hop_count_cmd_fixed_param;
 
 typedef struct {
     A_UINT32 tlv_header;  /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_sw_cal_ver_cap */
