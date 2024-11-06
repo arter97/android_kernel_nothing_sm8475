@@ -588,6 +588,13 @@ typedef enum {
      * WMI cmd to set custom TX power backoff value per band/chain/MCS to PHY.
      */
     WMI_PDEV_SET_CUSTOM_TX_POWER_PER_MCS_CMDID,
+    /* WMI cmd to send Power Boost status update from Host */
+    WMI_PDEV_POWER_BOOST_CMDID,
+    /**
+     * WMI cmd to exchange the address of the DDR buffer allocated by the Host
+     * for Power Boost feature
+     */
+    WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID,
 
 
     /* VDEV (virtual device) specific commands */
@@ -3939,6 +3946,12 @@ typedef struct {
 
     /* Total number of "real" max_active_vdevs that FW supports. */
     A_UINT32 num_max_active_vdevs;
+
+    /**  max_num_ml_peers:
+     * Number of ml_peers for a SOC; used by Host to derive
+     * max number of peers in the system
+     */
+    A_UINT32 max_num_ml_peers;
 
 /*
  * This fixed_param TLV is followed by these additional TLVs:
@@ -38149,6 +38162,8 @@ static INLINE A_UINT8 *wmi_id_to_name(A_UINT32 wmi_command)
         WMI_RETURN_STRING(WMI_SET_AP_SUSPEND_RESUME_CMDID);
         WMI_RETURN_STRING(WMI_P2P_GO_DFS_AP_CONFIG_CMDID);
         WMI_RETURN_STRING(WMI_USD_SERVICE_CMDID);
+        WMI_RETURN_STRING(WMI_PDEV_POWER_BOOST_CMDID);
+        WMI_RETURN_STRING(WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID);
     }
 
     return (A_UINT8 *) "Invalid WMI cmd";
@@ -41500,6 +41515,9 @@ typedef struct {
 #define WMI_MLO_LINK_INFO_GET_IEEE_LINK_ID(link_info)      WMI_GET_BITS(link_info, 10, 4)
 #define WMI_MLO_LINK_INFO_SET_IEEE_LINK_ID(link_info, val) WMI_SET_BITS(link_info, 10, 4, val)
 
+#define WMI_MLO_LINK_INFO_GET_FREQ(link_info)              WMI_GET_BITS(link_info, 14, 16)
+#define WMI_MLO_LINK_INFO_SET_FREQ(link_info, val)         WMI_SET_BITS(link_info, 14, 16, val)
+
 typedef struct {
     A_UINT32 tlv_header;    /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_mlo_link_info_tlv_param */
     wmi_mac_addr link_addr;
@@ -41512,6 +41530,7 @@ typedef struct {
      *            1 - rejected
      * b[7-9]   : Band - link band info (band value is from wmi_mlo_band_info)
      * b[10-13] : IEEE link id - Link id associated with AP
+     * b[14-29] : Frequency - Link channel frequency in MHz units
      */
 } wmi_mlo_link_info;
 
@@ -46225,6 +46244,9 @@ typedef struct {
     A_UINT32 mld_group_id;
     /** pdev_id for identifying the MAC, See macros starting with WMI_PDEV_ID_ for values. */
     A_UINT32 pdev_id;
+
+    A_UINT32 max_num_ml_peers;
+
 /*
  * Followed by TLVs:
  *     A_UINT32 hw_link_ids[];
@@ -48990,6 +49012,13 @@ typedef enum {
     WMI_EVENT_POWER_BOOST_MAX
 } wmi_pdev_power_boost_event_type;
 
+typedef enum {
+    WMI_PDEV_POWER_BOOST_TS_FIRST_PASS = 0,
+    WMI_PDEV_POWER_BOOST_TS_SECOND_PASS,
+
+    WMI_PDEV_POWER_BOOST_TS_MAX
+} wmi_pdev_power_boost_training_stage;
+
 typedef struct {
     /* WMITLV_TAG_STRUC_wmi_pdev_power_boost_event_fixed_param */
     A_UINT32 tlv_header;
@@ -48998,8 +49027,8 @@ typedef struct {
     /* enum wmi_pdev_power_boost_event_type to update the power boost status */
     A_UINT32 status;
     /* training_stage:
-     * The training stage such as 1st, 2nd for which the I/Q samples are
-     * updated in DDR.
+     * The training stage for which the I/Q samples are updated in DDR.
+     * This field holds a wmi_pdev_power_boost_training_stage value.
      */
     A_UINT32 training_stage;
     /* MCS value for which the current DPD training has been done */
@@ -49022,6 +49051,65 @@ typedef struct {
      */
     A_UINT32 phy_mode;
 } wmi_pdev_power_boost_event_fixed_param;
+
+typedef enum {
+    WMI_CMD_POWER_BOOST_READY = 0,
+    WMI_CMD_POWER_BOOST_ESTIMATED_DATA,
+    WMI_CMD_POWER_BOOST_ABORT,
+
+    WMI_CMD_POWER_BOOST_MAX
+} wmi_pdev_power_boost_cmd_type;
+
+typedef struct {
+    /* WMITLV_TAG_STRUC_wmi_pdev_power_boost_cmd_fixed_param */
+    A_UINT32 tlv_header;
+    /* to identify for which pdev the cmd is sent */
+    A_UINT32 pdev_id;
+    /* enum wmi_pdev_power_boost_cmd_type to update the power boost status */
+    A_UINT32 status;
+    /* wmi_pdev_power_boost_training_stage value to indicate training stage */
+    A_UINT32 training_stage;
+    /* MCS value for which the Power Boost training has been done */
+    A_UINT32 mcs;
+    /* Bandwidth in Mhz for which the Power Boost training has been done */
+    A_UINT32 bandwidth;
+    /* current target temperature while training the DPD packet in degree C */
+    A_INT32 temperature_degreeC;
+    /* primary 20 MHz channel frequency in MHz */
+    A_UINT32 primary_chan_mhz;
+    /* Center frequency 1 in MHz*/
+    A_UINT32 band_center_freq1;
+    /* Center frequency 2 in MHz - valid only for 11acvht 80plus80 mode*/
+    A_UINT32 band_center_freq2;
+    /* phy_mode:
+     * phy mode as listed by enum WLAN_PHY_MODE, for which the current
+     * Power Boost training has been done.
+     */
+    A_UINT32 phy_mode;
+    /* tx_evm:
+     * Tx_evm value as calculated after the Power Boost training,
+     * in units of 1/4 (0.25dBm) steps.
+     */
+    A_INT32 tx_evm;
+    /* tx_mask_margin:
+     * Tx spectral mask margin value as calculated after the Power Boost
+     * training, in units of 1/4 (0.25dBm) steps.
+     */
+    A_INT32 tx_mask_margin;
+} wmi_pdev_power_boost_cmd_fixed_param;
+
+typedef struct {
+    /* WMITLV_TAG_STRUC_wmi_pdev_power_boost_mem_addr_cmd_fixed_param */
+    A_UINT32 tlv_header;
+    /* to identify for which pdev the cmd is sent */
+    A_UINT32 pdev_id;
+    /* Lower 32 bit DDR address as allocated by the host */
+    A_UINT32 paddr_aligned_lo;
+    /* Higher 32 bit DDR address as allocated by the host */
+    A_UINT32 paddr_aligned_hi;
+    /* Size of the buffer been allocated by the Host in units of KB */
+    A_UINT32 size;
+} wmi_pdev_power_boost_mem_addr_cmd_fixed_param;
 
 
 

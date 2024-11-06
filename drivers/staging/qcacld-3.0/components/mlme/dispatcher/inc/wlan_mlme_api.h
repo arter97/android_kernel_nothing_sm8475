@@ -3611,4 +3611,13 @@ wlan_mlme_get_ch_width_from_phymode(enum wlan_phymode phy_mode);
  */
 enum phy_ch_width
 wlan_mlme_get_peer_ch_width(struct wlan_objmgr_psoc *psoc, uint8_t *mac);
+
+/**
+ * wlan_mlme_is_vendor_roam_score_algo_set() - Get vendor roam score algo
+ * @psoc: Psoc pointer
+ *
+ * Return: True if vendor roam score algo INI is set else return false
+ */
+bool
+wlan_mlme_is_vendor_roam_score_algo_set(struct wlan_objmgr_psoc *psoc);
 #endif /* _WLAN_MLME_API_H_ */
