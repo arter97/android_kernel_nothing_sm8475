@@ -19666,14 +19666,17 @@ typedef struct {
 } wmi_vdev_bss_max_idle_time_cmd_fixed_param;
 
 /** VDEV start response status codes */
-#define WMI_VDEV_START_RESPONSE_STATUS_SUCCESS 0x0  /** VDEV successfully started */
-#define WMI_VDEV_START_RESPONSE_INVALID_VDEVID  0x1  /** requested VDEV not found */
-#define WMI_VDEV_START_RESPONSE_NOT_SUPPORTED  0x2  /** unsupported VDEV combination */
-#define WMI_VDEV_START_RESPONSE_DFS_VIOLATION  0x3  /** DFS_VIOLATION since channel in the NOL is selected */
-#define WMI_VDEV_START_RESPONSE_INVALID_REGDOMAIN 0x4 /** Invalid regulatory domain in VDEV start */
-#define WMI_VDEV_START_RESPONSE_INVALID_BAND   0x5    /** Band unsupported by current hw mode in VDEV start */
+#define WMI_VDEV_START_RESPONSE_STATUS_SUCCESS                  0x0 /** VDEV successfully started */
+#define WMI_VDEV_START_RESPONSE_INVALID_VDEVID                  0x1 /** requested VDEV not found */
+#define WMI_VDEV_START_RESPONSE_NOT_SUPPORTED                   0x2 /** unsupported VDEV combination */
+#define WMI_VDEV_START_RESPONSE_DFS_VIOLATION                   0x3 /** DFS_VIOLATION since channel in the NOL is selected */
+#define WMI_VDEV_START_RESPONSE_INVALID_REGDOMAIN               0x4 /** Invalid regulatory domain in VDEV start */
+#define WMI_VDEV_START_RESPONSE_INVALID_BAND                    0x5 /** Band unsupported by current hw mode in VDEV start */
 #define WMI_VDEV_START_RESPONSE_INVALID_PREFERRED_TX_RX_STREAMS 0x6 /** Invalid preferred tx/rx streams */
-#define WMI_VDEV_START_RESPONSE_INVALID_TX_VAP_CONFIG   0x7 /** Invalid tx_vap config in VDEV start */
+#define WMI_VDEV_START_RESPONSE_INVALID_TX_VAP_CONFIG           0x7 /** Invalid tx_vap config in VDEV start */
+#define WMI_VDEV_START_RESPONSE_BSS_PEER_NOT_FOUND              0x8 /** bss_peer is null/not found */
+#define WMI_VDEV_START_RESPONSE_INCORRECT_CHANNEL_PARAMS        0x9 /** home channel params are incorrect */
+#define WMI_VDEV_START_RESPONSE_GENERIC_VDEV_START_FAILURE      0xa /** generic reason code for vdev start request reject */
 
 /** Beacon processing related command and event structures */
 typedef struct {
