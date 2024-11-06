@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -164,105 +164,6 @@ hdd_sysfs_pm_pcl_store(struct kobject *kobj,
 	return errno_size;
 }
 
-static ssize_t
-__hdd_sysfs_pm_dbs_store(struct hdd_context *hdd_ctx,
-			 struct kobj_attribute *attr,
-			 const char *buf,
-			 size_t count)
-{
-	char buf_local[MAX_SYSFS_USER_COMMAND_SIZE_LENGTH + 1];
-	char *sptr, *token;
-	QDF_STATUS status;
-	int ret, value;
-
-	if (!wlan_hdd_validate_modules_state(hdd_ctx))
-		return -EINVAL;
-
-	ret = hdd_sysfs_validate_and_copy_buf(buf_local, sizeof(buf_local),
-					      buf, count);
-	if (ret) {
-		hdd_err_rl("invalid input");
-		return ret;
-	}
-
-	if (!hdd_ctx->config->is_unit_test_framework_enabled) {
-		hdd_warn_rl("UT framework is disabled");
-		return -EINVAL;
-	}
-
-	sptr = buf_local;
-	hdd_debug("pm_pcl: count %zu buf_local:(%s)",
-		  count, buf_local);
-
-	token = strsep(&sptr, " ");
-	if (!token)
-		return -EINVAL;
-	if (kstrtou32(token, 0, &value))
-		return -EINVAL;
-
-	switch (value) {
-	case 0:
-	case 1:
-		policy_mgr_set_dbs_cap_ut(hdd_ctx->psoc, value);
-		wma_enable_dbs_service_ut();
-		break;
-	default:
-		hdd_err_rl("invalid value %d", value);
-		return -EINVAL;
-	}
-
-	token = strsep(&sptr, " ");
-	if (!token)
-		return -EINVAL;
-	if (kstrtou32(token, 0, &value))
-		return -EINVAL;
-
-	switch (value) {
-	case PM_THROUGHPUT:
-	case PM_POWERSAVE:
-	case PM_LATENCY:
-		status = ucfg_policy_mgr_set_sys_pref(hdd_ctx->psoc, value);
-		if (status != QDF_STATUS_SUCCESS) {
-			hdd_err("ucfg_policy_mgr_set_sys_pref failed");
-			return -EINVAL;
-		}
-		break;
-	default:
-		hdd_err_rl("invalid value %d", value);
-		return -EINVAL;
-	}
-
-	return count;
-}
-
-static ssize_t
-hdd_sysfs_pm_dbs_store(struct kobject *kobj,
-		       struct kobj_attribute *attr,
-		       const char *buf,
-		       size_t count)
-{
-	struct osif_psoc_sync *psoc_sync;
-	struct hdd_context *hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
-	ssize_t errno_size;
-	int ret;
-
-	ret = wlan_hdd_validate_context(hdd_ctx);
-	if (ret != 0)
-		return ret;
-
-	errno_size = osif_psoc_sync_op_start(wiphy_dev(hdd_ctx->wiphy),
-					     &psoc_sync);
-	if (errno_size)
-		return errno_size;
-
-	errno_size = __hdd_sysfs_pm_dbs_store(hdd_ctx, attr,
-					      buf, count);
-
-	osif_psoc_sync_op_stop(psoc_sync);
-
-	return errno_size;
-}
-
 static struct kobj_attribute pm_pcl_attribute =
 	__ATTR(pm_pcl, 0220, NULL,
 	       hdd_sysfs_pm_pcl_store);
@@ -270,10 +171,6 @@ static struct kobj_attribute pm_pcl_attribute =
 static struct kobj_attribute pm_cinfo_attribute =
 	__ATTR(pm_cinfo, 0440,
 	       hdd_sysfs_pm_cminfo_show, NULL);
-
-static struct kobj_attribute pm_dbs_attribute =
-	__ATTR(pm_dbs, 0220, NULL,
-	       hdd_sysfs_pm_dbs_store);
 
 int hdd_sysfs_pm_pcl_create(struct kobject *driver_kobject)
 {
@@ -313,29 +210,3 @@ void hdd_sysfs_pm_cinfo_destroy(struct kobject *driver_kobject)
 	sysfs_remove_file(driver_kobject, &pm_cinfo_attribute.attr);
 }
 
-int hdd_sysfs_pm_dbs_create(struct kobject *driver_kobject)
-{
-	int error;
-
-	if (!driver_kobject) {
-		hdd_err("could not get driver kobject!");
-		return -EINVAL;
-	}
-
-	error = sysfs_create_file(driver_kobject,
-				  &pm_dbs_attribute.attr);
-	if (error)
-		hdd_err("could not create pm_dbs sysfs file");
-
-	return error;
-}
-
-void
-hdd_sysfs_pm_dbs_destroy(struct kobject *driver_kobject)
-{
-	if (!driver_kobject) {
-		hdd_err("could not get driver kobject!");
-		return;
-	}
-	sysfs_remove_file(driver_kobject, &pm_dbs_attribute.attr);
-}

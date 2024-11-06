@@ -989,13 +989,13 @@ static void wma_peer_send_phymode(struct wlan_objmgr_vdev *vdev,
 	fw_phymode = wma_host_to_fw_phymode(new_phymode);
 	vdev_id = wlan_vdev_get_id(vdev);
 
-	wma_set_peer_param(wma, peer_mac_addr, WMI_PEER_PHYMODE,
-			   fw_phymode, vdev_id);
-
 	max_ch_width_supported =
 		wmi_get_ch_width_from_phy_mode(wma->wmi_handle, fw_phymode);
 	wma_set_peer_param(wma, peer_mac_addr, WMI_PEER_CHWIDTH,
 			   max_ch_width_supported, vdev_id);
+
+	wma_set_peer_param(wma, peer_mac_addr, WMI_PEER_PHYMODE,
+			   fw_phymode, vdev_id);
 
 	wma_debug("FW phymode %d old phymode %d new phymode %d bw %d macaddr "QDF_MAC_ADDR_FMT,
 		  fw_phymode, old_peer_phymode, new_phymode,
@@ -2180,56 +2180,6 @@ static int wma_remove_bss_peer(tp_wma_handle wma, uint32_t vdev_id,
 	return ret_value;
 }
 
-#ifdef FEATURE_WLAN_APF
-/*
- * get_fw_active_apf_mode() - convert HDD APF mode to FW configurable APF
- * mode
- * @mode: APF mode maintained in HDD
- *
- * Return: FW configurable BP mode
- */
-static enum wmi_host_active_apf_mode
-get_fw_active_apf_mode(enum active_apf_mode mode)
-{
-	switch (mode) {
-	case ACTIVE_APF_DISABLED:
-		return WMI_HOST_ACTIVE_APF_DISABLED;
-	case ACTIVE_APF_ENABLED:
-		return WMI_HOST_ACTIVE_APF_ENABLED;
-	case ACTIVE_APF_ADAPTIVE:
-		return WMI_HOST_ACTIVE_APF_ADAPTIVE;
-	default:
-		wma_err("Invalid Active APF Mode %d; Using 'disabled'", mode);
-		return WMI_HOST_ACTIVE_APF_DISABLED;
-	}
-}
-
-/**
- * wma_config_active_apf_mode() - Config active APF mode in FW
- * @wma: the WMA handle
- * @vdev_id: the Id of the vdev for which the configuration should be applied
- *
- * Return: QDF status
- */
-static QDF_STATUS wma_config_active_apf_mode(t_wma_handle *wma, uint8_t vdev_id)
-{
-	enum wmi_host_active_apf_mode uc_mode, mcbc_mode;
-
-	uc_mode = get_fw_active_apf_mode(wma->active_uc_apf_mode);
-	mcbc_mode = get_fw_active_apf_mode(wma->active_mc_bc_apf_mode);
-
-	wma_debug("Configuring Active APF Mode UC:%d MC/BC:%d for vdev %u",
-		 uc_mode, mcbc_mode, vdev_id);
-
-	return wmi_unified_set_active_apf_mode_cmd(wma->wmi_handle, vdev_id,
-						   uc_mode, mcbc_mode);
-}
-#else /* FEATURE_WLAN_APF */
-static QDF_STATUS wma_config_active_apf_mode(t_wma_handle *wma, uint8_t vdev_id)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* FEATURE_WLAN_APF */
 
 #ifdef FEATURE_AP_MCC_CH_AVOIDANCE
 /**
@@ -3032,14 +2982,6 @@ QDF_STATUS wma_post_vdev_create_setup(struct wlan_objmgr_vdev *vdev)
 		}
 	} else {
 		wma_err("Failed to get value for WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, leaving unchanged");
-	}
-
-	if (vdev_mlme->mgmt.generic.type == WMI_VDEV_TYPE_STA &&
-	    ucfg_pmo_is_apf_enabled(wma_handle->psoc)) {
-		ret = wma_config_active_apf_mode(wma_handle,
-						 vdev_id);
-		if (QDF_IS_STATUS_ERROR(ret))
-			wma_err("Failed to configure active APF mode");
 	}
 
 	if (vdev_mlme->mgmt.generic.type == WMI_VDEV_TYPE_STA &&
