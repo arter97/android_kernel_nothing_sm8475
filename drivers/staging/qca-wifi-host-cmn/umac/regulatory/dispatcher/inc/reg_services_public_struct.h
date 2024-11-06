@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -944,6 +944,7 @@ struct get_usable_chan_req_params {
  *                   intolerance.
  * @psd_flag: is PSD channel or not
  * @psd_eirp: PSD power level
+ * @power_type: channel power type
  */
 struct regulatory_channel {
 	qdf_freq_t center_freq;
@@ -963,6 +964,9 @@ struct regulatory_channel {
 #ifdef CONFIG_BAND_6GHZ
 	bool psd_flag;
 	uint16_t psd_eirp;
+#endif
+#ifdef CONFIG_REG_CLIENT
+	enum reg_6g_ap_type power_type;
 #endif
 };
 
