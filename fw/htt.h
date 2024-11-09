@@ -838,6 +838,7 @@ typedef enum {
     HTT_STATS_PDEV_SPECTRAL_TAG                     = 204, /* htt_stats_pdev_spectral_tlv */
     HTT_STATS_PDEV_RTT_DELAY_TAG                    = 205, /* htt_stats_pdev_rtt_delay_tlv */
     HTT_STATS_PDEV_AOA_TAG                          = 206, /* htt_stats_pdev_aoa_tlv */
+    HTT_STATS_PDEV_FTM_TPCCAL_TAG                   = 207, /* htt_stats_pdev_ftm_tpccal_tlv */
 
     HTT_STATS_MAX_TAG,
 } htt_stats_tlv_tag_t;

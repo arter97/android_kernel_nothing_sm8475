@@ -810,6 +810,14 @@ enum htt_dbg_ext_stats_type {
      */
     HTT_DBG_EXT_STATS_PDEV_AOA = 72,
 
+    /** HTT_DBG_EXT_STATS_PDEV_FTM_TPCCAL
+     * PARAMS:
+     *   - No Params
+     * RESP MSG:
+     *    - htt_stats_pdev_ftm_tpccal_tlv
+     */
+    HTT_DBG_EXT_STATS_PDEV_FTM_TPCCAL = 73,
+
 
     /* keep this last */
     HTT_DBG_NUM_EXT_STATS = 256,
@@ -9085,6 +9093,224 @@ typedef struct {
 #define HTT_STATS_RTT_CAL_RXCORR_ADC_GAIN_COMP_MASK           0x00008000
 #define HTT_STATS_RTT_CAL_SPUR_FILTER_PRI_DET_COMP_MASK       0x00010000
 #define HTT_STATS_RTT_CAL_SPUR_FILTER_PRI_COMP_MASK           0x00020000
+
+
+#define HTT_STATS_TPCCAL_LAST_IDX_M 0x000000ff
+#define HTT_STATS_TPCCAL_LAST_IDX_S 0
+
+#define HTT_STATS_TPCCAL_LAST_IDX_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_LAST_IDX_M) >> \
+     HTT_STATS_TPCCAL_LAST_IDX_S)
+
+#define HTT_STATS_TPCCAL_STATS_MEASPWR_M 0x0000ffff
+#define HTT_STATS_TPCCAL_STATS_MEASPWR_S 0
+
+#define HTT_STATS_TPCCAL_STATS_MEASPWR_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_STATS_MEASPWR_M) >> \
+     HTT_STATS_TPCCAL_STATS_MEASPWR_S)
+
+#define HTT_STATS_TPCCAL_STATS_PDADC_M 0x000000ff
+#define HTT_STATS_TPCCAL_STATS_PDADC_S 0
+
+#define HTT_STATS_TPCCAL_STATS_PDADC_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_STATS_PDADC_M) >> \
+     HTT_STATS_TPCCAL_STATS_PDADC_S)
+
+#define HTT_STATS_TPCCAL_STATS_CHANNEL_M 0x0000ffff
+#define HTT_STATS_TPCCAL_STATS_CHANNEL_S 0
+
+#define HTT_STATS_TPCCAL_STATS_CHANNEL_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_STATS_CHANNEL_M) >> \
+     HTT_STATS_TPCCAL_STATS_CHANNEL_S)
+
+#define HTT_STATS_TPCCAL_STATS_CHAIN_M 0x00ff0000
+#define HTT_STATS_TPCCAL_STATS_CHAIN_S 16
+
+#define HTT_STATS_TPCCAL_STATS_CHAIN_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_STATS_CHAIN_M) >> \
+     HTT_STATS_TPCCAL_STATS_CHAIN_S)
+
+#define HTT_STATS_TPCCAL_STATS_GAININDEX_M 0xff000000
+#define HTT_STATS_TPCCAL_STATS_GAININDEX_S 24
+
+#define HTT_STATS_TPCCAL_STATS_GAININDEX_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_STATS_GAININDEX_M) >> \
+     HTT_STATS_TPCCAL_STATS_GAININDEX_S)
+
+#define HTT_STATS_TPCCAL_POSTPROC_CHANNEL_M 0x0000ffff
+#define HTT_STATS_TPCCAL_POSTPROC_CHANNEL_S 0
+
+#define HTT_STATS_TPCCAL_POSTPROC_CHANNEL_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_POSTPROC_CHANNEL_M) >> \
+     HTT_STATS_TPCCAL_POSTPROC_CHANNEL_S)
+
+#define HTT_STATS_TPCCAL_POSTPROC_CHAIN_M 0x00ff0000
+#define HTT_STATS_TPCCAL_POSTPROC_CHAIN_S 16
+
+#define HTT_STATS_TPCCAL_POSTPROC_CHAIN_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_POSTPROC_CHAIN_M) >> \
+     HTT_STATS_TPCCAL_POSTPROC_CHAIN_S)
+
+#define HTT_STATS_TPCCAL_POSTPROC_BAND_M 0xff000000
+#define HTT_STATS_TPCCAL_POSTPROC_BAND_S 24
+
+#define HTT_STATS_TPCCAL_POSTPROC_BAND_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_POSTPROC_BAND_M) >> \
+     HTT_STATS_TPCCAL_POSTPROC_BAND_S)
+
+#define HTT_STATS_TPCCAL_POSTPROC_NUMGAIN_M 0x000000ff
+#define HTT_STATS_TPCCAL_POSTPROC_NUMGAIN_S 0
+
+#define HTT_STATS_TPCCAL_POSTPROC_NUMGAIN_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_POSTPROC_NUMGAIN_M) >> \
+     HTT_STATS_TPCCAL_POSTPROC_NUMGAIN_S)
+
+#define HTT_STATS_TPCCAL_POSTPROC_CALDBSTATUS_M 0x0000ff00
+#define HTT_STATS_TPCCAL_POSTPROC_CALDBSTATUS_S 8
+
+#define HTT_STATS_TPCCAL_POSTPROC_CALDBSTATUS_GET(_var) \
+    (((_var) & HTT_STATS_TPCCAL_POSTPROC_CALDBSTATUS_M) >> \
+     HTT_STATS_TPCCAL_POSTPROC_CALDBSTATUS_S)
+
+/* STATS_TYPE : HTT_DBG_EXT_PDEV_STATS_FTM_TPCCAL
+ * TLV_TAGS:
+ *    - HTT_STATS_PDEV_FTM_TPCCAL_TAG
+ */
+#define HTT_MAX_TPCCAL_STATS 25
+#define HTT_STATS_TPC_CAL_MAX_NUM_POINTS 64
+
+typedef struct {
+    htt_tlv_hdr_t   tlv_hdr;
+
+    /* dword__tpccal_last_idx:
+     * Hold the last updated index for circular buffer of tpccal
+     * BIT [7 : 0]   :- tpcccal_last_idx
+     * BIT [31 : 8]  :- rsvd1
+     */
+    union {
+        A_UINT32 dword__tpccal_last_idx;
+        struct {
+            A_UINT32 tpccal_last_idx:8,
+                     rsvd1:24;
+        };
+    };
+
+    /*
+     * Below tpccal_stats struct will have latest values of tpccal data
+     * of array size HTT_MAX_TPCCAL_STATS.
+     * If there have been fewer than HTT_MAX_TPCCAL_STATS TPC calibrations,
+     * the unused elements will be filled with 0x0 values.
+     */
+    struct {
+       /*
+        * dword__measPwr:
+        * BIT [15 : 0]  :- measPwr
+        * BIT [31 : 16] :- rsvd2
+        */
+        union {
+            A_INT32 dword__measPwr;
+            struct {
+                A_INT32 measPwr:16, /* dBm units */
+                         rsvd2:16;
+            };
+        };
+
+       /*
+        * dword__channel_chain_gainIndex:
+        * hold channel chain and gain index values
+        * BIT [15 : 0]  :- channel
+        * BIT [23 : 16] :- chain
+        * BIT [24 : 31] :- gainIndex
+        */
+        union {
+            A_UINT32 dword__channel_chain_gainIndex;
+            struct {
+                A_UINT32 channel:16, /* MHz units */
+                         chain:8,
+                         gainIndex:8;
+            };
+        };
+
+       /*
+        * dword__pdadc:
+        * BIT [7 : 0]  :- pdadc
+        * BIT [31 : 8] :- rsvd3
+        */
+        union {
+            A_UINT32 dword__pdadc;
+            struct {
+                A_UINT32 pdadc:8,
+                         rsvd3:24;
+            };
+        };
+    } tpccal_stats[HTT_MAX_TPCCAL_STATS];
+
+    /*
+     * Below tpccal_stats_postproc struct will have required tpccal data
+     * for failures during postprocessing.
+     */
+    struct {
+       /*
+        * calStatus can be intrepreted with the below values:
+        *   TPCCAL_CALDATA                                 (1 << 0)
+        *   TPCCAL_CALINFO                                 (1 << 1)
+        *   TPCCAL_CALERROR                                (1 << 2)
+        *   bits 6:4 - reserved
+        *   TPCCAL_DONE_MASK                               (1 << 7)
+        *   bits 15:8 - reserved
+        *   TPCCALRSP_MISCFLAGS_CALERROR_GLUTS_NOT_FILLED  (1 << 16)
+        *   TPCCALRSP_MISCFLAGS_CALERROR_PLUT_NON_LINEAR   (1 << 17)
+        *   TPCCALRSP_MISCFLAGS_CALERROR_ATTEMPTS_EXCEEDED (1 << 18)
+        *   bits 31:19 - reserved
+        */
+        A_UINT32 calStatus;
+        /*
+         * The numgain field specifies how many of the
+         * HTT_STATS_TPC_CAL_MAX_NUM_POINTS elements in the below arrays
+         * contain valid data.
+         */
+        A_INT32  measPwr[HTT_STATS_TPC_CAL_MAX_NUM_POINTS]; /* dBm units */
+        A_UINT32 pdadc[HTT_STATS_TPC_CAL_MAX_NUM_POINTS];
+        A_UINT32 gainIndex[HTT_STATS_TPC_CAL_MAX_NUM_POINTS];
+
+        /*
+         * dword__channel_chain_band:
+         * channel, chain, and band values
+         * BIT [15 : 0]  :- channel
+         * BIT [23 : 16] :- chain
+         * BIT [31 : 24] :- band
+         */
+        union {
+            A_UINT32 dword__channel_chain_band;
+            struct {
+                A_UINT32 channel:16, /* MHz units */
+                         chain:8,
+                         band:8;
+            };
+        };
+
+       /*
+        * dword__numgain_caldbStatus:
+        * numgain and caldbstatus
+        * BIT [7 : 0]  :- numgain
+        * BIT [15 : 8] :- caldbstatus
+        * BIT [31 : 16] :- rsvd4
+        *
+        * caldbStatus can be interpreted as below
+        *  CALDB_COMPLETED = 0
+        *  CALDB_SKIPPED = 1
+        *  CALDB_INPROGRESS = 2
+        */
+        union {
+            A_UINT32 dword__numgain_caldbStatus;
+            struct {
+                A_UINT32 numgain:8,
+                         caldbStatus:8,
+                         rsvd4:16;
+            };
+        };
+    } tpccal_stats_postproc;
+} htt_stats_pdev_ftm_tpccal_tlv;
 
 #define HTT_DLPAGER_STATS_MAX_HIST            10
 #define HTT_DLPAGER_ASYNC_LOCKED_PAGE_COUNT_M 0x000000FF
