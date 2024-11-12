@@ -22906,6 +22906,13 @@ typedef struct {
      * as mlo_etp_weightage_pcnt.
      */
     A_UINT32 mlo_etp_weightage_pcnt;
+    /* mcc_score_factor_pcnt:
+     * This score factor will be applied to roam candidate score if the
+     * roaming to that candidate can form MCC with any other interface.
+     * Example: if value is 20, then only 20% of the score will be
+     * considered for the candidates for which MCC will be formed.
+     */
+    A_UINT32 mcc_score_factor_pcnt;
 } wmi_roam_cnd_scoring_param;
 
 typedef struct {

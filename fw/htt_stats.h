@@ -9285,7 +9285,7 @@ typedef struct {
             struct {
                 A_UINT32 channel:16, /* MHz units */
                          chain:8,
-                         band:8;
+                         band:8; /* 0: 2GHz, 1: 5GHz, 2: 6GHz */
             };
         };
 
