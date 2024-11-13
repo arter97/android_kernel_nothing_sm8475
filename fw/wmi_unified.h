@@ -124,6 +124,7 @@ extern "C" {
 #define WMI_MAX_CHAINS 8
 #define WMI_MAX_CHAINS_FOR_AOA_RCC 2
 #define WMI_MAX_ADDRESS_SPACE   10
+#define WMI_MAX_PEER_STA_KICKOUT_REASON 8
 
 #define MAX_AOA_PHASEDELTA      31  /* 62 gain values */
 
@@ -16601,7 +16602,28 @@ typedef struct {
     A_UINT32 beacon_stuck_cnt;
     A_UINT32 beacon_swba_cnt;
     A_UINT32 beacon_enque_fail;
+    A_UINT32 beacon_do_not_send_bcast_t2lm_exp;
+    A_UINT32 beacon_do_not_send_bcast_t2lm_proc_mst;
+    A_UINT32 beacon_do_not_send_off_chan;
+    A_UINT32 beacon_do_not_send_tx_paused;
+    A_UINT32 beacon_do_not_send_swba_delay;
+    A_UINT32 beacon_do_not_send_csa;
+    A_UINT32 beacon_wait_prev_txdone;
 } wmi_ctrl_path_pdev_bcn_tx_stats_struct;
+
+typedef struct {
+    A_UINT32 tlv_header;
+    A_UINT32 pdev_id;
+    A_UINT32 tx_mgmt_subtype_enq_ok[WMI_MGMT_FRAME_SUBTYPE_MAX];
+    A_UINT32 tx_mgmt_subtype_tx_comp_ok[WMI_MGMT_FRAME_SUBTYPE_MAX];
+    A_UINT32 tx_mgmt_subtype_tx_comp_fail[WMI_MGMT_FRAME_SUBTYPE_MAX];
+    A_UINT32 tx_mgmt_subtype_enq_fail[WMI_MGMT_FRAME_SUBTYPE_MAX];
+    A_UINT32 rx_mgmt_subtype[WMI_MGMT_FRAME_SUBTYPE_MAX];
+    A_UINT16 peer_sta_kickout_reason_cnt[WMI_MAX_PEER_STA_KICKOUT_REASON];
+    A_UINT32 wmi_scan_start_cnt;
+    A_UINT32 wmi_scan_start_fail_cnt;
+    A_UINT32 foreign_chan_entry_cnt;
+} wmi_ctrl_path_pdev_conn_stats_struct;
 
 /**
  *  peer statistics.
@@ -36278,6 +36300,7 @@ typedef enum {
     WMI_REQUEST_CTRL_STA_RRM_STAT           = 18,
     WMI_REQUEST_CTRL_PATH_VDEV_BCN_TX_STAT  = 19,
     WMI_REQUEST_CTRL_PATH_PDEV_BCN_TX_STAT  = 20,
+    WMI_REQUEST_CTRL_PATH_PDEV_CONN_STAT    = 21,
 } wmi_ctrl_path_stats_id;
 
 typedef enum {
