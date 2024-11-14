@@ -690,6 +690,7 @@ typedef  enum  {
     WMI_SERVICE_SCAN_CACHE_REPORT_SUPPORT = 431, /* Indicates FW supports for sending scan cache report */
     WMI_SERVICE_SCC_TPC_POWER_SUPPORT = 432, /* Indicates FW supports setting TPC power for SCC vdevs */
     WMI_SERVICE_DYNAMIC_TWT_MODE_SUPPORT = 433, /* Indicates FW supports Dynamic TWT mode for vdevs */
+    WMI_SERVICE_SPECTRAL_SPUR_BIN_INFO_SUPPORT = 434, /* Indicates FW supports indicating spur frequency and spectral bin that gets affected due to spur frequency */
 
     WMI_MAX_EXT2_SERVICE
 

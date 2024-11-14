@@ -1469,6 +1469,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_wifi_radar_chain_capabilities,
     WMITLV_TAG_STRUC_wmi_sawf_ezmesh_hop_count_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_ctrl_path_pdev_conn_stats_struct,
+    WMITLV_TAG_STRUC_wmi_pdev_sscan_spur_chan_impacted_bin_info,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -7494,7 +7495,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_AUDIO_AGGR_SCHED_METHOD_EVENTID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_pdev_sscan_fw_cmd_fixed_param, wmi_pdev_sscan_fw_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_pdev_sscan_fft_bin_index, fft_bin_index, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_pdev_sscan_chan_info, wmi_pdev_sscan_chan_info,chan_info, WMITLV_SIZE_FIX) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_pdev_sscan_per_detector_info, det_info, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_pdev_sscan_per_detector_info, det_info, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_pdev_sscan_spur_chan_impacted_bin_info, spur_chan_impacted_bin_info, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_PDEV_SSCAN_FW_PARAM_EVENTID);
 
 /* Send sscan related event start/stop trigger to host */
