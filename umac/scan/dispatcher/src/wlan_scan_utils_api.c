@@ -193,6 +193,10 @@ util_scan_get_phymode_11be(struct wlan_objmgr_pdev *pdev,
 	if (!util_scan_entry_ehtcap(scan_params) || !eht_ops)
 		return phymode;
 
+	if (eht_ops->elem_len < sizeof(struct wlan_ie_ehtops)) {
+		scm_err("Invalid EHT OP IE len");
+		return phymode;
+	}
 	switch (eht_ops->width) {
 	case WLAN_EHT_CHWIDTH_20:
 		phymode = WLAN_PHYMODE_11BEA_EHT20;
