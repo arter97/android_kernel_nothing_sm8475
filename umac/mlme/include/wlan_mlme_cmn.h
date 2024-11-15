@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -922,11 +922,11 @@ void mlme_set_osif_twt_cb(osif_twt_get_global_ops_cb twt_osif_ops);
 
 /**
  * mlme_max_chan_switch_is_set() - Get if max chan switch IE is enabled
- * @vdev: Object manager vdev pointer
+ * @psoc: psoc pointer
  *
  * Return: True if max chan switch is enabled else false
  */
-bool mlme_max_chan_switch_is_set(struct wlan_objmgr_vdev *vdev);
+bool mlme_max_chan_switch_is_set(struct wlan_objmgr_psoc *psoc);
 
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
 /**
