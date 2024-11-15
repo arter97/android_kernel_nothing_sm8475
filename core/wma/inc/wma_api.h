@@ -516,6 +516,40 @@ QDF_STATUS wma_set_vc_mode_config(void *wma_handle,
 QDF_STATUS wma_process_dhcp_ind(WMA_HANDLE wma_handle,
 				tAniDHCPInd *ta_dhcp_ind);
 
+#ifdef FEATURE_WLAN_APF
+/**
+ * wma_enable_active_apf_mode() - Enable apf mode.
+ * @handle: pointer to wma handle.
+ * @ta_dhcp_ind: dhcp indicator.
+ *
+ * Enable apf mode.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS wma_enable_active_apf_mode(WMA_HANDLE handle, tAniDHCPInd *ta_dhcp_ind);
+
+/**
+ * wma_disable_active_apf_mode() - Disable apf mode.
+ * @handle: pointer to wma handle.
+ * @ta_dhcp_ind: dhcp indicator.
+ *
+ * Disable apf mode.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS wma_disable_active_apf_mode(WMA_HANDLE handle, tAniDHCPInd *ta_dhcp_ind);
+#else
+QDF_STATUS wma_enable_active_apf_mode(WMA_HANDLE handle, tAniDHCPInd *ta_dhcp_ind)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS wma_disable_active_apf_mode(WMA_HANDLE handle, tAniDHCPInd *ta_dhcp_ind)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 /**
  * wma_wmi_stop() - send wmi stop cmd
  *

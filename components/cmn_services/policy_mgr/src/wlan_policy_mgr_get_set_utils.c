@@ -6970,35 +6970,6 @@ bool policy_mgr_is_hwmode_offload_enabled(struct wlan_objmgr_psoc *psoc)
 				   wmi_service_hw_mode_policy_offload_support);
 }
 
-#ifdef MPC_UT_FRAMEWORK
-void policy_mgr_set_dbs_cap_ut(struct wlan_objmgr_psoc *psoc, uint32_t dbs)
-{
-	struct policy_mgr_psoc_priv_obj *pm_ctx;
-	uint32_t i;
-
-	pm_ctx = policy_mgr_get_context(psoc);
-	if (!pm_ctx) {
-		policy_mgr_err("Invalid Context");
-		return;
-	}
-
-	if (!pm_ctx->hw_mode.hw_mode_list) {
-		pm_ctx->num_dbs_hw_modes = 1;
-		pm_ctx->hw_mode.hw_mode_list =
-			qdf_mem_malloc(sizeof(*pm_ctx->hw_mode.hw_mode_list) *
-				       pm_ctx->num_dbs_hw_modes);
-		if (!pm_ctx->hw_mode.hw_mode_list)
-			return;
-
-		pm_ctx->hw_mode.hw_mode_list[0] = 0x0000;
-	}
-
-	for (i = 0; i < pm_ctx->num_dbs_hw_modes; i++)
-		POLICY_MGR_HW_MODE_DBS_MODE_SET(pm_ctx->hw_mode.hw_mode_list[i],
-						dbs);
-}
-#endif
-
 void
 policy_mgr_update_indoor_concurrency(struct wlan_objmgr_psoc *psoc,
 				     uint8_t vdev_id,

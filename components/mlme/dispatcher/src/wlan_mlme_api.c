@@ -32,6 +32,7 @@
 #include "wlan_policy_mgr_ucfg.h"
 #include "wlan_vdev_mgr_utils_api.h"
 #include <../../core/src/wlan_cm_vdev_api.h>
+#include "wlan_psoc_mlme_api.h"
 
 /* quota in milliseconds */
 #define MCC_DUTY_CYCLE 70
@@ -5672,4 +5673,21 @@ wlan_mlme_get_peer_ch_width(struct wlan_objmgr_psoc *psoc, uint8_t *mac)
 	}
 
 	return wlan_mlme_get_ch_width_from_phymode(phy_mode);
+}
+
+bool
+wlan_mlme_is_vendor_roam_score_algo_set(struct wlan_objmgr_psoc *psoc)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+	struct scoring_cfg *score_config;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return false;
+
+	score_config = &mlme_psoc_obj->psoc_cfg.score_config;
+
+	if (score_config->vendor_roam_score_algorithm)
+		return true;
+	return false;
 }
