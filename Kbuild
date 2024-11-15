@@ -234,10 +234,6 @@ ifeq ($(CONFIG_WLAN_SYNC_TSF), y)
 HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_tsf.o
 endif
 
-ifeq ($(CONFIG_MPC_UT_FRAMEWORK), y)
-HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_conc_ut.o
-endif
-
 ifeq ($(CONFIG_WLAN_FEATURE_DISA), y)
 HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_disa.o
 endif
