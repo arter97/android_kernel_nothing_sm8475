@@ -1326,7 +1326,7 @@ int kgsl_pwrctrl_enable_cx_gdsc(struct kgsl_device *device, struct regulator *re
 	if (IS_ERR_OR_NULL(regulator))
 		return 0;
 
-	ret = wait_for_completion_timeout(&pwr->cx_gdsc_gate, msecs_to_jiffies(5000));
+	ret = wait_for_completion_timeout(&pwr->cx_gdsc_gate, msecs_to_jiffies(200));
 	if (!ret) {
 		dev_err(device->dev, "GPU CX wait timeout. Dumping CX votes:\n");
 		/* Dump the cx regulator consumer list */
@@ -1418,12 +1418,15 @@ static int kgsl_pwrctrl_pwrrail(struct kgsl_device *device, bool state)
 	if (!state) {
 		if (test_and_clear_bit(KGSL_PWRFLAGS_POWER_ON,
 			&pwr->power_flags)) {
+			kgsl_mmu_send_tlb_hint(&device->mmu, true);
 			trace_kgsl_rail(device, state);
 			kgsl_pwrctrl_disable_gx_gdsc(device, pwr->gx_gdsc);
 			kgsl_pwrctrl_disable_cx_gdsc(device, pwr->cx_gdsc);
 		}
-	} else
+	} else {
 		status = enable_regulators(device);
+		kgsl_mmu_send_tlb_hint(&device->mmu, false);
+	}
 
 	return status;
 }
