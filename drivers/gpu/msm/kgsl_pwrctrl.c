@@ -1418,12 +1418,15 @@ static int kgsl_pwrctrl_pwrrail(struct kgsl_device *device, bool state)
 	if (!state) {
 		if (test_and_clear_bit(KGSL_PWRFLAGS_POWER_ON,
 			&pwr->power_flags)) {
+			kgsl_mmu_send_tlb_hint(&device->mmu, true);
 			trace_kgsl_rail(device, state);
 			kgsl_pwrctrl_disable_gx_gdsc(device, pwr->gx_gdsc);
 			kgsl_pwrctrl_disable_cx_gdsc(device, pwr->cx_gdsc);
 		}
-	} else
+	} else {
 		status = enable_regulators(device);
+		kgsl_mmu_send_tlb_hint(&device->mmu, false);
+	}
 
 	return status;
 }

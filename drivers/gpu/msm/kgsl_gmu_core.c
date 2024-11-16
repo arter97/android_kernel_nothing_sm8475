@@ -183,6 +183,14 @@ int gmu_core_timed_poll_check(struct kgsl_device *device,
 		val, (val & mask) == expected_ret, 100, timeout_ms * 1000);
 }
 
+void gmu_core_send_tlb_hint(struct kgsl_device *device, bool val)
+{
+	const struct gmu_dev_ops *ops = GMU_DEVICE_OPS(device);
+
+	if (ops && ops->send_tlb_hint)
+		ops->send_tlb_hint(device, val);
+}
+
 int gmu_core_map_memdesc(struct iommu_domain *domain, struct kgsl_memdesc *memdesc,
 		u64 gmuaddr, int attrs)
 {
