@@ -231,6 +231,9 @@ int qcom_scm_handle_wait(struct device *dev, int scm_ret,
 #define QCOM_SCM_LMH_LIMIT_PROFILE_CHANGE	0x01
 #define QCOM_SCM_LMH_LIMIT_DCVSH		0x10
 
+#define QCOM_SCM_GET_LLCC_MISSRATE_STATS_ID	0x14
+#define QCOM_SCM_SVC_MISSRATE			0x06
+
 extern void __qcom_scm_init(void);
 
 /* common error codes */

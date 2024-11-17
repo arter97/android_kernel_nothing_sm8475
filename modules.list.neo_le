@@ -59,6 +59,7 @@ nvmem_qcom-spmi-sdam.ko
 pinctrl-spmi-gpio.ko
 qcom-spmi-temp-alarm.ko
 clk-spmi-pmic-div.ko
+qcom_pm8008-regulator.ko
 sdhci-msm.ko
 core_hang_detect.ko
 kryo_arm64_edac.ko

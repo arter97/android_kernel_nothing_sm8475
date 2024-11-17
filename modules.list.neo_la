@@ -54,6 +54,8 @@ msm_geni_serial.ko
 msm_rtb.ko
 mem_buf.ko
 mem_buf_dev.ko
+qseecom-mod.ko
+smcinvoke_mod.ko
 pinctrl-neo.ko
 pinctrl-msm.ko
 phy-generic.ko
