@@ -3030,6 +3030,36 @@ exit:
 	return ret;
 }
 
+#ifdef FEATURE_WLAN_APF
+static void hdd_enable_active_apf_mode(struct hdd_adapter *adapter,
+				       struct hdd_context *hdd_ctx)
+{
+	sme_enable_active_apf_mode_ind(
+				hdd_ctx->mac_handle, adapter->device_mode,
+				adapter->mac_addr.bytes, adapter->vdev_id);
+}
+
+static void hdd_disable_active_apf_mode(struct hdd_adapter *adapter,
+					struct hdd_context *hdd_ctx)
+{
+	sme_disable_active_apf_mode_ind(
+				hdd_ctx->mac_handle, adapter->device_mode,
+				adapter->mac_addr.bytes, adapter->vdev_id);
+}
+#else
+static inline void
+hdd_enable_active_apf_mode(struct hdd_adapter *adapter,
+			   struct hdd_context *hdd_ctx)
+{
+}
+
+static inline void
+hdd_disable_active_apf_mode(struct hdd_adapter *adapter,
+			    struct hdd_context *hdd_ctx)
+{
+}
+#endif
+
 static int drv_cmd_set_suspend_mode(struct hdd_adapter *adapter,
 				    struct hdd_context *hdd_ctx,
 				    uint8_t *command,
@@ -3061,6 +3091,11 @@ static int drv_cmd_set_suspend_mode(struct hdd_adapter *adapter,
 	}
 
 	hdd_debug("idle_monitor:%d", idle_monitor);
+	if (idle_monitor == 0)
+		hdd_disable_active_apf_mode(adapter, hdd_ctx);
+	else if (idle_monitor == 1)
+		hdd_enable_active_apf_mode(adapter, hdd_ctx);
+
 	status = ucfg_pmo_tgt_psoc_send_idle_roam_suspend_mode(hdd_ctx->psoc,
 							       idle_monitor);
 	if (QDF_IS_STATUS_ERROR(status)) {

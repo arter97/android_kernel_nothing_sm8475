@@ -2023,20 +2023,14 @@ static bool lim_update_sta_ctx(struct mac_context *mac_ctx, struct pe_session *s
 
 void lim_process_assoc_cleanup(struct mac_context *mac_ctx,
 			       struct pe_session *session,
-			       tpSirAssocReq assoc_req,
 			       tpDphHashNode sta_ds,
 			       bool assoc_req_copied)
 {
 	tpSirAssocReq tmp_assoc_req;
 
-	if (assoc_req) {
-		lim_free_assoc_req_frm_buf(assoc_req);
-
-		qdf_mem_free(assoc_req);
-		/* to avoid double free */
-		if (assoc_req_copied && session->parsedAssocReq && sta_ds)
-			session->parsedAssocReq[sta_ds->assocId] = NULL;
-	}
+	/* to avoid double free */
+	if (assoc_req_copied && session->parsedAssocReq && sta_ds)
+		session->parsedAssocReq[sta_ds->assocId] = NULL;
 
 	/* If it is not duplicate Assoc request then only make to Null */
 	if ((sta_ds) &&
@@ -2092,9 +2086,10 @@ static void lim_defer_sme_indication(struct mac_context *mac_ctx,
 		pe_debug("Free the cached assoc req as a new one is received");
 		cached_req = &sta_pre_auth_ctx->assoc_req;
 		lim_process_assoc_cleanup(mac_ctx, session,
-					  cached_req->assoc_req,
 					  cached_req->sta_ds,
 					  cached_req->assoc_req_copied);
+		lim_free_assoc_req_frm_buf(cached_req->assoc_req);
+		qdf_mem_free(cached_req->assoc_req);
 	}
 
 	sta_pre_auth_ctx->assoc_req.present = true;
@@ -2530,8 +2525,7 @@ QDF_STATUS lim_proc_assoc_req_frm_cmn(struct mac_context *mac_ctx,
 	return QDF_STATUS_SUCCESS;
 
 error:
-	lim_process_assoc_cleanup(mac_ctx, session, assoc_req, sta_ds,
-				  assoc_req_copied);
+	lim_process_assoc_cleanup(mac_ctx, session, sta_ds, assoc_req_copied);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -2560,6 +2554,7 @@ void lim_process_assoc_req_frame(struct mac_context *mac_ctx,
 	tpDphHashNode sta_ds = NULL;
 	struct wlan_objmgr_vdev *vdev;
 	tpSirAssocReq assoc_req;
+	QDF_STATUS status;
 
 	hdr = WMA_GET_RX_MAC_HEADER(rx_pkt_info);
 	frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
@@ -2679,8 +2674,10 @@ void lim_process_assoc_req_frame(struct mac_context *mac_ctx,
 					 frame_len))
 		goto error;
 
-	lim_proc_assoc_req_frm_cmn(mac_ctx, sub_type, session, hdr->sa,
-				   assoc_req, 0);
+	status = lim_proc_assoc_req_frm_cmn(mac_ctx, sub_type, session, hdr->sa,
+					    assoc_req, 0);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto error;
 
 	return;
 error:
