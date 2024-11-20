@@ -13353,6 +13353,8 @@ typedef struct {
     A_UINT32 rx_mpdu_per_sp;    /* Average pkts rx per SP */
     A_UINT32 tx_bytes_per_sp;   /* Average tx bytes per SP */
     A_UINT32 rx_bytes_per_sp;   /* Average rx bytes per SP */
+    A_UINT32 avg_eosp_sp_dur_us; /* Average EOSP SP time */
+    A_UINT32 eosp_sp_count;     /* Number of EOSP TWT SP's */
 } wmi_ctrl_path_twt_stats_struct;
 
 #define BMISS_STATS_RSSI_SAMPLE_MAX 10
@@ -40190,6 +40192,14 @@ typedef enum _WMI_TWT_COMMAND_T {
 /* 1 means PM_RESPONDER_MODE supported, 0 means not supported */
 #define TWT_FLAGS_GET_PM_RESPONDER_MODE(flag)      WMI_GET_BITS(flag, 15, 1)
 #define TWT_FLAGS_SET_PM_RESPONDER_MODE(flag, val) WMI_SET_BITS(flag, 15, 1, val)
+
+/* 1 means IMPLICIT TWT, 0 means EXPLICIT TWT */
+#define TWT_FLAGS_GET_IMPLICIT(flag)           WMI_GET_BITS(flag, 16, 1)
+#define TWT_FLAGS_SET_IMPLICIT(flag, val)      WMI_SET_BITS(flag, 16, 1, val)
+
+/* 1 means RENEGOTIATE TWT supported, 0 means RENEGOTIATE TWT not supported */
+#define TWT_FLAGS_GET_RENEGOTIATE(flag)           WMI_GET_BITS(flag, 17, 1)
+#define TWT_FLAGS_SET_RENEGOTIATE(flag, val)      WMI_SET_BITS(flag, 17, 1, val)
 
 typedef struct {
     A_UINT32 tlv_header;    /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_twt_ack_event_fixed_param */
