@@ -692,6 +692,7 @@ typedef  enum  {
     WMI_SERVICE_DYNAMIC_TWT_MODE_SUPPORT = 433, /* Indicates FW supports Dynamic TWT mode for vdevs */
     WMI_SERVICE_SPECTRAL_SPUR_BIN_INFO_SUPPORT = 434, /* Indicates FW supports indicating spur frequency and spectral bin that gets affected due to spur frequency */
     WMI_SERVICE_TWT_P2P_GO_CONCURRENCY_SUPPORT = 435, /* Indicates FW supports TWT in P2P GO concurrency mode */
+    WMI_SERVICE_UMAC_MIGRATION_SUPPORT = 436, /* Indicates that FW supports UMAC migration */
 
 
     WMI_MAX_EXT2_SERVICE
