@@ -1,0 +1,78 @@
+# How to use this file: http://go/approve-abi-break
+# ABI freeze commit: 6acb2614440138c24a7ffaa7dd6187a8a3073f77
+
+type 'struct snd_pcm_runtime' changed
+  byte size changed from 768 to 824
+  member 'struct mutex buffer_mutex' was added
+  member 'atomic_t buffer_accessing' was added
+
+type 'struct gpio_irq_chip' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { bool initialized; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct snd_pcm_runtime' changed
+  byte size changed from 816 to 824
+  member 'atomic_t buffer_accessing' was added
+
+function symbol changed from 'int hex_to_bin(char)' to 'int hex_to_bin(unsigned char)'
+  type changed from 'int(char)' to 'int(unsigned char)'
+    parameter 1 type changed from 'char' to 'unsigned char'
+
+type 'struct sk_buff' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { struct { __u8 scm_io_uring; __u8 android_kabi_reserved1_padding1; __u16 android_kabi_reserved1_padding2; __u32 android_kabi_reserved1_padding3; }; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct super_block' changed
+  member changed from 'struct key* s_master_keys' to 'struct fscrypt_keyring* s_master_keys'
+    type changed from 'struct key*' to 'struct fscrypt_keyring*'
+      pointed-to type changed from 'struct key' to 'struct fscrypt_keyring'
+
+type 'struct iphdr' changed
+  member '__be32 saddr' was removed
+  member '__be32 daddr' was removed
+  member 'union { struct { __be32 saddr; __be32 daddr; }; struct { __be32 saddr; __be32 daddr; } addrs; }' was added
+
+type 'struct task_struct' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { void* pf_io_worker; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct scsi_host_template' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { enum scsi_timeout_action(* eh_timed_out2)(struct scsi_cmnd*); struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct sdhci_host' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { struct { u8 drv_type; bool reinit_uhs; }; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct anon_vma' changed
+  byte size changed from 104 to 120
+  member 'unsigned long int num_children' was added
+  member 'unsigned long int num_active_vmas' was added
+
+function symbol changed from 'struct irq_domain* __irq_domain_add(struct fwnode_handle*, int, irq_hw_number_t, int, const struct irq_domain_ops*, void*)' to 'struct irq_domain* __irq_domain_add(struct fwnode_handle*, unsigned int, irq_hw_number_t, int, const struct irq_domain_ops*, void*)'
+  type changed from 'struct irq_domain*(struct fwnode_handle*, int, irq_hw_number_t, int, const struct irq_domain_ops*, void*)' to 'struct irq_domain*(struct fwnode_handle*, unsigned int, irq_hw_number_t, int, const struct irq_domain_ops*, void*)'
+    parameter 2 type changed from 'int' to 'unsigned int'
+
+type 'struct perf_event' changed
+  member 'unsigned int group_generation' was added
+
+type 'struct prefix_info' changed
+  member '__u8 reserved' was removed
+  member '__u8 autoconf' was removed
+  member '__u8 onlink' was removed
+  member 'union { __u8 flags; struct { __u8 reserved; __u8 autoconf; __u8 onlink; }; }' was added
+
+type 'struct ipv6_devconf' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { struct { __s32 accept_ra_min_lft; u32 padding; }; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct clk_core' changed
+  byte size changed from 248 to 264
+  member 'struct hlist_node rpm_node' was added
+  30 members ('struct device_node* of_node' .. 'struct kref ref') changed
+    offset changed by 128
+
+type 'enum binder_work_type' changed
+  enumerator 'BINDER_WORK_FROZEN_BINDER' (9) was added
+  ... 1 other enumerator(s) added
+
