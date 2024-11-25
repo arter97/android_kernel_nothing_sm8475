@@ -10168,21 +10168,21 @@ static int hdd_vdev_set_sta_keep_alive_interval(
 		return -EINVAL;
 	}
 
-	hdd_debug("sta keep alive interval = %u", keep_alive_interval);
-
 	if (device_mode != QDF_STA_MODE) {
 		hdd_debug("This command is not supported for %s device mode",
 			  device_mode_to_string(device_mode));
 		return -EINVAL;
 	}
 
-	if (!hdd_is_vdev_in_conn_state(adapter)) {
-		hdd_debug("Vdev (id %d) not in connected/started state, cannot accept command",
-			  adapter->vdev_id);
-		return -EINVAL;
-	}
+	hdd_debug("sta keep alive interval = %u", keep_alive_interval);
 
 	wlan_hdd_save_sta_keep_alive_interval(adapter, keep_alive_interval);
+
+	if (!hdd_is_vdev_in_conn_state(adapter)) {
+		hdd_debug("Vdev (id %d) not in connected/started state, configure KEEPALIVE interval after connection",
+			  adapter->vdev_id);
+		return 0;
+	}
 
 	return hdd_vdev_send_sta_keep_alive_interval(adapter, hdd_ctx,
 						     keep_alive_interval);
