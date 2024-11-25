@@ -49825,6 +49825,7 @@ typedef struct {
 typedef struct {
     A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_RSSI_ACCURACY_CAPABILITIES */
     union {
+        A_UINT32 phy_id__multigain_rssi_accuracy_enable__word32;
         struct {
             /*
              * bits  3:0  -> PHY ID
