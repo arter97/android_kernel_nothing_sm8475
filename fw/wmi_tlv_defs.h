@@ -1470,6 +1470,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_sawf_ezmesh_hop_count_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_ctrl_path_pdev_conn_stats_struct,
     WMITLV_TAG_STRUC_wmi_pdev_sscan_spur_chan_impacted_bin_info,
+    WMITLV_TAG_STRUC_wmi_ctrl_path_ml_rcfg_stats_struct,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -7234,7 +7235,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_PEER_STATS_INFO_EVENTID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ctrl_path_sta_rrm_stats_struct,  ctrl_path_sta_rrm_stats, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ctrl_path_vdev_bcn_tx_stats_struct,  ctrl_path_vdev_bcn_tx_stats, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ctrl_path_pdev_bcn_tx_stats_struct,  ctrl_path_pdev_bcn_tx_stats, WMITLV_SIZE_VAR) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ctrl_path_pdev_conn_stats_struct,  ctrl_path_pdev_conn_stats, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ctrl_path_pdev_conn_stats_struct,  ctrl_path_pdev_conn_stats, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ctrl_path_ml_rcfg_stats_struct, ctrl_path_ml_rcfg_stats, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_CTRL_PATH_STATS_EVENTID);
 
 /*

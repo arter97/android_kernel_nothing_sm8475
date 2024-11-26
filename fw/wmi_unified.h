@@ -16678,6 +16678,47 @@ typedef struct {
     A_UINT32 foreign_chan_entry_cnt;
 } wmi_ctrl_path_pdev_conn_stats_struct;
 
+typedef struct  {
+    A_UINT32 tlv_header;
+    A_UINT32 pdev_id;
+
+    A_UINT32 ml_rcfg_wmi;
+    A_UINT32 ml_rcfg_del_self;
+    A_UINT32 ml_rcfg_new_link;
+
+    A_UINT32 ml_rcfg_peer_assoc_ml_peer_null;
+    A_UINT32 ml_rcfg_ll_idx_mismatch;
+    A_UINT32 ml_rcfg_mlo_ll_idx_invalid;
+    A_UINT32 ml_rcfg_partner_link_null;
+    A_UINT32 ml_rcfg_partner_ll_idx_invalid;
+    A_UINT32 ml_rcfg_self_in_partner_link;
+    A_UINT32 ml_rcfg_partner_link_add;
+    A_UINT32 ml_rcfg_partner_link_del;
+    A_UINT32 ml_rcfg_no_rcfg_op;
+
+    A_UINT32 ml_rcfg_0_num_link;
+    A_UINT32 ml_rcfg_inv_num_link;
+    A_UINT32 ml_rcfg_non_exist_link_del;
+    A_UINT32 ml_rcfg_add_exist_link;
+    A_UINT32 ml_rcfg_recv_add_ipc;
+    A_UINT32 ml_rcfg_recv_peer_del_ipc;
+
+    A_UINT32 ml_rcfg_inv_link_bmap;
+    A_UINT32 ml_rcfg_assoc_ipc_before_wmi;
+    A_UINT32 ml_rcfg_before_init;
+    A_UINT32 ml_rcfg_recv_link_del_ipc_pri;
+    A_UINT32 ml_rcfg_recv_link_del_ipc_non_pri;
+
+    A_UINT32 ml_rcfg_inc_to_2;
+    A_UINT32 ml_rcfg_inc_to_3;
+    A_UINT32 ml_rcfg_inc_to_4;
+
+    A_UINT32 ml_rcfg_dec_to_3;
+    A_UINT32 ml_rcfg_dec_to_2;
+    A_UINT32 ml_rcfg_dec_to_1;
+    A_UINT32 ml_rcfg_dec_to_0;
+} wmi_ctrl_path_ml_rcfg_stats_struct;
+
 /**
  *  peer statistics.
  */
@@ -36347,6 +36388,7 @@ typedef enum {
     WMI_REQUEST_CTRL_PATH_VDEV_BCN_TX_STAT  = 19,
     WMI_REQUEST_CTRL_PATH_PDEV_BCN_TX_STAT  = 20,
     WMI_REQUEST_CTRL_PATH_PDEV_CONN_STAT    = 21,
+    WMI_REQUEST_CTRL_PATH_ML_RECONFIG_STAT  = 22,
 } wmi_ctrl_path_stats_id;
 
 typedef enum {
