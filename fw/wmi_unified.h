@@ -18138,6 +18138,10 @@ typedef enum {
  * DUT send BTM response with reject status code if the bit set to 1.
  */
 #define WMI_VDEV_PARAM_ROAM_11KV_BTM_REJECT                             0x8
+/* WMI_VDEV_PARAM_ROAM_11KV_BTM_DISABLE_TTLM:
+ * Disable STA T2LM when received BTM load balance frame.
+ */
+#define WMI_VDEV_PARAM_ROAM_11KV_BTM_DISABLE_TTLM                       0x10
 
 
 /** NAN vdev config Feature flags */
