@@ -48947,6 +48947,14 @@ typedef struct {
     A_UINT32 ieee_link_id; /* key to identify a link */
     wmi_channel wmi_chan;
     A_UINT32 op_code; /* see definition of WMI_MLO_link_BSS_OP_CODE */
+    /* bss_id:
+     * This field is only relevant for op_code MLO_LINK_BSS_OP_ADD.
+     */
+    wmi_mac_addr bss_id;
+    /* self_mac:
+     * This field is only relevant for op_code MLO_LINK_BSS_OP_ADD.
+     */
+    wmi_mac_addr self_mac;
 } wmi_mlo_link_bss_param;
 
 typedef struct {
