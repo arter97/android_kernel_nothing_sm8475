@@ -6050,9 +6050,8 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 		}
 		mutex_unlock(&fl->map_mutex);
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
-			"%-20s|%-20s|%-20s\n",
-			"len", "refs",
-			"raddr");
+			"%-20s|%-20s|%-20s|%-20s\n",
+			"len", "refs", "raddr", "fd");
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
 			"%s%s%s%s%s\n",
 			single_line, single_line, single_line,
@@ -6060,12 +6059,13 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 		mutex_lock(&fl->map_mutex);
 		hlist_for_each_entry_safe(map, n, &fl->maps, hn) {
 			len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
-				"%-20zu|%-20d|0x%-20lX\n\n",
-				map->len, map->refs, map->raddr);
+				"%-20zu|%-20d|0x%-20lX|%-20d\n\n",
+				map->len, map->refs, map->raddr, map->fd);
 		}
 		mutex_unlock(&fl->map_mutex);
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
-			"%-20s|%-20s\n", "secure", "attr");
+			"%-20s|%-20s|%-20s|%-20s\n",
+			"secure", "attr", "ctx refs", "dma handle refs");
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
 			"%s%s%s%s%s\n",
 			single_line, single_line, single_line,
@@ -6073,8 +6073,8 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 		mutex_lock(&fl->map_mutex);
 		hlist_for_each_entry_safe(map, n, &fl->maps, hn) {
 			len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
-				"%-20d|0x%-20lX\n\n",
-				map->secure, map->attr);
+				"%-20d|0x%-20lX\n|%-20u|%-20d\n",
+				map->secure, map->attr, map->ctx_refs, map->dma_handle_refs);
 		}
 		mutex_unlock(&fl->map_mutex);
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
@@ -6114,6 +6114,18 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 				"0x%-17p|0x%-17llX|%-19zu|0x%-17llX\n",
 				buf->virt, (uint64_t)buf->phys, buf->size, buf->flags);
 			total_size += buf->size;
+		}
+		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
+			"%-20s|%-20s|%-20s|\n",
+			"type", "in use", "raddr");
+		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
+			"%s%s%s%s%s\n",
+			single_line, single_line, single_line,
+			single_line, single_line);
+		hlist_for_each_entry_safe(buf, n, &fl->remote_bufs, hn_rem) {
+			len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
+				"%-20d|%-20d|0x%-20lX\n\n",
+				buf->type, buf->in_use, buf->raddr);
 		}
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
 			"\n%s %s = 0x%-20zu %s\n", single_line,
