@@ -274,7 +274,6 @@
   get_user_pages
   gic_nonsecure_priorities
   gpiochip_get_data
-  gpiod_direction_input
   gpiod_direction_output_raw
   gpiod_set_raw_value
   gpiod_set_raw_value_cansleep
@@ -716,15 +715,9 @@
   usb_remove_phy
   __usecs_to_jiffies
   usleep_range
-  v4l2_device_register
-  v4l2_device_unregister
   vabits_actual
   vfree
   videomode_from_timings
-  video_devdata
-  video_ioctl2
-  __video_register_device
-  video_unregister_device
   vmalloc
   vmalloc_user
   vmap
@@ -1189,6 +1182,7 @@
 
 # required by spi-tcc.ko
   devm_spi_register_controller
+  gpiod_direction_input
   __spi_alloc_controller
   spi_controller_resume
   spi_controller_suspend
@@ -1316,6 +1310,18 @@
   __media_device_register
   media_device_unregister
   media_entity_find_link
+  v4l2_device_register
+  v4l2_device_unregister
+
+# required by tcc-max9286.ko
+  gpiod_direction_input
+  gpiod_direction_output_raw
+  gpiod_set_raw_value_cansleep
+  gpio_free
+  gpio_request
+  gpio_to_desc
+  of_get_named_gpio_flags
+  regmap_read
 
 # required by tcc-amba-pl011.ko
   amba_driver_unregister
@@ -1440,8 +1446,14 @@
   devm_thermal_zone_of_sensor_unregister
 
 # required by tcc_v4l2_vout.ko
+  v4l2_device_register
+  v4l2_device_unregister
+  video_devdata
   video_device_alloc
   video_device_release
+  video_ioctl2
+  __video_register_device
+  video_unregister_device
 
 # required by tcc_viqe_interface.ko
   memmove
@@ -1451,11 +1463,17 @@
   vfs_fsync
 
 # required by tccvin.ko
+  clk_put
+  kstrtouint
+  ktime_get_raw_ts64
   media_entity_remote_pad
   media_pipeline_start
   media_pipeline_stop
   of_graph_get_endpoint_by_regs
   of_reserved_mem_device_init_by_idx
+  of_reserved_mem_lookup
+  _raw_spin_lock_irqsave
+  _raw_spin_unlock_irqrestore
   __trace_bprintk
   v4l2_async_notifier_register
   __v4l2_device_register_subdev_nodes
@@ -1477,6 +1495,10 @@
   vb2_plane_cookie
   vb2_querybuf
   vb2_queue_init
+  video_devdata
+  video_ioctl2
+  __video_register_device
+  video_unregister_device
 
 # required by tccdrm.ko
   bus_find_device
@@ -1592,6 +1614,162 @@
   __of_reset_control_get
   platform_device_register
   reset_control_put
+
+# required by ufsd.ko
+  vfs_llseek
+  zlib_inflateEnd
+  zlib_inflate
+  zlib_inflateInit2
+  zlib_inflate_workspacesize
+  vm_zone_stat
+  unload_nls
+  sync_inodes_sb
+  kfree_link
+  iov_iter_zero
+  iov_iter_revert
+  __blockdev_direct_IO
+  grab_cache_page_write_begin
+  add_to_page_cache_locked
+  lru_cache_add
+  write_cache_pages
+  errseq_set
+  __filemap_set_wb_err
+  mark_buffer_async_write
+  redirty_page_for_writepage
+  __test_set_page_writeback
+  end_page_writeback
+  generic_error_remove_page
+  block_is_partially_uptodate
+  buffer_migrate_page
+  block_invalidatepage
+  __set_page_dirty_buffers
+  truncate_pagecache
+  generic_file_splice_read
+  iter_file_splice_write
+  generic_file_mmap
+  vfs_fsync_range
+  balance_dirty_pages_ratelimited
+  pagecache_write_end
+  pagecache_write_begin
+  create_empty_buffers
+  try_to_writeback_inodes_sb
+  generic_perform_write
+  generic_file_direct_write
+  file_remove_privs
+  generic_write_checks
+  generic_fillattr
+  sync_inode
+  filemap_write_and_wait_range
+  igrab
+  generic_file_open
+  generic_read_dir
+  fiemap_fill_next_extent
+  lockref_get
+  drop_nlink
+  inc_nlink
+  d_instantiate
+  __posix_acl_create
+  d_splice_alias
+  d_move
+  d_rehash
+  d_find_alias
+  truncate_setsize
+  posix_acl_chmod
+  in_group_p
+  inode_dio_wait
+  setattr_prepare
+  generic_permission
+  inode_nohighmem
+  init_special_inode
+  unlock_new_inode
+  iget5_locked
+  d_obtain_alias
+  ilookup
+  shrink_dcache_sb
+  invalidate_bdev
+  clear_inode
+  truncate_inode_pages
+  inode_get_bytes
+  __mark_inode_dirty
+  posix_acl_equiv_mode
+  posix_acl_valid
+  posix_acl_from_xattr
+  posix_acl_to_xattr
+  make_bad_inode
+  set_nlink
+  load_nls
+  load_nls_default
+  current_umask
+  d_drop
+  mount_bdev
+  kill_block_super
+  inode_init_once
+  pagecache_get_page
+  blkdev_issue_flush
+  __bread_gfp
+  __lock_buffer
+  __getblk_gfp
+  I_BDEV
+  inode_set_bytes
+  sb_set_blocksize
+  blkdev_issue_zeroout
+  blkdev_issue_discard
+  __bforget
+  sync_dirty_buffer
+  unlock_buffer
+  mark_buffer_dirty
+  __wait_on_buffer
+  copy_page
+  submit_bh
+  end_buffer_read_sync
+  sync_blockdev
+  clean_bdev_aliases
+  blk_finish_plug
+  mpage_readpage
+  blk_start_plug
+  put_pages_list
+  ktime_get_coarse_real_ts64
+  wait_for_completion_io
+  blkdev_issue_write_same
+  try_to_free_buffers
+  set_bh_page
+  alloc_buffer_head
+  __getblk_gfp
+  __cond_resched_lock
+  free_buffer_head
+  submit_bh
+  __bread_gfp
+  __find_get_block
+  bdevname
+  __lock_buffer
+  bit_waitqueue
+  wake_bit_function
+  unlock_buffer
+  yield
+  sync_dirty_buffer
+  mark_buffer_dirty
+  blkdev_issue_flush
+  __wait_on_buffer
+  blk_finish_plug
+  write_dirty_buffer
+  blk_start_plug
+  __brelse
+  congestion_wait
+  add_to_page_cache_lru
+  wait_on_page_writeback
+  inode_newsize_ok
+  __insert_inode_hash
+  d_add_ci
+  generic_fh_to_dentry
+  generic_fh_to_parent
+  ihold
+  is_bad_inode
+  overflowgid
+  overflowuid
+  read_cache_page
+  sb_min_blocksize
+  sync_filesystem
+  truncate_inode_pages_final
 
 # required by bd96801.regulator.ko
   linear_range_get_value_array
