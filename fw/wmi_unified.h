@@ -17033,6 +17033,8 @@ typedef struct {
 #define WMI_MLO_FLAGS_SET_LINK_DEL_CANCEL(mlo_flags, value) WMI_SET_BITS(mlo_flags, 16, 1, value)
 #define WMI_MLO_FLAGS_GET_START_AS_ACTIVE(mlo_flags)        WMI_GET_BITS(mlo_flags, 17, 1)
 #define WMI_MLO_FLAGS_SET_START_AS_ACTIVE(mlo_flags, value) WMI_SET_BITS(mlo_flags, 17, 1, value)
+#define WMI_MLO_FLAGS_GET_IEEE_LINK_ID_VALID(mlo_flags)     WMI_GET_BITS(mlo_flags, 18, 1)
+#define WMI_MLO_FLAGS_SET_IEEE_LINK_ID_VALID(mlo_flags, value) WMI_SET_BITS(mlo_flags, 18, 1, value)
 
 /* this structure used for passing MLO flags */
 typedef struct {
@@ -17062,7 +17064,8 @@ typedef struct {
                      mlo_link_add_cancel:1, /* rollback of previous dynamic link addition */
                      mlo_link_del_cancel:1, /* rollback of previous dynamic link deletion */
                      start_as_active:1, /* indicate link should be started in active status */
-                     unused: 14;
+                     mlo_ieee_link_id_valid:1, /* indicate if the ieee_link_id in wmi_vdev_start_mlo_params is valid */
+                     unused: 13;
         };
         A_UINT32 mlo_flags;
     };
@@ -17108,7 +17111,13 @@ typedef enum {
 /* this TLV structure used for pass mlo parameters on vdev start*/
 typedef struct {
     A_UINT32 tlv_header; /** TLV tag and len; */
-    wmi_mlo_flags mlo_flags; /*only mlo enable and assoc link flag need by vdev start*/
+    wmi_mlo_flags mlo_flags; /* only mlo enable, assoc link and mlo_ieee_link_id_valid flag need by vdev start */
+    /** ieee_link_id:
+     * link id in 802.11 frame.
+     * This field will be invalid and ignored unless mlo_flags has
+     * mlo_ieee_link_id_valid bit set.
+     */
+    A_UINT32 ieee_link_id;
 } wmi_vdev_start_mlo_params;
 
 /* this TLV structure used for passing mlo parameters on vdev stop */
