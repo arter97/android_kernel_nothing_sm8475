@@ -37478,15 +37478,15 @@ typedef struct {
 #define TWT_CAPS_SET_MAX_WAKE_DUR(var, val)   WMI_SET_BITS(var, 0, 16, val)
 #define TWT_CAPS_SET_MIN_WAKE_DUR(var, val)   WMI_SET_BITS(var, 16, 16, val)
 
-#define TWT_CAPS_GET_MAX_WAKE_DUR(var, val)   WMI_GET_BITS(var, 0, 16)
-#define TWT_CAPS_GET_MIN_WAKE_DUR(var, val)   WMI_GET_BITS(var, 16, 16)
+#define TWT_CAPS_GET_MAX_WAKE_DUR(var)   WMI_GET_BITS(var, 0, 16)
+#define TWT_CAPS_GET_MIN_WAKE_DUR(var)   WMI_GET_BITS(var, 16, 16)
 
 /* 0 - 15 bits for MAX WAKE INTVL , 16 - 31 bits for MIN WAKE INTVL */
 #define TWT_CAPS_SET_MAX_WAKE_INTVL(var, val) WMI_SET_BITS(var, 0, 16, val)
 #define TWT_CAPS_SET_MIN_WAKE_INTVL(var, val) WMI_SET_BITS(var, 16, 16, val)
 
-#define TWT_CAPS_GET_MAX_WAKE_INTVL(var, val) WMI_GET_BITS(var, 0, 16)
-#define TWT_CAPS_GET_MIN_WAKE_INTVL(var, val) WMI_GET_BITS(var, 16, 16)
+#define TWT_CAPS_GET_MAX_WAKE_INTVL(var) WMI_GET_BITS(var, 0, 16)
+#define TWT_CAPS_GET_MIN_WAKE_INTVL(var) WMI_GET_BITS(var, 16, 16)
 
 /*
  * This TLV used for Scan Radio RDP
