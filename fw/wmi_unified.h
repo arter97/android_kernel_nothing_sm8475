@@ -41740,6 +41740,8 @@ typedef struct {
 #define WMI_ROAM_NEIGHBOR_REPORT_INFO_NUM_OF_NRIE_SET(detail,val)       WMI_SET_BITS(detail, 16, 8, val)
 #define WMI_ROAM_NEIGHBOR_REPORT_INFO_MLO_BAND_INFO_GET(detail)         WMI_GET_BITS(detail, 24, 3)
 #define WMI_ROAM_NEIGHBOR_REPORT_INFO_MLO_BAND_INFO_SET(detail,val)     WMI_SET_BITS(detail, 24, 3, val)
+#define WMI_ROAM_NEIGHBOR_REPORT_INFO_TX_STATUS_INFO_GET(detail)        WMI_GET_BITS(detail, 27, 4)
+#define WMI_ROAM_NEIGHBOR_REPORT_INFO_TX_STATUS_INFO_SET(detail,val)    WMI_SET_BITS(detail, 27, 4, val)
 
 typedef struct {
     A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_roam_neighbor_report_info_tlv_param */
@@ -41774,7 +41776,9 @@ typedef struct {
      *             wmi_mlo_band_info enum constants
      *             Refer to WMI_ROAM_NEIGHBOR_REPORT_INFO_MLO_BAND_INFO_GET,SET
      *             macros.
-     * [31:27]   : reserved
+     * [30:27]   : neighbor report request TX STATUS, possible values listed in
+     *             WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS
+     * [31]      : reserved
      * Refer to the above WMI_ROAM_NEIGHBOR_REPORT_INFO_*_GET,_SET macros for
      * reading and writing these bitfields.
      */
@@ -41926,9 +41930,19 @@ typedef enum {
 } WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_SUBTYPE;
 
 typedef enum {
-    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_ACK = 0,
-    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_NO_ACK,
-    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TX_FAIL,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_ACK            = 0,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_NO_ACK         = 1,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TX_FAIL        = 2,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TX_DROP =
+        WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TX_FAIL,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TX_FILTERED    = 3,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TXOP_ABORT     = 4,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TX_TID_DEL     = 5,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TX_SW_ABORT    = 6,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TX_MIG_DROP    = 7,
+    WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS_TX_MLO_TID_MIG = 8,
+
+    /* max allowed value is 15, due to this enum's use in a 4-bit bitfield  */
 } WMI_ROAM_FRAME_INFO_FRAME_TYPE_EXT_STATUS;
 
 typedef struct {
