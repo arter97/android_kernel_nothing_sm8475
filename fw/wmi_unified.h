@@ -30265,6 +30265,7 @@ typedef struct {
 
 #define WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS 32
 #define WMI_EXT_STATS_VDEV_EXT_MAX_OPAQUE_DBG_WORDS32 1
+#define WMI_STATS_EXT_EVENT_VDEV_EXT_NSS_COUNTERS_MAX 4
 
 typedef enum wmi_stats_ext_event_vdev_ext_bw_counters {
    WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_20MHz = 0,
@@ -30327,6 +30328,22 @@ typedef struct wmi_stats_ext_event_vdev_ext {
     /* opaque / unspecified contents, for debugging, etc */
     A_UINT32 opaque_dbg[WMI_EXT_STATS_VDEV_EXT_MAX_OPAQUE_DBG_WORDS32];
 } wmi_stats_ext_event_vdev_ext_t;
+
+typedef struct {
+    A_UINT32 tlv_header; /* tag = WMITLV_TAG_STRUC_wmi_stats_ext_event_vdev_ext2_t */
+    /* Set of TX BW counters */
+    A_UINT32 tx_mcs_mpdu[WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS];
+    /* Set of TX BW counters */
+    A_UINT32 tx_bw_mpdu[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_MAX];
+    /* Set of TX NSS counters */
+    A_UINT32 tx_nss_mpdu[WMI_STATS_EXT_EVENT_VDEV_EXT_NSS_COUNTERS_MAX];
+    /* Set of RX BW counters */
+    A_UINT32 rx_mcs_mpdu[WMI_EXT_STATS_VDEV_EXT_MAX_MCS_COUNTERS];
+    /* Set of RX BW counters */
+    A_UINT32 rx_bw_mpdu[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_MAX];
+    /* Set of RX NSS counters */
+    A_UINT32 rx_nss_mpdu[WMI_STATS_EXT_EVENT_VDEV_EXT_NSS_COUNTERS_MAX];
+} wmi_stats_ext_event_vdev_ext2_t;
 
 typedef enum {
     /** Default: no replay required. */
