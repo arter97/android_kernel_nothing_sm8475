@@ -821,16 +821,20 @@ QDF_STATUS sme_disable_active_apf_mode_ind(mac_handle_t mac_handle,
 					   uint8_t device_mode,
 					   uint8_t *macAddr, uint8_t sessionId);
 #else
+static inline
 QDF_STATUS sme_enable_active_apf_mode_ind(mac_handle_t mac_handle,
 					  uint8_t device_mode,
 					  uint8_t *macAddr, uint8_t sessionId)
 {
+	return QDF_STATUS_E_NOSUPPORT;
 }
 
+static inline
 QDF_STATUS sme_disable_active_apf_mode_ind(mac_handle_t mac_handle,
 					   uint8_t device_mode,
 					   uint8_t *macAddr, uint8_t sessionId)
 {
+	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif
 
