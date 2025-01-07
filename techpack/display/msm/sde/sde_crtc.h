@@ -36,7 +36,7 @@
 
 /* define the maximum number of in-flight frame events */
 /* Expand it to 2x for handling atleast 2 connectors safely */
-#define SDE_CRTC_FRAME_EVENT_SIZE	(4 * 2)
+#define SDE_CRTC_EVENT_SIZE	(4 * 2)
 
 /**
  * enum sde_crtc_client_type: crtc client type
@@ -149,6 +149,20 @@ struct sde_crtc_frame_event {
 	struct list_head list;
 	ktime_t ts;
 	u32 event;
+};
+
+/**
+ * struct sde_crtc_vblank_event: vblank notify event
+ * @work:	base work structure
+ * @crtc:	Pointer to crtc handling this event
+ * @list:	vblank list
+ * @ts:		vblank timestamp
+ */
+struct sde_crtc_vblank_event {
+	struct kthread_work work;
+	struct drm_crtc *crtc;
+	struct list_head list;
+	ktime_t ts;
 };
 
 /**
@@ -289,8 +303,10 @@ struct sde_frame_data {
  * @kickoff_in_progress : boolean entry to check if kickoff is in progress
  * @frame_events  : static allocation of in-flight frame events
  * @frame_event_list : available frame event list
+ * @vblank_events  : static allocation of in-flight vblank events
+ * @vblank_event_list : available vblank event list
  * @spin_lock     : spin lock for transaction status, etc...
- * @fevent_spin_lock     : spin lock for frame event
+ * @event_spin_lock     : spin lock for all the event lists
  * @event_thread  : Pointer to event handler thread
  * @event_worker  : Event worker queue
  * @event_cache   : Local cache of event worker structures
@@ -378,10 +394,12 @@ struct sde_crtc {
 	struct mutex crtc_cp_lock;
 
 	atomic_t frame_pending;
-	struct sde_crtc_frame_event frame_events[SDE_CRTC_FRAME_EVENT_SIZE];
+	struct sde_crtc_frame_event frame_events[SDE_CRTC_EVENT_SIZE];
 	struct list_head frame_event_list;
+	struct sde_crtc_vblank_event vblank_events[SDE_CRTC_EVENT_SIZE];
+	struct list_head vblank_event_list;
 	spinlock_t spin_lock;
-	spinlock_t fevent_spin_lock;
+	spinlock_t event_spin_lock;
 	bool kickoff_in_progress;
 	unsigned long revalidate_mask;
 

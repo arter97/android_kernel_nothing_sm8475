@@ -308,7 +308,7 @@ enum mhi_cmd_type {
 #define MHI_TRE_EV_DWORD1(chid, type) ((chid << 24) | (type << 16))
 #define MHI_TRE_GET_EV_PTR(tre) ((tre)->ptr)
 #define MHI_TRE_GET_EV_CODE(tre) (((tre)->dword[0] >> 24) & 0xFF)
-#define MHI_TRE_GET_EV_LEN(tre) ((tre)->dword[0] & 0xFFFF)
+#define MHI_TRE_GET_EV_LEN(tre) ((tre)->dword[0] & 0xFFFFFF)
 #define MHI_TRE_GET_EV_CHID(tre) (((tre)->dword[1] >> 24) & 0xFF)
 #define MHI_TRE_GET_EV_TYPE(tre) (((tre)->dword[1] >> 16) & 0xFF)
 #define MHI_TRE_GET_EV_STATE(tre) (((tre)->dword[0] >> 24) & 0xFF)

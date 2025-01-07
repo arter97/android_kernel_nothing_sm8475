@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_TFE_HW_MGR_H_
@@ -56,6 +56,19 @@ struct cam_tfe_cdm_user_data {
 };
 
 /**
+ * struct cam_tfe_cmd_buf_desc_addr_len
+ *
+ * brief:			structure to store cpu addr and size of
+ *				reg dump descriptors
+ * @cpu_addr:			cpu addr of buffer
+ * @size:			size of the buffer
+ */
+struct cam_tfe_cmd_buf_desc_addr_len {
+	uintptr_t cpu_addr;
+	size_t    buf_size;
+};
+
+/**
  * struct cam_tfe_hw_mgr_ctx - TFE HW manager Context object
  *
  * @list:                     used by the ctx list.
@@ -85,6 +98,8 @@ struct cam_tfe_cdm_user_data {
  * @is_rdi_only_context       flag to specify the context has only rdi resource
  * @reg_dump_buf_desc:        cmd buffer descriptors for reg dump
  * @num_reg_dump_buf:         count of descriptors in reg_dump_buf_desc
+ * @reg_dump_cmd_buf_addr_len	store cpu addr and size of
+ *                          reg dump descriptors for flush/error cases
  * @applied_req_id:           last request id to be applied
  * @last_dump_flush_req_id    last req id for which reg dump on flush was called
  * @last_dump_err_req_id      last req id for which reg dump on error was called
@@ -97,6 +112,7 @@ struct cam_tfe_cdm_user_data {
  * @packet                     CSL packet from user mode driver
  * @bw_config_version          BW Config version
  * @cdm_userdata               CDM user data
+ * @skip_reg_dump_buf_put     Set if put_cpu_buf for reg dump buf is already called
  */
 struct cam_tfe_hw_mgr_ctx {
 	struct list_head                list;
@@ -129,6 +145,8 @@ struct cam_tfe_hw_mgr_ctx {
 	struct cam_cmd_buf_desc         reg_dump_buf_desc[
 						CAM_REG_DUMP_MAX_BUF_ENTRIES];
 	uint32_t                        num_reg_dump_buf;
+	struct cam_tfe_cmd_buf_desc_addr_len
+			reg_dump_cmd_buf_addr_len[CAM_REG_DUMP_MAX_BUF_ENTRIES];
 	uint64_t                        applied_req_id;
 	uint64_t                        last_dump_flush_req_id;
 	uint64_t                        last_dump_err_req_id;
@@ -141,6 +159,7 @@ struct cam_tfe_hw_mgr_ctx {
 	uint32_t                        bw_config_version;
 	struct cam_tfe_cdm_user_data    cdm_userdata;
 	struct cam_isp_hw_comp_record  *tfe_bus_comp_grp;
+	bool                            skip_reg_dump_buf_put;
 };
 
 /**
