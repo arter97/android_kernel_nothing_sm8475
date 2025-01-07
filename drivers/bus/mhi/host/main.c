@@ -630,7 +630,7 @@ static int parse_xfer_event(struct mhi_controller *mhi_cntrl,
 		struct mhi_tre *local_rp, *ev_tre;
 		void *dev_rp;
 		struct mhi_buf_info *buf_info;
-		u16 xfer_len;
+		u32 xfer_len;
 
 		if (!is_valid_ring_ptr(tre_ring, ptr)) {
 			MHI_ERR("Event element points outside of the tre ring\n");
@@ -662,7 +662,7 @@ static int parse_xfer_event(struct mhi_controller *mhi_cntrl,
 
 			/* truncate to buf len if xfer_len is larger */
 			result.bytes_xferd =
-				min_t(u16, xfer_len, buf_info->len);
+				min_t(u32, xfer_len, buf_info->len);
 			mhi_del_ring_element(mhi_cntrl, buf_ring);
 			mhi_del_ring_element(mhi_cntrl, tre_ring);
 			local_rp = tre_ring->rp;
@@ -735,7 +735,7 @@ static int parse_rsc_event(struct mhi_controller *mhi_cntrl,
 	struct mhi_result result;
 	int ev_code;
 	u32 cookie; /* offset to local descriptor */
-	u16 xfer_len;
+	u32 xfer_len;
 
 	buf_ring = &mhi_chan->buf_ring;
 	tre_ring = &mhi_chan->tre_ring;
@@ -753,7 +753,7 @@ static int parse_rsc_event(struct mhi_controller *mhi_cntrl,
 		-EOVERFLOW : 0;
 
 	/* truncate to buf len if xfer_len is larger */
-	result.bytes_xferd = min_t(u16, xfer_len, buf_info->len);
+	result.bytes_xferd = min_t(u32, xfer_len, buf_info->len);
 	result.buf_addr = buf_info->cb_buf;
 	result.dir = mhi_chan->dir;
 
