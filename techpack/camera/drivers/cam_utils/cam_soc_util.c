@@ -3767,15 +3767,14 @@ int cam_soc_util_reg_dump_to_cmd_buf(void *ctx,
 	struct cam_cmd_buf_desc *cmd_desc, uint64_t req_id,
 	cam_soc_util_regspace_data_cb reg_data_cb,
 	struct cam_hw_soc_dump_args *soc_dump_args,
-	bool user_triggered_dump)
+	bool user_triggered_dump, uintptr_t cpu_addr, size_t buf_size)
 {
 	int                               rc = 0, i, j;
-	uintptr_t                         cpu_addr = 0;
 	uintptr_t                         cmd_buf_start = 0;
 	uintptr_t                         cmd_in_data_end = 0;
 	uintptr_t                         cmd_buf_end = 0;
 	uint32_t                          reg_base_type = 0;
-	size_t                            buf_size = 0, remain_len = 0;
+	size_t                            remain_len = 0;
 	struct cam_reg_dump_input_info   *reg_input_info = NULL;
 	struct cam_reg_dump_desc         *reg_dump_desc = NULL;
 	struct cam_reg_dump_out_buffer   *dump_out_buf = NULL;
@@ -3793,15 +3792,6 @@ int cam_soc_util_reg_dump_to_cmd_buf(void *ctx,
 		CAM_ERR(CAM_UTIL, "Invalid cmd buf size %d %d",
 			cmd_desc->length, cmd_desc->size);
 		return -EINVAL;
-	}
-
-	rc = cam_mem_get_cpu_buf(cmd_desc->mem_handle, &cpu_addr, &buf_size);
-	if (rc || !cpu_addr || (buf_size == 0)) {
-		CAM_ERR(CAM_UTIL, "Failed in Get cpu addr, rc=%d, cpu_addr=%pK",
-			rc, (void *)cpu_addr);
-		if (rc)
-			return rc;
-		goto end;
 	}
 
 	CAM_DBG(CAM_UTIL, "Get cpu buf success req_id: %llu buf_size: %zu",
@@ -4002,7 +3992,6 @@ int cam_soc_util_reg_dump_to_cmd_buf(void *ctx,
 	}
 
 end:
-	cam_mem_put_cpu_buf(cmd_desc->mem_handle);
 	return rc;
 }
 

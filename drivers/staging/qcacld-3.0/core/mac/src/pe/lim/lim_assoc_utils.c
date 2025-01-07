@@ -3161,6 +3161,12 @@ lim_check_and_announce_join_success(struct mac_context *mac_ctx,
 	if (!LIM_IS_STA_ROLE(session_entry))
 		return;
 
+	if (SIR_MAC_MGMT_BEACON == header->fc.subType &&
+	    lim_is_null_ssid(&beacon_probe_rsp->ssId)) {
+		pe_debug("for hidden ap, waiting probersp to announce join success");
+		return;
+	}
+
 	pe_debug("Received Beacon/PR with BSSID:"QDF_MAC_ADDR_FMT" pe session %d vdev %d",
 		 QDF_MAC_ADDR_REF(session_entry->bssId),
 		 session_entry->peSessionId,

@@ -146,11 +146,6 @@ static void log_profiling_info(struct adreno_device *adreno_dev, u32 *rcvd)
 	if (context == NULL)
 		return;
 
-	/* protected GPU work must not be reported */
-	if  (!(context->flags & KGSL_CONTEXT_SECURE))
-		kgsl_work_period_update(device, context->proc_priv->period,
-					     cmd->active);
-
 	info.timestamp = cmd->ts;
 	info.rb_id = adreno_get_level(context);
 	info.gmu_dispatch_queue = context->gmu_dispatch_queue;
@@ -162,6 +157,10 @@ static void log_profiling_info(struct adreno_device *adreno_dev, u32 *rcvd)
 	else
 		info.active = cmd->active;
 	info.retired_on_gmu = cmd->retired_on_gmu;
+
+	/* protected GPU work must not be reported */
+	if  (!(context->flags & KGSL_CONTEXT_SECURE))
+		kgsl_work_period_update(device, context->proc_priv->period, info.active);
 
 	trace_adreno_cmdbatch_retired(context, &info, 0, 0, 0);
 

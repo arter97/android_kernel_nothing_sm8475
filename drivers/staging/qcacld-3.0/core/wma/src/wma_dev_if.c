@@ -928,6 +928,22 @@ static void wma_handle_hidden_ssid_restart(tp_wma_handle wma,
 				      0, NULL);
 }
 
+static void wma_set_phy_mode_n_bw(tp_wma_handle wma, uint8_t vdev_id,
+				  uint8_t *peer_addr, uint32_t phymode,
+				  uint32_t ch_width)
+{
+	wma_set_peer_param(wma, peer_addr, WMI_PEER_PHYMODE, phymode, vdev_id);
+	wma_set_peer_param(wma, peer_addr, WMI_PEER_CHWIDTH, ch_width, vdev_id);
+}
+
+static void wma_set_bw_n_phy_mode(tp_wma_handle wma, uint8_t vdev_id,
+				  uint8_t *peer_addr, uint32_t phymode,
+				  uint32_t ch_width)
+{
+	wma_set_peer_param(wma, peer_addr, WMI_PEER_CHWIDTH, ch_width, vdev_id);
+	wma_set_peer_param(wma, peer_addr, WMI_PEER_PHYMODE, phymode, vdev_id);
+}
+
 static void wma_peer_send_phymode(struct wlan_objmgr_vdev *vdev,
 				  void *object, void *arg)
 {
@@ -991,11 +1007,13 @@ static void wma_peer_send_phymode(struct wlan_objmgr_vdev *vdev,
 
 	max_ch_width_supported =
 		wmi_get_ch_width_from_phy_mode(wma->wmi_handle, fw_phymode);
-	wma_set_peer_param(wma, peer_mac_addr, WMI_PEER_CHWIDTH,
-			   max_ch_width_supported, vdev_id);
-
-	wma_set_peer_param(wma, peer_mac_addr, WMI_PEER_PHYMODE,
-			   fw_phymode, vdev_id);
+	/* For non 11ax capable targets send phymode followed by width */
+	if (!IS_FEATURE_SUPPORTED_BY_FW(DOT11AX))
+		wma_set_phy_mode_n_bw(wma, vdev_id, peer_mac_addr, fw_phymode,
+				      max_ch_width_supported);
+	else
+		wma_set_bw_n_phy_mode(wma, vdev_id, peer_mac_addr, fw_phymode,
+				      max_ch_width_supported);
 
 	wma_debug("FW phymode %d old phymode %d new phymode %d bw %d macaddr "QDF_MAC_ADDR_FMT,
 		  fw_phymode, old_peer_phymode, new_phymode,

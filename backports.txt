@@ -1,3 +1,5 @@
+8ce41b0f9d77 mm: fix NULL pointer dereference in alloc_pages_bulk_noprof
+484c3bab2d5d usb: xhci: Fix TD invalidation under pending Set TR Dequeue
 214e01ad4ed7 kthread: unpark only parked kthread
 3e3de7947c75 mm: vmalloc: ensure vmap_block is initialised before adding to queue
 61ebe5a747da mm/vmalloc: fix page mapping if vm_area_alloc_pages() with high order fallback to order 0
