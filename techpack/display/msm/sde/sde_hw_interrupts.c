@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2021-2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -450,6 +451,7 @@ static void sde_hw_intr_dispatch_irq(struct sde_hw_intr *intr,
 	int start_idx;
 	int end_idx;
 	u32 irq_status;
+	u32 enable_mask;
 	unsigned long irq_flags;
 
 	if (!intr)
@@ -473,8 +475,23 @@ static void sde_hw_intr_dispatch_irq(struct sde_hw_intr *intr,
 				end_idx > intr->sde_irq_map_size)
 			continue;
 
-		irq_status = SDE_REG_READ(&intr->hw,
-				intr->sde_irq_tbl[reg_idx].status_off);
+		/* Skip the interrupts which are not enabled */
+		if (!intr->cache_irq_mask[reg_idx])
+			continue;
+
+		/* Read interrupt status */
+		irq_status = SDE_REG_READ(&intr->hw, intr->sde_irq_tbl[reg_idx].status_off);
+
+		/* Read enable mask */
+		enable_mask = SDE_REG_READ(&intr->hw, intr->sde_irq_tbl[reg_idx].en_off);
+
+		/* and clear the interrupt */
+		if (irq_status)
+			SDE_REG_WRITE(&intr->hw, intr->sde_irq_tbl[reg_idx].clr_off,
+					irq_status);
+
+		/* Finally update IRQ status based on enable mask */
+		irq_status &= enable_mask;
 
 		/*
 		 * Search through matching intr status from irq map.
@@ -490,17 +507,11 @@ static void sde_hw_intr_dispatch_irq(struct sde_hw_intr *intr,
 				 reg_idx)) {
 				/*
 				 * Once a match on irq mask, perform a callback
-				 * to the given cbfunc. cbfunc will take care
-				 * the interrupt status clearing. If cbfunc is
-				 * not provided, then the interrupt clearing
-				 * is here.
+				 * to the given cbfunc. This callback is done
+				 * after clearing the interrupt registers.
 				 */
 				if (cbfunc)
 					cbfunc(arg, irq_idx);
-				else
-					SDE_REG_WRITE(&intr->hw,
-						intr->sde_irq_tbl[reg_idx].clr_off,
-						intr->sde_irq_map[irq_idx].irq_mask);
 
 				/*
 				 * When callback finish, clear the irq_status
@@ -652,32 +663,6 @@ static int sde_hw_intr_get_interrupt_sources(struct sde_hw_intr *intr,
 	*sources = SDE_REG_READ(&intr->hw, HW_INTR_STATUS);
 
 	return 0;
-}
-
-static void sde_hw_intr_clear_intr_status_nolock(struct sde_hw_intr *intr,
-		int irq_idx)
-{
-	int reg_idx;
-
-	if (!intr)
-		return;
-
-	if (irq_idx >= intr->sde_irq_map_size || irq_idx < 0) {
-		pr_err("invalid IRQ index: [%d]\n", irq_idx);
-		return;
-	}
-
-	reg_idx = intr->sde_irq_map[irq_idx].reg_idx;
-	if (reg_idx < 0 || reg_idx > intr->sde_irq_size) {
-		pr_err("invalid irq reg:%d irq:%d\n", reg_idx, irq_idx);
-		return;
-	}
-
-	SDE_REG_WRITE(&intr->hw, intr->sde_irq_tbl[reg_idx].clr_off,
-			intr->sde_irq_map[irq_idx].irq_mask);
-
-	/* ensure register writes go through */
-	wmb();
 }
 
 static void sde_hw_intr_clear_interrupt_status(struct sde_hw_intr *intr,
@@ -856,7 +841,6 @@ static void __setup_intr_ops(struct sde_hw_intr_ops *ops)
 	ops->disable_all_irqs = sde_hw_intr_disable_irqs;
 	ops->get_interrupt_sources = sde_hw_intr_get_interrupt_sources;
 	ops->clear_interrupt_status = sde_hw_intr_clear_interrupt_status;
-	ops->clear_intr_status_nolock = sde_hw_intr_clear_intr_status_nolock;
 	ops->get_interrupt_status = sde_hw_intr_get_interrupt_status;
 	ops->get_intr_status_nolock = sde_hw_intr_get_intr_status_nolock;
 }

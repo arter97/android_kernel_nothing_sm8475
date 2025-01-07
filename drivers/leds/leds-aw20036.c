@@ -1910,7 +1910,7 @@ static int aw20036_mmap(struct file *filp, struct vm_area_struct *vma)
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 7, 0)
 	vm_flags_t vm_flags = calc_vm_prot_bits(PROT_READ|PROT_WRITE, 0) |
-			      calc_vm_flag_bits(MAP_SHARED);
+			      calc_vm_flag_bits(filp, MAP_SHARED);
 
 	vm_flags |= current->mm->def_flags | VM_MAYREAD | VM_MAYWRITE |
 		    VM_MAYEXEC | VM_SHARED | VM_MAYSHARE;
