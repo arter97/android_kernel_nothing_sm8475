@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -15328,7 +15328,7 @@ typedef enum {
     } while (0)
 
 #define HTT_RX_ADDBA_EXTN_WIN_SIZE_GET(word) \
-    (((word) & HTT_RX_ADDBA_WIN_SIZE_M) >> HTT_RX_ADDBA_WIN_SIZE_S)
+    (((word) & HTT_RX_ADDBA_EXTN_WIN_SIZE_M) >> HTT_RX_ADDBA_EXTN_WIN_SIZE_S)
 
 #define HTT_RX_ADDBA_EXTN_BYTES 8
 
