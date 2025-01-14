@@ -49653,15 +49653,17 @@ typedef struct {
 #define WMI_PEER_ACTIVE_TRAFFIC_TYPE_BACKGROUND_S 2
 /* bits 3-15 are reserved for new non-interactive traffic types */
 
-#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_GAMING_M       0x00010000
-#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_GAMING_S       16
-#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_VOIP_M         0x00020000
-#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_VOIP_S         17
-#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_VIDEO_CONF_M   0x00040000
-#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_VIDEO_CONF_S   18
-#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_WEB_BROWSING_M 0x00080000
-#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_WEB_BROWSING_S 19
-/* bits 20-31 are reserved for new interactive traffic types */
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_GAMING_M                    0x00010000
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_GAMING_S                    16
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_VOIP_M                      0x00020000
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_VOIP_S                      17
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_VIDEO_CONF_M                0x00040000
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_VIDEO_CONF_S                18
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_WEB_BROWSING_M              0x00080000
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_WEB_BROWSING_S              19
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_APERIODIC_BURST_TRAFFIC_1_M 0x00100000
+#define WMI_PEER_ACTIVE_TRAFFIC_TYPE_APERIODIC_BURST_TRAFFIC_1_S 20
+/* bits 21-31 are reserved for new interactive traffic types */
 
 typedef struct {
     A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_peer_active_traffic_map_cmd_fixed_param */
