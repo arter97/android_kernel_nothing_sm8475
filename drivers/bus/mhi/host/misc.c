@@ -187,7 +187,7 @@ void mhi_reset_reg_write_q(struct mhi_controller *mhi_cntrl)
 }
 
 static void mhi_reg_write_enqueue(struct mhi_private *mhi_priv,
-	void __iomem *reg_addr, u32 val)
+	u8 __iomem *reg_addr, u32 val)
 {
 	struct mhi_controller *mhi_cntrl = mhi_priv->mhi_cntrl;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
@@ -221,7 +221,7 @@ static void mhi_reg_write_enqueue(struct mhi_private *mhi_priv,
 }
 
 void mhi_write_reg_offload(struct mhi_controller *mhi_cntrl,
-		   void __iomem *base,
+		   u8 __iomem *base,
 		   u32 offset,
 		   u32 val)
 {
@@ -263,7 +263,7 @@ void mhi_reg_write_work(struct work_struct *w)
 		if (!mhi_is_active(mhi_cntrl))
 			break;
 
-		writel_relaxed(info->val, info->reg_addr);
+		writel_relaxed(info->val, (void __iomem *)info->reg_addr);
 		info->valid = false;
 		mhi_priv->read_idx =
 				(mhi_priv->read_idx + 1) &
@@ -955,14 +955,14 @@ void mhi_debug_reg_dump(struct mhi_controller *mhi_cntrl)
 	enum mhi_ee_type ee;
 	int i, ret;
 	u32 val;
-	void __iomem *mhi_base = mhi_cntrl->regs;
-	void __iomem *bhi_base = mhi_cntrl->bhi;
-	void __iomem *bhie_base = mhi_cntrl->bhie;
-	void __iomem *wake_db = mhi_cntrl->wake_db;
+	u8 __iomem *mhi_base = mhi_cntrl->regs;
+	u8 __iomem *bhi_base = mhi_cntrl->bhi;
+	u8 __iomem *bhie_base = mhi_cntrl->bhie;
+	u8 __iomem *wake_db = mhi_cntrl->wake_db;
 	struct {
 		const char *name;
 		int offset;
-		void __iomem *base;
+		u8 __iomem *base;
 	} debug_reg[] = {
 		{ "BHI_ERRDBG2", BHI_ERRDBG2, bhi_base},
 		{ "BHI_ERRDBG3", BHI_ERRDBG3, bhi_base},
@@ -1117,7 +1117,7 @@ static int mhi_get_er_index(struct mhi_controller *mhi_cntrl,
 }
 
 static int mhi_init_bw_scale(struct mhi_controller *mhi_cntrl,
-			     void __iomem *bw_scale_db)
+			     u8 __iomem *bw_scale_db)
 {
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	struct mhi_private *mhi_priv = dev_get_drvdata(dev);
@@ -1176,7 +1176,7 @@ int mhi_controller_setup_timesync(struct mhi_controller *mhi_cntrl,
 EXPORT_SYMBOL(mhi_controller_setup_timesync);
 
 static int mhi_init_timesync(struct mhi_controller *mhi_cntrl,
-			     void __iomem *time_db)
+			     u8 __iomem *time_db)
 {
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	struct mhi_private *mhi_priv = dev_get_drvdata(dev);
@@ -1294,19 +1294,19 @@ int mhi_process_misc_tsync_ev_ring(struct mhi_controller *mhi_cntrl,
 	}
 
 	dev_rp = mhi_to_virtual(ev_ring, er_ctxt->rp);
-	if (ev_ring->rp == dev_rp) {
+	if (dev_rp == (struct mhi_tre *)ev_ring->rp) {
 		spin_unlock_bh(&mhi_event->lock);
 		goto exit_tsync_process;
 	}
 
 	/* if rp points to base, we need to wrap it around */
-	if (dev_rp == ev_ring->base)
-		dev_rp = ev_ring->base + ev_ring->len;
+	if (dev_rp == (struct mhi_tre *)ev_ring->base)
+		dev_rp = (struct mhi_tre *)(ev_ring->base + ev_ring->len);
 	dev_rp--;
 
 	/* fast forward to currently processed element and recycle er */
-	ev_ring->rp = dev_rp;
-	ev_ring->wp = dev_rp - 1;
+	ev_ring->rp = (u8 *)dev_rp;
+	ev_ring->wp = (u8 *)(dev_rp - 1);
 	if (ev_ring->wp < ev_ring->base)
 		ev_ring->wp = ev_ring->base + ev_ring->len - ev_ring->el_size;
 	mhi_recycle_fwd_ev_ring_element(mhi_cntrl, ev_ring);
@@ -1411,7 +1411,7 @@ int mhi_process_misc_bw_ev_ring(struct mhi_controller *mhi_cntrl,
 	 * Check the ev ring local pointer is same as ctxt pointer
 	 * if both are same do not process ev ring.
 	 */
-	if (ev_ring->rp == dev_rp) {
+	if (dev_rp == (struct mhi_tre *)ev_ring->rp) {
 		MHI_VERB("Ignore received BW event:0x%llx ev_ring RP:0x%llx\n",
 			 dev_rp->ptr,
 			 (u64)mhi_to_physical(ev_ring, ev_ring->rp));
@@ -1420,13 +1420,13 @@ int mhi_process_misc_bw_ev_ring(struct mhi_controller *mhi_cntrl,
 	}
 
 	/* if rp points to base, we need to wrap it around */
-	if (dev_rp == ev_ring->base)
-		dev_rp = ev_ring->base + ev_ring->len;
+	if (dev_rp == (struct mhi_tre *)ev_ring->base)
+		dev_rp = (struct mhi_tre *)(ev_ring->base + ev_ring->len);
 	dev_rp--;
 
 	/* fast forward to currently processed element and recycle er */
-	ev_ring->rp = dev_rp;
-	ev_ring->wp = dev_rp - 1;
+	ev_ring->rp = (u8 *)dev_rp;
+	ev_ring->wp = (u8 *)(dev_rp - 1);
 	if (ev_ring->wp < ev_ring->base)
 		ev_ring->wp = ev_ring->base + ev_ring->len - ev_ring->el_size;
 	mhi_recycle_fwd_ev_ring_element(mhi_cntrl, ev_ring);

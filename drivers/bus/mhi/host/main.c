@@ -17,13 +17,13 @@
 #include "internal.h"
 
 int __must_check mhi_read_reg(struct mhi_controller *mhi_cntrl,
-			      void __iomem *base, u32 offset, u32 *out)
+			      u8 __iomem *base, u32 offset, u32 *out)
 {
-	return mhi_cntrl->read_reg(mhi_cntrl, base + offset, out);
+	return mhi_cntrl->read_reg(mhi_cntrl, (void __iomem *)(base + offset), out);
 }
 
 int __must_check mhi_read_reg_field(struct mhi_controller *mhi_cntrl,
-				    void __iomem *base, u32 offset,
+				    u8 __iomem *base, u32 offset,
 				    u32 mask, u32 shift, u32 *out)
 {
 	u32 tmp;
@@ -39,7 +39,7 @@ int __must_check mhi_read_reg_field(struct mhi_controller *mhi_cntrl,
 }
 
 int __must_check mhi_poll_reg_field(struct mhi_controller *mhi_cntrl,
-				    void __iomem *base, u32 offset,
+				    u8 __iomem *base, u32 offset,
 				    u32 mask, u32 shift, u32 val, u32 delayus)
 {
 	int ret;
@@ -60,13 +60,13 @@ int __must_check mhi_poll_reg_field(struct mhi_controller *mhi_cntrl,
 	return -ETIMEDOUT;
 }
 
-void mhi_write_reg(struct mhi_controller *mhi_cntrl, void __iomem *base,
+void mhi_write_reg(struct mhi_controller *mhi_cntrl, u8 __iomem *base,
 		   u32 offset, u32 val)
 {
-	mhi_cntrl->write_reg(mhi_cntrl, base + offset, val);
+	mhi_cntrl->write_reg(mhi_cntrl, (void __iomem *)(base + offset), val);
 }
 
-void mhi_write_reg_field(struct mhi_controller *mhi_cntrl, void __iomem *base,
+void mhi_write_reg_field(struct mhi_controller *mhi_cntrl, u8 __iomem *base,
 			 u32 offset, u32 mask, u32 shift, u32 val)
 {
 	int ret;
@@ -81,7 +81,7 @@ void mhi_write_reg_field(struct mhi_controller *mhi_cntrl, void __iomem *base,
 	mhi_write_reg(mhi_cntrl, base, offset, tmp);
 }
 
-void mhi_write_db(struct mhi_controller *mhi_cntrl, void __iomem *db_addr,
+void mhi_write_db(struct mhi_controller *mhi_cntrl, u8 __iomem *db_addr,
 		  dma_addr_t db_val)
 {
 	mhi_write_reg(mhi_cntrl, db_addr, 4, upper_32_bits(db_val));
@@ -90,7 +90,7 @@ void mhi_write_db(struct mhi_controller *mhi_cntrl, void __iomem *db_addr,
 
 void mhi_db_brstmode(struct mhi_controller *mhi_cntrl,
 		     struct db_cfg *db_cfg,
-		     void __iomem *db_addr,
+		     u8 __iomem *db_addr,
 		     dma_addr_t db_val)
 {
 	if (db_cfg->db_mode) {
@@ -102,7 +102,7 @@ void mhi_db_brstmode(struct mhi_controller *mhi_cntrl,
 
 void mhi_db_brstmode_disable(struct mhi_controller *mhi_cntrl,
 			     struct db_cfg *db_cfg,
-			     void __iomem *db_addr,
+			     u8 __iomem *db_addr,
 			     dma_addr_t db_val)
 {
 	db_cfg->db_val = db_val;
@@ -240,7 +240,7 @@ void *mhi_to_virtual(struct mhi_ring *ring, dma_addr_t addr)
 
 dma_addr_t mhi_to_physical(struct mhi_ring *ring, void *addr)
 {
-	return (addr - ring->base) + ring->iommu_base;
+	return ((u8 *)addr - ring->base) + ring->iommu_base;
 }
 
 static void mhi_add_ring_element(struct mhi_controller *mhi_cntrl,
@@ -628,7 +628,7 @@ static int parse_xfer_event(struct mhi_controller *mhi_cntrl,
 	{
 		dma_addr_t ptr = MHI_TRE_GET_EV_PTR(event);
 		struct mhi_tre *local_rp, *ev_tre;
-		void *dev_rp;
+		struct mhi_tre *dev_rp;
 		struct mhi_buf_info *buf_info;
 		u32 xfer_len;
 
@@ -640,14 +640,14 @@ static int parse_xfer_event(struct mhi_controller *mhi_cntrl,
 		ev_tre = mhi_to_virtual(tre_ring, ptr);
 
 		dev_rp = ev_tre + 1;
-		if (dev_rp >= (tre_ring->base + tre_ring->len))
-			dev_rp = tre_ring->base;
+		if (dev_rp >= (struct mhi_tre *)(tre_ring->base + tre_ring->len))
+			dev_rp = (struct mhi_tre *)tre_ring->base;
 
 		result.dir = mhi_chan->dir;
 
-		local_rp = tre_ring->rp;
+		local_rp = (struct mhi_tre *)tre_ring->rp;
 		while (local_rp != dev_rp) {
-			buf_info = buf_ring->rp;
+			buf_info = (struct mhi_buf_info *)buf_ring->rp;
 			/* If it's the last TRE, get length from the event */
 			if (local_rp == ev_tre)
 				xfer_len = MHI_TRE_GET_EV_LEN(event);
@@ -665,7 +665,7 @@ static int parse_xfer_event(struct mhi_controller *mhi_cntrl,
 				min_t(u32, xfer_len, buf_info->len);
 			mhi_del_ring_element(mhi_cntrl, buf_ring);
 			mhi_del_ring_element(mhi_cntrl, tre_ring);
-			local_rp = tre_ring->rp;
+			local_rp = (struct mhi_tre *)tre_ring->rp;
 
 			read_unlock_bh(&mhi_chan->lock);
 
@@ -747,7 +747,7 @@ static int parse_rsc_event(struct mhi_controller *mhi_cntrl,
 	/* Received out of bound cookie */
 	WARN_ON(cookie >= buf_ring->len);
 
-	buf_info = buf_ring->base + cookie;
+	buf_info = (struct mhi_buf_info *)(buf_ring->base + cookie);
 
 	result.transaction_status = (ev_code == MHI_EV_CC_OVERFLOW) ?
 		-EOVERFLOW : 0;
@@ -809,8 +809,8 @@ static void mhi_process_cmd_completion(struct mhi_controller *mhi_cntrl,
 
 	cmd_pkt = mhi_to_virtual(mhi_ring, ptr);
 
-	if (cmd_pkt != mhi_ring->rp) {
-		mhi_tre = mhi_ring->rp;
+	if (cmd_pkt != (struct mhi_tre *)mhi_ring->rp) {
+		mhi_tre = (struct mhi_tre *)mhi_ring->rp;
 		panic("Out of order cmd completion: 0x%llx. Expected: 0x%llx\n",
 			ptr, (u64)mhi_to_physical(mhi_ring, mhi_tre));
 	}
@@ -866,7 +866,7 @@ int mhi_process_ctrl_ev_ring(struct mhi_controller *mhi_cntrl,
 	}
 
 	dev_rp = mhi_to_virtual(ev_ring, ptr);
-	local_rp = ev_ring->rp;
+	local_rp = (struct mhi_tre *)ev_ring->rp;
 
 	while (dev_rp != local_rp) {
 		enum mhi_pkt_type type = MHI_TRE_GET_EV_TYPE(local_rp);
@@ -986,7 +986,7 @@ int mhi_process_ctrl_ev_ring(struct mhi_controller *mhi_cntrl,
 		}
 
 		mhi_recycle_ev_ring_element(mhi_cntrl, ev_ring);
-		local_rp = ev_ring->rp;
+		local_rp = (struct mhi_tre *)ev_ring->rp;
 
 		ptr = er_ctxt->rp;
 		if (!is_valid_ring_ptr(ev_ring, ptr)) {
@@ -1029,7 +1029,7 @@ int mhi_process_data_event_ring(struct mhi_controller *mhi_cntrl,
 	}
 
 	dev_rp = mhi_to_virtual(ev_ring, ptr);
-	local_rp = ev_ring->rp;
+	local_rp = (struct mhi_tre *)ev_ring->rp;
 
 	while (dev_rp != local_rp && event_quota > 0) {
 		enum mhi_pkt_type type = MHI_TRE_GET_EV_TYPE(local_rp);
@@ -1059,7 +1059,7 @@ int mhi_process_data_event_ring(struct mhi_controller *mhi_cntrl,
 		}
 
 		mhi_recycle_ev_ring_element(mhi_cntrl, ev_ring);
-		local_rp = ev_ring->rp;
+		local_rp = (struct mhi_tre *)ev_ring->rp;
 
 		ptr = er_ctxt->rp;
 		if (!is_valid_ring_ptr(ev_ring, ptr)) {
@@ -1157,7 +1157,7 @@ void mhi_process_ev_work(struct work_struct *work)
 static bool mhi_is_ring_full(struct mhi_controller *mhi_cntrl,
 			     struct mhi_ring *ring)
 {
-	void *tmp = ring->wp + ring->el_size;
+	u8 *tmp = ring->wp + ring->el_size;
 
 	if (tmp >= (ring->base + ring->len))
 		tmp = ring->base;
@@ -1296,7 +1296,7 @@ int mhi_gen_tre(struct mhi_controller *mhi_cntrl, struct mhi_chan *mhi_chan,
 	buf_ring = &mhi_chan->buf_ring;
 	tre_ring = &mhi_chan->tre_ring;
 
-	buf_info = buf_ring->wp;
+	buf_info = (struct mhi_buf_info *)buf_ring->wp;
 	WARN_ON(buf_info->used);
 	buf_info->pre_mapped = info->pre_mapped;
 	if (info->pre_mapped)
@@ -1321,7 +1321,7 @@ int mhi_gen_tre(struct mhi_controller *mhi_cntrl, struct mhi_chan *mhi_chan,
 	chain = !!(flags & MHI_CHAIN);
 	bei = !!(mhi_chan->intmod);
 
-	mhi_tre = tre_ring->wp;
+	mhi_tre = (struct mhi_tre *)tre_ring->wp;
 	mhi_tre->ptr = MHI_TRE_DATA_PTR(buf_info->p_addr);
 	mhi_tre->dword[0] = MHI_TRE_DATA_DWORD0(info->len);
 	mhi_tre->dword[1] = MHI_TRE_DATA_DWORD1(bei, eot, eob, chain);
@@ -1417,7 +1417,7 @@ int mhi_send_cmd(struct mhi_controller *mhi_cntrl,
 	}
 
 	/* prepare the cmd tre */
-	cmd_tre = ring->wp;
+	cmd_tre = (struct mhi_tre *)ring->wp;
 	switch (cmd) {
 	case MHI_CMD_RESET_CHAN:
 		cmd_tre->ptr = MHI_TRE_CMD_RESET_PTR;
@@ -1688,20 +1688,20 @@ static void mhi_mark_stale_events(struct mhi_controller *mhi_cntrl,
 	ptr = er_ctxt->rp;
 	if (!is_valid_ring_ptr(ev_ring, ptr)) {
 		MHI_ERR("Event ring rp points outside of the event ring\n");
-		dev_rp = ev_ring->rp;
+		dev_rp = (struct mhi_tre *)ev_ring->rp;
 	} else {
 		dev_rp = mhi_to_virtual(ev_ring, ptr);
 	}
 
-	local_rp = ev_ring->rp;
+	local_rp = (struct mhi_tre *)ev_ring->rp;
 	while (dev_rp != local_rp) {
 		if (MHI_TRE_GET_EV_TYPE(local_rp) == MHI_PKT_TYPE_TX_EVENT &&
 		    chan == MHI_TRE_GET_EV_CHID(local_rp))
 			local_rp->dword[1] = MHI_TRE_EV_DWORD1(chan,
 					MHI_PKT_TYPE_STALE_EVENT);
 		local_rp++;
-		if (local_rp == (ev_ring->base + ev_ring->len))
-			local_rp = ev_ring->base;
+		if (local_rp == (struct mhi_tre *)(ev_ring->base + ev_ring->len))
+			local_rp = (struct mhi_tre *)ev_ring->base;
 	}
 
 	MHI_VERB("Finished marking events as stale events\n");
@@ -1720,7 +1720,7 @@ static void mhi_reset_data_chan(struct mhi_controller *mhi_cntrl,
 	result.transaction_status = -ENOTCONN;
 	result.bytes_xferd = 0;
 	while (tre_ring->rp != tre_ring->wp) {
-		struct mhi_buf_info *buf_info = buf_ring->rp;
+		struct mhi_buf_info *buf_info = (struct mhi_buf_info *)buf_ring->rp;
 
 		if (mhi_chan->dir == DMA_TO_DEVICE)
 			atomic_dec(&mhi_cntrl->pending_pkts);
