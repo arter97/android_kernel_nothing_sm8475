@@ -2407,6 +2407,9 @@ typedef enum {
     /* WMI event to send scan cached results */
     WMI_SCAN_CACHE_RESULT_EVENTID,
 
+    /** WMI event for FW diagnostic data sent to host */
+    WMI_OPT_DP_DIAG_EVENTID,
+
 
     /* GPIO Event */
     WMI_GPIO_INPUT_EVENTID = WMI_EVT_GRP_START_ID(WMI_GRP_GPIO),
