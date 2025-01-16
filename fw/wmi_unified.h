@@ -13353,6 +13353,8 @@ typedef struct {
     A_UINT32 rx_mpdu_per_sp;    /* Average pkts rx per SP */
     A_UINT32 tx_bytes_per_sp;   /* Average tx bytes per SP */
     A_UINT32 rx_bytes_per_sp;   /* Average rx bytes per SP */
+    A_UINT32 avg_eosp_sp_dur_us; /* Average EOSP SP time */
+    A_UINT32 eosp_sp_count;     /* Number of EOSP TWT SP's */
 } wmi_ctrl_path_twt_stats_struct;
 
 #define BMISS_STATS_RSSI_SAMPLE_MAX 10
@@ -16676,6 +16678,47 @@ typedef struct {
     A_UINT32 foreign_chan_entry_cnt;
 } wmi_ctrl_path_pdev_conn_stats_struct;
 
+typedef struct  {
+    A_UINT32 tlv_header;
+    A_UINT32 pdev_id;
+
+    A_UINT32 ml_rcfg_wmi;
+    A_UINT32 ml_rcfg_del_self;
+    A_UINT32 ml_rcfg_new_link;
+
+    A_UINT32 ml_rcfg_peer_assoc_ml_peer_null;
+    A_UINT32 ml_rcfg_ll_idx_mismatch;
+    A_UINT32 ml_rcfg_mlo_ll_idx_invalid;
+    A_UINT32 ml_rcfg_partner_link_null;
+    A_UINT32 ml_rcfg_partner_ll_idx_invalid;
+    A_UINT32 ml_rcfg_self_in_partner_link;
+    A_UINT32 ml_rcfg_partner_link_add;
+    A_UINT32 ml_rcfg_partner_link_del;
+    A_UINT32 ml_rcfg_no_rcfg_op;
+
+    A_UINT32 ml_rcfg_0_num_link;
+    A_UINT32 ml_rcfg_inv_num_link;
+    A_UINT32 ml_rcfg_non_exist_link_del;
+    A_UINT32 ml_rcfg_add_exist_link;
+    A_UINT32 ml_rcfg_recv_add_ipc;
+    A_UINT32 ml_rcfg_recv_peer_del_ipc;
+
+    A_UINT32 ml_rcfg_inv_link_bmap;
+    A_UINT32 ml_rcfg_assoc_ipc_before_wmi;
+    A_UINT32 ml_rcfg_before_init;
+    A_UINT32 ml_rcfg_recv_link_del_ipc_pri;
+    A_UINT32 ml_rcfg_recv_link_del_ipc_non_pri;
+
+    A_UINT32 ml_rcfg_inc_to_2;
+    A_UINT32 ml_rcfg_inc_to_3;
+    A_UINT32 ml_rcfg_inc_to_4;
+
+    A_UINT32 ml_rcfg_dec_to_3;
+    A_UINT32 ml_rcfg_dec_to_2;
+    A_UINT32 ml_rcfg_dec_to_1;
+    A_UINT32 ml_rcfg_dec_to_0;
+} wmi_ctrl_path_ml_rcfg_stats_struct;
+
 /**
  *  peer statistics.
  */
@@ -18136,6 +18179,10 @@ typedef enum {
  * DUT send BTM response with reject status code if the bit set to 1.
  */
 #define WMI_VDEV_PARAM_ROAM_11KV_BTM_REJECT                             0x8
+/* WMI_VDEV_PARAM_ROAM_11KV_BTM_DISABLE_TTLM:
+ * Disable STA T2LM when received BTM load balance frame.
+ */
+#define WMI_VDEV_PARAM_ROAM_11KV_BTM_DISABLE_TTLM                       0x10
 
 
 /** NAN vdev config Feature flags */
@@ -36341,6 +36388,7 @@ typedef enum {
     WMI_REQUEST_CTRL_PATH_VDEV_BCN_TX_STAT  = 19,
     WMI_REQUEST_CTRL_PATH_PDEV_BCN_TX_STAT  = 20,
     WMI_REQUEST_CTRL_PATH_PDEV_CONN_STAT    = 21,
+    WMI_REQUEST_CTRL_PATH_ML_RECONFIG_STAT  = 22,
 } wmi_ctrl_path_stats_id;
 
 typedef enum {
@@ -40190,6 +40238,14 @@ typedef enum _WMI_TWT_COMMAND_T {
 /* 1 means PM_RESPONDER_MODE supported, 0 means not supported */
 #define TWT_FLAGS_GET_PM_RESPONDER_MODE(flag)      WMI_GET_BITS(flag, 15, 1)
 #define TWT_FLAGS_SET_PM_RESPONDER_MODE(flag, val) WMI_SET_BITS(flag, 15, 1, val)
+
+/* 1 means IMPLICIT TWT, 0 means EXPLICIT TWT */
+#define TWT_FLAGS_GET_IMPLICIT(flag)           WMI_GET_BITS(flag, 16, 1)
+#define TWT_FLAGS_SET_IMPLICIT(flag, val)      WMI_SET_BITS(flag, 16, 1, val)
+
+/* 1 means RENEGOTIATE TWT supported, 0 means RENEGOTIATE TWT not supported */
+#define TWT_FLAGS_GET_RENEGOTIATE(flag)           WMI_GET_BITS(flag, 17, 1)
+#define TWT_FLAGS_SET_RENEGOTIATE(flag, val)      WMI_SET_BITS(flag, 17, 1, val)
 
 typedef struct {
     A_UINT32 tlv_header;    /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_twt_ack_event_fixed_param */
@@ -48937,6 +48993,14 @@ typedef struct {
     A_UINT32 ieee_link_id; /* key to identify a link */
     wmi_channel wmi_chan;
     A_UINT32 op_code; /* see definition of WMI_MLO_link_BSS_OP_CODE */
+    /* bss_id:
+     * This field is only relevant for op_code MLO_LINK_BSS_OP_ADD.
+     */
+    wmi_mac_addr bss_id;
+    /* self_mac:
+     * This field is only relevant for op_code MLO_LINK_BSS_OP_ADD.
+     */
+    wmi_mac_addr self_mac;
 } wmi_mlo_link_bss_param;
 
 typedef struct {
@@ -49815,6 +49879,7 @@ typedef struct {
 typedef struct {
     A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_RSSI_ACCURACY_CAPABILITIES */
     union {
+        A_UINT32 phy_id__multigain_rssi_accuracy_enable__word32;
         struct {
             /*
              * bits  3:0  -> PHY ID
