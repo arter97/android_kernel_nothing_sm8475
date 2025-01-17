@@ -23,6 +23,7 @@
   blk_queue_physical_block_size
   bpf_trace_run2
   bpf_trace_run3
+  blk_mq_quiesce_queue_nowait
   bt_err
   bt_info
   bt_warn
