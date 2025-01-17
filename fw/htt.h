@@ -835,6 +835,10 @@ typedef enum {
     HTT_STATS_TXBF_OFDMA_BE_PARBW_TAG               = 201, /* htt_stats_txbf_ofdma_be_parbw_tlv */
     HTT_STATS_RX_PDEV_RSSI_HIST_TAG                 = 202, /* htt_stats_rx_pdev_rssi_hist_tlv */
     HTT_STATS_TX_VDEV_NSS_TAG                       = 203, /* htt_stats_tx_vdev_nss_tlv */
+    HTT_STATS_PDEV_SPECTRAL_TAG                     = 204, /* htt_stats_pdev_spectral_tlv */
+    HTT_STATS_PDEV_RTT_DELAY_TAG                    = 205, /* htt_stats_pdev_rtt_delay_tlv */
+    HTT_STATS_PDEV_AOA_TAG                          = 206, /* htt_stats_pdev_aoa_tlv */
+    HTT_STATS_PDEV_FTM_TPCCAL_TAG                   = 207, /* htt_stats_pdev_ftm_tpccal_tlv */
 
     HTT_STATS_MAX_TAG,
 } htt_stats_tlv_tag_t;
@@ -14167,11 +14171,11 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
  * |   VALID_MASK    |(4bits) |  SET_NUM  |      HW peer ID / AST index       |
  * |     (8bits)     |        |  (4bits)  |                                   |
  * |-----------------+--------+--+--+--+--------------------------------------|
- * |        RESERVED             |E |O |  |                                   |
- * |        (13bits)             |A |A |NH|   on-Chip PMAC_RXPCU AST index    |
- * |                             |V |V |  |                                   |
+ * |        RESERVED           |C|E |O |  |                                   |
+ * |        (12bits)           |I|A |A |NH|   on-Chip PMAC_RXPCU AST index    |
+ * |                           |V|V |V |  |                                   |
  * |-----------------+--------------------+-----------------------------------|
- * |  HTT_MSDU_IDX_  |      RESERVED      |                                   |
+ * |  HTT_MSDU_IDX_  | CLASSIFY_INFO_IDX  |                                   |
  * | VALID_MASK_EXT  |       (8bits)      |          EXT AST index            |
  * |     (8bits)     |                    |                                   |
  * |-----------------+--------------------+-----------------------------------|
@@ -14181,11 +14185,13 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
  * |--------------------------------------------------------------------------|
  *
  * Where:
+ *    CIV = CLASSIFY_INFO_IDX_VALID flag, for CLASSIFY_INFO_IDX
  *    EAV = EXT_AST_VALID flag, for "EXT AST index"
  *    OAV = ONCHIP_AST_VALID flag, for "on-Chip PMAC_RXPCU AST index"
  *    NH = Next Hop
  * The following field definitions describe the format of the rx peer map v3
  * messages sent from the target to the host.
+ * dword 0:
  *   - MSG_TYPE
  *     Bits 7:0
  *     Purpose: identifies this as a peer map v3 message
@@ -14196,10 +14202,12 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
  *   - SW_PEER_ID
  *     Bits 31:16
  *     Purpose: The peer ID (index) that WAL has allocated for this peer.
+ * dword 1:
  *   - MAC_ADDR_L32
  *     Bits 31:0
  *     Purpose: Identifies which peer node the peer ID is for.
  *     Value: lower 4 bytes of peer node's MAC address
+ * dword 2:
  *   - MAC_ADDR_U16
  *     Bits 15:0
  *     Purpose: Identifies which peer node the peer ID is for.
@@ -14208,6 +14216,7 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
  *     Bits 31:16
  *     Purpose: The multicast peer ID (index)
  *     Value: set to HTT_INVALID_PEER if not valid
+ * dword 3:
  *   - HW_PEER_ID / AST_INDEX
  *     Bits 15:0
  *     Purpose: Identifies the HW peer ID corresponding to the peer MAC
@@ -14227,6 +14236,7 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
  *   - HTT_MSDU_IDX_VALID_MASK
  *     Bits 31:24
  *     Purpose: Shows MSDU indexes valid mask for AST_INDEX
+ * dword 4:
  *   - ONCHIP_AST_IDX / RESERVED
  *     Bits 15:0
  *     Purpose: This field is valid only when split AST feature is enabled.
@@ -14234,28 +14244,38 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
  *         If valid, identifies the HW peer ID corresponding to the peer MAC
  *         address, this ast_idx is used for LMAC modules for RXPCU.
  *   - NEXT_HOP
- *     Bits 16
+ *     Bit  16
  *     Purpose: Flag indicates next_hop AST entry used for WDS
  *              (Wireless Distribution System).
  *   - ONCHIP_AST_VALID
- *     Bits 17
+ *     Bit  17
  *     Purpose: Flag indicates valid data behind of the ONCHIP_AST_IDX field
  *   - EXT_AST_VALID
- *     Bits 18
+ *     Bit  18
  *     Purpose: Flag indicates valid data behind of the EXT_AST_INDEX field
+ *   - CLASSIFY_INFO_IDX_VALID
+ *     Bit  19
+ *     Purpose: If set, indicates that the CLASSIFY_INFO_IDX field is valid;
+ *         else, ignore CLASSIFY_INFO_IDX
+ * dword 5:
  *   - EXT_AST_INDEX
  *     Bits 15:0
  *     Purpose: This field describes Extended AST index
  *              Valid if EXT_AST_VALID flag set
+ *   - CLASSIFY_INFO_IDX
+ *     Bits 23:16
+ *     Purpose: assists TCL-L Block in Boron family of chips to
+ *              start finding the flow from the corresponding
+ *              entry in the FLOW LOOK UP TABLE
  *   - HTT_MSDU_IDX_VALID_MASK_EXT
  *     Bits 31:24
  *     Purpose: Shows MSDU indexes valid mask for EXT_AST_INDEX
 */
 /* dword 0 */
-#define HTT_RX_PEER_MAP_V3_SW_PEER_ID_M 0xffff0000
-#define HTT_RX_PEER_MAP_V3_SW_PEER_ID_S 16
 #define HTT_RX_PEER_MAP_V3_VDEV_ID_M    0x0000ff00
 #define HTT_RX_PEER_MAP_V3_VDEV_ID_S    8
+#define HTT_RX_PEER_MAP_V3_SW_PEER_ID_M 0xffff0000
+#define HTT_RX_PEER_MAP_V3_SW_PEER_ID_S 16
 /* dword 1 */
 #define HTT_RX_PEER_MAP_V3_MAC_ADDR_L32_M 0xffffffff
 #define HTT_RX_PEER_MAP_V3_MAC_ADDR_L32_S 0
@@ -14265,26 +14285,30 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
 #define HTT_RX_PEER_MAP_V3_MULTICAST_SW_PEER_ID_M 0xffff0000
 #define HTT_RX_PEER_MAP_V3_MULTICAST_SW_PEER_ID_S 16
 /* dword 3 */
-#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_AST_M 0xff000000
-#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_AST_S 24
-#define HTT_RX_PEER_MAP_V3_CACHE_SET_NUM_M   0x000f0000
-#define HTT_RX_PEER_MAP_V3_CACHE_SET_NUM_S   16
 #define HTT_RX_PEER_MAP_V3_HW_PEER_ID_M      0x0000ffff
 #define HTT_RX_PEER_MAP_V3_HW_PEER_ID_S      0
+#define HTT_RX_PEER_MAP_V3_CACHE_SET_NUM_M   0x000f0000
+#define HTT_RX_PEER_MAP_V3_CACHE_SET_NUM_S   16
+#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_AST_M 0xff000000
+#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_AST_S 24
 /* dword 4 */
-#define HTT_RX_PEER_MAP_V3_EXT_AST_VALID_FLAG_M         0x00040000
-#define HTT_RX_PEER_MAP_V3_EXT_AST_VALID_FLAG_S         18
-#define HTT_RX_PEER_MAP_V3_ONCHIP_AST_VALID_FLAG_M      0x00020000
-#define HTT_RX_PEER_MAP_V3_ONCHIP_AST_VALID_FLAG_S      17
-#define HTT_RX_PEER_MAP_V3_NEXT_HOP_M                   0x00010000
-#define HTT_RX_PEER_MAP_V3_NEXT_HOP_S                   16
-#define HTT_RX_PEER_MAP_V3_ON_CHIP_PMAC_RXPCU_AST_IDX_M 0x0000ffff
-#define HTT_RX_PEER_MAP_V3_ON_CHIP_PMAC_RXPCU_AST_IDX_S 0
+#define HTT_RX_PEER_MAP_V3_ON_CHIP_PMAC_RXPCU_AST_IDX_M   0x0000ffff
+#define HTT_RX_PEER_MAP_V3_ON_CHIP_PMAC_RXPCU_AST_IDX_S   0
+#define HTT_RX_PEER_MAP_V3_NEXT_HOP_M                     0x00010000
+#define HTT_RX_PEER_MAP_V3_NEXT_HOP_S                     16
+#define HTT_RX_PEER_MAP_V3_ONCHIP_AST_VALID_FLAG_M        0x00020000
+#define HTT_RX_PEER_MAP_V3_ONCHIP_AST_VALID_FLAG_S        17
+#define HTT_RX_PEER_MAP_V3_EXT_AST_VALID_FLAG_M           0x00040000
+#define HTT_RX_PEER_MAP_V3_EXT_AST_VALID_FLAG_S           18
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_M 0x00080000
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_S 19
 /* dword 5 */
-#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_M 0xff000000
-#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_S 24
 #define HTT_RX_PEER_MAP_V3_EXT_AST_IDX_M         0x0000ffff
 #define HTT_RX_PEER_MAP_V3_EXT_AST_IDX_S         0
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_M   0x00ff0000
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_S   16
+#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_M 0xff000000
+#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_S 24
 
 #define HTT_RX_PEER_MAP_V3_VDEV_ID_SET(word, value)           \
     do {                                                      \
@@ -14366,6 +14390,14 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
 #define HTT_RX_PEER_MAP_V3_EXT_AST_VALID_FLAG_GET(word) \
     (((word) & HTT_RX_PEER_MAP_V3_EXT_AST_VALID_FLAG_M) >> HTT_RX_PEER_MAP_V3_EXT_AST_VALID_FLAG_S)
 
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_SET(word, value)            \
+    do {                                                                  \
+        HTT_CHECK_SET_VAL(HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG, value);  \
+        (word) |= (value)  << HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_S;    \
+    } while (0)
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_GET(word) \
+    (((word) & HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_M) >> HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_S)
+
 #define HTT_RX_PEER_MAP_V3_EXT_AST_IDX_SET(word, value)            \
     do {                                                           \
         HTT_CHECK_SET_VAL(HTT_RX_PEER_MAP_V3_EXT_AST_IDX, value);  \
@@ -14373,6 +14405,14 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
     } while (0)
 #define HTT_RX_PEER_MAP_V3_EXT_AST_IDX_GET(word) \
     (((word) & HTT_RX_PEER_MAP_V3_EXT_AST_IDX_M) >> HTT_RX_PEER_MAP_V3_EXT_AST_IDX_S)
+
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_SET(word, value)      \
+    do {                                                           \
+        HTT_CHECK_SET_VAL(HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX, value);  \
+        (word) |= (value)  << HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_S;    \
+    } while (0)
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_GET(word) \
+    (((word) & HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_M) >> HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_S)
 
 #define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_SET(word, value)            \
     do {                                                                   \
@@ -14382,17 +14422,19 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
 #define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_GET(word) \
     (((word) & HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_M) >> HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_S)
 
-#define HTT_RX_PEER_MAP_V3_MAC_ADDR_OFFSET                   4  /* bytes */
-#define HTT_RX_PEER_MAP_V3_MULTICAST_SW_PEER_ID_OFFSET       8  /* bytes */
-#define HTT_RX_PEER_MAP_V3_HW_PEER_ID_OFFSET                 12 /* bytes */
-#define HTT_RX_PEER_MAP_V3_CACHE_SET_NUM_OFFSET              12 /* bytes */
-#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_AST_OFFSET            12 /* bytes */
-#define HTT_RX_PEER_MAP_V3_ON_CHIP_PMAC_RXPCU_AST_IDX_OFFSET 16 /* bytes */
-#define HTT_RX_PEER_MAP_V3_NEXT_HOP_OFFSET                   16 /* bytes */
-#define HTT_RX_PEER_MAP_V3_ONCHIP_AST_VALID_FLAG_OFFSET      16 /* bytes */
-#define HTT_RX_PEER_MAP_V3_EXT_AST_VALID_FLAG_OFFSET         16 /* bytes */
-#define HTT_RX_PEER_MAP_V3_EXT_AST_IDX_OFFSET                20 /* bytes */
-#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_OFFSET        20 /* bytes */
+#define HTT_RX_PEER_MAP_V3_MAC_ADDR_OFFSET                      4 /* bytes */
+#define HTT_RX_PEER_MAP_V3_MULTICAST_SW_PEER_ID_OFFSET          8 /* bytes */
+#define HTT_RX_PEER_MAP_V3_HW_PEER_ID_OFFSET                   12 /* bytes */
+#define HTT_RX_PEER_MAP_V3_CACHE_SET_NUM_OFFSET                12 /* bytes */
+#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_AST_OFFSET              12 /* bytes */
+#define HTT_RX_PEER_MAP_V3_ON_CHIP_PMAC_RXPCU_AST_IDX_OFFSET   16 /* bytes */
+#define HTT_RX_PEER_MAP_V3_NEXT_HOP_OFFSET                     16 /* bytes */
+#define HTT_RX_PEER_MAP_V3_ONCHIP_AST_VALID_FLAG_OFFSET        16 /* bytes */
+#define HTT_RX_PEER_MAP_V3_EXT_AST_VALID_FLAG_OFFSET           16 /* bytes */
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_OFFSET 16 /* bytes */
+#define HTT_RX_PEER_MAP_V3_EXT_AST_IDX_OFFSET                  20 /* bytes */
+#define HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_OFFSET            20 /* bytes */
+#define HTT_RX_PEER_MAP_V3_MSDU_IDX_VM_EXT_AST_OFFSET          20 /* bytes */
 
 #define HTT_RX_PEER_MAP_V3_BYTES 32
 
