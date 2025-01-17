@@ -3890,12 +3890,14 @@ QDF_STATUS wma_send_vdev_stop_to_fw(t_wma_handle *wma, uint8_t vdev_id)
 		return status;
 	}
 
+	wlan_mlme_reset_sta_keepalive_period(wma->psoc, iface->vdev);
+	iface->bss_max_idle_period = 0;
+
 	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(iface->vdev);
 	if (!vdev_mlme) {
 		wma_err("Failed to get vdev mlme obj for vdev id %d", vdev_id);
 		return status;
 	}
-
 	/*
 	 * Reset the dynamic nss chains config to the ini values, as when the
 	 * vdev gets its started again, this would be a fresh connection,

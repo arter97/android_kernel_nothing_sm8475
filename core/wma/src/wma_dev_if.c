@@ -928,6 +928,22 @@ static void wma_handle_hidden_ssid_restart(tp_wma_handle wma,
 				      0, NULL);
 }
 
+static void wma_set_phy_mode_n_bw(tp_wma_handle wma, uint8_t vdev_id,
+				  uint8_t *peer_addr, uint32_t phymode,
+				  uint32_t ch_width)
+{
+	wma_set_peer_param(wma, peer_addr, WMI_PEER_PHYMODE, phymode, vdev_id);
+	wma_set_peer_param(wma, peer_addr, WMI_PEER_CHWIDTH, ch_width, vdev_id);
+}
+
+static void wma_set_bw_n_phy_mode(tp_wma_handle wma, uint8_t vdev_id,
+				  uint8_t *peer_addr, uint32_t phymode,
+				  uint32_t ch_width)
+{
+	wma_set_peer_param(wma, peer_addr, WMI_PEER_CHWIDTH, ch_width, vdev_id);
+	wma_set_peer_param(wma, peer_addr, WMI_PEER_PHYMODE, phymode, vdev_id);
+}
+
 static void wma_peer_send_phymode(struct wlan_objmgr_vdev *vdev,
 				  void *object, void *arg)
 {
@@ -991,11 +1007,13 @@ static void wma_peer_send_phymode(struct wlan_objmgr_vdev *vdev,
 
 	max_ch_width_supported =
 		wmi_get_ch_width_from_phy_mode(wma->wmi_handle, fw_phymode);
-	wma_set_peer_param(wma, peer_mac_addr, WMI_PEER_CHWIDTH,
-			   max_ch_width_supported, vdev_id);
-
-	wma_set_peer_param(wma, peer_mac_addr, WMI_PEER_PHYMODE,
-			   fw_phymode, vdev_id);
+	/* For non 11ax capable targets send phymode followed by width */
+	if (!IS_FEATURE_SUPPORTED_BY_FW(DOT11AX))
+		wma_set_phy_mode_n_bw(wma, vdev_id, peer_mac_addr, fw_phymode,
+				      max_ch_width_supported);
+	else
+		wma_set_bw_n_phy_mode(wma, vdev_id, peer_mac_addr, fw_phymode,
+				      max_ch_width_supported);
 
 	wma_debug("FW phymode %d old phymode %d new phymode %d bw %d macaddr "QDF_MAC_ADDR_FMT,
 		  fw_phymode, old_peer_phymode, new_phymode,
@@ -3728,7 +3746,6 @@ void wma_remove_req(tp_wma_handle wma, uint8_t vdev_id,
  * @shortSlotTimeSupported: short slot time
  * @llbCoexist: llbCoexist
  * @maxTxPower: max tx power
- * @bss_max_idle_period: BSS max idle period
  *
  * Return: none
  */
@@ -3736,12 +3753,12 @@ static void
 wma_vdev_set_bss_params(tp_wma_handle wma, int vdev_id,
 			tSirMacBeaconInterval beaconInterval,
 			uint8_t dtimPeriod, uint8_t shortSlotTimeSupported,
-			uint8_t llbCoexist, int8_t maxTxPower,
-			uint16_t bss_max_idle_period)
+			uint8_t llbCoexist, int8_t maxTxPower)
 {
 	QDF_STATUS ret;
 	uint32_t slot_time;
 	struct wma_txrx_node *intr = wma->interfaces;
+	uint32_t keep_alive_period;
 
 	/* Beacon Interval setting */
 	ret = wma_vdev_set_param(wma->wmi_handle, vdev_id,
@@ -3794,14 +3811,10 @@ wma_vdev_set_bss_params(tp_wma_handle wma, int vdev_id,
 
 	/* Initialize protection mode in case of coexistence */
 	wma_update_protection_mode(wma, vdev_id, llbCoexist);
-
-	if (bss_max_idle_period)
-		wma_set_sta_keep_alive(
-				wma, vdev_id,
-				SIR_KEEP_ALIVE_NULL_PKT,
-				bss_max_idle_period,
-				NULL, NULL, NULL);
-
+	wlan_mlme_get_sta_keep_alive_period(wma->psoc,
+					    &keep_alive_period);
+	wma_set_sta_keep_alive(wma, vdev_id, SIR_KEEP_ALIVE_NULL_PKT,
+			       keep_alive_period, NULL, NULL, NULL);
 }
 
 static void wma_set_mgmt_frame_protection(tp_wma_handle wma)
@@ -3953,7 +3966,7 @@ QDF_STATUS wma_post_vdev_start_setup(uint8_t vdev_id)
 				mlme_obj->proto.generic.dtim_period,
 				mlme_obj->proto.generic.slot_time,
 				mlme_obj->proto.generic.protection_mode,
-				bss_power, 0);
+				bss_power);
 
 	wma_vdev_set_he_bss_params(wma, vdev_id,
 				   &mlme_obj->proto.he_ops_info);
@@ -4252,8 +4265,7 @@ QDF_STATUS wma_send_peer_assoc_req(struct bss_params *add_bss)
 				add_bss->dtimPeriod,
 				add_bss->shortSlotTimeSupported,
 				add_bss->llbCoexist,
-				add_bss->maxTxPower,
-				add_bss->bss_max_idle_period);
+				add_bss->maxTxPower);
 
 	mlme_obj = wlan_vdev_mlme_get_cmpt_obj(iface->vdev);
 	if (!mlme_obj) {
@@ -4816,8 +4828,7 @@ static void wma_add_sta_req_sta_mode(tp_wma_handle wma, tpAddStaParams params)
 	wma_vdev_set_bss_params(wma, params->smesessionId,
 				iface->beaconInterval, iface->dtimPeriod,
 				iface->shortSlotTimeSupported,
-				iface->llbCoexist, maxTxPower,
-				iface->bss_max_idle_period);
+				iface->llbCoexist, maxTxPower);
 
 	params->csaOffloadEnable = 0;
 	if (wmi_service_enabled(wma->wmi_handle,
