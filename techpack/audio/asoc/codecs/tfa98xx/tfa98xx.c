@@ -3380,12 +3380,13 @@ nxpTfaLiveData_t* tfaGetLiveDataItem(nxpTfaDescPtr_t *dsc, nxpTfaContainer_t *co
 int compare_strings(char *buffer, char *name, int buffersize)
 {
 	int i=0;
-	//char new_buf[50];
-	char *new_buf = kmalloc(buffersize+1, GFP_KERNEL);
+	char new_buf[50];
+
 	while(i < buffersize) {
 		new_buf[i] = (char)tolower(buffer[i]);
 		i++;
 	}
+	new_buf[i] = '\0';
 
 	if (strcmp(new_buf, name) == 0) {
 		kfree(new_buf);
@@ -3412,11 +3413,11 @@ Tfa98xx_Error_t tfa98xx_get_live_data(struct tfa98xx *tfa98xx,int dev_idx, int *
 	nxpTfaLiveDataList_t *lData = NULL;
 	nxpTfaLiveData_t *liveD = NULL;
 	nxpTfaBitfield_t bf;
-	struct nxpTfa98xx_Memtrack_data *mRecord = kmalloc(sizeof(struct nxpTfa98xx_Memtrack_data), GFP_KERNEL);
-	unsigned char *bytes = kmalloc(sizeof(unsigned char) * ((LSMODEL_MAX_WORDS * 3)+1),GFP_KERNEL);
-	int *data = kmalloc(sizeof(int) * 151,GFP_KERNEL); /* 150 + 1*/
+	struct nxpTfa98xx_Memtrack_data *mRecord = kzalloc(sizeof(struct nxpTfa98xx_Memtrack_data), GFP_KERNEL);
+	unsigned char *bytes = kzalloc(sizeof(unsigned char) * ((LSMODEL_MAX_WORDS * 3)+1),GFP_KERNEL);
+	int *data = kzalloc(sizeof(int) * 151,GFP_KERNEL); /* 150 + 1*/
 	//LiveDataList_t order[MEMTRACK_MAX_WORDS+1];
-	LiveDataList_t *order = kmalloc(sizeof(LiveDataList_t)*(MEMTRACK_MAX_WORDS+1) ,GFP_KERNEL);
+	LiveDataList_t *order = kzalloc(sizeof(LiveDataList_t)*(MEMTRACK_MAX_WORDS+1) ,GFP_KERNEL);
 	unsigned int i, j, stateSize, length=0;
 
 	// init
@@ -3570,8 +3571,8 @@ Tfa98xx_Error_t tfa98xx_set_live_data(struct tfa98xx *tfa98xx,int dev_idx)
 	Tfa98xx_Error_t err = Tfa98xx_Error_Ok;
 	nxpTfaLiveDataList_t *lData;
 	nxpTfaLiveData_t *liveD;
-	struct nxpTfa98xx_Memtrack_data *mRecord = kmalloc(sizeof(struct nxpTfa98xx_Memtrack_data), GFP_KERNEL);
-	char *buffer = kmalloc(sizeof(char) * ((MEMTRACK_MAX_WORDS * 3) + 6),GFP_KERNEL); //every word requires 3 bytes, and 6 is the msg + length
+	struct nxpTfa98xx_Memtrack_data *mRecord = kzalloc(sizeof(struct nxpTfa98xx_Memtrack_data), GFP_KERNEL);
+	char *buffer = kzalloc(sizeof(char) * ((MEMTRACK_MAX_WORDS * 3) + 6),GFP_KERNEL); //every word requires 3 bytes, and 6 is the msg + length
 	int size=0;
 	unsigned int j, k=0, skip_set_msg=0;
 	memset(mRecord, 0, sizeof(*mRecord));
@@ -3685,8 +3686,7 @@ int exTfa98xx_getf0_req( struct tfa98xx *tfa98xx)
 	int error_found = 0;
 	int nr_of_items = 0, length = 0, fResNo = 0;
 	int live_data[MEMTRACK_MAX_WORDS] = {0};
-	char *buffer = kmalloc((20 * MEMTRACK_MAX_WORDS) + 1, GFP_KERNEL); // Assuming each string name is 20 char (currently the biggest is 17, smallest is 3)
-	buffer[0] = '\0';	// Clear the buffer before the first use!
+	char *buffer = kzalloc((20 * MEMTRACK_MAX_WORDS) + 1, GFP_KERNEL); // Assuming each string name is 20 char (currently the biggest is 17, smallest is 3)
 
 	pr_err("Starting application.\n");
 
@@ -5304,7 +5304,7 @@ static ssize_t tfa98xx_ioctrl_rpc_read(struct file *file,
 	if (count == 0)
 		return 0;
 
-	buffer = kmalloc(count*2, GFP_KERNEL|__GFP_ZERO);
+	buffer = kzalloc(count*2, GFP_KERNEL|__GFP_ZERO);
 	if (buffer == NULL) {
 		pr_debug("[0x%x] can not allocate memory\n", tfa98xx_pri->i2c->addr);
 		return -ENOMEM;
@@ -5398,7 +5398,7 @@ static ssize_t tfa98xx_ioctrl_rpc_send(struct file *file,
 		return 0;
 
 	/* msg_file.name is not used */
-	msg_file = kmalloc(count + sizeof(TfaFileDsc_t), GFP_KERNEL|__GFP_ZERO);
+	msg_file = kzalloc(count + sizeof(TfaFileDsc_t), GFP_KERNEL|__GFP_ZERO);
 	if ( msg_file == NULL ) {
 		pr_debug("[0x%x] can not allocate memory\n", tfa98xx_pri->i2c->addr);
 		return	-ENOMEM;
