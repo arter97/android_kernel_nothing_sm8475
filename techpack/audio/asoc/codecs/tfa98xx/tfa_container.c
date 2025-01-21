@@ -440,7 +440,7 @@ static enum Tfa98xx_Error tfaContWriteVstepMax2_One(struct tfa_device *tfa, stru
 	 * that we are over the size of a usual update
 	 */
 	if (enable_partial_update) {
-		partial = kmem_cache_alloc(tfa->cachep, GFP_KERNEL);
+		partial = kmem_cache_zalloc(tfa->cachep, GFP_KERNEL);
 		if (!partial)
 			pr_debug("Partial update memory error - Disabling\n");
 	}
@@ -2371,7 +2371,7 @@ int tfa_tib_dsp_msgmulti(struct tfa_device *tfa, int length, const char *buffer)
 		if (tfa->verbose)
 			pr_debug("%s, Creating the multi-message \n\n", __FUNCTION__);
 
-		blob = kmalloc(tfadsp_max_msg_size, GFP_KERNEL);
+		blob = kzalloc(tfadsp_max_msg_size, GFP_KERNEL);
 		/* add command ID for multi-msg = 0x008015 */
 		if (tfa->convert_dsp32) {
 			blob[0] = 0x15;
