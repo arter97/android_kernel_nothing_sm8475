@@ -101,7 +101,7 @@ static ssize_t aud_dev_sysfs_store(struct kobject *kobj,
 
 	sscanf(buf, "%d %d", &pcm_id, &state);
 
-	if ((pcm_id > pdata->num_aud_devs) || (pcm_id < 0)) {
+	if ((pcm_id >= pdata->num_aud_devs) || (pcm_id < 0)) {
 		pr_err("%s: invalid pcm id %d \n", __func__, pcm_id);
 		goto done;
 	}
@@ -113,8 +113,6 @@ static ssize_t aud_dev_sysfs_store(struct kobject *kobj,
 	pr_debug("%s: pcm_id %d state %d \n", __func__, pcm_id, state);
 
 	pdata->aud_dev_state[pcm_id] = state;
-	if ( state == DEVICE_ENABLE && (pdata->dsp_sessions_closed != 0))
-		pdata->dsp_sessions_closed = 0;
 
 	ret = count;
 done:
@@ -220,27 +218,6 @@ fail_create_file:
 	kobject_put(&snd_card_pdata->snd_card_kobj);
 done:
 	return ret;
-}
-
-static void check_userspace_service_state(struct snd_soc_pcm_runtime *rtd,
-						struct msm_common_pdata *pdata)
-{
-	dev_info(rtd->card->dev,"%s: pcm_id %d state %d\n", __func__,
-				rtd->num, pdata->aud_dev_state[rtd->num]);
-
-	if (pdata->aud_dev_state[rtd->num] == DEVICE_ENABLE) {
-		dev_info(rtd->card->dev, "%s userspace service crashed\n",
-					__func__);
-		if (pdata->dsp_sessions_closed == 0) {
-			/*Issue close all graph cmd to DSP*/
-			spf_core_apm_close_all();
-			/*unmap all dma mapped buffers*/
-			msm_audio_ion_crash_handler();
-			pdata->dsp_sessions_closed = 1;
-		}
-		/*Reset the state as sysfs node wont be triggred*/
-		pdata->aud_dev_state[rtd->num] = 0;
-	}
 }
 
 static int get_mi2s_tdm_auxpcm_intf_index(const char *stream_name)
@@ -547,8 +524,6 @@ void msm_common_snd_shutdown(struct snd_pcm_substream *substream)
 		return;
 	}
 
-	check_userspace_service_state(rtd, pdata);
-
 	if (index >= 0) {
 		mutex_lock(&pdata->lock[index]);
 		atomic_dec(&pdata->lpass_intf_clk_ref_cnt[index]);
@@ -764,6 +739,7 @@ int msm_common_snd_init(struct platform_device *pdev, struct snd_soc_card *card)
 						sizeof(uint8_t), GFP_KERNEL);
 	dev_info(&pdev->dev, "num_links %d \n", card->num_links);
 	common_pdata->num_aud_devs = card->num_links;
+	mutex_init(&common_pdata->aud_dev_lock);
 
 	aud_dev_sysfs_init(common_pdata);
 
@@ -784,6 +760,7 @@ void msm_common_snd_deinit(struct msm_common_pdata *common_pdata)
 
 	msm_audio_remove_qos_request();
 
+	mutex_destroy(&common_pdata->aud_dev_lock);
 	for (count = 0; count < MI2S_TDM_AUXPCM_MAX; count++) {
 		mutex_destroy(&common_pdata->lock[count]);
 	}
@@ -1095,8 +1072,8 @@ int msm_common_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 			pdata->id = SLIM;
 		} else {
 			pdata->id = CODEC_DMA;
-			if (rtd->num_codecs <= MAX_CODEC_DAI) {
-				pdata->num_codec_dai = rtd->num_codecs;
+			if (rtd->dai_link->num_codecs <= MAX_CODEC_DAI) {
+				pdata->num_codec_dai = rtd->dai_link->num_codecs;
 				for_each_rtd_codec_dais(rtd, index, codec_dai) {
 					pdata->dai[index] = codec_dai;
 				}

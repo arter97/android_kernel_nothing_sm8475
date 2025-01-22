@@ -42,6 +42,7 @@ void tfanone_ops(struct tfa_device_ops *ops);
 void tfa9872_ops(struct tfa_device_ops *ops);
 void tfa9873_ops(struct tfa_device_ops *ops);
 void tfa9874_ops(struct tfa_device_ops *ops);
+void tfa9875_ops(struct tfa_device_ops *ops);
 void tfa9878_ops(struct tfa_device_ops *ops);
 void tfa9912_ops(struct tfa_device_ops *ops);
 void tfa9888_ops(struct tfa_device_ops *ops);
@@ -248,7 +249,8 @@ void tfa_set_query_info(struct tfa_device *tfa)
 	tfa->partial_enable = 0;
 	tfa->convert_dsp32 = 0;
 	tfa->sync_iv_delay = 0;
-    tfa->dynamicTDMmode = -1; /**tracking dynamic TDM setting from alsa input stream*/
+	tfa->dynamicTDMmode = -1; /**tracking dynamic TDM setting from alsa input stream*/
+	tfa->rate = 0;
 	tfa->bitwidth = -1;/**bitwdith from alsa input stream*/
 
 	/* TODO use the getfeatures() for retrieving the features [artf103523]
@@ -293,6 +295,16 @@ void tfa_set_query_info(struct tfa_device *tfa)
 		tfa->is_probus_device = 1;
 		tfa->daimap = Tfa98xx_DAI_TDM;
 		tfa9874_ops(&tfa->dev_ops); /* register device operations */
+		break;
+	case 0x75:
+		/* tfa9875 */
+		tfa->supportDrc = supportYes;
+		tfa->tfa_family = 2;
+		tfa->spkr_count = 1;
+		tfa->is_probus_device = 1;
+		tfa->advance_keys_handling = 1; /*artf65038*/
+		tfa->daimap = Tfa98xx_DAI_TDM;
+		tfa9875_ops(&tfa->dev_ops); /* register device operations */
 		break;
 	case 0x78:
 		/* tfa9878 */
@@ -393,6 +405,7 @@ int tfa98xx_dev2family(int dev_type)
 	case 0x73:
 	case 0x13:
 	case 0x74:
+	case 0x75:
     case 0x78:
     case 0x94:
 		return 2;
@@ -462,6 +475,7 @@ enum Tfa98xx_DMEM tfa98xx_filter_mem(struct tfa_device *tfa, int filter_index, u
 		case 0x72:
 		case 0x73:
 		case 0x74:
+		case 0x75:
         case 0x78:
         case 0x13:
 		default:
@@ -2654,6 +2668,8 @@ enum Tfa98xx_Error tfa_show_current_state(struct tfa_device *tfa)
 	if (tfa->tfa_family == 2 && tfa->verbose) {
 		if (tfa_is_94_N2_device(tfa))
 			manstate = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+		else if ((tfa->rev & 0xff) == 0x75)
+			manstate = tfa_get_bf(tfa, TFA9875_BF_MANSTATE);
 		else
 			manstate = TFA_GET_BF(tfa, MANSTATE);
 		if (manstate < 0)
@@ -2761,7 +2777,7 @@ enum Tfa98xx_Error tfaGetFwApiVersion(struct tfa_device *tfa, unsigned char *pFi
 		   Firmware cannot return the 4th field (mono/stereo) of ITF version correctly, as it requires 
 		   certain set of messages to be sent before it can detect itself as a mono/stereo configuration.
 		   Hence, HostSDK need to handle this at system level */
-		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 31)) {
+		if ((pFirmwareVersion[0] == 8) && (pFirmwareVersion[1] >= 31)) {
 			pFirmwareVersion[3] = 1;
 		}
 	}
@@ -3003,7 +3019,13 @@ enum Tfa98xx_Error tfaRunStartup(struct tfa_device *tfa, int profile)
 
 	/* Factory trimming for the Boost converter */
 	tfa98xx_factory_trimmer(tfa);
-
+#ifdef __KERNEL__
+#if 0
+	/* Control for PWM phase shift */
+	if (tfa->bitwidth == 24 && tfa->rate == 16)/*TFA9875-240*/
+		tfa98xx_set_phase_shift(tfa);
+#endif
+#endif
 	/* Go to the initCF state */
 	tfa_dev_set_state(tfa, TFA_STATE_INIT_CF, strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, profile), ".cal") != NULL);
 
@@ -3237,11 +3259,15 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 		if (err != Tfa98xx_Error_Ok)
 			goto error_exit;
 
-		/* Make sure internal oscillator is running for DSP devices (non-dsp and max1 this is no-op) */
-		tfa98xx_set_osc_powerdown(tfa, 0);
+		if (strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, next_profile), ".standby") != NULL) {
+			pr_info("Skip powering on device, in standby profile!\n");
+		} else {
+			/* Make sure internal oscillator is running for DSP devices (non-dsp and max1 this is no-op) */
+			tfa98xx_set_osc_powerdown(tfa, 0);
 
-		/* Go to the Operating state */
-		tfa_dev_set_state(tfa, TFA_STATE_OPERATING, 0);
+			/* Go to the Operating state */
+			tfa_dev_set_state(tfa, TFA_STATE_OPERATING, 0);
+		}
 	}
 	active_profile = tfa_dev_get_swprof(tfa);
 
@@ -3258,7 +3284,9 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 	if (strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, next_profile), ".standby") != NULL) {
 		tfa_dev_set_swprof(tfa, (unsigned short)next_profile);
 		tfa_dev_set_swvstep(tfa, (unsigned short)vstep);
-		tfa_dev_stop(tfa);
+
+		pr_info("Power down device, by force, in standby profile!\n");
+		err = tfa_dev_stop(tfa);
 		goto error_exit;
 	}
 
@@ -3426,6 +3454,8 @@ int tfa_reset(struct tfa_device *tfa)
 			for (retry_cnt = 0; retry_cnt < TFA98XX_WAITRESULT_NTRIES; retry_cnt++) {
 				if (tfa_is_94_N2_device(tfa))
 					state = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+				else if ((tfa->rev & 0xff) == 0x75)
+					state = tfa_get_bf(tfa, TFA9875_BF_MANSTATE);
 				else
 					state = TFA_GET_BF(tfa, MANSTATE);
 				if (state < 0) {
@@ -3983,6 +4013,8 @@ enum tfa_state tfa_dev_get_state(struct tfa_device *tfa)
 	else /* family 2 */ {
 		if (tfa_is_94_N2_device(tfa))
 			manstate = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+		else if ((tfa->rev & 0xff) == 0x75)
+			manstate = tfa_get_bf(tfa, TFA9875_BF_MANSTATE);
 		else
 			manstate = TFA_GET_BF(tfa, MANSTATE);
 		switch (manstate) {
@@ -4115,6 +4147,8 @@ enum Tfa98xx_Error tfa_status(struct tfa_device *tfa)
 	int value;
 	uint16_t val;
 
+	if (tfa->dev_ops.tfa_status != NULL)
+		return(tfa->dev_ops.tfa_status(tfa));
 	/*
 	 * check IC status bits: cold start
 	 * and DSP watch dog bit to re init
