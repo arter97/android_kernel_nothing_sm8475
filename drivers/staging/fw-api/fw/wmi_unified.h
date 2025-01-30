@@ -37432,7 +37432,33 @@ typedef struct {
      * the bits within the bitmap
      */
     A_UINT32 twt_capability_bitmap;
+
+    /* min_max_wake_dur_us
+     * min wake dur - refer to min TWT SP duration
+     * max wake dur - refer to max TWT SP duration
+     */
+    A_UINT32 min_max_wake_dur_us;
+
+    /* min_max_wake_intvl_us
+     * min wake intvl - refer to min TWT SI interval
+     * max wake intvl - refer to max TWT SI interval
+     */
+    A_UINT32 min_max_wake_intvl_us;
 } wmi_twt_caps_params;
+
+/* 0 - 15 bits for MAX WAKE DUR , 16 - 31 bits for MIN WAKE DUR */
+#define TWT_CAPS_SET_MAX_WAKE_DUR(var, val)   WMI_SET_BITS(var, 0, 16, val)
+#define TWT_CAPS_SET_MIN_WAKE_DUR(var, val)   WMI_SET_BITS(var, 16, 16, val)
+
+#define TWT_CAPS_GET_MAX_WAKE_DUR(var, val)   WMI_GET_BITS(var, 0, 16)
+#define TWT_CAPS_GET_MIN_WAKE_DUR(var, val)   WMI_GET_BITS(var, 16, 16)
+
+/* 0 - 15 bits for MAX WAKE INTVL , 16 - 31 bits for MIN WAKE INTVL */
+#define TWT_CAPS_SET_MAX_WAKE_INTVL(var, val) WMI_SET_BITS(var, 0, 16, val)
+#define TWT_CAPS_SET_MIN_WAKE_INTVL(var, val) WMI_SET_BITS(var, 16, 16, val)
+
+#define TWT_CAPS_GET_MAX_WAKE_INTVL(var, val) WMI_GET_BITS(var, 0, 16)
+#define TWT_CAPS_GET_MIN_WAKE_INTVL(var, val) WMI_GET_BITS(var, 16, 16)
 
 /*
  * This TLV used for Scan Radio RDP

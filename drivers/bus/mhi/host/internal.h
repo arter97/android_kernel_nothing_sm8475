@@ -481,7 +481,7 @@ struct db_cfg {
 	enum mhi_db_brst_mode brstmode;
 	dma_addr_t db_val;
 	void (*process_db)(struct mhi_controller *mhi_cntrl,
-			   struct db_cfg *db_cfg, void __iomem *io_addr,
+			   struct db_cfg *db_cfg, u8 __iomem *io_addr,
 			   dma_addr_t db_val);
 };
 
@@ -500,14 +500,14 @@ struct mhi_ring {
 	dma_addr_t iommu_base;
 	u64 *ctxt_wp; /* point to ctxt wp */
 	void *pre_aligned;
-	void *base;
-	void *rp;
-	void *wp;
+	u8 *base;
+	u8 *rp;
+	u8 *wp;
 	size_t el_size;
 	size_t len;
 	size_t elements;
 	size_t alloc_size;
-	void __iomem *db_addr;
+	u8 __iomem *db_addr;
 };
 
 struct mhi_cmd {
@@ -656,24 +656,24 @@ static inline bool is_valid_ring_ptr(struct mhi_ring *ring, dma_addr_t addr)
 
 /* Register access methods */
 void mhi_db_brstmode(struct mhi_controller *mhi_cntrl, struct db_cfg *db_cfg,
-		     void __iomem *db_addr, dma_addr_t db_val);
+		     u8 __iomem *db_addr, dma_addr_t db_val);
 void mhi_db_brstmode_disable(struct mhi_controller *mhi_cntrl,
-			     struct db_cfg *db_mode, void __iomem *db_addr,
+			     struct db_cfg *db_mode, u8 __iomem *db_addr,
 			     dma_addr_t db_val);
 int __must_check mhi_read_reg(struct mhi_controller *mhi_cntrl,
-			      void __iomem *base, u32 offset, u32 *out);
+			      u8 __iomem *base, u32 offset, u32 *out);
 int __must_check mhi_read_reg_field(struct mhi_controller *mhi_cntrl,
-				    void __iomem *base, u32 offset, u32 mask,
+				    u8 __iomem *base, u32 offset, u32 mask,
 				    u32 shift, u32 *out);
 int __must_check mhi_poll_reg_field(struct mhi_controller *mhi_cntrl,
-				    void __iomem *base, u32 offset, u32 mask,
+				    u8 __iomem *base, u32 offset, u32 mask,
 				    u32 shift, u32 val, u32 delayus);
-void mhi_write_reg(struct mhi_controller *mhi_cntrl, void __iomem *base,
+void mhi_write_reg(struct mhi_controller *mhi_cntrl, u8 __iomem *base,
 		   u32 offset, u32 val);
-void mhi_write_reg_field(struct mhi_controller *mhi_cntrl, void __iomem *base,
+void mhi_write_reg_field(struct mhi_controller *mhi_cntrl, u8 __iomem *base,
 			 u32 offset, u32 mask, u32 shift, u32 val);
 void mhi_ring_er_db(struct mhi_event *mhi_event);
-void mhi_write_db(struct mhi_controller *mhi_cntrl, void __iomem *db_addr,
+void mhi_write_db(struct mhi_controller *mhi_cntrl, u8 __iomem *db_addr,
 		  dma_addr_t db_val);
 void mhi_ring_cmd_db(struct mhi_controller *mhi_cntrl, struct mhi_cmd *mhi_cmd);
 void mhi_ring_chan_db(struct mhi_controller *mhi_cntrl,

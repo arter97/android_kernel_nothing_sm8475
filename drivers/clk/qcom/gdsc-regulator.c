@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -22,6 +22,8 @@
 #include <linux/reset.h>
 #include <linux/mfd/syscon.h>
 #include <linux/interconnect.h>
+#include <linux/pm.h>
+#include <linux/suspend.h>
 
 #include "../../regulator/internal.h"
 #include "gdsc-debug.h"
@@ -88,6 +90,7 @@ struct gdsc {
 	bool			is_gdsc_hw_ctrl_mode;
 	bool			is_root_clk_voted;
 	bool			reset_aon;
+	bool			pm_ops;
 	int			clock_count;
 	int			reset_count;
 	int			root_clk_idx;
@@ -95,6 +98,7 @@ struct gdsc {
 	int			collapse_count;
 	int			clk_ctrl_count;
 	int			path_count;
+	u32			clk_dis_wait_val;
 	u32			gds_timeout;
 	bool			skip_disable_before_enable;
 	bool			cfg_gdscr;
@@ -860,6 +864,7 @@ static int gdsc_parse_dt_data(struct gdsc *sc, struct device *dev,
 				REGULATOR_CHANGE_MODE;
 		(*init_data)->constraints.valid_modes_mask |=
 				REGULATOR_MODE_NORMAL | REGULATOR_MODE_FAST;
+		sc->pm_ops = true;
 	}
 
 	return 0;
@@ -967,6 +972,56 @@ static int gdsc_get_resources(struct gdsc *sc, struct platform_device *pdev)
 	return 0;
 }
 
+static int restore_hw_trig_clk_dis(struct device *dev)
+{
+	struct gdsc *sc = dev_get_drvdata(dev);
+	uint32_t regval;
+	int ret;
+
+	if (sc->rdev->supply) {
+		ret = regulator_enable(sc->rdev->supply);
+		if (ret) {
+			dev_err(&sc->rdev->dev, "reg enable failed\n");
+			return ret;
+		}
+	}
+
+	regmap_read(sc->regmap, REG_OFFSET, &regval);
+	if (sc->is_gdsc_hw_ctrl_mode)
+		regval |= HW_CONTROL_MASK;
+
+	if (sc->clk_dis_wait_val) {
+		regval &= ~(CLK_DIS_WAIT_MASK);
+		regval |= sc->clk_dis_wait_val;
+	}
+
+	ret = regmap_write(sc->regmap, REG_OFFSET, regval);
+
+	if (sc->rdev->supply)
+		regulator_disable(sc->rdev->supply);
+
+	return ret;
+}
+
+static int gdsc_pm_resume_early(struct device *dev)
+{
+#ifdef CONFIG_DEEPSLEEP
+	if (pm_suspend_via_firmware())
+		return restore_hw_trig_clk_dis(dev);
+#endif
+	return 0;
+}
+
+static int gdsc_pm_restore_early(struct device *dev)
+{
+	return restore_hw_trig_clk_dis(dev);
+}
+
+static const struct dev_pm_ops gdsc_pm_ops = {
+	.resume_early = gdsc_pm_resume_early,
+	.restore_early = gdsc_pm_restore_early,
+};
+
 static int gdsc_probe(struct platform_device *pdev)
 {
 	static atomic_t gdsc_count = ATOMIC_INIT(-1);
@@ -999,10 +1054,12 @@ static int gdsc_probe(struct platform_device *pdev)
 	if (!of_property_read_u32(pdev->dev.of_node, "qcom,clk-dis-wait-val",
 				  &clk_dis_wait_val)) {
 		clk_dis_wait_val = clk_dis_wait_val << CLK_DIS_WAIT_SHIFT;
+		sc->clk_dis_wait_val = clk_dis_wait_val;
 
 		/* Configure wait time between states. */
 		regval &= ~(CLK_DIS_WAIT_MASK);
 		regval |= clk_dis_wait_val;
+		sc->pm_ops = true;
 	}
 
 	regmap_write(sc->regmap, REG_OFFSET, regval);
@@ -1032,6 +1089,9 @@ static int gdsc_probe(struct platform_device *pdev)
 			sc->rdesc.name, ret);
 		return ret;
 	}
+
+	if (sc->pm_ops)
+		pdev->dev.driver->pm = &gdsc_pm_ops;
 
 	sc->rdesc.id = atomic_inc_return(&gdsc_count);
 	sc->rdesc.ops = &gdsc_ops;

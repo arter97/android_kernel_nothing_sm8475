@@ -516,7 +516,7 @@ static int mhi_init_pci_dev(struct pci_dev *pci_dev,
 
 	base = pci_resource_start(pci_dev, dev_info->bar_num);
 	mhi_cntrl->reg_len = pci_resource_len(pci_dev, dev_info->bar_num);
-	mhi_cntrl->regs = ioremap(base, mhi_cntrl->reg_len);
+	mhi_cntrl->regs = (u8 __iomem *)ioremap(base, mhi_cntrl->reg_len);
 	if (!mhi_cntrl->regs) {
 		MHI_CNTRL_ERR("Error ioremap region\n");
 		goto error_ioremap;
