@@ -3620,4 +3620,45 @@ wlan_mlme_get_peer_ch_width(struct wlan_objmgr_psoc *psoc, uint8_t *mac);
  */
 bool
 wlan_mlme_is_vendor_roam_score_algo_set(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * wlan_mlme_set_keepalive_period() - Save keep alive period
+ * @vdev: VDEV object
+ * @keep_alive_period: Keep alive period
+ *
+ * Return: None
+ */
+void wlan_mlme_set_keepalive_period(struct wlan_objmgr_vdev *vdev,
+				    uint16_t keep_alive_period);
+
+/**
+ * wlan_mlme_get_keepalive_period() - Get keep alive period
+ * @vdev: VDEV object
+ *
+ * Return: Keep alive period.
+ */
+uint16_t wlan_mlme_get_keepalive_period(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * wlan_mlme_reset_sta_keepalive_period() - Reset keep alive period to default
+ * cfg whether it is set by userspace or via assoc rsp
+ * @psoc: pointer to psoc object
+ * @vdev: VDEV object
+ *
+ * Return: None
+ */
+void wlan_mlme_reset_sta_keepalive_period(struct wlan_objmgr_psoc *psoc,
+					  struct wlan_objmgr_vdev *vdev);
+
+/**
+ * wlan_mlme_get_sta_keep_alive_period() - get keep alive period
+ * @psoc: pointer to psoc object
+ * @keep_alive_period: keep alive period
+ *
+ * Return: QDF STATUS
+ */
+QDF_STATUS
+wlan_mlme_get_sta_keep_alive_period(struct wlan_objmgr_psoc *psoc,
+				    uint32_t *keep_alive_period);
+
 #endif /* _WLAN_MLME_API_H_ */
