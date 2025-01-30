@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2015-2016, 2018-2020, The Linux Foundation.
  * All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -1069,6 +1069,72 @@ static int clk_alpha_pll_init(struct clk_hw *hw)
 	return 0;
 }
 
+static int get_pll_type(struct clk_alpha_pll *pll,
+				const u8 clk_alpha_pll_regs[][PLL_OFF_MAX_REGS])
+{
+	if (pll->regs)
+		return (pll->regs - clk_alpha_pll_regs[0]) / (PLL_OFF_MAX_REGS);
+
+	pr_debug("pll->regs not defined\n");
+	return -EINVAL;
+}
+
+static void clk_pll_restore_context(struct clk_hw *hw)
+{
+	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
+	int type = get_pll_type(pll, clk_alpha_pll_regs);
+
+	if (!pll->config)
+		return;
+
+	switch (type) {
+	case CLK_ALPHA_PLL_TYPE_DEFAULT:
+	case CLK_ALPHA_PLL_TYPE_HUAYRA:
+		clk_alpha_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
+	case CLK_ALPHA_PLL_TYPE_FABIA:
+		clk_fabia_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
+	case CLK_ALPHA_PLL_TYPE_TRION:
+		clk_trion_pll_configure(pll, pll->clkr.regmap,
+					 pll->config);
+		break;
+	case CLK_ALPHA_PLL_TYPE_ZONDA:
+		clk_zonda_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
+	case CLK_ALPHA_PLL_TYPE_ZONDA_5LPE:
+		clk_zonda_5lpe_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
+	case CLK_ALPHA_PLL_TYPE_REGERA:
+		clk_regera_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
+	case CLK_ALPHA_PLL_TYPE_AGERA:
+		clk_agera_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
+	case CLK_ALPHA_PLL_TYPE_LUCID_EVO:
+	case CLK_ALPHA_PLL_TYPE_LUCID_OLE:
+		clk_lucid_evo_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
+	case CLK_ALPHA_PLL_TYPE_RIVIAN_EVO:
+		clk_rivian_evo_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
+	case CLK_ALPHA_PLL_TYPE_LUCID_5LPE:
+		clk_lucid_5lpe_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
+	default:
+		pr_err("Invalid pll type!\n");
+	}
+}
+
 static void clk_alpha_pll_huayra_list_registers(struct seq_file *f,
 							struct clk_hw *hw)
 {
@@ -1138,6 +1204,7 @@ const struct clk_ops clk_alpha_pll_ops = {
 	.set_rate = clk_alpha_pll_set_rate,
 	.init = clk_alpha_pll_init,
 	.debug_init = clk_common_debug_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL_GPL(clk_alpha_pll_ops);
 
@@ -1154,6 +1221,7 @@ const struct clk_ops clk_alpha_pll_huayra_ops = {
 	.set_rate = alpha_pll_huayra_set_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_alpha_pll_huayra_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL_GPL(clk_alpha_pll_huayra_ops);
 
@@ -1169,6 +1237,7 @@ const struct clk_ops clk_alpha_pll_hwfsm_ops = {
 	.round_rate = clk_alpha_pll_round_rate,
 	.set_rate = clk_alpha_pll_hwfsm_set_rate,
 	.debug_init = clk_common_debug_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL_GPL(clk_alpha_pll_hwfsm_ops);
 
@@ -1242,6 +1311,7 @@ const struct clk_ops clk_alpha_pll_fixed_trion_ops = {
 	.round_rate = clk_alpha_pll_round_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_trion_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL_GPL(clk_alpha_pll_fixed_trion_ops);
 
@@ -1662,6 +1732,7 @@ const struct clk_ops clk_alpha_pll_fabia_ops = {
 	.round_rate = clk_alpha_pll_round_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_fabia_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL_GPL(clk_alpha_pll_fabia_ops);
 
@@ -1677,6 +1748,7 @@ const struct clk_ops clk_alpha_pll_fixed_fabia_ops = {
 	.round_rate = clk_alpha_pll_round_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_fabia_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL_GPL(clk_alpha_pll_fixed_fabia_ops);
 
@@ -2046,6 +2118,7 @@ const struct clk_ops clk_alpha_pll_trion_ops = {
 	.set_rate = alpha_pll_trion_set_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_trion_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL_GPL(clk_alpha_pll_trion_ops);
 
@@ -2125,6 +2198,7 @@ const struct clk_ops clk_alpha_pll_lucid_ops = {
 	.set_rate = alpha_pll_trion_set_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_lucid_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL_GPL(clk_alpha_pll_lucid_ops);
 
@@ -2467,6 +2541,7 @@ const struct clk_ops clk_alpha_pll_zonda_ops = {
 	.set_rate = clk_zonda_pll_set_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_alpha_pll_zonda_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL(clk_alpha_pll_zonda_ops);
 
@@ -2603,6 +2678,7 @@ const struct clk_ops clk_alpha_pll_zonda_5lpe_ops = {
 	.set_rate = clk_zonda_pll_set_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_alpha_pll_zonda_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL(clk_alpha_pll_zonda_5lpe_ops);
 
@@ -2939,6 +3015,7 @@ const struct clk_ops clk_alpha_pll_lucid_5lpe_ops = {
 	.set_rate = alpha_pll_lucid_5lpe_set_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_lucid_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL(clk_alpha_pll_lucid_5lpe_ops);
 
@@ -2954,6 +3031,7 @@ const struct clk_ops clk_alpha_pll_fixed_lucid_5lpe_ops = {
 	.round_rate = clk_alpha_pll_round_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_lucid_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL(clk_alpha_pll_fixed_lucid_5lpe_ops);
 
@@ -3388,6 +3466,7 @@ const struct clk_ops clk_alpha_pll_fixed_lucid_evo_ops = {
 	.round_rate = clk_alpha_pll_round_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_lucid_evo_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL(clk_alpha_pll_fixed_lucid_evo_ops);
 
@@ -3411,6 +3490,7 @@ const struct clk_ops clk_alpha_pll_lucid_evo_ops = {
 	.set_rate = alpha_pll_lucid_evo_set_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_lucid_evo_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL(clk_alpha_pll_lucid_evo_ops);
 
@@ -3548,6 +3628,7 @@ const struct clk_ops clk_alpha_pll_rivian_evo_ops = {
 	.round_rate = clk_rivian_evo_pll_round_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_rivian_evo_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL(clk_alpha_pll_rivian_evo_ops);
 
@@ -3867,6 +3948,7 @@ const struct clk_ops clk_regera_pll_ops = {
 	.set_rate = clk_regera_pll_set_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_regera_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL_GPL(clk_regera_pll_ops);
 
@@ -4022,5 +4104,6 @@ const struct clk_ops clk_agera_pll_ops = {
 	.set_rate = alpha_pll_agera_set_rate,
 	.debug_init = clk_common_debug_init,
 	.init = clk_agera_pll_init,
+	.restore_context = clk_pll_restore_context,
 };
 EXPORT_SYMBOL(clk_agera_pll_ops);

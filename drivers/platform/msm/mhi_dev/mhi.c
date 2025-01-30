@@ -2570,18 +2570,19 @@ static void mhi_dev_transfer_completion_cb(void *mreq)
 	/* Trigger client call back */
 	req->client_cb(req);
 
-	mutex_lock(&ch->ch_lock);
 	/* Flush read completions to host */
 	if (snd_cmpl && mhi_ctx->ch_ctx_cache[ch->ch_id].ch_type ==
 				MHI_DEV_CH_TYPE_OUTBOUND_CHANNEL) {
 		mhi_log(MHI_MSG_DBG, "Calling flush for ch %d\n", ch->ch_id);
+		mutex_lock(&ch->ch_lock);
 		rc = mhi_dev_flush_transfer_completion_events(mhi_ctx, ch, snd_cmpl);
+		mutex_unlock(&ch->ch_lock);
 		if (rc) {
 			mhi_log(MHI_MSG_ERROR,
 				"Failed to flush read completions to host\n");
 		}
 	}
-	mutex_unlock(&ch->ch_lock);
+
 	if (ch->state == MHI_DEV_CH_PENDING_STOP) {
 		ch->state = MHI_DEV_CH_STOPPED;
 		rc = mhi_dev_process_stop_cmd(ch->ring, ch->ch_id, mhi_ctx);

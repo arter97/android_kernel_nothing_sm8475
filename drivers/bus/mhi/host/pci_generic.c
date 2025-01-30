@@ -187,7 +187,7 @@ static int mhi_pci_claim(struct mhi_controller *mhi_cntrl,
 		dev_err(&pdev->dev, "failed to map pci region: %d\n", err);
 		return err;
 	}
-	mhi_cntrl->regs = pcim_iomap_table(pdev)[bar_num];
+	mhi_cntrl->regs = (u8 __iomem *)pcim_iomap_table(pdev)[bar_num];
 
 	err = pci_set_dma_mask(pdev, dma_mask);
 	if (err) {
