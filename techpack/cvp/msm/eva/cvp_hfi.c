@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <asm/memory.h>
@@ -706,7 +707,7 @@ static int __read_queue(struct cvp_iface_q_info *qinfo, u8 *packet,
 	u32 *read_ptr;
 	u32 receive_request = 0;
 	u32 read_idx, write_idx;
-		int rc = 0;
+	int rc = 0;
 
 	if (!qinfo || !packet || !pb_tx_req_is_set) {
 		dprintk(CVP_ERR, "Invalid Params\n");
@@ -796,6 +797,12 @@ static int __read_queue(struct cvp_iface_q_info *qinfo, u8 *packet,
 					(u8 *)qinfo->q_array.align_virtual_addr,
 					new_read_idx << 2);
 		}
+		/*
+		 * Copy back the validated size to avoid security issue. As we are reading
+		 * the packet from a shared queue, there is a possibility to get the
+		 * packet->size data corrupted of shared queue by mallicious FW.
+		 */
+		*((u32 *) packet) = packet_size_in_words << 2;
 	} else {
 		dprintk(CVP_WARN,
 			"BAD packet received, read_idx: %#x, pkt_size: %d\n",
@@ -2739,17 +2746,19 @@ skip_power_off:
 static void __process_sys_error(struct iris_hfi_device *device)
 {
 	struct cvp_hfi_sfr_struct *vsfr = NULL;
+	u32 sfr_buf_size = 0;
 
 	vsfr = (struct cvp_hfi_sfr_struct *)device->sfr.align_virtual_addr;
-	if (vsfr) {
-		void *p = memchr(vsfr->rg_data, '\0', vsfr->bufSize);
+	sfr_buf_size = vsfr->bufSize;
+	if (vsfr && sfr_buf_size < ALIGNED_SFR_SIZE) {
+		void *p = memchr(vsfr->rg_data, '\0', sfr_buf_size);
 		/*
 		 * SFR isn't guaranteed to be NULL terminated
 		 * since SYS_ERROR indicates that Iris is in the
 		 * process of crashing.
 		 */
 		if (p == NULL)
-			vsfr->rg_data[vsfr->bufSize - 1] = '\0';
+			vsfr->rg_data[sfr_buf_size - 1] = '\0';
 
 		dprintk(CVP_ERR, "SFR Message from FW: %s\n",
 				vsfr->rg_data);
