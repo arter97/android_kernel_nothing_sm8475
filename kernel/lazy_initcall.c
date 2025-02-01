@@ -399,6 +399,12 @@ static int may_init_module(void)
 	return 0;
 }
 
+SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
+               unsigned int, flags)
+{
+	return 0;
+}
+
 SYSCALL_DEFINE3(init_module, void __user *, umod,
 		unsigned long, len, const char __user *, uargs)
 {
