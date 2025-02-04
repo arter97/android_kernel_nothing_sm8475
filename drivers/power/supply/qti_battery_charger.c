@@ -1590,7 +1590,7 @@ static ssize_t nt_otg_enable_write(struct file *file, const char __user *buff,
                size_t count, loff_t *ppos)
 {
 	struct battery_chg_dev *bcdev = PDE_DATA(file_inode(file));
-	u8 *buf_tmp = NULL;
+	u8 buf[16] = {};
 	int buflen = count;
 	u32 val;
 	if(bcdev == NULL)
@@ -1598,23 +1598,17 @@ static ssize_t nt_otg_enable_write(struct file *file, const char __user *buff,
 		pr_err("bcdev is NULL\n");
 		return -EINVAL;
 	}
-	if (buflen < 0) {
+	if (buflen < 0 || buflen + 1 > sizeof(buf)) {
 		pr_err("proc count fail:%d\n", buflen);
 		return -EINVAL;
-	} else {
-		buf_tmp = (u8 *)kzalloc(buflen * sizeof(u8), GFP_KERNEL);
-		if (buf_tmp == NULL) {
-			pr_err("proc write buf zalloc fail\n");
-			return -ENOMEM;
-		}
 	}
 
-	if (copy_from_user(buf_tmp, buff, buflen)) {
+	if (copy_from_user(buf, buff, buflen)) {
 		pr_err("proc nt_otg_enable fail\n");
 		goto exit;
 	}
 
-	if (kstrtou32(buf_tmp, 0, &val))
+	if (kstrtou32(buf, 0, &val))
 	{
 		pr_err("kstrtou32 fail\n");
 		goto exit;
@@ -1623,8 +1617,6 @@ static ssize_t nt_otg_enable_write(struct file *file, const char __user *buff,
 	write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_USB],
 				NT_OTG_ENABLE, val);
 exit:
-	kfree(buf_tmp);
-	buf_tmp = NULL;
 	return buflen;
 }
 

@@ -1,6 +1,6 @@
 /* 
  * Copyright (C) 2014-2020 NXP Semiconductors, All Rights Reserved.
- * Copyright 2020 GOODIX 
+ * Copyright 2021 GOODIX
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,7 +14,7 @@
 #define _TFA9873_TFAFIELDNAMES_B0_H
 
 
-#define TFA9873B0_I2CVERSION    16
+#define TFA9873B0_I2CVERSION    20
 
 typedef enum Tfa9873B0BfEnumList {
     TFA9873B0_BF_PWDN  = 0x0000,    /*!< Powerdown selection                                */

@@ -940,7 +940,7 @@ enum Tfa98xx_Error tfaRunWriteBitfield(struct tfa_device *tfa, TfaBitfield_t bf)
 		pr_debug("bitfield: %s=0x%x (0x%x[%d..%d]=0x%x)\n", tfaContBfName(bfUni.field, tfa->rev), value,
 			bfUni.Enum.address, bfUni.Enum.pos, bfUni.Enum.pos + bfUni.Enum.len, value);
 #endif
-	error = tfa_set_bf(tfa, bfUni.field, value);
+	error = tfa->dev_ops.tfa_set_bitfield(tfa, bfUni.field, value);
 
 	return error;
 }
@@ -1641,7 +1641,7 @@ enum Tfa98xx_Error tfaContWriteProfile(struct tfa_device *tfa, int prof_idx, int
 	char buffer[(MEMTRACK_MAX_WORDS * 4) + 4] = { 0 }; //every word requires 3 or 4 bytes, and 3 or 4 is the msg
 	unsigned int i, k = 0, j = 0, tries = 0;
 	TfaFileDsc_t *file = NULL;
-	int size = 0, ready, fs_previous_profile = 8; /* default fs is 48kHz*/
+	int manstate, size = 0, ready, fs_previous_profile = 8; /* default fs is 48kHz*/
 
 	if (!prof || !previous_prof) {
 		pr_err("Error trying to get the (previous) swprofile \n");
@@ -1676,13 +1676,37 @@ enum Tfa98xx_Error tfaContWriteProfile(struct tfa_device *tfa, int prof_idx, int
 		/* When we switch profile we first power down the subsystem
 		 * This should only be done when we are in operating mode
 		 */
-		if (((tfa->tfa_family == 2) && (TFA_GET_BF(tfa, MANSTATE) >= 6)) || (tfa->tfa_family != 2)) {
+		if (tfa_is_94_N2_device(tfa))
+			manstate = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+		else if ((tfa->rev & 0xff) == 0x75)
+			manstate = tfa_get_bf(tfa, TFA9875_BF_MANSTATE);
+		else
+			manstate = TFA_GET_BF(tfa, MANSTATE);
+		if (((tfa->tfa_family == 2) && (manstate >= 6)) || (tfa->tfa_family != 2)) {
 			err = tfa98xx_powerdown(tfa, 1);
 			if (err) return err;
 
 			/* Wait until we are in PLL powerdown */
+			tries = 0;
 			do {
 				err = tfa98xx_dsp_system_stable(tfa, &ready);
+
+				if (tfa_is_94_N2_device(tfa))
+					manstate = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+				else if ((tfa->rev & 0xff) == 0x75)
+					manstate = tfa_get_bf(tfa, TFA9875_BF_MANSTATE);
+				else
+					manstate = TFA_GET_BF(tfa, MANSTATE);
+				if (manstate == 6) {
+					TFA_SET_BF_VOLATILE(tfa, SBSL, 1);
+					msleep_interruptible(10); /* wait 10ms to avoid busload */
+					err = tfa98xx_powerdown(tfa, 1);
+					if (err) return err;
+				} else if (manstate == 0) {
+					/* Reset SBSL back after powering down */
+					TFA_SET_BF_VOLATILE(tfa, SBSL, 0);
+				}
+
 				if (!ready)
 					break;
 				else
@@ -1763,6 +1787,33 @@ enum Tfa98xx_Error tfaContWriteProfile(struct tfa_device *tfa, int prof_idx, int
 				return Tfa98xx_Error_Bad_Parameter;
 			break;
 		}
+	}
+
+	if (strstr(tfaContGetString(tfa->cnt, &prof->name), ".standby") != NULL) {
+		pr_info("Keep power down without writing files, in standby profile!\n");
+
+		err = tfa98xx_powerdown(tfa, 1);
+		if (err) return err;
+
+		/* Wait until we are in PLL powerdown */
+		tries = 0;
+		do {
+			err = tfa98xx_dsp_system_stable(tfa, &ready);
+			if (!ready)
+				break;
+			else
+				msleep_interruptible(10); /* wait 10ms to avoid busload */
+			tries++;
+		} while (tries <= 100);
+
+		if (tries > 100) {
+			pr_debug("Wait for PLL powerdown timed out!\n");
+			return Tfa98xx_Error_StateTimedOut;
+		}
+
+		err = tfa_show_current_state(tfa);
+
+		return err;
 	}
 
 	if (prof->group != previous_prof->group || prof->group == 0) {
@@ -2252,7 +2303,10 @@ enum Tfa98xx_Error tfa98xx_factory_trimmer(struct tfa_device *tfa)
 {
 	return (tfa->dev_ops.factory_trimmer)(tfa);
 }
-
+enum Tfa98xx_Error tfa98xx_set_phase_shift(struct tfa_device *tfa)
+{
+	return (tfa->dev_ops.phase_shift)(tfa);
+}
 enum Tfa98xx_Error tfa_set_filters(struct tfa_device *tfa, int prof_idx)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;

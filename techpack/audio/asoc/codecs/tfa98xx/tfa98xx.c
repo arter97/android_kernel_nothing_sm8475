@@ -1410,7 +1410,7 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 #endif
 	int change = 0;
 	int new_profile;
-	int prof_idx;
+	int prof_idx, cur_prof_idx;
 	int profile_count = tfa98xx_mixer_profiles;
 	int profile = tfa98xx_mixer_profile;
 
@@ -1428,11 +1428,16 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 
 	/* get the container profile for the requested sample rate */
 	prof_idx = get_profile_id_for_sr(new_profile, tfa98xx->rate);
-	if (prof_idx < 0) {
-		pr_err("tfa98xx: sample rate [%d] not supported for this mixer profile [%d].\n", tfa98xx->rate, new_profile);
+	cur_prof_idx = get_profile_id_for_sr(profile, tfa98xx->rate);
+	if (prof_idx < 0 || cur_prof_idx < 0) {
+		pr_err("tfa98xx: sample rate [%d] not supported for this mixer profile [%d -> %d].\n",
+			tfa98xx->rate, profile, new_profile);
 		return 0;
 	}
-	pr_debug("selected container profile [%d]\n", prof_idx);
+	pr_debug("selected container profile [%d -> %d]\n", cur_prof_idx, prof_idx);
+	pr_debug("switch profile [%s -> %s]\n",
+		tfa_cont_profile_name(tfa98xx, cur_prof_idx),
+		tfa_cont_profile_name(tfa98xx, prof_idx));
 
 	/* update mixer profile */
 	tfa98xx_mixer_profile = new_profile;
@@ -1449,6 +1454,11 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 		/* Don't call tfa_dev_start() if there is no clock. */
 		mutex_lock(&tfa98xx->dsp_lock);
 		tfa98xx_dsp_system_stable(tfa98xx->tfa, &ready);
+		if (strstr(tfa_cont_profile_name(tfa98xx, cur_prof_idx), ".standby") != NULL) {
+			pr_info("Force to start at exiting from standby: [%d -> %d]\n",
+				cur_prof_idx, prof_idx);
+			ready = 1;
+		}
 		if (ready && (tfa_dev_get_state(tfa98xx->tfa) == TFA_STATE_OPERATING)) {
 			/* Also re-enables the interrupts */
 			err = tfa98xx_tfa_start(tfa98xx, prof_idx, tfa98xx->vstep);
@@ -2960,7 +2970,7 @@ static void tfa98xx_dsp_init(struct tfa98xx *tfa98xx)
 				 * periodically, and re-init IC to recover if
 				 * needed.
 				 */
-				if (tfa98xx->tfa->tfa_family == 1)
+				if (tfa98xx->tfa->tfa_family == 1 || tfa98xx->tfa->dev_ops.tfa_status != NULL)
 					queue_delayed_work(tfa98xx->tfa98xx_wq,
 						&tfa98xx->monitor_work,
 						1 * HZ);
@@ -3185,6 +3195,7 @@ static int tfa98xx_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	/* Supported mode: regular I2S, slave, or PDM */
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
+	case SND_SOC_DAIFMT_DSP_A:
 		if ((fmt & SND_SOC_DAIFMT_MASTER_MASK) != SND_SOC_DAIFMT_CBS_CFS) {
 			dev_err(codec->dev, "Invalid Codec master mode\n");
 			return -EINVAL;
@@ -3256,7 +3267,7 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 	tfa98xx->profile = prof_idx;
 
 	/* update to new rate */
-	tfa98xx->rate = rate;
+	tfa98xx->rate = tfa98xx->tfa->rate = rate;
 
 	return 0;
 }
@@ -5583,6 +5594,12 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 			tfa98xx->flags |= TFA98XX_FLAG_CALIBRATION_CTL;
 			tfa98xx->flags |= TFA98XX_FLAG_TDM_DEVICE;
 			break;
+		case 0x75: /* tfa9875*/
+			pr_info("TFA9875 detected\n");
+			tfa98xx->flags |= TFA98XX_FLAG_MULTI_MIC_INPUTS;
+			tfa98xx->flags |= TFA98XX_FLAG_CALIBRATION_CTL;
+			tfa98xx->flags |= TFA98XX_FLAG_TDM_DEVICE;
+			break;
 		case 0x78: /* tfa9878 */
 			pr_info("TFA9878 detected\n");
 			tfa98xx->flags |= TFA98XX_FLAG_MULTI_MIC_INPUTS;
@@ -5832,6 +5849,7 @@ static struct of_device_id tfa98xx_dt_match[] = {
 	{.compatible = "tfa,tfa98xx" },
 	{.compatible = "tfa,tfa9872" },
 	{.compatible = "tfa,tfa9873" },
+	{.compatible = "tfa,tfa9875" },
 	{.compatible = "tfa,tfa9874" },
 	{.compatible = "tfa,tfa9878" },
 	{.compatible = "tfa,tfa9888" },

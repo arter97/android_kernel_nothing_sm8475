@@ -24,7 +24,7 @@ void mhi_rddm_prepare(struct mhi_controller *mhi_cntrl,
 {
 	struct mhi_buf *mhi_buf = img_info->mhi_buf;
 	struct bhi_vec_entry *bhi_vec = img_info->bhi_vec;
-	void __iomem *base = mhi_cntrl->bhie;
+	u8 __iomem *base = mhi_cntrl->bhie;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	u32 sequence_id;
 	unsigned int i;
@@ -59,7 +59,7 @@ int mhi_rddm_download_status(struct mhi_controller *mhi_cntrl)
 	u32 rx_status;
 	enum mhi_ee_type ee;
 	const u32 delayus = 5000;
-	void __iomem *base = mhi_cntrl->bhie;
+	u8 __iomem *base = mhi_cntrl->bhie;
 	u32 retry = (mhi_cntrl->timeout_ms * 1000) / delayus;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	int ret = 0;
@@ -171,7 +171,7 @@ error_exit_rddm:
 /* Download RDDM image from device */
 int mhi_download_rddm_image(struct mhi_controller *mhi_cntrl, bool in_panic)
 {
-	void __iomem *base = mhi_cntrl->bhie;
+	u8 __iomem *base = mhi_cntrl->bhie;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	u32 rx_status;
 
@@ -197,7 +197,7 @@ EXPORT_SYMBOL_GPL(mhi_download_rddm_image);
 static int mhi_fw_load_bhie(struct mhi_controller *mhi_cntrl,
 			    const struct mhi_buf *mhi_buf)
 {
-	void __iomem *base = mhi_cntrl->bhie;
+	u8 __iomem *base = mhi_cntrl->bhie;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	rwlock_t *pm_lock = &mhi_cntrl->pm_lock;
 	u32 tx_status = 0, sequence_id = 0, val = 0;
@@ -251,7 +251,7 @@ static int mhi_fw_load_bhi(struct mhi_controller *mhi_cntrl,
 {
 	u32 tx_status, val;
 	int i, ret;
-	void __iomem *base = mhi_cntrl->bhi;
+	u8 __iomem *base = mhi_cntrl->bhi;
 	rwlock_t *pm_lock = &mhi_cntrl->pm_lock;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	struct {

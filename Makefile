@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 5
 PATCHLEVEL = 10
-SUBLEVEL = 232
+SUBLEVEL = 233
 EXTRAVERSION =
 NAME = Dare mighty things
 
@@ -398,7 +398,7 @@ override CROSS_COMPILE_ARM32	:= /home/arter97/arm32-gcc/bin/arm-eabi-
 override LLVM := 1
 override LLVM_IAS := 1
 override CLANG_TRIPLE := aarch64-linux-gnu
-override LLVM_PATH := /home/arter97/android/nathan/llvm-19.1.6-x86_64/bin/
+override LLVM_PATH := /home/arter97/android/nathan/llvm-19.1.7-x86_64/bin/
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)

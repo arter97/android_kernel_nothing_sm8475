@@ -233,8 +233,8 @@ static int lpass_cdc_register_notifier(void *handle,
 {
 	struct lpass_cdc_priv *priv = (struct lpass_cdc_priv *)handle;
 
-	if (!priv) {
-		pr_err("%s: lpass_cdc priv is null\n", __func__);
+	if (!priv || !nblock) {
+		pr_err_ratelimited("%s: lpass_cdc priv or nblock is null\n", __func__);
 		return -EINVAL;
 	}
 	if (enable)
