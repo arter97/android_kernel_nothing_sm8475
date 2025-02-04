@@ -56,7 +56,6 @@ QDF_STATUS sys_build_message_header(SYS_MSG_ID msg_id,
  *
  * Return: QDF_STATUS
  */
-#ifdef QDF_ENABLE_TRACING
 static QDF_STATUS umac_stop_complete_cb(struct scheduler_msg *msg)
 {
 	qdf_event_t *stop_evt = msg->bodyptr;
@@ -66,12 +65,6 @@ static QDF_STATUS umac_stop_complete_cb(struct scheduler_msg *msg)
 
 	return qdf_status;
 }
-#else
-static QDF_STATUS umac_stop_complete_cb(struct scheduler_msg *msg)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 static inline QDF_STATUS umac_stop_flush_cb(struct scheduler_msg *msg)
 {

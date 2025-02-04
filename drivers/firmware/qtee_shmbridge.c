@@ -371,6 +371,7 @@ static int qtee_shmbridge_init(struct platform_device *pdev)
 	uint32_t ns_vm_ids_hlos[] = {VMID_HLOS};
 	uint32_t ns_vm_ids_hyp[] = {};
 	uint32_t ns_vm_perms[] = {VM_PERM_R|VM_PERM_W};
+	int mem_protection_enabled = 0;
 
 	support_hyp = of_property_read_bool((&pdev->dev)->of_node,
 			"qcom,support-hypervisor");
@@ -460,6 +461,10 @@ static int qtee_shmbridge_init(struct platform_device *pdev)
 	pr_err("shmbridge registered default bridge with size %zu bytes, paddr: %llx\n",
 			default_bridge.size, (uint64_t)default_bridge.paddr);
 
+	mem_protection_enabled = scm_mem_protection_init_do();
+	pr_debug("MEM protection %s, %d\n",
+			(!mem_protection_enabled ? "Enabled" : "Not enabled"),
+			mem_protection_enabled);
 	return 0;
 
 exit_deregister_default_bridge:

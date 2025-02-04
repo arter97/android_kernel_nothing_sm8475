@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 config HDCP_QSEECOM
         tristate "QTI High-Bandwidth Digital Content Protection Module"
-        depends on QSEECOM
         help
           This module implements HDCP 2.2 features over external interfaces
           such as the DisplayPort interface. It exposes APIs for the interface

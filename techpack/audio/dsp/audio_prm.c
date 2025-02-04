@@ -22,6 +22,7 @@
 #define TIMEOUT_MS 500
 #define MAX_RETRY_COUNT 3
 #define APM_READY_WAIT_DURATION 2
+#define GPR_SEND_PKT_APM_TIMEOUT_MS 0
 
 struct audio_prm {
 	struct gpr_device *adev;
@@ -30,6 +31,7 @@ struct audio_prm {
 	bool resp_received;
 	atomic_t state;
 	atomic_t status;
+	int lpi_pcm_logging_enable;
 	bool is_adsp_up;
 };
 
@@ -101,7 +103,8 @@ static int prm_gpr_send_pkt(struct gpr_pkt *pkt, wait_queue_head_t *wait)
 			(gpr_get_q6_state() == GPR_SUBSYS_LOADED)) {
 		pr_info("%s: apm ready check not done\n", __func__);
 		retry = 0;
-		while (!spf_core_is_apm_ready() && retry < MAX_RETRY_COUNT) {
+		while (!spf_core_is_apm_ready(GPR_SEND_PKT_APM_TIMEOUT_MS) &&
+							retry < MAX_RETRY_COUNT) {
 			msleep(APM_READY_WAIT_DURATION);
 			++retry;
 		}
@@ -135,6 +138,12 @@ static int prm_gpr_send_pkt(struct gpr_pkt *pkt, wait_queue_head_t *wait)
 	mutex_unlock(&g_prm.lock);
 	return ret;
 }
+
+void audio_prm_set_lpi_logging_status(int lpi_pcm_logging_enable)
+{
+	g_prm.lpi_pcm_logging_enable = lpi_pcm_logging_enable;
+}
+EXPORT_SYMBOL(audio_prm_set_lpi_logging_status);
 
 /**
  */
@@ -237,7 +246,18 @@ static int audio_prm_set_lpass_clk_cfg_req(struct clk_cfg *cfg)
 	prm_rsc_request.clock_ids_t[0].clock_id = cfg->clk_id;
 	prm_rsc_request.clock_ids_t[0].clock_freq = cfg->clk_freq_in_hz;
 	prm_rsc_request.clock_ids_t[0].clock_attri = cfg->clk_attri;
-	prm_rsc_request.clock_ids_t[0].clock_root = cfg->clk_root;
+	/*
+	 * Set TX RCG to RCO if lpi pcm logging is enabled and any one of the
+	 * tx core clocks are enabled
+	 */
+	if (g_prm.lpi_pcm_logging_enable &&
+		((cfg->clk_id == CLOCK_ID_TX_CORE_MCLK) ||
+		 (cfg->clk_id == CLOCK_ID_WSA_CORE_TX_MCLK) ||
+		 (cfg->clk_id == CLOCK_ID_WSA2_CORE_TX_MCLK) ||
+		 (cfg->clk_id == CLOCK_ID_RX_CORE_TX_MCLK)))
+		prm_rsc_request.clock_ids_t[0].clock_root = CLOCK_ROOT_SRC_RCO;
+	else
+		prm_rsc_request.clock_ids_t[0].clock_root = cfg->clk_root;
 
 	memcpy(&pkt->payload, &prm_rsc_request, sizeof(prm_cmd_request_rsc_t));
 
@@ -387,6 +407,58 @@ int audio_prm_set_cdc_earpa_duty_cycling_req(struct prm_earpa_hw_intf_config *ea
 	return ret;
 }
 EXPORT_SYMBOL(audio_prm_set_cdc_earpa_duty_cycling_req);
+
+int audio_prm_set_vote_against_sleep(uint8_t enable)
+{
+	int ret = 0;
+	struct gpr_pkt *pkt;
+	prm_cmd_request_hw_core_t prm_rsc_request;
+	uint32_t size;
+
+	 size = GPR_HDR_SIZE + sizeof(prm_cmd_request_hw_core_t);
+	 pkt = kzalloc(size,  GFP_KERNEL);
+	if (!pkt)
+		return -ENOMEM;
+
+	 pkt->hdr.header = GPR_SET_FIELD(GPR_PKT_VERSION, GPR_PKT_VER) |
+				GPR_SET_FIELD(GPR_PKT_HEADER_SIZE, GPR_PKT_HEADER_WORD_SIZE_V) |
+				 GPR_SET_FIELD(GPR_PKT_PACKET_SIZE, size);
+
+	pkt->hdr.src_port = GPR_SVC_ASM;
+	pkt->hdr.dst_port = PRM_MODULE_INSTANCE_ID;
+	pkt->hdr.dst_domain_id = GPR_IDS_DOMAIN_ID_ADSP_V;
+	pkt->hdr.src_domain_id = GPR_IDS_DOMAIN_ID_APPS_V;
+	pkt->hdr.token = 0; /* TBD */
+
+	if (enable)
+		pkt->hdr.opcode = PRM_CMD_REQUEST_HW_RSC;
+	else
+		pkt->hdr.opcode = PRM_CMD_RELEASE_HW_RSC;
+
+	prm_rsc_request.payload_header.payload_address_lsw = 0;
+	prm_rsc_request.payload_header.payload_address_msw = 0;
+	prm_rsc_request.payload_header.mem_map_handle = 0;
+	prm_rsc_request.payload_header.payload_size = sizeof(prm_cmd_request_hw_core_t) - sizeof(apm_cmd_header_t);
+
+	 /** Populate the param payload */
+	prm_rsc_request.module_payload_0.module_instance_id = PRM_MODULE_INSTANCE_ID;
+	prm_rsc_request.module_payload_0.error_code = 0;
+	prm_rsc_request.module_payload_0.param_id = PARAM_ID_RSC_HW_CORE;
+	prm_rsc_request.module_payload_0.param_size =
+		sizeof(prm_cmd_request_hw_core_t) - sizeof(apm_cmd_header_t) - sizeof(apm_module_param_data_t);
+
+	prm_rsc_request.hw_core_id = HW_CORE_ID_LPASS;
+
+	memcpy(&pkt->payload, &prm_rsc_request, sizeof(prm_cmd_request_hw_core_t));
+	ret = prm_gpr_send_pkt(pkt, &g_prm.wait);
+	if (ret < 0) {
+		pr_err("%s: Unable to send packet %d\n", __func__, ret);
+	}
+
+	kfree(pkt);
+	return ret;
+}
+EXPORT_SYMBOL(audio_prm_set_vote_against_sleep);
 
 int audio_prm_set_lpass_clk_cfg (struct clk_cfg *clk, uint8_t enable)
 {

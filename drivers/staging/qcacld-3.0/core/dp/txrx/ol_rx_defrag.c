@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -485,10 +485,10 @@ ol_rx_reorder_store_frag(ol_txrx_pdev_handle pdev,
 					  rx_reorder_array_elem->head);
 			rx_reorder_array_elem->head = NULL;
 			rx_reorder_array_elem->tail = NULL;
-			ol_txrx_err("\n ol_rx_reorder_store:%s mismatch\n",
-				   (rxseq == frxseq)
-				   ? "address"
-				   : "seq number");
+			ol_txrx_err_rl("ol_rx_reorder_store:%s mismatch",
+				       (rxseq == frxseq)
+				       ? "address"
+				       : "seq number");
 		}
 	}
 

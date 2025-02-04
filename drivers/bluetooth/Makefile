@@ -36,6 +36,10 @@ bt_fm_slim-objs	:= btfm_slim.o btfm_slim_codec.o btfm_slim_slave.o
 
 obj-$(CONFIG_BTFM_SLIM)	+= bt_fm_slim.o
 
+CFLAGS_btfm_slim.o += -ftrivial-auto-var-init=zero
+CFLAGS_btfm_slim_codec.o += -ftrivial-auto-var-init=zero
+CFLAGS_btfm_slim_slave.o += -ftrivial-auto-var-init=zero
+
 btmrvl-y			:= btmrvl_main.o
 btmrvl-$(CONFIG_DEBUG_FS)	+= btmrvl_debugfs.o
 

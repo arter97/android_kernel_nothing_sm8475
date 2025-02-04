@@ -51,6 +51,8 @@ struct snd_card_pdata {
 #define SAMPLING_RATE_176P4KHZ  176400
 #define SAMPLING_RATE_352P8KHZ  352800
 
+struct mutex vote_against_sleep_lock;
+
 static struct attribute device_state_attr = {
 	.name = "state",
 	.mode = 0660,
@@ -79,6 +81,10 @@ struct chmap_pdata {
 #define MAX_CPU_CLUSTER 3 /*Silver, Gold, Prime*/
 
 static int qos_vote_status;
+static bool lpi_pcm_logging_enable;
+static bool vote_against_sleep_enable;
+static unsigned int vote_against_sleep_cnt;
+
 static struct dev_pm_qos_request latency_pm_qos_req; /* pm_qos request */
 static unsigned int qos_client_active_cnt;
 static int cluster_first_cpu[MAX_CPU_CLUSTER] = {-1, };
@@ -159,6 +165,13 @@ int snd_card_notify_user(snd_card_status_t card_status)
 {
 	snd_card_pdata->card_status = card_status;
 	sysfs_notify(&snd_card_pdata->snd_card_kobj, NULL, "card_state");
+	if (card_status == 0) {
+		mutex_lock(&vote_against_sleep_lock);
+		vote_against_sleep_cnt = 0;
+		pr_debug("%s: SSR/PDR triggered reset vote_against_sleep_cnt = %d\n",
+					__func__, vote_against_sleep_cnt);
+		mutex_unlock(&vote_against_sleep_lock);
+	}
 	return 0;
 }
 
@@ -748,6 +761,8 @@ int msm_common_snd_init(struct platform_device *pdev, struct snd_soc_card *card)
     /* Add QoS request for audio tasks */
 	msm_audio_add_qos_request();
 
+	mutex_init(&vote_against_sleep_lock);
+
 	return 0;
 };
 
@@ -758,6 +773,7 @@ void msm_common_snd_deinit(struct msm_common_pdata *common_pdata)
 	if (!common_pdata)
 		return;
 
+	mutex_destroy(&vote_against_sleep_lock);
 	msm_audio_remove_qos_request();
 
 	mutex_destroy(&common_pdata->aud_dev_lock);
@@ -968,13 +984,79 @@ static int msm_qos_ctl_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int msm_lpi_logging_enable_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	lpi_pcm_logging_enable = ucontrol->value.integer.value[0];
+	pr_debug("%s: lpi pcm logging enable: %d", __func__,
+			lpi_pcm_logging_enable);
+
+	audio_prm_set_lpi_logging_status((int)lpi_pcm_logging_enable);
+
+	return 0;
+}
+
+static int msm_lpi_logging_enable_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = lpi_pcm_logging_enable;
+	return 0;
+}
+
+static int msm_vote_against_sleep_ctl_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	int ret = 0;
+
+	mutex_lock(&vote_against_sleep_lock);
+	vote_against_sleep_enable = ucontrol->value.integer.value[0];
+	pr_debug("%s: vote against sleep enable: %d sleep cnt: %d", __func__,
+			vote_against_sleep_enable, vote_against_sleep_cnt);
+
+	if (vote_against_sleep_enable) {
+		vote_against_sleep_cnt++;
+		if (vote_against_sleep_cnt ==  1) {
+			ret = audio_prm_set_vote_against_sleep(1);
+			if (ret < 0) {
+				if (vote_against_sleep_cnt > 0)
+					--vote_against_sleep_cnt;
+				pr_err("%s: failed to vote against sleep ret: %d\n", __func__, ret);
+			}
+		}
+	} else {
+		if (vote_against_sleep_cnt == 1)
+			ret = audio_prm_set_vote_against_sleep(0);
+		if (vote_against_sleep_cnt > 0)
+			vote_against_sleep_cnt--;
+	}
+
+	pr_debug("%s: vote against sleep vote ret: %d\n", __func__, ret);
+	mutex_unlock(&vote_against_sleep_lock);
+	return ret;
+}
+
+static int msm_vote_against_sleep_ctl_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = vote_against_sleep_enable;
+	pr_debug("%s: vote against sleep enable: %d", __func__,
+			vote_against_sleep_enable);
+	return 0;
+}
+
 static const char *const qos_text[] = {"Disable", "Enable"};
+static const char *const against_sleep_text[] = {"Disable", "Enable"};
 
 static SOC_ENUM_SINGLE_EXT_DECL(qos_vote, qos_text);
+static SOC_ENUM_SINGLE_EXT_DECL(sleep_against, against_sleep_text);
 
-static const struct snd_kcontrol_new card_pm_qos_controls[] = {
+static const struct snd_kcontrol_new card_mixer_controls[] = {
 	SOC_ENUM_EXT("PM_QOS Vote", qos_vote,
 			msm_qos_ctl_get, msm_qos_ctl_put),
+	SOC_SINGLE_EXT("LPI PCM Logging Enable", 0, 0, 1, 0,
+			msm_lpi_logging_enable_get, msm_lpi_logging_enable_put),
+	SOC_ENUM_EXT("VOTE Against Sleep", sleep_against,
+			msm_vote_against_sleep_ctl_get, msm_vote_against_sleep_ctl_put),
 };
 
 static int register_pm_qos_latency_controls(struct snd_soc_pcm_runtime *rtd) {
@@ -988,7 +1070,7 @@ static int register_pm_qos_latency_controls(struct snd_soc_pcm_runtime *rtd) {
 	}
 
 	ret = snd_soc_add_component_controls(lpass_cdc_component,
-			card_pm_qos_controls, ARRAY_SIZE(card_pm_qos_controls));
+			card_mixer_controls, ARRAY_SIZE(card_mixer_controls));
 	if (ret < 0) {
 		pr_err("%s: add common snd controls failed: %d\n",
 				__func__, ret);
