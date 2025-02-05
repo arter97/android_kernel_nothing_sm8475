@@ -5484,7 +5484,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_MULTIPLE_PEER_GROUP_CMDID);
 /* RTT 11az PASN authentication status cmd */
 #define WMITLV_TABLE_WMI_RTT_PASN_AUTH_STATUS_CMD(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_rtt_pasn_auth_status_cmd_fixed_param, wmi_rtt_pasn_auth_status_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_rtt_pasn_auth_status_param, pasn_auth_status_param, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_rtt_pasn_auth_status_param, pasn_auth_status_param, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, cookie, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_RTT_PASN_AUTH_STATUS_CMD);
 
 /* RTT 11az PASN deauthentication cmd */
@@ -7635,7 +7636,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_PDEV_PKTLOG_DECODE_INFO_EVENTID);
 #define WMITLV_TABLE_WMI_RTT_PASN_PEER_CREATE_REQ_EVENTID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_rtt_pasn_peer_create_req_event_fixed_param, \
         wmi_rtt_pasn_peer_create_req_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_rtt_pasn_peer_create_req_param, rtt_pasn_peer_param, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_rtt_pasn_peer_create_req_param, rtt_pasn_peer_param, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, cookie, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_RTT_PASN_PEER_CREATE_REQ_EVENTID);
 
 /* RTT 11az PASN peer delete event */

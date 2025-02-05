@@ -22705,6 +22705,7 @@ enum {
     WMI_AUTH_RSNA_8021X_SHA384,
     WMI_AUTH_WPA3_SAE_SHA384,
     WMI_AUTH_FT_RSNA_SAE_SHA384,
+    WMI_AUTH_FT_RSNA_PSK_SHA384,
 };
 
 typedef enum {
@@ -47990,6 +47991,7 @@ typedef struct {
 #define WMI_RTT_PASN_PEER_CREATE_SECURITY_MODE_SET(flag,val)      WMI_SET_BITS(flag, 0, 2, val)
 #define WMI_RTT_PASN_PEER_CREATE_FORCE_SELF_MAC_USE_GET(flag)     WMI_GET_BITS(flag, 2, 1)
 #define WMI_RTT_PASN_PEER_CREATE_FORCE_SELF_MAC_USE_SET(flag,val) WMI_SET_BITS(flag, 2, 1, val)
+#define WMI_MAX_PASN_PASSPHRASE_LEN     64
 
 typedef struct {
     A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_rtt_pasn_peer_create_req_event_fixed_param */
@@ -47999,6 +48001,7 @@ typedef struct {
  * The following TLV will follow this fixed_param TLV:
  *
  * wmi_rtt_pasn_peer_create_req_param rtt_pasn_peer_param[]
+ * A_UINT8 cookie[]
  */
 } wmi_rtt_pasn_peer_create_req_event_fixed_param;
 
@@ -48016,6 +48019,18 @@ typedef struct {
      *             and flush old cache( if it exists) for dest_mac_addr with old self_mac_addr.
      * Bits 31:3:  Reserved
      */
+     /* Authentication modes */
+     A_UINT32 akm;
+     /* pairwise cipher suite selector */
+     A_UINT32 cipher_suite;
+     /* PMKID */
+     A_UINT8  pmk_id[WMI_MAX_PMKID_LEN];
+     /* passphrase length */
+     A_UINT32 passphrase_len;
+     /* passphrase */
+     A_UINT8  passphrase[WMI_MAX_PASN_PASSPHRASE_LEN];
+     /* comeback cookie length */
+     A_UINT32 cookie_len;
 } wmi_rtt_pasn_peer_create_req_param;
 
 
@@ -48025,6 +48040,7 @@ typedef struct {
  * The following TLV will follow this fixed_param TLV:
  *
  * wmi_rtt_pasn_auth_status_param pasn_auth_status_param[]
+ * A_UINT8 cookie[]
  */
 } wmi_rtt_pasn_auth_status_cmd_fixed_param;
 
@@ -48036,6 +48052,14 @@ typedef struct {
     A_UINT32     status;
     /* Source address used for doing PASN authentication */
     wmi_mac_addr source_mac_addr;
+    /* Authentication modes */
+    A_UINT32 akm;
+    /* pairwise cipher suite selector */
+    A_UINT32 cipher_suite;
+    /* PASN comeback timeout */
+    A_INT32 timeout_value;
+    /* comeback cookie length */
+    A_UINT32 cookie_len;
 } wmi_rtt_pasn_auth_status_param;
 
 
