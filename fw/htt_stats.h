@@ -11538,6 +11538,31 @@ typedef struct {
     A_UINT32 dl_ofdma_nbinwb_selected_over_mu_mimo[HTT_NUM_AC_WMM];
     /** Num of instances where OFDMA NBinWB is selected in standalone */
     A_UINT32 dl_ofdma_nbinwb_selected_standalone[HTT_NUM_AC_WMM];
+    /**
+     * Number of instances where we populated TX mode and candidate lists
+     * only for DL.
+     */
+    A_UINT32 running_only_dl_scheduler_cnt[HTT_NUM_AC_WMM];
+    /**
+     * Number of instances where we populated TX mode and candidate lists
+     * only for UL.
+     */
+    A_UINT32 running_only_ul_scheduler_cnt[HTT_NUM_AC_WMM];
+    /**
+     * Number of instances where we populated TX mode and candidate lists
+     * additionally for DL after UL.
+     */
+    A_UINT32 running_additional_dl_scheduler_cnt[HTT_NUM_AC_WMM];
+    /**
+     * Number of instances where we populated TX mode and candidate lists
+     * additionally for UL after DL.
+     */
+    A_UINT32 running_additional_ul_scheduler_cnt[HTT_NUM_AC_WMM];
+    /**
+     * Number of instances where we populated TX mode and candidate lists
+     * only for UL BSR TX mode.
+     */
+    A_UINT32 running_ul_scheduler_for_bsrp_cnt[HTT_NUM_AC_WMM];
 } htt_stats_pdev_sched_algo_ofdma_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_pdev_sched_algo_ofdma_stats_tlv
