@@ -120,8 +120,8 @@ struct mhi_dev_gen_ctx {
 /* Transfer ring element */
 struct mhi_dev_transfer_ring_element {
 	uint64_t				data_buf_ptr;
-	uint32_t				len:16;
-	uint32_t				res1:16;
+	uint32_t				len:24;
+	uint32_t				res1:8;
 	uint32_t				chain:1;
 	uint32_t				res2:7;
 	uint32_t				ieob:1;
@@ -185,8 +185,7 @@ enum mhi_dev_cmd_completion_code {
 /* Transfer completion event */
 struct mhi_dev_event_ring_transfer_completion {
 	uint64_t				ptr;
-	uint32_t				len:16;
-	uint32_t				res1:8;
+	uint32_t				len:24;
 	enum mhi_dev_cmd_completion_code	code:8;
 	uint32_t				res2:16;
 	enum mhi_dev_ring_element_type_id	type:8;
