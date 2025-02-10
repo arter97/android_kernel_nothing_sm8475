@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -355,23 +355,32 @@ static int cam_lrme_mgr_util_prepare_hw_update_entries(
 
 static void cam_lrme_mgr_util_put_frame_req(
 	struct list_head *src_list,
-	struct list_head *list,
-	spinlock_t *lock)
+	struct cam_lrme_frame_request *frame_req,
+	struct mutex *lock,
+	bool free_buffer)
 {
-	spin_lock(lock);
-	list_add_tail(list, src_list);
-	spin_unlock(lock);
+	if (!frame_req) {
+		CAM_ERR(CAM_LRME, "Invalid frame_req");
+		return;
+	}
+
+	mutex_lock(lock);
+	if (free_buffer)
+		cam_mem_put_cpu_buf(frame_req->hw_update_entries[0]->handle)
+
+	list_add_tail(frame_req->frame_list, src_list);
+	mutex_unlock(lock);
 }
 
 static int cam_lrme_mgr_util_get_frame_req(
 	struct list_head *src_list,
 	struct cam_lrme_frame_request **frame_req,
-	spinlock_t *lock)
+	struct mutex *lock)
 {
 	int rc = 0;
 	struct cam_lrme_frame_request *req_ptr = NULL;
 
-	spin_lock(lock);
+	mutex_lock(lock);
 	if (!list_empty(src_list)) {
 		req_ptr = list_first_entry(src_list,
 			struct cam_lrme_frame_request, frame_list);
@@ -380,7 +389,7 @@ static int cam_lrme_mgr_util_get_frame_req(
 		rc = -ENOENT;
 	}
 	*frame_req = req_ptr;
-	spin_unlock(lock);
+	mutex_unlock(lock);
 
 	return rc;
 }
@@ -438,26 +447,26 @@ static int cam_lrme_mgr_util_submit_req(void *priv, void *data)
 		else if (rc)
 			CAM_ERR(CAM_LRME, "submit request failed rc %d", rc);
 		if (rc) {
-			req_prio == 0 ? spin_lock(&hw_device->high_req_lock) :
-				spin_lock(&hw_device->normal_req_lock);
+			req_prio == 0 ? mutex_lock(&hw_device->high_req_lock) :
+				mutex_lock(&hw_device->normal_req_lock);
 			list_add(&frame_req->frame_list,
 				(req_prio == 0 ?
 				 &hw_device->frame_pending_list_high :
 				 &hw_device->frame_pending_list_normal));
-			req_prio == 0 ? spin_unlock(&hw_device->high_req_lock) :
-				spin_unlock(&hw_device->normal_req_lock);
+			req_prio == 0 ? mutex_unlock(&hw_device->high_req_lock) :
+				mutex_unlock(&hw_device->normal_req_lock);
 		}
 		if (rc == -EBUSY)
 			rc = 0;
 	} else {
-		req_prio == 0 ? spin_lock(&hw_device->high_req_lock) :
-			spin_lock(&hw_device->normal_req_lock);
+		req_prio == 0 ? mutex_lock(&hw_device->high_req_lock) :
+			mutex_lock(&hw_device->normal_req_lock);
 		list_add(&frame_req->frame_list,
 			(req_prio == 0 ?
 			 &hw_device->frame_pending_list_high :
 			 &hw_device->frame_pending_list_normal));
-		req_prio == 0 ? spin_unlock(&hw_device->high_req_lock) :
-			spin_unlock(&hw_device->normal_req_lock);
+		req_prio == 0 ? mutex_unlock(&hw_device->high_req_lock) :
+			mutex_unlock(&hw_device->normal_req_lock);
 		rc = -EINVAL;
 	}
 
@@ -529,8 +538,7 @@ static int cam_lrme_mgr_cb(void *data,
 		memset(frame_req, 0x0, sizeof(*frame_req));
 		INIT_LIST_HEAD(&frame_req->frame_list);
 		cam_lrme_mgr_util_put_frame_req(&hw_mgr->frame_free_list,
-				&frame_req->frame_list,
-				&hw_mgr->free_req_lock);
+				frame_req, &hw_mgr->free_req_lock, true);
 		cb_args->cb_type &= ~CAM_LRME_CB_PUT_FRAME;
 		frame_req = NULL;
 	}
@@ -569,11 +577,12 @@ static int cam_lrme_mgr_cb(void *data,
 	} else {
 		CAM_ERR(CAM_LRME, "No cb function");
 	}
+
 	memset(frame_req, 0x0, sizeof(*frame_req));
 	INIT_LIST_HEAD(&frame_req->frame_list);
 	cam_lrme_mgr_util_put_frame_req(&hw_mgr->frame_free_list,
 				&frame_req->frame_list,
-				&hw_mgr->free_req_lock);
+				&hw_mgr->free_req_lock, true);
 
 	rc = cam_lrme_mgr_util_schedule_frame_req(hw_mgr, hw_device);
 
@@ -747,14 +756,14 @@ static int cam_lrme_mgr_hw_flush(void *hw_mgr_priv, void *hw_flush_args)
 		frame_req = req_list[i];
 		memset(frame_req, 0x0, sizeof(*frame_req));
 		cam_lrme_mgr_util_put_frame_req(&hw_mgr->frame_free_list,
-			&frame_req->frame_list, &hw_mgr->free_req_lock);
+			&frame_req->frame_list, &hw_mgr->free_req_lock, true);
 	}
 
 	req_list = (struct cam_lrme_frame_request **)args->flush_req_active;
 	for (i = 0; i < args->num_req_active; i++) {
 		frame_req = req_list[i];
 		priority = CAM_LRME_DECODE_PRIORITY(args->ctxt_to_hw_map);
-		spin_lock((priority == CAM_LRME_PRIORITY_HIGH) ?
+		mutex_lock((priority == CAM_LRME_PRIORITY_HIGH) ?
 			&hw_device->high_req_lock :
 			&hw_device->normal_req_lock);
 		if (!list_empty(&frame_req->frame_list)) {
@@ -762,10 +771,10 @@ static int cam_lrme_mgr_hw_flush(void *hw_mgr_priv, void *hw_flush_args)
 			cam_lrme_mgr_util_put_frame_req(
 				&hw_mgr->frame_free_list,
 				&frame_req->frame_list,
-				&hw_mgr->free_req_lock);
+				&hw_mgr->free_req_lock, true);
 		} else
 			req_to_flush = frame_req;
-		spin_unlock((priority == CAM_LRME_PRIORITY_HIGH) ?
+		mutex_unlock((priority == CAM_LRME_PRIORITY_HIGH) ?
 			&hw_device->high_req_lock :
 			&hw_device->normal_req_lock);
 	}
@@ -1019,11 +1028,11 @@ static int cam_lrme_mgr_hw_config(void *hw_mgr_priv,
 	if (priority == CAM_LRME_PRIORITY_HIGH) {
 		cam_lrme_mgr_util_put_frame_req(
 			&hw_device->frame_pending_list_high,
-			&frame_req->frame_list, &hw_device->high_req_lock);
+			&frame_req->frame_list, &hw_device->high_req_lock, false);
 	} else {
 		cam_lrme_mgr_util_put_frame_req(
 			&hw_device->frame_pending_list_normal,
-			&frame_req->frame_list, &hw_device->normal_req_lock);
+			&frame_req->frame_list, &hw_device->normal_req_lock, false);
 	}
 
 	CAM_DBG(CAM_LRME, "schedule req %llu", frame_req->req_id);
@@ -1082,8 +1091,8 @@ int cam_lrme_mgr_register_device(
 
 	memcpy(&hw_device->hw_intf, lrme_hw_intf, sizeof(struct cam_hw_intf));
 
-	spin_lock_init(&hw_device->high_req_lock);
-	spin_lock_init(&hw_device->normal_req_lock);
+	mutex_init(&hw_device->high_req_lock);
+	mutex_init(&hw_device->normal_req_lock);
 	INIT_LIST_HEAD(&hw_device->frame_pending_list_high);
 	INIT_LIST_HEAD(&hw_device->frame_pending_list_normal);
 
@@ -1155,6 +1164,8 @@ int cam_lrme_mgr_deregister_device(int device_index)
 
 	hw_device = &g_lrme_hw_mgr.hw_device[device_index];
 	cam_req_mgr_workq_destroy(&hw_device->work);
+	mutex_destroy(&hw_device->high_req_lock);
+	mutex_destroy(&hw_device->normal_req_lock);
 	memset(hw_device, 0x0, sizeof(struct cam_lrme_device));
 	g_lrme_hw_mgr.device_count--;
 
@@ -1164,6 +1175,7 @@ int cam_lrme_mgr_deregister_device(int device_index)
 int cam_lrme_hw_mgr_deinit(void)
 {
 	mutex_destroy(&g_lrme_hw_mgr.hw_mgr_mutex);
+	mutex_destroy(&g_lrme_hw_mgr.free_req_lock);
 	debugfs_remove_recursive(g_lrme_hw_mgr.debugfs_entry.dentry);
 	memset(&g_lrme_hw_mgr, 0x0, sizeof(g_lrme_hw_mgr));
 
@@ -1188,7 +1200,7 @@ int cam_lrme_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf,
 	memset(hw_mgr_intf, 0, sizeof(*hw_mgr_intf));
 
 	mutex_init(&g_lrme_hw_mgr.hw_mgr_mutex);
-	spin_lock_init(&g_lrme_hw_mgr.free_req_lock);
+	mutex_init(&g_lrme_hw_mgr.free_req_lock);
 	INIT_LIST_HEAD(&g_lrme_hw_mgr.frame_free_list);
 
 	/* Init hw mgr frame requests and add to free list */

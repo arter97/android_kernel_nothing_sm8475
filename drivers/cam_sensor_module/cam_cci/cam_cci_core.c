@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -1952,16 +1952,13 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	}
 	CAM_DBG(CAM_CCI, "CCI%d_I2C_M%d cmd = %d", cci_dev->soc_info.index, master, cci_ctrl->cmd);
 
+	mutex_lock(&cci_dev->init_mutex);
 	switch (cci_ctrl->cmd) {
 	case MSM_CCI_INIT:
-		mutex_lock(&cci_dev->init_mutex);
 		rc = cam_cci_init(sd, cci_ctrl);
-		mutex_unlock(&cci_dev->init_mutex);
 		break;
 	case MSM_CCI_RELEASE:
-		mutex_lock(&cci_dev->init_mutex);
 		rc = cam_cci_release(sd, master);
-		mutex_unlock(&cci_dev->init_mutex);
 		break;
 	case MSM_CCI_I2C_READ:
 		/*
@@ -1992,6 +1989,7 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	default:
 		rc = -ENOIOCTLCMD;
 	}
+	mutex_unlock(&cci_dev->init_mutex);
 
 	cci_ctrl->status = rc;
 
