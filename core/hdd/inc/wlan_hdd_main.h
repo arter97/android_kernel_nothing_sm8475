@@ -1291,6 +1291,7 @@ enum qdisc_filter_status {
  * @mon_adapter: hdd_adapter of monitor mode.
  * @set_mac_addr_req_ctx: Set MAC address command request context
  * @delta_qtime: delta between host qtime and monotonic time
+ * @keep_alive_interval: user configured STA keep alive interval
  */
 struct hdd_adapter {
 	/* Magic cookie for adapter sanity verification.  Note that this
@@ -1630,6 +1631,7 @@ struct hdd_adapter {
 	void *set_mac_addr_req_ctx;
 #endif
 	int64_t delta_qtime;
+	uint16_t keep_alive_interval;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(adapter) (&(adapter)->session.station)
