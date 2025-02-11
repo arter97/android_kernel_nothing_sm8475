@@ -441,6 +441,37 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	/*
+	 * If AP doesn't advertise 6 GHz power type or advertised invalid power
+	 * type, select VLP power type if VLP rules are present for the
+	 * connection channel, if not select LPI power type if LPI rules are
+	 * present for connection channel, otherwise don't connect.
+	 */
+	if (ap_pwr_type < REG_INDOOR_AP ||
+	    ap_pwr_type >= REG_CURRENT_MAX_AP_TYPE) {
+		if (QDF_IS_STATUS_SUCCESS(
+			reg_check_if_6g_pwr_type_supp_for_chan(pdev,
+							REG_VERY_LOW_POWER_AP,
+							chan_idx))) {
+			reg_debug("Invalid AP power type: %d , selected power type: %d",
+				  ap_pwr_type, REG_VERY_LOW_POWER_AP);
+			*pwr_type_6g = REG_VERY_LOW_POWER_AP;
+			return QDF_STATUS_SUCCESS;
+		} else if (QDF_IS_STATUS_SUCCESS(
+				reg_check_if_6g_pwr_type_supp_for_chan(pdev,
+								REG_INDOOR_AP,
+								chan_idx))) {
+			reg_debug("Invalid AP power type: %d , selected power type: %d",
+				  ap_pwr_type, REG_INDOOR_AP);
+			*pwr_type_6g = REG_INDOOR_AP;
+			return QDF_STATUS_SUCCESS;
+		} else {
+			reg_err("Invalid AP power type: %d, couldn't find suitable power type",
+				ap_pwr_type);
+			return QDF_STATUS_E_NOSUPPORT;
+		}
+	}
+
 	if (pdev_priv_obj->reg_rules.num_of_6g_client_reg_rules[ap_pwr_type] &&
 	    QDF_IS_STATUS_SUCCESS(reg_check_if_6g_pwr_type_supp_for_chan(
 						pdev,
