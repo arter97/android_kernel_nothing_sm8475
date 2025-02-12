@@ -1002,6 +1002,7 @@ typedef enum {
 #define HTT_TX_HWQ_MAX_CMD_STALL_STATS 5
 #define HTT_TX_HWQ_MAX_FES_RESULT_STATS 10
 #define HTT_PDEV_STATS_PPDU_DUR_HIST_BINS 16
+#define HTT_PDEV_STATS_PPDU_DUR_HIST_EXT_BINS 6
 #define HTT_PDEV_STATS_PPDU_DUR_HIST_INTERVAL_US 250
 
 typedef enum {
@@ -5913,6 +5914,8 @@ typedef struct {
     /** tx_ppdu_dur_hist:
      * Tx PPDU duration histogram, which holds the tx duration of PPDUs
      * under histogram bins of interval 250us
+     *
+     * Note that this histogram is extended by tx_ppdu_dur_hist_ext[] below.
      */
     A_UINT32 tx_ppdu_dur_hist[HTT_PDEV_STATS_PPDU_DUR_HIST_BINS];
     A_UINT32 tx_success_time_us_low;
@@ -5926,6 +5929,11 @@ typedef struct {
      * OFDMA PPDUs under histogram bins of interval 250us
      */
     A_UINT32 tx_ofdma_ppdu_dur_hist[HTT_PDEV_STATS_PPDU_DUR_HIST_BINS];
+    /* tx_ppdu_dur_hist_ext:
+     * This array extends the PPDU duration histogram contained in the
+     * tx_ppdu_dur_hist[] array from 4 ms to 5.5 ms.
+     */
+    A_UINT32 tx_ppdu_dur_hist_ext[HTT_PDEV_STATS_PPDU_DUR_HIST_EXT_BINS];
 } htt_stats_tx_pdev_ppdu_dur_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_ppdu_dur_tlv htt_tx_pdev_ppdu_dur_stats_tlv;
