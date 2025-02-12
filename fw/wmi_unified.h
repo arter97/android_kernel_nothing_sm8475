@@ -23177,7 +23177,10 @@ typedef struct {
      *  Refer WLAN_ROAM_SCORE_MAX_BAND_INDEX for possible band_idx values.
      */
     A_UINT32 band_idx;
-    /** Below RSSI/CU factor_value & factor_score param values are configured by vendor */
+    /**
+     * The below band weight (2.4 GHz, 5 GHz, 6 GHz), RSSI, and CU factor_value
+     * and factor_score param values are configured by vendor.
+     */
     A_UINT32 rssi_factor_value1;
     A_UINT32 rssi_factor_value2;
     A_UINT32 rssi_factor_value3;
@@ -23192,6 +23195,9 @@ typedef struct {
     A_UINT32 cu_factor_value2;
     A_UINT32 cu_factor_score1;
     A_UINT32 cu_factor_score2;
+    A_UINT32 band_weight_2GHz;
+    A_UINT32 band_weight_5GHz;
+    A_UINT32 band_weight_6GHz;
 } wmi_roam_cnd_vendor_scoring_param;
 
 /** Support early stop roaming scanning when finding a strong candidate AP
