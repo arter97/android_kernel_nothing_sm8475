@@ -1476,6 +1476,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_vdev_vbss_peer_sn_info,
     WMITLV_TAG_STRUC_wmi_vdev_vbss_config_event_fixed_param,
     WMITLV_TAG_STRUC_wmi_stats_ext_event_vdev_ext2_t,
+    WMITLV_TAG_STRUC_wmi_ndp_set_latency_tput_fixed_param,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -2037,6 +2038,7 @@ typedef enum {
     OP(WMI_MLO_LINK_RECONFIG_COMPLETE_CMDID) \
     OP(WMI_SAWF_EZMESH_HOP_COUNT_CMDID) \
     OP(WMI_VDEV_VBSS_CONFIG_CMDID) \
+    OP(WMI_NDP_SET_LATENCY_TPUT_CMDID) \
     /* add new CMD_LIST elements above this line */
 
 
@@ -4098,6 +4100,11 @@ WMITLV_CREATE_PARAM_STRUC(WMI_NDP_END_REQ_CMDID);
 #define WMITLV_TABLE_WMI_NDP_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_cmd_param, wmi_ndp_cmd_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_CMDID);
+
+/* NDP Set Latency Tput Cmd */
+#define WMITLV_TABLE_WMI_NDP_SET_LATENCY_TPUT_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_set_latency_tput_fixed_param, wmi_ndp_set_latency_tput_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_NDP_SET_LATENCY_TPUT_CMDID);
 
 /* RCPI Info Request Cmd */
 #define WMITLV_TABLE_WMI_REQUEST_RCPI_CMDID(id,op,buf,len) \

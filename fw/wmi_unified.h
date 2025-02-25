@@ -1601,6 +1601,7 @@ typedef enum {
     WMI_NDP_RESPONDER_REQ_CMDID,
     WMI_NDP_END_REQ_CMDID,
     WMI_NDP_CMDID,
+    WMI_NDP_SET_LATENCY_TPUT_CMDID,
 
     /** WMI commands related to HW data filtering **/
     WMI_HW_DATA_FILTER_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_HW_DATA_FILTER),
@@ -29500,6 +29501,21 @@ typedef struct {
 
 #define wmi_ndp_cmd_param wmi_ndp_cmd_param_PROTOTYPE
 
+typedef struct {
+    /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_ndp_set_latency_tput_fixed_param */
+    A_UINT32 tlv_header;
+    /** NDP instance id */
+    A_UINT32 ndp_instance_id;
+    /** NDI VDEV ID */
+    A_UINT32 vdev_id;
+    /** latency reqirement */
+    A_UINT32 latency_ms;
+    /** throughput requirement */
+    A_UINT32 tput_mbps;
+} wmi_ndp_set_latency_tput_fixed_param_PROTOTYPE;
+
+#define wmi_ndp_set_latency_tput_fixed_param wmi_ndp_set_latency_tput_fixed_param_PROTOTYPE
+
 /**
  * NDP End request
  */
@@ -38726,6 +38742,7 @@ static INLINE A_UINT8 *wmi_id_to_name(A_UINT32 wmi_command)
         WMI_RETURN_STRING(WMI_MLO_LINK_RECONFIG_COMPLETE_CMDID);
         WMI_RETURN_STRING(WMI_SAWF_EZMESH_HOP_COUNT_CMDID);
         WMI_RETURN_STRING(WMI_VDEV_VBSS_CONFIG_CMDID);
+        WMI_RETURN_STRING(WMI_NDP_SET_LATENCY_TPUT_CMDID);
     }
 
     return (A_UINT8 *) "Invalid WMI cmd";
