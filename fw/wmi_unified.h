@@ -4959,7 +4959,10 @@ typedef struct {
      *      So FW will start refilling the buffers.
      *      Refer to the below definitions of WMI_RSRC_CFG_HOST_SERVICE_FLAG
      *      OPT_DP_CTRL_REPLENISH_REFILL_RX_BUFFER_SUPPORT_GET and _SET macros.
-     *  Bits 31:18 - Reserved
+     *  Bit 18
+     *      This bit will be set by host to inform FW that VBSS feature is
+     *      enabled.
+     *  Bits 31:19 - Reserved
      */
     A_UINT32 host_service_flags;
 
@@ -50153,8 +50156,9 @@ typedef struct {
 } wmi_vdev_vbss_peer_sn_info;
 
 typedef enum {
-    WMI_VBSS_GET_PEER_CONTEXT = 0x1,
-    WMI_VBSS_SET_PEER_CONTEXT = 0x2,
+    WMI_VBSS_GET_PEER_CONTEXT        = 1,
+    WMI_VBSS_SET_PEER_CONTEXT        = 2,
+    WMI_VBSS_RX_SUSPEND_PEER_CONTEXT = 3,
 } wmi_vbss_action;
 
 #define WMI_VDEV_VBSS_GET_ACTION(action) WMI_GET_BITS(action, 0, 4)
