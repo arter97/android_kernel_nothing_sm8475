@@ -161,7 +161,7 @@ typedef enum {
     MODE_11BE_EHT40_2G = 32, /* For WIN */
 #endif
 
-#if SUPPORT_11BN
+#if defined(SUPPORT_11BN) && SUPPORT_11BN
     MODE_11BN_UHR20 = 33,
     MODE_11BN_UHR40 = 34,
     MODE_11BN_UHR80 = 35,
