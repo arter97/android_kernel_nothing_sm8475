@@ -21432,10 +21432,15 @@ typedef struct {
 #define WMI_PEER_PARAM_UL_OFDMA_RTD                    0x2B
 
 /*
- * Send unsolicited probe response to a connected STA.
- * 0: Send immediately and stop.
- * XX: Send every XX ms continuously.
- * 0xFFFFFFFF: Stop sending immediately.
+ * Count and Interval to send unsolicited probe response to a connected STA.
+ * BIT 0-23 - Interval (in us)
+ * BIT 24-31 - Count (Number of probe response frame to send)
+ *
+ * Count : 0     - Stop sending immediately.
+ * Count : 1-254 - Send a probe response periodically at given interval
+ *                 until count expires.
+ * Count : 255   - Send a probe response periodically at given interval
+ *                 until stopped.
  */
 #define WMI_PEER_PARAM_UNSOL_PROBE_RESP_INTVL          0x2C
 
