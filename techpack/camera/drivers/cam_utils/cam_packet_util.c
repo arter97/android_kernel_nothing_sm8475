@@ -177,6 +177,7 @@ int cam_packet_util_get_kmd_buffer(struct cam_packet *packet,
 	kmd_buf->offset     = cmd_desc->offset + packet->kmd_cmd_buf_offset;
 	kmd_buf->size       = cmd_desc->size - cmd_desc->length;
 	kmd_buf->used_bytes = 0;
+	return rc;
 
 rel_kmd_buf:
 	cam_mem_put_cpu_buf(cmd_desc->mem_handle);

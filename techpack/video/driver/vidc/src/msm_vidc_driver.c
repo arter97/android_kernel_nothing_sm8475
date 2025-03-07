@@ -5915,7 +5915,7 @@ static int msm_vidc_check_inst_mbpf(struct msm_vidc_inst *inst)
 	if (mbpf > max_mbpf) {
 		i_vpr_e(inst, "%s: session overloaded. needed %u, max %u", __func__,
 			mbpf, max_mbpf);
-		return -ENOMEM;
+		return -ENOTSUPP;
 	}
 
 	return 0;

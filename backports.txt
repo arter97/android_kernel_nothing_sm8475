@@ -1,3 +1,4 @@
+fe52c649438b dma-fence: Use kernel's sort for merging fences
 8ce41b0f9d77 mm: fix NULL pointer dereference in alloc_pages_bulk_noprof
 484c3bab2d5d usb: xhci: Fix TD invalidation under pending Set TR Dequeue
 214e01ad4ed7 kthread: unpark only parked kthread
