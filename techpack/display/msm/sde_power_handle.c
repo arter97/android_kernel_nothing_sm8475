@@ -684,6 +684,8 @@ int sde_power_resource_init(struct platform_device *pdev,
 	/* event init must happen before mmrm register */
 	INIT_LIST_HEAD(&phandle->event_list);
 
+	mutex_init(&phandle->phandle_lock);
+
 	rc = sde_power_parse_dt_clock(pdev, mp);
 	if (rc) {
 		pr_err("device clock parsing failed\n");
@@ -732,8 +734,6 @@ int sde_power_resource_init(struct platform_device *pdev,
 	phandle->rsc_client = NULL;
 	phandle->rsc_client_init = false;
 
-	mutex_init(&phandle->phandle_lock);
-
 	return rc;
 
 bus_err:
@@ -745,12 +745,16 @@ clkmmrm_err:
 clkget_err:
 	msm_dss_get_vreg(&pdev->dev, mp->vreg_config, mp->num_vreg, 0);
 vreg_err:
-	if (mp->vreg_config)
+	if (mp->vreg_config) {
 		devm_kfree(&pdev->dev, mp->vreg_config);
+		mp->vreg_config = NULL;
+	}
 	mp->num_vreg = 0;
 parse_vreg_err:
-	if (mp->clk_config)
+	if (mp->clk_config) {
 		devm_kfree(&pdev->dev, mp->clk_config);
+		mp->clk_config = NULL;
+	}
 	mp->num_clk = 0;
 end:
 	return rc;

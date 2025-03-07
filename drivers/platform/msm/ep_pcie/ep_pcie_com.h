@@ -15,6 +15,7 @@
 #include <linux/delay.h>
 #include <linux/msm_ep_pcie.h>
 #include <linux/iommu.h>
+#include <linux/pci_regs.h>
 
 #define PCIE20_PARF_SYS_CTRL           0x00
 #define PCIE20_PARF_DB_CTRL            0x10
@@ -119,6 +120,8 @@
 #define PCIE20_BUS_DISCONNECT_STATUS   0x68c
 #define PCIE20_ACK_F_ASPM_CTRL_REG     0x70C
 #define PCIE20_MASK_ACK_N_FTS          0xff00
+#define PCIE20_PORT_LINK_CTRL_REG      0x710
+#define PCIE20_GEN3_GEN2_CTRL          0x80C
 #define PCIE20_MISC_CONTROL_1          0x8BC
 
 #define PCIE20_PLR_IATU_VIEWPORT       0x900
@@ -185,10 +188,20 @@
 #define MAX_NAME_LEN 80
 #define MAX_IATU_ENTRY_NUM 2
 
+#define LINK_WIDTH_X1 (0x1)
+#define LINK_WIDTH_X2 (0x3)
+#define LINK_WIDTH_X4 (0x7)
+#define LINK_WIDTH_X8 (0xf)
+#define LINK_WIDTH_MASK (0x3f)
+#define LINK_WIDTH_SHIFT (16)
+
+#define NUM_OF_LANES_MASK (0x1f)
+#define NUM_OF_LANES_SHIFT (8)
+
 #define EP_PCIE_LOG_PAGES 50
 #define EP_PCIE_MAX_VREG 4
-#define EP_PCIE_MAX_CLK 14
-#define EP_PCIE_MAX_PIPE_CLK 1
+#define EP_PCIE_MAX_CLK 16
+#define EP_PCIE_MAX_PIPE_CLK 2
 #define EP_PCIE_MAX_RESET 2
 
 #define EP_PCIE_ERROR -30655
@@ -359,6 +372,7 @@ struct ep_pcie_dev_t {
 	u16                          device_id;
 	u32                          subsystem_id;
 	u32                          link_speed;
+	u32                          link_width;
 	bool                         active_config;
 	bool                         aggregated_irq;
 	bool                         mhi_a7_irq;
