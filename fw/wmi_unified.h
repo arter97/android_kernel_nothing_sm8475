@@ -3564,6 +3564,21 @@ typedef struct {
 #define WMI_TARGET_CAP_MPDU_STATS_PER_TX_NSS_SUPPORT_SET(target_cap_flags, value)\
     WMI_SET_BITS(target_cap_flags, 16, 1, value)
 
+#define WMI_TARGET_CAP_MAX_ML_STA_BSS_NUM_GET(target_cap_flags) \
+    WMI_GET_BITS(target_cap_flags, 17, 3)
+#define WMI_TARGET_CAP_MAX_ML_STA_BSS_NUM_SET(target_cap_flags, value) \
+    WMI_SET_BITS(target_cap_flags, 17, 3, value)
+
+#define WMI_TARGET_CAP_MAX_ML_SAP_BSS_NUM_GET(target_cap_flags) \
+    WMI_GET_BITS(target_cap_flags, 20, 3)
+#define WMI_TARGET_CAP_MAX_ML_SAP_BSS_NUM_SET(target_cap_flags, value) \
+    WMI_SET_BITS(target_cap_flags, 20, 3, value)
+
+#define WMI_TARGET_CAP_TOTAL_ML_LINKS_NUM_GET(target_cap_flags) \
+    WMI_GET_BITS(target_cap_flags, 23, 3)
+#define WMI_TARGET_CAP_TOTAL_ML_LINKS_NUM_SET(target_cap_flags, value) \
+    WMI_SET_BITS(target_cap_flags, 23, 3, value)
+
 
 /*
  * wmi_htt_msdu_idx_to_htt_msdu_qtype GET/SET APIs
@@ -3763,7 +3778,10 @@ typedef struct {
      * Bit 14 - Support for ML monitor mode
      * Bit 15 - Support for Qdata Tx LCE filter installation
      * Bit 16 - Support for MPDU stats per tx Nss capability
-     * Bits 31:17 - Reserved
+     * Bits 19:17 - max number of ML STA BSS supported, range [0-7]
+     * Bits 22:20 - max number of ML SAP BSS supported, range [0-7]
+     * Bits 25:23 - total number of ML links supported, range [0-7]
+     * Bits 31:26 - Reserved
      */
     A_UINT32 target_cap_flags;
 
