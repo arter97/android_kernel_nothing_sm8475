@@ -1264,7 +1264,7 @@ config WLAN_LOGGING_SOCK_SVC
 
 config WLAN_CTRL_NAME
 	string "Enable WLAN_CTRL_NAME"
-	default wlan
+	default "wlan"
 
 config ROME_IF
 	string "Enable ROME_IF"

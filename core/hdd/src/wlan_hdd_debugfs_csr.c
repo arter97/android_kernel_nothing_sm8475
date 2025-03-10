@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -320,7 +321,7 @@ void wlan_hdd_debugfs_csr_init(struct hdd_adapter *adapter)
 
 	csr = &adapter->csr_file[HDD_DEBUFS_FILE_ID_OFFLOAD_INFO];
 	if (!csr->entry) {
-		strlcpy(csr->name, "offload_info", max_len);
+		strscpy(csr->name, "offload_info", max_len);
 		csr->id = HDD_DEBUFS_FILE_ID_OFFLOAD_INFO;
 		csr->buf_max_size = DEBUGFS_OFFLOAD_INFO_BUF_SIZE;
 		csr->entry = debugfs_create_file(csr->name, 0444,
@@ -332,7 +333,7 @@ void wlan_hdd_debugfs_csr_init(struct hdd_adapter *adapter)
 
 	csr = &adapter->csr_file[HDD_DEBUFS_FILE_ID_ROAM_SCAN_STATS_INFO];
 	if (!csr->entry) {
-		strlcpy(csr->name, "roam_stats", max_len);
+		strscpy(csr->name, "roam_stats", max_len);
 		csr->id = HDD_DEBUFS_FILE_ID_ROAM_SCAN_STATS_INFO;
 		csr->buf_max_size = DEBUGFS_ROAM_SCAN_STATS_INFO_BUF_SIZE;
 		csr->entry = debugfs_create_file(csr->name, 0444,

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1333,7 +1334,7 @@ static QDF_STATUS ol_txrx_ipa_remove_header(char *name)
 	qdf_ipa_ioc_del_hdr_t *ipa_hdr;
 
 	qdf_mem_zero(&hdrlookup, sizeof(hdrlookup));
-	strlcpy(hdrlookup.name, name, sizeof(hdrlookup.name));
+	strscpy(hdrlookup.name, name, sizeof(hdrlookup.name));
 	ret = qdf_ipa_get_hdr(&hdrlookup);
 	if (ret) {
 		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_DEBUG,
@@ -1551,7 +1552,7 @@ static int ol_txrx_ipa_register_interface(char *ifname,
 			IPA_CLIENT_WLAN1_CONS;
 	QDF_IPA_IOC_TX_INTF_PROP_ALT_DST_PIPE(&tx_prop[IPA_IP_v4]) =
 			cons_client;
-	strlcpy(QDF_IPA_IOC_TX_INTF_PROP_HDR_NAME(&tx_prop[IPA_IP_v4]),
+	strscpy(QDF_IPA_IOC_TX_INTF_PROP_HDR_NAME(&tx_prop[IPA_IP_v4]),
 		ipv4_hdr_name, IPA_RESOURCE_NAME_MAX);
 	tx_intf.num_props++;
 
@@ -1563,7 +1564,7 @@ static int ol_txrx_ipa_register_interface(char *ifname,
 			IPA_CLIENT_WLAN1_CONS;
 		QDF_IPA_IOC_TX_INTF_PROP_ALT_DST_PIPE(&tx_prop[IPA_IP_v6]) =
 			cons_client;
-		strlcpy(QDF_IPA_IOC_TX_INTF_PROP_HDR_NAME(&tx_prop[IPA_IP_v6]),
+		strscpy(QDF_IPA_IOC_TX_INTF_PROP_HDR_NAME(&tx_prop[IPA_IP_v6]),
 			ipv6_hdr_name, IPA_RESOURCE_NAME_MAX);
 		tx_intf.num_props++;
 	}

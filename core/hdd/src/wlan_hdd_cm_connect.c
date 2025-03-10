@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1343,7 +1343,12 @@ hdd_cm_connect_success_pre_user_update(struct wlan_objmgr_vdev *vdev,
 
 	if (is_roam)
 		hdd_nud_indicate_roam(adapter);
-	 /* hdd_objmgr_set_peer_mlme_auth_state */
+	/* hdd_objmgr_set_peer_mlme_auth_state */
+
+	if (adapter->keep_alive_interval)
+		hdd_vdev_send_sta_keep_alive_interval(adapter,
+					hdd_ctx,
+					adapter->keep_alive_interval);
 }
 
 static void
@@ -1724,7 +1729,7 @@ QDF_STATUS hdd_cm_ft_preauth_complete(struct wlan_objmgr_vdev *vdev,
 		return QDF_STATUS_E_NOMEM;
 
 	/* need to send the RIC IEs first */
-	str_len = strlcpy(buff, "RIC=", IW_CUSTOM_MAX);
+	str_len = strscpy(buff, "RIC=", IW_CUSTOM_MAX);
 	if (rsp->ric_ies_length &&
 	    (rsp->ric_ies_length <= (IW_CUSTOM_MAX - str_len))) {
 		qdf_mem_copy(&buff[str_len], rsp->ric_ies,
@@ -1738,7 +1743,7 @@ QDF_STATUS hdd_cm_ft_preauth_complete(struct wlan_objmgr_vdev *vdev,
 
 	/* need to provide the Auth Resp */
 	qdf_mem_zero(buff, IW_CUSTOM_MAX);
-	str_len = strlcpy(buff, "AUTH=", IW_CUSTOM_MAX);
+	str_len = strscpy(buff, "AUTH=", IW_CUSTOM_MAX);
 	hdd_cm_get_ft_preauth_response(vdev, rsp, &buff[str_len],
 				       (IW_CUSTOM_MAX - str_len),
 				       &auth_resp_len);
