@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1079,7 +1079,7 @@ QDF_STATUS wifi_pos_populate_caps(struct wlan_objmgr_psoc *psoc,
 	if (!ch_list)
 		return QDF_STATUS_E_NOMEM;
 
-	strlcpy(caps->oem_target_signature,
+	strscpy(caps->oem_target_signature,
 		OEM_TARGET_SIGNATURE,
 		OEM_TARGET_SIGNATURE_LEN);
 	caps->oem_target_type = wifi_pos_obj->oem_target_type;
