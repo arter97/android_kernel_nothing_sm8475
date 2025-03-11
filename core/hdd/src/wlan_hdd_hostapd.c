@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4301,7 +4301,7 @@ struct hdd_adapter *hdd_wlan_create_ap_dev(struct hdd_context *hdd_ctx,
 		(int)policy_mgr_get_concurrency_mode(hdd_ctx->psoc));
 
 	/* Init the net_device structure */
-	strlcpy(dev->name, (const char *)iface_name, IFNAMSIZ);
+	strscpy(dev->name, (const char *)iface_name, IFNAMSIZ);
 
 	hdd_set_ap_ops(dev);
 
