@@ -1,3 +1,4 @@
+3685024edd27 mm: don't skip arch_sync_kernel_mappings() in error paths
 fe52c649438b dma-fence: Use kernel's sort for merging fences
 8ce41b0f9d77 mm: fix NULL pointer dereference in alloc_pages_bulk_noprof
 484c3bab2d5d usb: xhci: Fix TD invalidation under pending Set TR Dequeue
