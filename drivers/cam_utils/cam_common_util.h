@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_COMMON_UTIL_H_
@@ -49,6 +49,26 @@
 	(min) = do_div(tmp, 60);                                                 \
 	(hrs) = do_div(tmp, 24);                                                 \
 })
+
+/*
+ * manage locking between process context and tasklets.
+ * use appropriate api based on current context.
+ */
+#define _SPIN_LOCK_PROCESS_TO_BH(lock)          \
+({                                              \
+		if (in_task())			\
+			spin_lock_bh(lock);	\
+		else				\
+			spin_lock(lock);	\
+})                                              \
+
+#define _SPIN_UNLOCK_PROCESS_TO_BH(lock)        \
+({                                              \
+		if (in_task())			\
+			spin_unlock_bh(lock);	\
+		else				\
+			spin_unlock(lock);	\
+})                                              \
 
 typedef unsigned long (*cam_common_mini_dump_cb) (void *dst, unsigned long len);
 
