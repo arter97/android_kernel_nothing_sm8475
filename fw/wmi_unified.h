@@ -23500,6 +23500,7 @@ typedef struct {
     A_UINT32 no_ack_timeout; /* In msec. duration to wait before another SW retry made if no ack seen for previous frame */
     A_UINT32 roam_candidate_validity_time; /* In msec. validity duration of each entry in roam cache.  If the value is 0x0, this field should be disregarded. */
     A_UINT32 roam_to_current_bss_disable; /* Disable roaming to current bss */
+    A_UINT32 mlo_roam_partner_bringup_by_host;
 } wmi_roam_offload_tlv_param;
 
 
@@ -23727,6 +23728,21 @@ typedef struct {
      */
     wmi_mac_addr mac_addr;
 } wmi_roam_bss_info_param;
+
+typedef struct {
+    A_UINT32 tlv_header;
+    /* These params are filled in the new design done for MLO roam
+     * optimization; only in roam abort cases Fw deletes partner links
+     * at the start of roam handoff itself.
+     * Host needs to take care of bringing up the partner link if
+     * roam fails based on deleted_ieee_link_id_bmap;
+     * deleted_ieee_link_id_bmap represents the ieee_link_id of the
+     * links which were deleted at the start of roam handoff.
+     * This is filled only for MLO and deleted_ieee_link_id_bmap = 0
+     * means no link was deleted.
+     */
+    A_UINT32 deleted_link_bmap;
+} wmi_roam_partner_link_param;
 
 /* roam_reason: bits 0-3 */
 #define WMI_ROAM_REASON_INVALID   0x0 /** invalid reason. Do not interpret reason field */
