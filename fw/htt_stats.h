@@ -2017,6 +2017,22 @@ typedef htt_stats_peer_stats_cmn_tlv htt_peer_stats_cmn_tlv;
 #define HTT_PEER_DETAILS_SRC_INFO_M           0x00000fff
 #define HTT_PEER_DETAILS_SRC_INFO_S           0
 
+#define HTT_PEER_DETAILS_PEER_PS_ENTRY_M       0x000000ff
+#define HTT_PEER_DETAILS_PEER_PS_ENTRY_S       0
+#define HTT_PEER_DETAILS_PEER_PS_EXIT_M        0x0000ff00
+#define HTT_PEER_DETAILS_PEER_PS_EXIT_S        8
+#define HTT_PEER_DETAILS_PEER_PSPOLL_TRIGGER_M 0x00ff0000
+#define HTT_PEER_DETAILS_PEER_PSPOLL_TRIGGER_S 16
+#define HTT_PEER_DETAILS_PEER_UAPSD_TRIGGER_M  0xff000000
+#define HTT_PEER_DETAILS_PEER_UAPSD_TRIGGER_S  24
+
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_0_M 0x000003ff
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_0_S 0
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_1_M 0x000ffc00
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_1_S 10
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_2_M 0x3ff00000
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_2_S 20
+
 
 #define HTT_PEER_DETAILS_SET(word, httsym, val)  \
     do {                                         \
@@ -2062,6 +2078,34 @@ typedef struct {
                          rsvd1             : 20;  /* [31:12] */
         };
     };
+
+    /* Dword 10 */
+    union {
+        A_UINT32 word__peer_ps_entry__peer_ps_exit__peer_pspoll_trigger_received__peer_uapsd_trigger_received;
+        struct {
+            A_UINT32     peer_ps_entry                : 8, /* [7:0] */
+                         peer_ps_exit                 : 8, /* [15:8] */
+                         peer_pspoll_trigger_received : 8, /* [23:16] */
+                         peer_uapsd_trigger_received  : 8; /* [31:24] */
+        };
+   };
+
+    /* Dword 11 */
+    union {
+        A_UINT32 word__peer_ps_histogram_0__peer_ps_histogram_1__peer_ps_histogram_2;
+        struct {
+            /*
+             * This word holds 3 10-bit histograms of power-save durations:
+             * bits  9:0  - count of durations < 200 ms
+             * bits 19:10 - count of durations between 200 to 500 ms
+             * bits 29:20 - count of durations > 500 ms
+             */
+            A_UINT32     peer_ps_histogram_0 : 10, /* [9:0] */
+                         peer_ps_histogram_1 : 10, /* [19:10] */
+                         peer_ps_histogram_2 : 10, /* [29:20] */
+                         rsvd2               : 2;  /* [31:30] */
+        };
+    };
 } htt_stats_peer_details_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_peer_details_tlv htt_peer_details_tlv;
@@ -2072,6 +2116,21 @@ typedef htt_stats_peer_details_tlv htt_peer_details_tlv;
 #define HTT_STATS_PEER_DETAILS_USE_PPE_GET(word)          ((word >> 21) & 0x1)
 
 #define HTT_STATS_PEER_DETAILS_SRC_INFO_GET(word) ((word >> 0) & 0xfff)
+
+#define HTT_STATS_PEER_DETAILS_PEER_PS_ENTRY_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_ENTRY)
+#define HTT_STATS_PEER_DETAILS_PEER_PS_EXIT_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_EXIT)
+#define HTT_STATS_PEER_DETAILS_PEER_PSPOLL_TRIGGER_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PSPOLL_TRIGGER)
+#define HTT_STATS_PEER_DETAILS_PEER_UAPSD_TRIGGER_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_UAPSD_TRIGGER)
+#define HTT_STATS_PEER_DETAILS_PEER_PS_HISTOGRAM_0_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_HISTOGRAM_0)
+#define HTT_STATS_PEER_DETAILS_PEER_PS_HISTOGRAM_1_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_HISTOGRAM_1)
+#define HTT_STATS_PEER_DETAILS_PEER_PS_HISTOGRAM_2_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_HISTOGRAM_2)
 
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
