@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2022, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -4652,7 +4652,6 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 		(struct cam_hw_prepare_update_args *) prepare_hw_update_args;
 	struct cam_tfe_hw_mgr_ctx               *ctx;
 	struct cam_tfe_hw_mgr                   *hw_mgr;
-	struct cam_kmd_buf_info                  kmd_buf;
 	uint32_t                                 i;
 	bool                                     fill_fence = true;
 	struct cam_isp_prepare_hw_update_data   *prepare_hw_data;
@@ -4680,7 +4679,8 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 		return rc;
 
 	/* Pre parse the packet*/
-	rc = cam_packet_util_get_kmd_buffer(prepare->packet, &kmd_buf);
+	rc = cam_packet_util_get_kmd_buffer(prepare->packet,
+			&prepare_hw_data->kmd_cmd_buff_info);
 	if (rc)
 		return rc;
 
@@ -4709,7 +4709,7 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 
 		/* Add change base */
 		rc = cam_isp_add_change_base(prepare, &ctx->res_list_tfe_in,
-			&change_base_info, &kmd_buf);
+			&change_base_info, &prepare_hw_data->kmd_cmd_buff_info);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
 				"Failed in change base i=%d, idx=%d, rc=%d",
@@ -4720,7 +4720,8 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 
 		/* get command buffers */
 		if (ctx->base[i].split_id != CAM_ISP_HW_SPLIT_MAX) {
-			rc = cam_tfe_add_command_buffers(prepare, &kmd_buf,
+			rc = cam_tfe_add_command_buffers(prepare,
+				&prepare_hw_data->kmd_cmd_buff_info,
 				&ctx->base[i],
 				cam_isp_tfe_packet_generic_blob_handler,
 				ctx->res_list_tfe_out, CAM_TFE_HW_OUT_RES_MAX);
@@ -4740,7 +4741,7 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 		rc = cam_isp_add_io_buffers(hw_mgr->mgr_common.img_iommu_hdl,
 			hw_mgr->mgr_common.img_iommu_hdl_secure,
 			prepare, ctx->base[i].idx,
-			&kmd_buf, ctx->res_list_tfe_out,
+			&prepare_hw_data->kmd_cmd_buff_info, ctx->res_list_tfe_out,
 			NULL, CAM_ISP_TFE_OUT_RES_BASE,
 			CAM_TFE_HW_OUT_RES_MAX, fill_fence,
 			CAM_ISP_HW_TYPE_TFE,
@@ -4829,7 +4830,7 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 		change_base_info.cdm_id = CAM_CDM_MAX;
 		/* Add change base */
 		rc = cam_isp_add_change_base(prepare, &ctx->res_list_tfe_in,
-			&change_base_info, &kmd_buf);
+			&change_base_info, &prepare_hw_data->kmd_cmd_buff_info);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
 				"Failed in change base adding reg_update cmd i=%d, idx=%d, rc=%d",
@@ -4839,7 +4840,7 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 
 		/*Add reg update */
 		rc = cam_isp_add_reg_update(prepare, &ctx->res_list_tfe_in,
-			ctx->base[i].idx, &kmd_buf);
+			ctx->base[i].idx, &prepare_hw_data->kmd_cmd_buff_info);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
 				"Add Reg_update cmd Failed i=%d, idx=%d, rc=%d",
