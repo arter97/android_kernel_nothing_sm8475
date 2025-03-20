@@ -13490,6 +13490,7 @@ typedef enum {
     WMI_CTRL_PATH_STATS_CAL_TYPE_PADROOP                 = 0x17,
     WMI_CTRL_PATH_STATS_CAL_TYPE_SELFCALTPC              = 0x18,
     WMI_CTRL_PATH_STATS_CAL_TYPE_RXSPUR                  = 0x19,
+    WMI_CTRL_PATH_STATS_CAL_TYPE_PDADC                   = 0x1a,
 
     /* add new cal types above this line */
     WMI_CTRL_PATH_STATS_CAL_TYPE_INVALID                 = 0xFF
@@ -13589,6 +13590,7 @@ static INLINE A_UINT8 *wmi_ctrl_path_cal_type_id_to_name(A_UINT32 cal_type_id)
         WMI_RETURN_STRING(WMI_CTRL_PATH_STATS_CAL_TYPE_PADROOP);
         WMI_RETURN_STRING(WMI_CTRL_PATH_STATS_CAL_TYPE_SELFCALTPC);
         WMI_RETURN_STRING(WMI_CTRL_PATH_STATS_CAL_TYPE_RXSPUR);
+        WMI_RETURN_STRING(WMI_CTRL_PATH_STATS_CAL_TYPE_PDADC);
     }
 
     return (A_UINT8 *) "WMI_CTRL_PATH_STATS_CAL_TYPE_UNKNOWN";
