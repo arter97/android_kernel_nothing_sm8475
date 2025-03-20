@@ -153,10 +153,12 @@ QDF_STATUS qdf_ini_parse(const char *ini_path, void *context,
 	}
 
 free_fbuf:
-	if (qdf_str_eq(QDF_WIFI_MODULE_PARAMS_FILE, ini_path))
-		qdf_module_param_file_free(fbuf);
-	else
-		qdf_file_buf_free(fbuf);
+	if (strcmp(ini_path, WLAN_INI_FILE)) {
+		if (qdf_str_eq(QDF_WIFI_MODULE_PARAMS_FILE, ini_path))
+			qdf_module_param_file_free(fbuf);
+		else
+			qdf_file_buf_free(fbuf);
+	}
 
 	return status;
 }
