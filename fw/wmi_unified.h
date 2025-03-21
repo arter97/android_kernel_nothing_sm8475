@@ -22681,6 +22681,15 @@ typedef struct {
     A_UINT32 roam_scan_period_after_inactivity; /* units = milliseconds */
     /** roam full scan period value */
     A_UINT32 roam_full_scan_period; /* units = milliseconds */
+    /** roam_periodic_scan_interval:
+     * Timer value to periodically trigger the roaming process at
+     * set intervals during low RSSI roaming trigger.
+     * Low rssi trigger (Partial/full) -->
+     *                  10s (partial) -->
+     *                  20s (partial) -->
+     *                  30s (partial) and so on.
+     */
+    A_UINT32 roam_periodic_scan_interval; /* units = seconds */
 } wmi_roam_scan_period_fixed_param;
 
 /**
