@@ -23757,7 +23757,7 @@ typedef struct {
      * This is filled only for MLO and deleted_ieee_link_id_bmap = 0
      * means no link was deleted.
      */
-    A_UINT32 deleted_link_bmap;
+    A_UINT32 deleted_ieee_link_id_bmap;
 } wmi_roam_partner_link_param;
 
 /* roam_reason: bits 0-3 */
