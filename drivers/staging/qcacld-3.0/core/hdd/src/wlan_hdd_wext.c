@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3042,7 +3042,7 @@ static void wlan_get_wlm_stats_cb(void *cookie, const char *data)
 		return;
 	}
 	priv = osif_request_priv(request);
-	strlcpy(priv, data, WE_MAX_STR_LEN);
+	strscpy(priv, data, WE_MAX_STR_LEN);
 	osif_request_complete(request);
 	osif_request_put(request);
 }
@@ -3082,7 +3082,7 @@ static int wlan_get_wlm_stats(struct hdd_adapter *adapter, uint32_t bitmask,
 		goto cleanup;
 	}
 	priv = osif_request_priv(request);
-	strlcpy(response, priv, params.priv_size);
+	strscpy(response, priv, params.priv_size);
 
 cleanup:
 	osif_request_put(request);
