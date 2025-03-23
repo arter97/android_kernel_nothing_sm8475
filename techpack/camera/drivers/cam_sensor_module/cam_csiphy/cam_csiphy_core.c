@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -651,6 +651,7 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	uintptr_t                generic_ptr;
 	uintptr_t                generic_pkt_ptr;
 	struct cam_packet       *csl_packet = NULL;
+	struct cam_packet       *csl_packet_u = NULL;
 	struct cam_cmd_buf_desc *cmd_desc = NULL;
 	uint32_t                *cmd_buf = NULL;
 	struct cam_csiphy_info  *cam_cmd_csiphy_info = NULL;
@@ -681,18 +682,17 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 			"Inval cam_packet strut size: %zu, len_of_buff: %zu",
 			 sizeof(struct cam_packet), len);
 		rc = -EINVAL;
-		return rc;
+		goto put_buf;
 	}
 
 	remain_len -= (size_t)cfg_dev->offset;
-	csl_packet = (struct cam_packet *)
+	csl_packet_u = (struct cam_packet *)
 		(generic_pkt_ptr + (uint32_t)cfg_dev->offset);
 
-	if (cam_packet_util_validate_packet(csl_packet,
-		remain_len)) {
-		CAM_ERR(CAM_CSIPHY, "Invalid packet params");
-		rc = -EINVAL;
-		return rc;
+	rc = cam_packet_util_copy_pkt_to_kmd(csl_packet_u, &csl_packet, remain_len);
+	if (rc) {
+		CAM_ERR(CAM_CSIPHY, "Copying packet to KMD failed");
+		goto put_buf;
 	}
 
 	if (csl_packet->num_cmd_buf)
@@ -702,13 +702,13 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	else {
 		CAM_ERR(CAM_CSIPHY, "num_cmd_buffers = %d", csl_packet->num_cmd_buf);
 		rc = -EINVAL;
-		return rc;
+		goto end;
 	}
 
 	rc = cam_packet_util_validate_cmd_desc(cmd_desc);
 	if (rc) {
 		CAM_ERR(CAM_CSIPHY, "Invalid cmd desc ret: %d", rc);
-		return rc;
+		goto end;
 	}
 
 	rc = cam_mem_get_cpu_buf(cmd_desc->mem_handle,
@@ -716,7 +716,7 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	if (rc < 0) {
 		CAM_ERR(CAM_CSIPHY,
 			"Failed to get cmd buf Mem address : %d", rc);
-		return rc;
+		goto end;
 	}
 
 	if ((len < sizeof(struct cam_csiphy_info)) ||
@@ -724,7 +724,8 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 		CAM_ERR(CAM_CSIPHY,
 			"Not enough buffer provided for cam_cisphy_info");
 		rc = -EINVAL;
-		return rc;
+		cam_mem_put_cpu_buf(cmd_desc->mem_handle);
+		goto end;
 	}
 
 	cmd_buf = (uint32_t *)generic_ptr;
@@ -735,7 +736,8 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	if (index < 0 || index  >= csiphy_dev->session_max_device_support) {
 		CAM_ERR(CAM_CSIPHY, "index in invalid: %d", index);
 		cam_mem_put_cpu_buf(cmd_desc->mem_handle);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto end;
 	}
 
 	rc = cam_csiphy_sanitize_lane_cnt(csiphy_dev, index,
@@ -745,7 +747,7 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 			"Wrong configuration lane_cnt: %u",
 			cam_cmd_csiphy_info->lane_cnt);
 		cam_mem_put_cpu_buf(cmd_desc->mem_handle);
-		return rc;
+		goto end;
 	}
 
 	if (csiphy_dev->csiphy_info[index].csiphy_3phase) {
@@ -756,7 +758,7 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 				"Wrong Datarate Configuration: %llu",
 				cam_cmd_csiphy_info->data_rate);
 			cam_mem_put_cpu_buf(cmd_desc->mem_handle);
-			return rc;
+			goto end;
 		}
 	}
 
@@ -775,7 +777,8 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 			(csiphy_dev->csiphy_info[index].csiphy_3phase ?
 			"CPHY" : "DPHY"));
 		cam_mem_put_cpu_buf(cmd_desc->mem_handle);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto end;
 	}
 
 	csiphy_dev->preamble_enable = preamble_en;
@@ -837,7 +840,11 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 		csiphy_dev->csiphy_info[index].settle_time,
 		csiphy_dev->csiphy_info[index].data_rate);
 
+
 	cam_mem_put_cpu_buf(cmd_desc->mem_handle);
+end:
+	cam_common_mem_free(csl_packet);
+put_buf:
 	cam_mem_put_cpu_buf(cfg_dev->packet_handle);
 	return rc;
 
@@ -845,6 +852,7 @@ reset_settings:
 	cam_csiphy_reset_phyconfig_param(csiphy_dev, index);
 	cam_mem_put_cpu_buf(cfg_dev->packet_handle);
 	cam_mem_put_cpu_buf(cmd_desc->mem_handle);
+	cam_common_mem_free(csl_packet);
 	return rc;
 }
 
