@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -593,19 +593,19 @@ void pld_get_default_fw_files(struct pld_fw_files *pfw_files)
 {
 	memset(pfw_files, 0, sizeof(*pfw_files));
 
-	strlcpy(pfw_files->image_file, PREFIX PLD_IMAGE_FILE,
+	strscpy(pfw_files->image_file, PREFIX PLD_IMAGE_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->board_data, PREFIX PLD_BOARD_DATA_FILE,
+	strscpy(pfw_files->board_data, PREFIX PLD_BOARD_DATA_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->otp_data, PREFIX PLD_OTP_FILE,
+	strscpy(pfw_files->otp_data, PREFIX PLD_OTP_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->utf_file, PREFIX PLD_UTF_FIRMWARE_FILE,
+	strscpy(pfw_files->utf_file, PREFIX PLD_UTF_FIRMWARE_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->utf_board_data, PREFIX PLD_BOARD_DATA_FILE,
+	strscpy(pfw_files->utf_board_data, PREFIX PLD_BOARD_DATA_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->epping_file, PREFIX PLD_EPPING_FILE,
+	strscpy(pfw_files->epping_file, PREFIX PLD_EPPING_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->setup_file, PREFIX PLD_SETUP_FILE,
+	strscpy(pfw_files->setup_file, PREFIX PLD_SETUP_FILE,
 		PLD_MAX_FILE_NAME);
 }
 

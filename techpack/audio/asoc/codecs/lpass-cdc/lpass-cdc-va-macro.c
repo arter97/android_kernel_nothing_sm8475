@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -471,11 +472,14 @@ static int lpass_cdc_va_macro_swr_pwr_event(struct snd_soc_dapm_widget *w,
 			 return 0;
 		} else if ( va_priv->va_swr_clk_cnt != 0 &&
 				va_priv->tx_clk_status)  {
+			pm_runtime_get_sync(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 			ret = lpass_cdc_va_macro_core_vote(va_priv, true);
 			if (ret < 0) {
 				dev_err(va_priv->dev,
 					"%s: va request core vote failed\n",
 					__func__);
+				pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+				pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 				break;
 			}
 			ret = lpass_cdc_clk_rsc_request_clock(va_priv->dev,
@@ -487,6 +491,8 @@ static int lpass_cdc_va_macro_swr_pwr_event(struct snd_soc_dapm_widget *w,
 				dev_dbg(component->dev,
 					"%s: request clock VA_CLK enable failed\n",
 					__func__);
+				pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+				pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 				break;
 			}
 			ret = lpass_cdc_clk_rsc_request_clock(va_priv->dev,
@@ -501,9 +507,13 @@ static int lpass_cdc_va_macro_swr_pwr_event(struct snd_soc_dapm_widget *w,
 					va_priv->default_clk_id,
 					VA_CORE_CLK,
 					false);
+				pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+				pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 				break;
 			}
 			va_priv->current_clk_id = VA_CORE_CLK;
+			pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+			pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
@@ -1037,6 +1047,7 @@ static int lpass_cdc_va_macro_put_dec_enum(struct snd_kcontrol *kcontrol,
 	}
 	if (strnstr(widget->name, "SMIC", strlen(widget->name))) {
 		if (val != 0) {
+			pm_runtime_get_sync(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 			if (!va_priv->swr_dmic_enable) {
 				snd_soc_component_update_bits(component,
 							mic_sel_reg,
@@ -1055,6 +1066,8 @@ static int lpass_cdc_va_macro_put_dec_enum(struct snd_kcontrol *kcontrol,
 					dmic_clk_reg,
 					0x0E, va_priv->dmic_clk_div << 0x1);
 			}
+			pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+			pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 		}
 	} else {
 		/* DMIC selected */
