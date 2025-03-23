@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -506,7 +506,6 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 	struct cam_ois_soc_private     *soc_private =
 		(struct cam_ois_soc_private *)o_ctrl->soc_info.soc_private;
 	struct cam_sensor_power_ctrl_t  *power_info = &soc_private->power_info;
-	size_t                           packet_size = 0;
 
 	ioctl_ctrl = (struct cam_control *)arg;
 	if (copy_from_user(&dev_config,
@@ -535,27 +534,10 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 	remain_len -= (size_t)dev_config.offset;
 	csl_packet_u = (struct cam_packet *)
 		(generic_pkt_addr + (uint32_t)dev_config.offset);
-	packet_size = csl_packet_u->header.size;
-	if (packet_size <= remain_len) {
-		rc = cam_common_mem_kdup((void **)&csl_packet,
-			csl_packet_u, packet_size);
-		if (rc) {
-			CAM_ERR(CAM_OIS, "Alloc and copy request %lld packet fail",
-				csl_packet_u->header.request_id);
-			goto put_ref;
-		}
-	} else {
-		CAM_ERR(CAM_OIS, "Invalid packet header size %u",
-			packet_size);
-		rc = -EINVAL;
+	rc = cam_packet_util_copy_pkt_to_kmd(csl_packet_u, &csl_packet, remain_len);
+	if (rc) {
+		CAM_ERR(CAM_OIS, "Copying packet to KMD failed");
 		goto put_ref;
-	}
-
-	if (cam_packet_util_validate_packet(csl_packet,
-		remain_len)) {
-		CAM_ERR(CAM_OIS, "Invalid packet params");
-		rc = -EINVAL;
-		goto end;
 	}
 
 	switch (csl_packet->header.op_code & 0xFFFFFF) {
