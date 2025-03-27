@@ -48072,6 +48072,8 @@ typedef struct {
      * (units = ms)
      */
     A_UINT32 delay_bound;
+    wmi_mac_addr mac_address;
+    A_UINT32 vdev_id;
 } wmi_sawf_ezmesh_hop_count_cmd_fixed_param;
 
 typedef struct {
