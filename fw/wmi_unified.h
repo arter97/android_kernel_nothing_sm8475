@@ -14841,6 +14841,21 @@ typedef struct {
     A_UINT32 opaque_debug_field_2;
     A_UINT32 opaque_debug_field_3;
     A_UINT32 opaque_debug_field_4;
+
+    /* ba_stats
+     * This word contains the following bitfields:
+     *  bits 15:0  - ba_tx_neg_fail: Blockack Transmit Negotiation failure
+     *               count for the all TIDs in peer.
+     *               Use WMI_PEER_STATS_BA_TX_NEG_FAIL_SET,GET macros.
+     *  bits 31:16 - reserved
+     */
+    union {
+        A_UINT32 ba_stats__word;
+        struct {
+            A_UINT32 ba_tx_neg_fail: 16,
+                     reserved: 16;
+        };
+    };
 } wmi_ctrl_path_peer_stats_struct;
 
 #define WMI_PEER_STATS_SM_MASK_SET(flag, val) \
@@ -15164,6 +15179,12 @@ typedef struct {
     WMI_SET_BITS(flag, 16, 16, val)
 #define WMI_PEER_STATS_RC_CHAN_FREQ_GET(flag) \
     WMI_GET_BITS(flag, 16, 16)
+
+#define WMI_PEER_STATS_PEER_BA_TX_NEG_FAIL_SET(flag, val) \
+    WMI_SET_BITS(flag, 0, 16, val)
+#define WMI_PEER_STATS_PEER_BA_TX_NEG_FAIL_GET(flag) \
+    WMI_GET_BITS(flag, 0, 16)
+/* bits 31:16 unused/reserved */
 
 
 typedef struct {

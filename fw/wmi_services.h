@@ -696,6 +696,7 @@ typedef  enum  {
     WMI_SERVICE_STA_TWT_STATS_EXT = 437, /* FW supports additional info in TWT stats and ADD COMPLETION Event */
     WMI_SERVICE_OPT_DP_DIAG_SUPPORT = 438, /* FW supports diag QDATA feature */
     WMI_SERVICE_MLO_ROAM_PARTNER_BRINGUP_FROM_HOST = 439, /* Indicates FW supports new design in which FW expects the host to bringup the partner link during roaming */
+    WMI_SERVICE_CTRL_PATH_PEER_BA_STATS = 440, /* FW supports retrieving BlockAck stats through WMI_REQUEST_CTRL_PATH_PEER_STAT */
 
 
     WMI_MAX_EXT2_SERVICE
