@@ -21724,7 +21724,7 @@ typedef struct {
 #define WMI_PEER_EXT_IS_QUALCOMM_NODE   0x00000010 /* Indicates if the peer connecting is a qualcomm node */
 #define WMI_PEER_EXT_IS_MESH_NODE       0x00000020 /* Indicates if the peer connecting is a mesh node */
 #define WMI_PEER_EXT_PROTECTED_TWT      0x00000040 /* Protected TWT operation Support field in Extended RSN Capabilities element */
-#define WMI_PEER_EXT_UHR                0x00000080
+#define WMI_PEER_EXT_UHR                0x00000080 /* UHR enabled */
 #define WMI_PEER_EXT_F_CRIT_PROTO_HINT_ENABLED 0x40000000
 
 /**
@@ -37648,6 +37648,7 @@ typedef struct {
  */
 typedef enum {
     WMI_TWT_STA_SYNC_EVENT_CAP = 1, /* STA TWT: FW internal errors reported using sync WMI_TWT_ACK_EVENTID */
+    WMI_TWT_FLEXI_SUPPORT = 2,
 
     /* Add new TWT Caps above */
     WMI_TWT_MAX_CAP = 32,
