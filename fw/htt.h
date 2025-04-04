@@ -844,6 +844,7 @@ typedef enum {
     HTT_STATS_PDEV_UL_MUMIMO_DENYLIST_STATS_TAG     = 209, /* htt_stats_pdev_ulmumimo_denylist_stats_tlv */
     HTT_STATS_PDEV_UL_MUMIMO_SEQ_TERM_STATS_TAG     = 210, /* htt_stats_pdev_ulmumimo_seq_term_stats_tlv */
     HTT_STATS_PDEV_UL_MUMIMO_HIST_INELIGIBILITY_TAG = 211, /* htt_stats_pdev_ulmumimo_hist_ineligibility_tlv */
+    HTT_STATS_PHY_PAPRD_PB_TAG                      = 212, /* htt_stats_phy_paprd_pb_tlv */
 
     HTT_STATS_MAX_TAG,
 } htt_stats_tlv_tag_t;
