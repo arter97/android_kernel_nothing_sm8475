@@ -698,6 +698,7 @@ typedef  enum  {
     WMI_SERVICE_MLO_ROAM_PARTNER_BRINGUP_FROM_HOST = 439, /* Indicates FW supports new design in which FW expects the host to bringup the partner link during roaming */
     WMI_SERVICE_CTRL_PATH_PEER_BA_STATS = 440, /* FW supports retrieving BlockAck stats through WMI_REQUEST_CTRL_PATH_PEER_STAT */
     WMI_SERVICE_CTRL_PATH_STA_DAR_STATS_SUPPORT = 441, /* FW supports DAR stats reporting for STA mode */
+    WMI_SERVICE_APF_DATA_OFFLOAD_SUPPORT_ENABLED = 442, /* Indicates FW support for APFv6 handling offloads and disable QC data offloads */
 
 
     WMI_MAX_EXT2_SERVICE

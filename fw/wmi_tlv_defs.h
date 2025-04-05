@@ -1480,6 +1480,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_roam_partner_link_param,
     WMITLV_TAG_STRUC_wmi_mlo_link_ttlm_complete_fixed_param,
     WMITLV_TAG_STRUC_wmi_ctrl_path_sta_dar_stats_struct,
+    WMITLV_TAG_STRUC_wmi_bpf_set_supported_offload_bitmap_cmd_fixed_param,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -2043,6 +2044,7 @@ typedef enum {
     OP(WMI_VDEV_VBSS_CONFIG_CMDID) \
     OP(WMI_NDP_SET_LATENCY_TPUT_CMDID) \
     OP(WMI_MLO_LINK_TTLM_COMPLETE_CMDID) \
+    OP(WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID) \
     /* add new CMD_LIST elements above this line */
 
 
@@ -5760,6 +5762,10 @@ WMITLV_CREATE_PARAM_STRUC(WMI_GET_SCAN_CACHE_RESULT_CMDID);
 #define WMITLV_TABLE_WMI_SAWF_EZMESH_HOP_COUNT_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_sawf_ezmesh_hop_count_cmd_fixed_param, wmi_sawf_ezmesh_hop_count_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_SAWF_EZMESH_HOP_COUNT_CMDID);
+
+#define WMITLV_TABLE_WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_bpf_set_supported_offload_bitmap_cmd_fixed_param, wmi_bpf_set_supported_offload_bitmap_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID);
 
 
 

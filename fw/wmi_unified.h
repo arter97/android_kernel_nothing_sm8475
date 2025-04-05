@@ -1579,6 +1579,7 @@ typedef enum {
     WMI_BPF_SET_VDEV_ENABLE_CMDID,
     WMI_BPF_SET_VDEV_WORK_MEMORY_CMDID,
     WMI_BPF_GET_VDEV_WORK_MEMORY_CMDID,
+    WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID,
 
     /** WMI commands related to monitor mode. */
     WMI_MNT_FILTER_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_MONITOR),
@@ -5109,6 +5110,27 @@ typedef struct {
      *     BIT 6 : 31 Reserved
      */
     A_UINT32 c2c_int_type_config;
+
+    /**
+     * @brief apf_data_ofld_enable
+     * BIT 0  -> enable/disable offload support in apf
+     *           @detail: This flag will indicate during init time
+     *           based on the vendor img version if APF is supporting
+     *           any offloads.
+     * BIT 1 : 31 Reserved
+     */
+    union {
+        A_UINT32 apf_data_ofload_enable__word;
+        struct {
+            A_UINT32
+                apf_data_ofld_enable: 1,
+                reserved: 31;
+        };
+    };
+    #define WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_GET(word32) \
+        WMI_GET_BITS(word32, 0, 1)
+    #define WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_SET(word32, value) \
+        WMI_SET_BITS(word32, 0, 1, value)
 } wmi_resource_config;
 
 #define WMI_MSDU_FLOW_AST_ENABLE_GET(msdu_flow_config0, ast_x) \
@@ -34076,6 +34098,47 @@ typedef struct wmi_bpf_get_vdev_work_memory_resp_evt_s {
  */
 } wmi_bpf_get_vdev_work_memory_resp_evt_fixed_param;
 
+
+/* APF offloads supported bitmap:
+ *
+ * BIT 0: ARP OFFLOAD
+ * BIT 1: NS OFFLOAD
+ * BIT 2: IGMP OFFLOAD
+ * BIT 3: ICMP OFFLOAD
+ * BIT 4-31: reserved
+*/
+#define WMI_BPF_ARP_OFFLOAD_SUPPORT_GET(param) \
+    WMI_GET_BITS(param, 0, 1)
+#define WMI_BPF_ARP_OFFLOAD_SUPPORT_SET(param, value) \
+    WMI_SET_BITS(param, 0, 1, value)
+
+#define WMI_BPF_NS_OFFLOAD_SUPPORT_GET(param) \
+    WMI_GET_BITS(param, 1, 1)
+#define WMI_BPF_NS_OFFLOAD_SUPPORT_SET(param, value) \
+    WMI_SET_BITS(param, 1, 1, value)
+
+#define WMI_BPF_IGMP_OFFLOAD_SUPPORT_GET(param) \
+    WMI_GET_BITS(param, 2, 1)
+#define WMI_BPF_IGMP_OFFLOAD_SUPPORT_SET(param, value) \
+    WMI_SET_BITS(param, 2, 1, value)
+
+#define WMI_BPF_ICMP_OFFLOAD_SUPPORT_GET(param) \
+    WMI_GET_BITS(param, 3, 1)
+#define WMI_BPF_ICMP_OFFLOAD_SUPPORT_SET(param, value) \
+    WMI_SET_BITS(param, 3, 1, value)
+
+typedef struct wmi_bpf_set_supported_offload_bitmap_cmd_s {
+    A_UINT32 tlv_header;
+    A_UINT32 vdev_id;
+    /* ofld_bitmap:
+     * Host sends bitmap for APF supported offloads.
+     * Refer to the above WMI_BPF_ macros for the interpretation of the bits
+     * within the bitmap.
+     */
+    A_UINT32 ofld_bitmap;
+} wmi_bpf_set_supported_offload_bitmap_cmd_fixed_param;
+
+
 #define AES_BLOCK_LEN           16  /* in bytes */
 #define FIPS_KEY_LENGTH_128     16  /* in bytes */
 #define FIPS_KEY_LENGTH_256     32  /* in bytes */
@@ -38915,6 +38978,7 @@ static INLINE A_UINT8 *wmi_id_to_name(A_UINT32 wmi_command)
         WMI_RETURN_STRING(WMI_VDEV_VBSS_CONFIG_CMDID);
         WMI_RETURN_STRING(WMI_NDP_SET_LATENCY_TPUT_CMDID);
         WMI_RETURN_STRING(WMI_MLO_LINK_TTLM_COMPLETE_CMDID);
+        WMI_RETURN_STRING(WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID);
     }
 
     return (A_UINT8 *) "Invalid WMI cmd";
