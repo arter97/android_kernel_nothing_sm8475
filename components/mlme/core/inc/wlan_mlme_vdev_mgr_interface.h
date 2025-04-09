@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -322,16 +322,6 @@ mlme_set_cac_required(struct wlan_objmgr_vdev *vdev, bool val);
 QDF_STATUS
 mlme_set_mbssid_info(struct wlan_objmgr_vdev *vdev,
 		     struct scan_mbssid_info *mbssid_info);
-
-/**
- * mlme_get_mbssid_info() - get mbssid info
- * @vdev: vdev pointer
- * @mbss_11ax: mbss 11ax info
- *
- * Return: None
- */
-void mlme_get_mbssid_info(struct wlan_objmgr_vdev *vdev,
-			  struct vdev_mlme_mbss_11ax *mbss_11ax);
 
 /**
  * mlme_set_tx_power() - set tx power
