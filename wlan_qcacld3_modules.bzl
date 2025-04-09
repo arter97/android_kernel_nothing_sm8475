@@ -1,6 +1,6 @@
 load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
-load("//msm-kernel:target_variants.bzl", "get_all_variants")
+load("//soc-repo:target_variants.bzl", "all_target_variants")
 
 _target_chipset_map = {
 	"blair":[
@@ -1996,7 +1996,7 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
     cmd = 'touch "$@"\n'
     for feature_grep in feature_grep_map:
         cmd += """
-          if grep -qF "{pattern}" $(location //msm-kernel:{file}); then
+          if grep -qF "{pattern}" $(location //common:{file}); then
             echo "#define {flag} (1)" >> "$@"
           fi
         """.format(
@@ -2007,7 +2007,7 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
 
     grepSrcFiles = []
     for e in feature_grep_map:
-        grepSrcFiles.append("//msm-kernel:{}".format(e["file"]))
+        grepSrcFiles.append("//common:{}".format(e["file"]))
 
     depsetSrc = depset(grepSrcFiles)
     native.genrule(
@@ -2075,16 +2075,21 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
         conditional_srcs = _conditional_srcs,
         copts = copts,
         out = out,
-        kernel_build = "//msm-kernel:{}".format(tv),
+	kernel_build = "//soc-repo:{}_base_kernel".format(tv),
         deps = [
             "//vendor/qcom/opensource/wlan/platform:{}_icnss2".format(tv),
             "//vendor/qcom/opensource/wlan/platform:{}_cnss_prealloc".format(tv),
             "//vendor/qcom/opensource/wlan/platform:{}_cnss_utils".format(tv),
             "//vendor/qcom/opensource/wlan/platform:{}_cnss_nl".format(tv),
-            "//msm-kernel:all_headers",
+	    "//soc-repo:all_headers",
+            "//soc-repo:{}/net/wireless/cfg80211".format(tv),
+            "//soc-repo:{}/drivers/iommu/qcom_iommu_util".format(tv),
+            "//soc-repo:{}/drivers/remoteproc/rproc_qcom_common".format(tv),
+            "//soc-repo:{}/drivers/soc/qcom/qmi_helpers".format(tv),
             "//vendor/qcom/opensource/wlan/platform:wlan-platform-headers",
             "//vendor/qcom/opensource/dataipa:include_headers",
             "//vendor/qcom/opensource/dataipa:{}_{}_ipam".format(target, variant),
+	    "//soc-repo:{}/kernel/sched/walt/sched-walt".format(tv),
         ],
     )
 
@@ -2119,7 +2124,7 @@ def define_dist(target, variant, chipsets):
     )
 
 def define_modules():
-    for (t, v) in get_all_variants():
+    for (t, v) in all_target_variants():
         chipsets = _target_chipset_map.get(t)
         if chipsets:
             for c in chipsets:
