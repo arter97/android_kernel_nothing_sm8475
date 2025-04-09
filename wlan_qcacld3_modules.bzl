@@ -1,6 +1,6 @@
 load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
-load("//soc-repo:target_variants.bzl", "all_target_variants")
+load(":target_variants.bzl", "get_all_variants")
 
 _target_chipset_map = {
         "blair":[
@@ -1962,11 +1962,6 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
 
     feature_grep_map = [
         {
-            "pattern": "walt_get_cpus_taken",
-            "file": "kernel/sched/walt/walt.c",
-            "flag": "WALT_GET_CPU_TAKEN_SUPPORT",
-        },
-        {
             "pattern": "nl80211_validate_key_link_id",
             "file": "net/wireless/nl80211.c",
             "flag": "CFG80211_MLO_KEY_OPERATION_SUPPORT",
@@ -2055,6 +2050,33 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
     kconfig = "Kconfig"
     defconfig = ":configs/{}_defconfig_generate_{}".format(tvc, variant)
 
+    deps = select({
+        "//build/kernel/kleaf:socrepo_true": [
+            "//soc-repo:all_headers",
+            "//soc-repo:{}/net/wireless/cfg80211".format(tv),
+            "//soc-repo:{}/drivers/iommu/qcom_iommu_util".format(tv),
+            "//soc-repo:{}/drivers/remoteproc/rproc_qcom_common".format(tv),
+            "//soc-repo:{}/drivers/soc/qcom/qmi_helpers".format(tv),
+            "//soc-repo:{}/kernel/sched/walt/sched-walt".format(tv),
+        ],
+        "//build/kernel/kleaf:socrepo_false": ["//msm-kernel:all_headers"],
+    })
+
+    deps += [
+            "//vendor/qcom/opensource/wlan/platform:{}_icnss2".format(tv),
+            "//vendor/qcom/opensource/wlan/platform:{}_cnss_prealloc".format(tv),
+            "//vendor/qcom/opensource/wlan/platform:{}_cnss_utils".format(tv),
+            "//vendor/qcom/opensource/wlan/platform:{}_cnss_nl".format(tv),
+            "//vendor/qcom/opensource/wlan/platform:wlan-platform-headers",
+            "//vendor/qcom/opensource/dataipa:include_headers",
+            "//vendor/qcom/opensource/dataipa:{}_{}_ipam".format(target, variant),
+        ]
+
+    kernel_build = select({
+        "//build/kernel/kleaf:socrepo_true": "//soc-repo:{}_base_kernel".format(tv),
+        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(tv),
+    })
+
     print("name= ", name)
     print("hw= ", hw)
     print("ipaths= ", ipaths)
@@ -2075,23 +2097,8 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
         conditional_srcs = _conditional_srcs,
         copts = copts,
         out = out,
-        kernel_build = "//soc-repo:{}_base_kernel".format(tv),
-        deps = [
-            "//vendor/qcom/opensource/wlan/platform:{}_icnss2".format(tv),
-            "//vendor/qcom/opensource/wlan/platform:{}_cnss_prealloc".format(tv),
-            "//vendor/qcom/opensource/wlan/platform:{}_cnss_utils".format(tv),
-            "//vendor/qcom/opensource/wlan/platform:{}_cnss_nl".format(tv),
-            "//soc-repo:all_headers",
-            "//soc-repo:{}/net/wireless/cfg80211".format(tv),
-            "//soc-repo:{}/drivers/iommu/qcom_iommu_util".format(tv),
-            "//soc-repo:{}/drivers/remoteproc/rproc_qcom_common".format(tv),
-            "//soc-repo:{}/drivers/soc/qcom/qmi_helpers".format(tv),
-            "//soc-repo:{}/drivers/soc/qcom/qcom_va_minidump".format(tv),
-            "//vendor/qcom/opensource/wlan/platform:wlan-platform-headers",
-            "//vendor/qcom/opensource/dataipa:include_headers",
-            "//vendor/qcom/opensource/dataipa:{}_{}_ipam".format(target, variant),
-            "//soc-repo:{}/kernel/sched/walt/sched-walt".format(tv),
-        ],
+        kernel_build = kernel_build,
+        deps = deps,
     )
 
 def define_dist(target, variant, chipsets):
@@ -2125,7 +2132,7 @@ def define_dist(target, variant, chipsets):
     )
 
 def define_modules():
-    for (t, v) in all_target_variants():
+    for (t, v) in get_all_variants():
         chipsets = _target_chipset_map.get(t)
         if chipsets:
             for c in chipsets:
