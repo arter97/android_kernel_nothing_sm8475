@@ -19455,6 +19455,9 @@ typedef enum {
      */
     WMI_VDEV_PARAM_CONNECT_EXT_FEATURES,                  /* 0xC7 */
 
+    /* Allow to tear down TWT on scan start, if corresponding INI is set */
+    WMI_VDEV_PARAM_DISABLE_SCAN_START_TWT,                /* 0xC8 */
+
 
     /*=== ADD NEW VDEV PARAM TYPES ABOVE THIS LINE ===
      * The below vdev param types are used for prototyping, and are
