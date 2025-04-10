@@ -266,9 +266,10 @@
  * 3.136 Add htt_ext_present flag in htt_tx_tcl_global_seq_metadata.
  * 3.137 Add more HTT_SDWF_MSDUQ_CFG_IND_ERROR codes.
  * 3.138 Add T2H MLO_LATENCY_REQ, H2T _RESP msg defs.
+ * 3.139 Add CLASS_INFO_IDX field in MLO_R_PEER_MAP msg.
  */
 #define HTT_CURRENT_VERSION_MAJOR 3
-#define HTT_CURRENT_VERSION_MINOR 138
+#define HTT_CURRENT_VERSION_MINOR 139
 
 #define HTT_NUM_TX_FRAG_DESC  1024
 
@@ -14662,40 +14663,41 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
  * with, so that the host can use that MLO peer ID to determine which peer
  * transmitted the rx frame.
  *
- * |31   |29  27|26   24|23   20|19 17|16|15              8|7               0|
- * |-------------------------------------------------------------------------|
- * |RSVD | PRC  |NUMLINK|           MLO peer ID            |     msg type    |
- * |-------------------------------------------------------------------------|
- * |    MAC addr 3      |  MAC addr 2    |    MAC addr 1   |    MAC addr 0   |
- * |-------------------------------------------------------------------------|
- * |  RSVD_16_31                         |    MAC addr 5   |    MAC addr 4   |
- * |-------------------------------------------------------------------------|
- * |CACHE_SET_NUM|  TIDMASK     |CHIPID|V|    Primary TCL AST IDX  0         |
- * |-------------------------------------------------------------------------|
- * |CACHE_SET_NUM|  TIDMASK     |CHIPID|V|    Primary TCL AST IDX  1         |
- * |-------------------------------------------------------------------------|
- * |CACHE_SET_NUM|  TIDMASK     |CHIPID|V|    Primary TCL AST IDX  2         |
- * |-------------------------------------------------------------------------|
- * |RSVD                                                                     |
- * |-------------------------------------------------------------------------|
- * |RSVD                                                                     |
- * |-------------------------------------------------------------------------|
- * |    htt_tlv_hdr_t                                                        |
- * |-------------------------------------------------------------------------|
- * |RSVD_27_31   |CHIPID|  VDEVID        |   SW peer ID                      |
- * |-------------------------------------------------------------------------|
- * |    htt_tlv_hdr_t                                                        |
- * |-------------------------------------------------------------------------|
- * |RSVD_27_31   |CHIPID|  VDEVID        |   SW peer ID                      |
- * |-------------------------------------------------------------------------|
- * |    htt_tlv_hdr_t                                                        |
- * |-------------------------------------------------------------------------|
- * |RSVD_27_31   |CHIPID|  VDEVID        |   SW peer ID                      |
- * |-------------------------------------------------------------------------|
+ * |31   |29  27|26|25|24|23   20|19 17|16|15              8|7               0|
+ * |--------------------------------------------------------------------------|
+ * |RSVD | PRC  | NUMLINK|           MLO peer ID            |     msg type    |
+ * |--------------------------------------------------------------------------|
+ * |    MAC addr 3       |  MAC addr 2    |    MAC addr 1   |    MAC addr 0   |
+ * |--------------------------------------------------------------------------|
+ * |  RSVD_25_31      |CV| CLASS_INFO_IDX |    MAC addr 5   |    MAC addr 4   |
+ * |--------------------------------------------------------------------------|
+ * |CACHE_SET_NUM|   TIDMASK     |CHIPID|V|    Primary TCL AST IDX  0         |
+ * |--------------------------------------------------------------------------|
+ * |CACHE_SET_NUM|   TIDMASK     |CHIPID|V|    Primary TCL AST IDX  1         |
+ * |--------------------------------------------------------------------------|
+ * |CACHE_SET_NUM|   TIDMASK     |CHIPID|V|    Primary TCL AST IDX  2         |
+ * |--------------------------------------------------------------------------|
+ * |RSVD                                                                      |
+ * |--------------------------------------------------------------------------|
+ * |RSVD                                                                      |
+ * |--------------------------------------------------------------------------|
+ * |    htt_tlv_hdr_t                                                         |
+ * |--------------------------------------------------------------------------|
+ * |RSVD_27_31  | CHIPID |  VDEVID        |   SW peer ID                      |
+ * |--------------------------------------------------------------------------|
+ * |    htt_tlv_hdr_t                                                         |
+ * |--------------------------------------------------------------------------|
+ * |RSVD_27_31  | CHIPID |  VDEVID        |   SW peer ID                      |
+ * |--------------------------------------------------------------------------|
+ * |    htt_tlv_hdr_t                                                         |
+ * |--------------------------------------------------------------------------|
+ * |RSVD_27_31  | CHIPID |  VDEVID        |   SW peer ID                      |
+ * |--------------------------------------------------------------------------|
  *
  * Where:
  *      PRC - Primary REO CHIPID        - 3 Bits Bit24,25,26
  *      NUMLINK - NUM_LOGICAL_LINKS     - 3 Bits Bit27,28,29
+ *      CV - CLASSIFY_INFO_IDX_VALID    - 1 Bit  Bit24
  *      V (valid)                       - 1 Bit  Bit17
  *      CHIPID                          - 3 Bits
  *      TIDMASK                         - 8 Bits
@@ -14734,6 +14736,16 @@ PREPACK struct htt_tx_offload_deliver_ind_hdr_t
  *     Bits 15:0
  *     Purpose: Identifies which peer node the peer ID is for.
  *     Value: upper 2 bytes of peer node's MAC address
+ *
+ *   - CLASS_INFO_IDX
+ *     Bits 23:16
+ *     Purpose: Classify info index assists TCL-L Block in certain families of
+ *              WLAN chips to start finding the flow from the corresponding
+ *              entry in the FLOW LOOK UP TABLE in MLO case
+ *   - CV (CLASS_INFO_IDX_VALID)
+ *     Bit 24
+ *     Purpose: if set indicates that the CLASS_INFO_IDX is valid,
+ *               else ignore the value reported
  *
  *   - PRIMARY_TCL_AST_IDX
  *     Bits 15:0
@@ -14806,6 +14818,11 @@ typedef enum {
 #define HTT_RX_MLO_PEER_MAP_MAC_ADDR_U16_M              0x0000ffff
 #define HTT_RX_MLO_PEER_MAP_MAC_ADDR_U16_S              0
 
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_M         0x00ff0000
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_S         16
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_M 0x01000000
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_S 24
+
 #define HTT_RX_MLO_PEER_MAP_PRIMARY_AST_INDEX_M         0x0000ffff
 #define HTT_RX_MLO_PEER_MAP_PRIMARY_AST_INDEX_S         0
 #define HTT_RX_MLO_PEER_MAP_AST_INDEX_VALID_FLAG_M      0x00010000
@@ -14853,6 +14870,30 @@ typedef enum {
     } while (0)
 #define HTT_RX_MLO_PEER_PRIMARY_REO_CHIP_ID_GET(word) \
     (((word) & HTT_RX_MLO_PEER_PRIMARY_REO_CHIP_ID_M) >> HTT_RX_MLO_PEER_PRIMARY_REO_CHIP_ID_S)
+
+#define HTT_RX_MLO_PEER_PRIMARY_REO_CHIP_ID_SET(word, value)           \
+    do {                                                               \
+        HTT_CHECK_SET_VAL(HTT_RX_MLO_PEER_PRIMARY_REO_CHIP_ID, value); \
+        (word) |= (value)  << HTT_RX_MLO_PEER_PRIMARY_REO_CHIP_ID_S;   \
+    } while (0)
+#define HTT_RX_MLO_PEER_PRIMARY_REO_CHIP_ID_GET(word) \
+    (((word) & HTT_RX_MLO_PEER_PRIMARY_REO_CHIP_ID_M) >> HTT_RX_MLO_PEER_PRIMARY_REO_CHIP_ID_S)
+
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_SET(word, value)            \
+    do {                                                                  \
+        HTT_CHECK_SET_VAL(HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX, value);  \
+        (word) |= (value)  << HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_S;    \
+    } while (0)
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_GET(word) \
+    (((word) & HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_M) >> HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_S)
+
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_SET(word, value)            \
+    do {                                                                  \
+        HTT_CHECK_SET_VAL(HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG, value);  \
+        (word) |= (value)  << HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_S;    \
+    } while (0)
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_GET(word) \
+    (((word) & HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_M) >> HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_S)
 
 #define HTT_RX_MLO_PEER_MAP_PRIMARY_AST_INDEX_SET(word, value)           \
     do {                                                                   \
@@ -14936,6 +14977,8 @@ typedef enum {
 
 
 #define HTT_RX_MLO_PEER_MAP_MAC_ADDR_OFFSET                  4  /* bytes */
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_OFFSET         8  /* bytes */
+#define HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_OFFSET 8 /* bytes */
 #define HTT_RX_MLO_PEER_MAP_PRIMARY_AST_INDEX_0_OFFSET      12  /* bytes */
 #define HTT_RX_MLO_PEER_MAP_PRIMARY_AST_INDEX_1_OFFSET      16  /* bytes */
 #define HTT_RX_MLO_PEER_MAP_PRIMARY_AST_INDEX_2_OFFSET      20  /* bytes */
