@@ -1069,7 +1069,7 @@ static int __cam_isp_ctx_enqueue_init_request(
 			}
 			req_old->request_id = req->request_id;
 
-			list_add_tail(&req->list, &ctx->free_req_list);
+			__cam_isp_ctx_move_req_to_free_list(ctx, req);
 		}
 	} else {
 		CAM_WARN(CAM_ISP,
