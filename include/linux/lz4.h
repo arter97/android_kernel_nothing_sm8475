@@ -133,7 +133,6 @@ typedef union {
 	LZ4HC_CCtx_internal internal_donotuse;
 } LZ4_streamHC_t;
 
-#if 0
 /*
  * LZ4_streamDecode_t - information structure to track an
  *	LZ4 stream during decompression.
@@ -150,7 +149,6 @@ typedef union {
 	unsigned long long table[LZ4_STREAMDECODESIZE_U64];
 	LZ4_streamDecode_t_internal internal_donotuse;
 } LZ4_streamDecode_t;
-#endif
 
 /*-************************************************************************
  *	SIZE OF STATE
@@ -199,7 +197,6 @@ static inline int LZ4_compressBound(size_t isize)
 int LZ4_compress_default(const char *source, char *dest, int inputSize,
 	int maxOutputSize, void *wrkmem);
 
-#if 0
 /**
  * LZ4_compress_fast() - As LZ4_compress_default providing an acceleration param
  * @source: source address of the original data
@@ -247,7 +244,6 @@ static int LZ4_compress_fast(const char *source, char *dest, int inputSize,
  */
 static int LZ4_compress_destSize(const char *source, char *dest, int *sourceSizePtr,
 	int targetDestSize, void *wrkmem);
-#endif
 
 /*-************************************************************************
  *	Decompression Functions
@@ -350,7 +346,6 @@ int LZ4_decompress_safe_partial(const char *source, char *dest,
 int LZ4_compress_HC(const char *src, char *dst, int srcSize, int dstCapacity,
 	int compressionLevel, void *wrkmem);
 
-#if 0
 /**
  * LZ4_resetStreamHC() - Init an allocated 'LZ4_streamHC_t' structure
  * @streamHCPtr: pointer to the 'LZ4_streamHC_t' structure
@@ -649,6 +644,5 @@ static int LZ4_decompress_safe_usingDict(const char *source, char *dest,
  */
 static int LZ4_decompress_fast_usingDict(const char *source, char *dest,
 	int originalSize, const char *dictStart, int dictSize);
-#endif
 
 #endif
