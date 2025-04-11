@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <dt-bindings/soc/qcom,ipcc.h>
@@ -498,8 +498,6 @@ static int hwsched_sendcmd(struct adreno_device *adreno_dev,
 	struct adreno_context *drawctxt = ADRENO_CONTEXT(drawobj->context);
 	int ret;
 	struct cmd_list_obj *obj;
-	int is_current_rt = rt_task(current);
-	int nice = task_nice(current);
 
 	obj = kmem_cache_alloc(obj_cache, GFP_KERNEL);
 	if (!obj)
@@ -507,18 +505,17 @@ static int hwsched_sendcmd(struct adreno_device *adreno_dev,
 
 	mutex_lock(&device->mutex);
 
-	/* Elevating thread’s priority to avoid context switch with holding device mutex */
-	if (!is_current_rt)
-		sched_set_fifo(current);
-
 	if (adreno_gpu_halt(adreno_dev) || hwsched_in_fault(hwsched)) {
-		ret = -EBUSY;
-		goto done;
+		mutex_unlock(&device->mutex);
+		kmem_cache_free(obj_cache, obj);
+		return -EBUSY;
 	}
 
+
 	if (kgsl_context_detached(context)) {
-		ret = -ENOENT;
-		goto done;
+		mutex_unlock(&device->mutex);
+		kmem_cache_free(obj_cache, obj);
+		return -ENOENT;
 	}
 
 	hwsched->inflight++;
@@ -528,7 +525,9 @@ static int hwsched_sendcmd(struct adreno_device *adreno_dev,
 		ret = adreno_active_count_get(adreno_dev);
 		if (ret) {
 			hwsched->inflight--;
-			goto done;
+			mutex_unlock(&device->mutex);
+			kmem_cache_free(obj_cache, obj);
+			return ret;
 		}
 		set_bit(ADRENO_HWSCHED_POWER, &hwsched->flags);
 	}
@@ -545,7 +544,9 @@ static int hwsched_sendcmd(struct adreno_device *adreno_dev,
 		}
 
 		hwsched->inflight--;
-		goto done;
+		kmem_cache_free(obj_cache, obj);
+		mutex_unlock(&device->mutex);
+		return ret;
 	}
 
 	if ((hwsched->inflight == 1) &&
@@ -575,13 +576,9 @@ static int hwsched_sendcmd(struct adreno_device *adreno_dev,
 done:
 	adreno_hwsched_process_hw_fence_list(adreno_dev);
 
-	if (!is_current_rt)
-		sched_set_normal(current, nice);
 	mutex_unlock(&device->mutex);
-	if (ret)
-		kmem_cache_free(obj_cache, obj);
 
-	return ret;
+	return 0;
 }
 
 /**

@@ -135,6 +135,7 @@ static int kgsl_memdesc_add_range(struct kgsl_mem_entry *target,
 	struct kgsl_memdesc *memdesc = &target->memdesc;
 	struct kgsl_memdesc_bind_range *range =
 		bind_range_create(start, last, entry);
+	struct kgsl_memdesc_bind_range *cur = NULL;
 	int ret = 0;
 
 	if (IS_ERR(range))
@@ -155,8 +156,6 @@ static int kgsl_memdesc_add_range(struct kgsl_mem_entry *target,
 	next = interval_tree_iter_first(&memdesc->ranges, start, last);
 
 	while (next) {
-		struct kgsl_memdesc_bind_range *cur;
-
 		node = next;
 		cur = bind_to_range(node);
 		next = interval_tree_iter_next(node, start, last);
