@@ -499,7 +499,6 @@ static int hwsched_sendcmd(struct adreno_device *adreno_dev,
 	int ret;
 	struct cmd_list_obj *obj;
 	int is_current_rt = rt_task(current);
-	int nice = task_nice(current);
 
 	obj = kmem_cache_alloc(obj_cache, GFP_KERNEL);
 	if (!obj)
@@ -515,6 +514,7 @@ static int hwsched_sendcmd(struct adreno_device *adreno_dev,
 		ret = -EBUSY;
 		goto done;
 	}
+
 
 	if (kgsl_context_detached(context)) {
 		ret = -ENOENT;
@@ -576,7 +576,7 @@ done:
 	adreno_hwsched_process_hw_fence_list(adreno_dev);
 
 	if (!is_current_rt)
-		sched_set_normal(current, nice);
+		sched_set_normal(current, 0);
 	mutex_unlock(&device->mutex);
 	if (ret)
 		kmem_cache_free(obj_cache, obj);

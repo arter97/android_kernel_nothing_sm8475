@@ -560,7 +560,6 @@ static int sendcmd(struct adreno_device *adreno_dev,
 	struct adreno_dispatcher_drawqueue *dispatch_q = &drawctxt->rb->dispatch_q;
 	int ret;
 	int is_current_rt = rt_task(current);
-	int nice = task_nice(current);
 
 	mutex_lock(&device->mutex);
 
@@ -669,7 +668,7 @@ static int sendcmd(struct adreno_device *adreno_dev,
 		context->priority, drawobj->flags);
 
 	if (!is_current_rt)
-		sched_set_normal(current, nice);
+		sched_set_normal(current, 0);
 
 	mutex_unlock(&device->mutex);
 
@@ -697,7 +696,7 @@ static int sendcmd(struct adreno_device *adreno_dev,
 	return 0;
 err:
 	if (!is_current_rt)
-		sched_set_normal(current, nice);
+		sched_set_normal(current, 0);
 	mutex_unlock(&device->mutex);
 	return ret;
 }
