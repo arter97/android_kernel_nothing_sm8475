@@ -358,7 +358,6 @@ static int kxr_aphost_driver_probe(struct spi_device *spi)
 		dev_err(&spi->dev, "Failed to js_spi_driver_probe: %d\n", ret);
 		goto out_kxr_spi_uart_remove;
 	}
-
 	ret = kxr_spi_xfer_start(aphost);
 	if (ret < 0) {
 		dev_err(&spi->dev, "Failed to kxr_spi_xfer_start: %d\n", ret);
