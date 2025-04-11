@@ -705,11 +705,11 @@ int wma_stats_ext_event_handler(void *handle, uint8_t *event_buf,
 	struct cdp_txrx_ext_stats ext_stats = {0};
 	struct cdp_soc_t *soc_hdl = cds_get_context(QDF_MODULE_ID_SOC);
 
-	wma_debug("Posting stats ext event to SME");
+	pr_info("%s: Posting stats ext event to SME", __func__);
 
 	param_buf = (WMI_STATS_EXT_EVENTID_param_tlvs *)event_buf;
 	if (!param_buf) {
-		wma_err("Invalid stats ext event buf");
+		pr_err("%s: Invalid stats ext event buf", __func__);
 		return -EINVAL;
 	}
 
@@ -717,14 +717,17 @@ int wma_stats_ext_event_handler(void *handle, uint8_t *event_buf,
 	buf_ptr = (uint8_t *)stats_ext_info;
 
 	alloc_len = sizeof(tSirStatsExtEvent);
+	pr_info("%s: %d: alloc_len: %u", __func__, __LINE__, alloc_len);
 	alloc_len += stats_ext_info->data_len;
+	pr_info("%s: %d: alloc_len: %u", __func__, __LINE__, alloc_len);
 	alloc_len += sizeof(struct cdp_txrx_ext_stats);
+	pr_info("%s: %d: alloc_len: %u", __func__, __LINE__, alloc_len);
 
 	if (stats_ext_info->data_len > (WMI_SVC_MSG_MAX_SIZE -
 	    WMI_TLV_HDR_SIZE - sizeof(*stats_ext_info)) ||
 	    stats_ext_info->data_len > param_buf->num_data) {
-		wma_err("Excess data_len:%d, num_data:%d",
-			stats_ext_info->data_len, param_buf->num_data);
+		pr_err("%s: Excess data_len:%d, num_data:%d",
+			__func__, stats_ext_info->data_len, param_buf->num_data);
 		return -EINVAL;
 	}
 	stats_ext_event = qdf_mem_malloc(alloc_len);
@@ -735,10 +738,17 @@ int wma_stats_ext_event_handler(void *handle, uint8_t *event_buf,
 
 	stats_ext_event->vdev_id = stats_ext_info->vdev_id;
 	stats_ext_event->event_data_len = stats_ext_info->data_len;
+	pr_info("%s: %d: memcpy %px %px len %d", __func__, __LINE__,
+		stats_ext_event->event_data, buf_ptr,
+		stats_ext_event->event_data_len);
 	qdf_mem_copy(stats_ext_event->event_data,
 		     buf_ptr, stats_ext_event->event_data_len);
 
 	cdp_txrx_ext_stats_request(soc_hdl, OL_TXRX_PDEV_ID, &ext_stats);
+	pr_info("%s: %d: memcpy %px %px len %d", __func__, __LINE__,
+		stats_ext_event->event_data +
+		stats_ext_event->event_data_len, &ext_stats,
+		sizeof(struct cdp_txrx_ext_stats));
 	qdf_mem_copy(stats_ext_event->event_data +
 		     stats_ext_event->event_data_len,
 		     &ext_stats, sizeof(struct cdp_txrx_ext_stats));
@@ -757,7 +767,7 @@ int wma_stats_ext_event_handler(void *handle, uint8_t *event_buf,
 		return -EFAULT;
 	}
 
-	wma_debug("stats ext event Posted to SME");
+	pr_info("%s: stats ext event Posted to SME", __func__);
 	return 0;
 }
 #else
