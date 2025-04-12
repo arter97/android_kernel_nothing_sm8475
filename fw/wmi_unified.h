@@ -5127,11 +5127,11 @@ typedef struct {
                 reserved: 31;
         };
     };
-    #define WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_GET(word32) \
-        WMI_GET_BITS(word32, 0, 1)
-    #define WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_SET(word32, value) \
-        WMI_SET_BITS(word32, 0, 1, value)
 } wmi_resource_config;
+#define WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_GET(word32) \
+    WMI_GET_BITS(word32, 0, 1)
+#define WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_SET(word32, value) \
+    WMI_SET_BITS(word32, 0, 1, value)
 
 #define WMI_MSDU_FLOW_AST_ENABLE_GET(msdu_flow_config0, ast_x) \
     (((ast_x) == 0) ? 1 : ((msdu_flow_config0) & (1 << ((ast_x) - 1))))
@@ -48204,9 +48204,11 @@ typedef struct {
 } wmi_sawf_svc_class_disable_cmd_fixed_param;
 
 /* Used to store Hop count info for SDWF-Ezmesh scenario based on topology changes */
+#define WMI_SAWF_EZMESH_HOP_COUNT_SVC_ID_GET(svc_class_params)               WMI_GET_BITS(svc_class_params, 0, 8)
+#define WMI_SAWF_EZMESH_HOP_COUNT_SVC_ID_SET(svc_class_params, value)        WMI_SET_BITS(svc_class_params, 0, 8, value)
 typedef struct {
     A_UINT32 tlv_header; /* TLV tag and len; tag equals  WMITLV_TAG_STRUC_wmi_sawf_ezmesh_hop_count_cmd_fixed_param */
-    A_UINT32 peer_id;
+    A_UINT32 peer_id; /* deprecated field */
     A_UINT32 hop_count;
     /* delay_bound:
      * Placeholder for future functionality where delay bound will be directly
@@ -48214,8 +48216,15 @@ typedef struct {
      * (units = ms)
      */
     A_UINT32 delay_bound;
-    wmi_mac_addr mac_address;
+    wmi_mac_addr mac_address; /* Mac Address of next BSTA */
     A_UINT32 vdev_id;
+    union {
+        struct {
+            A_UINT32 svc_id:8,
+                     reserved:24;
+        };
+        A_UINT32 svc_class_params;
+    };
 } wmi_sawf_ezmesh_hop_count_cmd_fixed_param;
 
 typedef struct {
