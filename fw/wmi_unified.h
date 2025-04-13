@@ -24764,6 +24764,8 @@ typedef enum wake_reason_e {
     WOW_REASON_PF_BLOCKING_LAST_TIME,
     /* C2C scan report LPI AP detect or not event */
     WOW_REASON_C2C_DETECT_EVENT,
+    /* wake up the host in case of TDLS packet reception */
+    WOW_REASON_TDLS_PACKET_RX,
 
 
     /* add new WOW_REASON_ defs before this line */
