@@ -7,6 +7,8 @@
 #include <linux/msm_ep_pcie.h>
 #include <linux/ipc_logging.h>
 #include <linux/msm_mhi_dev.h>
+#include <linux/sched.h>
+#include <linux/smp.h>
 
 /**
  * MHI control data structures alloted by the host, including
@@ -695,12 +697,13 @@ extern void *mhi_ipc_log;
 
 #define mhi_log(_msg_lvl, _msg, ...) do { \
 	if (_msg_lvl >= mhi_msg_lvl) { \
-		pr_err("[0x%x %s] "_msg, bhi_imgtxdb, \
-				__func__, ##__VA_ARGS__); \
+		pr_err("[0x%x %s][CPU:%d][%s] "_msg, bhi_imgtxdb, \
+				__func__, smp_processor_id(), current->comm, ##__VA_ARGS__);\
 	} \
 	if (mhi_ipc_log && (_msg_lvl >= mhi_ipc_msg_lvl)) { \
 		ipc_log_string(mhi_ipc_log,                     \
-		"[0x%x %s] " _msg, bhi_imgtxdb, __func__, ##__VA_ARGS__);     \
+		"[0x%x %s][CPU:%d][%s] " _msg, bhi_imgtxdb, __func__,\
+		smp_processor_id(), current->comm, ##__VA_ARGS__);\
 	} \
 } while (0)
 
