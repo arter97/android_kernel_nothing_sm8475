@@ -91,7 +91,7 @@ static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
 
 	if (unlikely(sg_policy->limits_changed)) {
 		sg_policy->limits_changed = false;
-		sg_policy->need_freq_update = true;
+		sg_policy->need_freq_update = cpufreq_driver_test_flags(CPUFREQ_NEED_UPDATE_LIMITS);
 		return true;
 	}
 
@@ -103,14 +103,14 @@ static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
 static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 				   unsigned int next_freq)
 {
-	if (!sg_policy->need_freq_update) {
+	if (sg_policy->need_freq_update)
+		sg_policy->need_freq_update = cpufreq_driver_test_flags(CPUFREQ_NEED_UPDATE_LIMITS);
+	else {
 		s64 delta_ns = time - sg_policy->last_freq_update_time;
 		trace_android_vh_update_next_freq(sg_policy->policy, sg_policy->next_freq,
 				&next_freq, delta_ns);
 		if (sg_policy->next_freq == next_freq)
 			return false;
-	} else {
-		sg_policy->need_freq_update = cpufreq_driver_test_flags(CPUFREQ_NEED_UPDATE_LIMITS);
 	}
 
 	sg_policy->next_freq = next_freq;
