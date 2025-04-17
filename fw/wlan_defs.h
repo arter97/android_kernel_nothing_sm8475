@@ -274,6 +274,20 @@ typedef enum {
         ((mode) == MODE_11BE_EHT40_2G))
 #endif /* SUPPORT_11BE */
 
+#if defined(SUPPORT_11BN) && SUPPORT_11BN
+#define IS_MODE_UHR(mode) (((mode) == MODE_11BN_UHR20) || \
+        ((mode) == MODE_11BN_UHR40)     || \
+        ((mode) == MODE_11BN_UHR80)     || \
+        ((mode) == MODE_11BN_UHR80_80)  || \
+        ((mode) == MODE_11BN_UHR160)    || \
+        ((mode) == MODE_11BN_UHR160_160)|| \
+        ((mode) == MODE_11BN_UHR320)    || \
+        ((mode) == MODE_11BN_UHR20_2G)  || \
+        ((mode) == MODE_11BN_UHR40_2G))
+#define IS_MODE_UHR_2G(mode) (((mode) == MODE_11BN_UHR20_2G) || \
+        ((mode) == MODE_11BN_UHR40_2G))
+#endif /* SUPPORT_11BN */
+
 #define IS_MODE_VHT_2G(mode) (((mode) == MODE_11AC_VHT20_2G) || \
         ((mode) == MODE_11AC_VHT40_2G) || \
         ((mode) == MODE_11AC_VHT80_2G))
