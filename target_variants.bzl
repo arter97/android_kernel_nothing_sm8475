@@ -2,6 +2,7 @@ targets = [
     # keep sorted
     "blair",
     "monaco",
+    "lahaina",
     "pitti",
     "pitti_32go",
     "parrot",
