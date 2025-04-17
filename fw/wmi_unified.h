@@ -22663,14 +22663,19 @@ typedef struct {
 /**
  *  btm_config.flags
  *  BIT 0     : Enable/Disable the BTM offload.
- *  BIT 1-2   : Action on non matching candidate with cache. Used WMI_ROAM_BTM_OFLD_NON_MATCHING_CND_XXX
+ *  BIT 1-2   : Action on non matching candidate with cache.
+ *              Used WMI_ROAM_BTM_OFLD_NON_MATCHING_CND_XXX
  *  BIT 3-5   : Roaming handoff decisions. Use WMI_ROAM_BTM_OFLD_CNDS_MATCH_XXX
  *  BIT 6     : Enable/Disable solicited BTM
- *  BIT 7     : Roam BTM candidates based on the roam score instead of BTM preferred value
+ *  BIT 7     : Roam BTM candidates based on the roam score instead of BTM
+ *              preferred value
  *  BIT 8     : BTM query preference over 11k neighbor report request
  *  BIT 9     : Send BTM query with preferred candidates list
- *  BIT 10    : Forward MBO BTM Request to Host if MBO ASSOC RETRY attribute is set
- *  BIT 11-31 : Reserved
+ *  BIT 10    : Forward MBO BTM Request to Host if MBO ASSOC RETRY attribute
+ *              is set
+ *  BIT 11    : Detect the missing band from BTM request when compared to
+ *              roam scan results and consider them as valid candidate
+ *  BIT 12-31 : Reserved
  */
 #define WMI_ROAM_BTM_SET_ENABLE(flags, val)                        WMI_SET_BITS(flags, 0, 1, val)
 #define WMI_ROAM_BTM_GET_ENABLE(flags)                             WMI_GET_BITS(flags, 0, 1)
@@ -22686,8 +22691,10 @@ typedef struct {
 #define WMI_ROAM_BTM_GET_BTM_QUERY_PREFERENCE_OVER_11K(flags)      WMI_GET_BITS(flags, 8, 1)
 #define WMI_ROAM_BTM_SET_BTM_QUERY_WITH_CANDIDATE_LIST(flags, val) WMI_SET_BITS(flags, 9, 1, val)
 #define WMI_ROAM_BTM_GET_BTM_QUERY_WITH_CANDIDATE_LIST(flags)      WMI_GET_BITS(flags, 9, 1)
-#define WMI_ROAM_BTM_SET_FORWARD_MBO_ASSOC_RETRY_BTM_REQUEST_TO_HOST(flags, val)    WMI_SET_BITS(flags, 10, 1, val)
-#define WMI_ROAM_BTM_GET_FORWARD_MBO_ASSOC_RETRY_BTM_REQUEST_TO_HOST(flags)         WMI_GET_BITS(flags, 10, 1)
+#define WMI_ROAM_BTM_SET_FORWARD_MBO_ASSOC_RETRY_BTM_REQUEST_TO_HOST(flags, val) WMI_SET_BITS(flags, 10, 1, val)
+#define WMI_ROAM_BTM_GET_FORWARD_MBO_ASSOC_RETRY_BTM_REQUEST_TO_HOST(flags)      WMI_GET_BITS(flags, 10, 1)
+#define WMI_ROAM_BTM_SET_DETECT_CANDIDATE_FROM_MISSING_BAND_IN_BTM_REQUEST(flags, val) WMI_SET_BITS(flags, 11, 1, val)
+#define WMI_ROAM_BTM_GET_DETECT_CANDIDATE_FROM_MISSING_BAND_IN_BTM_REQUEST(flags)      WMI_GET_BITS(flags, 11, 1)
 
 
 /** WMI_ROAM_BTM_SET_NON_MATCHING_CNDS_ACTION definition: When BTM candidate is not matched with cache by WMI_ROAM_BTM_SET_CNDS_MATCH_CONDITION, determine what to do */
