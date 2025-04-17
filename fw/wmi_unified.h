@@ -6353,16 +6353,16 @@ typedef struct {
 #define WMI_SCAN_FLAG_QUARTER_RATE_SUPPORT   0x40000
 #define WMI_SCAN_RANDOM_SEQ_NO_IN_PROBE_REQ 0x80000
 #define WMI_SCAN_ENABLE_IE_WHTELIST_IN_PROBE_REQ 0x100000
-/** pause home channel when scan channel is same as home channel */
-#define WMI_SCAN_FLAG_PAUSE_HOME_CHANNEL            0x200000
-/**
- * report CCA busy for each possible 20Mhz subbands of the wideband scan channel
- */
-#define WMI_SCAN_FLAG_REPORT_CCA_BUSY_FOREACH_20MHZ 0x400000
-
 /** for adaptive scan mode using 3 bits (21 - 23 bits) */
 #define WMI_SCAN_DWELL_MODE_MASK 0x00E00000
 #define WMI_SCAN_DWELL_MODE_SHIFT        21
+/** pause home channel when scan channel is same as home channel (bit 24) */
+#define WMI_SCAN_FLAG_PAUSE_HOME_CHANNEL            0x01000000
+/**
+ * report CCA busy for each possible 20MHz subband of the wideband scan channel
+ * (bit 25)
+ */
+#define WMI_SCAN_FLAG_REPORT_CCA_BUSY_FOREACH_20MHZ 0x02000000
 
 typedef enum {
     WMI_SCAN_DWELL_MODE_DEFAULT      = 0,
@@ -6381,7 +6381,11 @@ typedef enum {
 #define WMI_SCAN_GET_DWELL_MODE(flag) \
     (((flag) & WMI_SCAN_DWELL_MODE_MASK) >> WMI_SCAN_DWELL_MODE_SHIFT)
 
-/** WMI_SCAN_CLASS_MASK must be the same value as IEEE80211_SCAN_CLASS_MASK */
+/**
+ * WMI_SCAN_CLASS_MASK must be the same value as IEEE80211_SCAN_CLASS_MASK
+ * This bitmask is used to set/get values of req_type variable in
+ * wmi_stop_scan_cmd_fixed_param.
+ */
 #define WMI_SCAN_CLASS_MASK 0xFF000000
 
 /*
