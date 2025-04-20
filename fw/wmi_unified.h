@@ -50204,6 +50204,14 @@ typedef struct {
      * in units of KB
      */
     A_UINT32 size_kb;
+    /* tx_pwr:
+     * TX POWER of ANN PBT INFERENCING PKT (dBm units)
+     */
+    A_INT32 tx_pwr;
+    /* tx_chain_idx:
+     * CHAIN INDEX where WMI is sent to HOST to start inferencing
+     */
+    A_UINT32 tx_chain_idx;
 } wmi_pdev_power_boost_event_fixed_param;
 
 typedef enum {
