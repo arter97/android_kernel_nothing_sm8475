@@ -189,6 +189,18 @@ LZ4LIB_API const char* LZ4_versionString (void);   /**< library version string; 
 #  error "LZ4_MEMORY_USAGE is too large !"
 #endif
 
+/*
+ * LZ4_ACCELERATION_DEFAULT :
+ * Select "acceleration" for LZ4_compress_fast() when parameter value <= 0
+ */
+#define LZ4_ACCELERATION_DEFAULT 1
+/*
+ * LZ4_ACCELERATION_MAX :
+ * Any "acceleration" value higher than this threshold
+ * get treated as LZ4_ACCELERATION_MAX instead (fix #876)
+ */
+#define LZ4_ACCELERATION_MAX 65537
+
 /*-************************************
 *  Simple Functions
 **************************************/
@@ -251,7 +263,7 @@ LZ4LIB_API int LZ4_compressBound(int inputSize);
     Values <= 0 will be replaced by LZ4_ACCELERATION_DEFAULT (currently == 1, see lz4.c).
     Values > LZ4_ACCELERATION_MAX will be replaced by LZ4_ACCELERATION_MAX (currently == 65537, see lz4.c).
 */
-LZ4LIB_API int LZ4_compress_fast (const char* src, char* dst, int srcSize, int dstCapacity, int acceleration);
+LZ4LIB_API int LZ4_compress_fast (const char* src, char* dst, int srcSize, int dstCapacity, int acceleration, void *wrkmem);
 
 
 /*! LZ4_compress_fast_extState() :

@@ -1371,6 +1371,12 @@ QDF_STATUS pmo_core_psoc_send_host_wakeup_ind_to_fw(
 
 	hif_ctx = pmo_core_psoc_get_hif_handle(psoc);
 
+	if (!hif_ctx) {
+		pmo_err("hif_ctx is NULL");
+		status = QDF_STATUS_E_INVAL;
+		goto out;
+	}
+
 	status = hif_set_ep_intermediate_vote_access(hif_ctx);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		pmo_err("Unable to set EP intermediate access error:%u",

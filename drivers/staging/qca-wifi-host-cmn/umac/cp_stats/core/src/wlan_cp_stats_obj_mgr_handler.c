@@ -438,8 +438,10 @@ wlan_cp_stats_infra_cp_get_context(struct wlan_objmgr_psoc *psoc,
 	}
 
 	wlan_cp_stats_psoc_obj_lock(psoc_cp_stats_priv);
-	*resp_cb = psoc_cp_stats_priv->get_infra_cp_stats;
-	*context = psoc_cp_stats_priv->infra_cp_stats_req_context;
+	if (psoc_cp_stats_priv->get_infra_cp_stats)
+		*resp_cb = psoc_cp_stats_priv->get_infra_cp_stats;
+	if (psoc_cp_stats_priv->infra_cp_stats_req_context)
+		*context = psoc_cp_stats_priv->infra_cp_stats_req_context;
 	wlan_cp_stats_psoc_obj_unlock(psoc_cp_stats_priv);
 
 	return QDF_STATUS_SUCCESS;

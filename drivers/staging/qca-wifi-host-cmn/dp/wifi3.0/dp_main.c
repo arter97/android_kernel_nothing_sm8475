@@ -2091,7 +2091,7 @@ static inline bool dp_skip_msi_cfg(struct dp_soc *soc, int ring_type)
 {
 	if (soc->cdp_soc.ol_ops->get_con_mode &&
 	    soc->cdp_soc.ol_ops->get_con_mode() == QDF_GLOBAL_MONITOR_MODE) {
-		if (ring_type == REO_DST)
+		if (ring_type == REO_DST || ring_type == RXDMA_DST)
 			return true;
 	} else if (ring_type == RXDMA_MONITOR_STATUS) {
 		return true;
@@ -2348,20 +2348,6 @@ dp_should_timer_irq_yield(struct dp_soc *soc, uint32_t work_done,
 
 qdf_export_symbol(dp_should_timer_irq_yield);
 
-#ifdef DP_CON_MON_MSI_ENABLED
-static int dp_process_rxdma_dst_ring(struct dp_soc *soc,
-				     struct dp_intr *int_ctx,
-				     int mac_for_pdev,
-				     int total_budget)
-{
-	if (dp_soc_get_con_mode(soc) == QDF_GLOBAL_MONITOR_MODE)
-		return dp_monitor_process(soc, int_ctx, mac_for_pdev,
-					  total_budget);
-	else
-		return dp_rxdma_err_process(int_ctx, soc, mac_for_pdev,
-					    total_budget);
-}
-#else
 static int dp_process_rxdma_dst_ring(struct dp_soc *soc,
 				     struct dp_intr *int_ctx,
 				     int mac_for_pdev,
@@ -2370,7 +2356,6 @@ static int dp_process_rxdma_dst_ring(struct dp_soc *soc,
 	return dp_rxdma_err_process(int_ctx, soc, mac_for_pdev,
 				    total_budget);
 }
-#endif
 
 /**
  * dp_process_lmac_rings() - Process LMAC rings
@@ -3076,6 +3061,19 @@ dp_soc_near_full_interrupt_attach(struct dp_soc *soc, int num_irq,
 }
 #endif
 
+#ifdef DP_CON_MON_MSI_SKIP_SET
+static inline bool dp_skip_rx_mon_ring_mask_set(struct dp_soc *soc)
+{
+	return !!(soc->cdp_soc.ol_ops->get_con_mode() !=
+			QDF_GLOBAL_MONITOR_MODE);
+}
+#else
+static inline bool dp_skip_rx_mon_ring_mask_set(struct dp_soc *soc)
+{
+	return false;
+}
+#endif
+
 /*
  * dp_soc_interrupt_detach() - Deregister any allocations done for interrupts
  * @txrx_soc: DP SOC handle
@@ -3176,6 +3174,9 @@ static QDF_STATUS dp_soc_interrupt_attach(struct cdp_soc_t *txrx_soc)
 		int tx_ring_near_full_mask =
 			wlan_cfg_get_tx_ring_near_full_mask(soc->wlan_cfg_ctx,
 							    i);
+
+		if (dp_skip_rx_mon_ring_mask_set(soc))
+			rx_mon_mask = 0;
 
 		soc->intr_ctx[i].dp_intr_id = i;
 		soc->intr_ctx[i].tx_ring_mask = tx_mask;
@@ -3675,8 +3676,11 @@ void dp_link_desc_ring_replenish(struct dp_soc *soc, uint32_t mac_id)
 			} else {
 				rem_entries = num_entries_per_buf;
 				scatter_buf_num++;
-				if (scatter_buf_num >= num_scatter_bufs)
+				if (scatter_buf_num >= num_scatter_bufs) {
+					scatter_buf_num--;
 					break;
+				}
+
 				scatter_buf_ptr = (uint8_t *)
 					(soc->wbm_idle_scatter_buf_base_vaddr[
 					 scatter_buf_num]);
@@ -3690,7 +3694,7 @@ void dp_link_desc_ring_replenish(struct dp_soc *soc, uint32_t mac_id)
 			num_scatter_bufs, soc->wbm_idle_scatter_buf_size,
 			(uint32_t)(scatter_buf_ptr -
 			(uint8_t *)(soc->wbm_idle_scatter_buf_base_vaddr[
-			scatter_buf_num-1])), total_link_descs);
+			scatter_buf_num])), total_link_descs);
 	}
 }
 

@@ -4027,7 +4027,7 @@ int target_if_spectral_process_report_gen3(
 	int ret = 0;
 	struct direct_buf_rx_data *payload = buf;
 	struct target_if_spectral *spectral;
-	struct spectral_report report;
+	struct spectral_report report = {0};
 	int samp_msg_index;
 
 	spectral = get_target_if_spectral_handle_from_pdev(pdev);

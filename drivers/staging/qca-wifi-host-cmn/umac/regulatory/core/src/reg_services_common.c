@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2669,21 +2669,13 @@ QDF_STATUS reg_modify_pdev_chan_range(struct wlan_objmgr_pdev *pdev)
 	}
 
 	reg_cap_ptr = psoc_priv_obj->reg_cap;
-
 	for (cnt = 0; cnt < PSOC_MAX_PHY_REG_CAP; cnt++) {
-		if (!reg_cap_ptr) {
-			qdf_mem_free(pdev_priv_obj);
-			reg_err("reg cap ptr is NULL");
-			return QDF_STATUS_E_FAULT;
-		}
-
 		if (reg_cap_ptr->phy_id == phy_id)
 			break;
 		reg_cap_ptr++;
 	}
 
 	if (cnt == PSOC_MAX_PHY_REG_CAP) {
-		qdf_mem_free(pdev_priv_obj);
 		reg_err("extended capabilities not found for pdev");
 		return QDF_STATUS_E_FAULT;
 	}
@@ -6153,7 +6145,7 @@ QDF_STATUS reg_get_client_power_for_connecting_ap(struct wlan_objmgr_pdev *pdev,
 						  uint16_t *eirp_psd_power)
 {
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
-	enum reg_6g_client_type client_type;
+	enum reg_6g_client_type client_type = REG_DEFAULT_CLIENT;
 	struct regulatory_channel *master_chan_list;
 	QDF_STATUS status;
 

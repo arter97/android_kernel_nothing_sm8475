@@ -272,6 +272,7 @@ dp_rx_wds_add_or_update_ast(struct dp_soc *soc, struct dp_peer *ta_peer,
 				 * radio
 				 */
 				dp_peer_del_ast(soc, ast);
+				return;
 			} else {
 				/* this case is when a STA roams from one
 				 * reapter to another repeater, but inside
@@ -284,6 +285,7 @@ dp_rx_wds_add_or_update_ast(struct dp_soc *soc, struct dp_peer *ta_peer,
 				if (soc->ast_override_support &&
 				    (ta_peer->vdev->opmode == wlan_op_mode_sta)) {
 					dp_peer_del_ast(soc, ast);
+					return;
 				} else {
 					dp_wds_ext_peer_learn(soc, ta_peer);
 					dp_peer_update_ast(soc, ta_peer, ast, flags);

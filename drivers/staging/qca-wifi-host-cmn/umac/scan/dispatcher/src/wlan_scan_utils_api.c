@@ -1431,7 +1431,7 @@ static void util_scan_scm_update_bss_with_esp_data(
 		struct scan_cache_entry *scan_entry)
 {
 	uint8_t air_time_fraction = 0;
-	struct wlan_esp_ie esp_information;
+	struct wlan_esp_ie esp_information = {0};
 
 	if (!scan_entry->ie_list.esp)
 		return;
@@ -2443,6 +2443,9 @@ static uint32_t util_gen_new_ie(uint8_t *ie, uint32_t ielen,
 	/* copy subelement as we need to change its content to
 	 * mark an ie after it is processed.
 	 */
+	if (subie_len == 0 || !subelement)
+		return 0;
+
 	sub_copy = qdf_mem_malloc(subie_len);
 	if (!sub_copy)
 		return 0;
@@ -2956,11 +2959,12 @@ static QDF_STATUS util_scan_parse_mbssid(struct wlan_objmgr_pdev *pdev,
 				 * handle such scenario.
 				 */
 
-				qdf_mem_copy(split_prof_end,
-					     (subelement + MIN_IE_LEN),
-					     subie_len);
-				split_prof_end =
-					(split_prof_end + subie_len);
+				if (split_prof_end) {
+					qdf_mem_copy(split_prof_end,
+						     (subelement + MIN_IE_LEN),
+						     subie_len);
+					split_prof_end += subie_len;
+				}
 
 				/*
 				 * When to stop the process of accumulating
@@ -2992,9 +2996,11 @@ static QDF_STATUS util_scan_parse_mbssid(struct wlan_objmgr_pdev *pdev,
 				if (mbssid_info.prof_residue)
 					break;
 
-				split_prof_len =
-					(split_prof_end -
-					 split_prof_start - MIN_IE_LEN);
+				if (split_prof_end) {
+					split_prof_len =
+						(split_prof_end -
+						 split_prof_start - MIN_IE_LEN);
+				}
 			}
 
 			if (mbssid_info.split_prof_continue) {
