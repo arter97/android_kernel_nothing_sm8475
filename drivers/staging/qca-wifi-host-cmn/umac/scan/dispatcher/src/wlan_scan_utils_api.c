@@ -193,6 +193,10 @@ util_scan_get_phymode_11be(struct wlan_objmgr_pdev *pdev,
 	if (!util_scan_entry_ehtcap(scan_params) || !eht_ops)
 		return phymode;
 
+	if (eht_ops->elem_len < sizeof(struct wlan_ie_ehtops) - 2) {
+		scm_err("Invalid EHT OP IE len %d", eht_ops->elem_len);
+		return phymode;
+	}
 	switch (eht_ops->width) {
 	case WLAN_EHT_CHWIDTH_20:
 		phymode = WLAN_PHYMODE_11BEA_EHT20;
@@ -1427,7 +1431,7 @@ static void util_scan_scm_update_bss_with_esp_data(
 		struct scan_cache_entry *scan_entry)
 {
 	uint8_t air_time_fraction = 0;
-	struct wlan_esp_ie esp_information;
+	struct wlan_esp_ie esp_information = {0};
 
 	if (!scan_entry->ie_list.esp)
 		return;
@@ -2439,6 +2443,9 @@ static uint32_t util_gen_new_ie(uint8_t *ie, uint32_t ielen,
 	/* copy subelement as we need to change its content to
 	 * mark an ie after it is processed.
 	 */
+	if (subie_len == 0 || !subelement)
+		return 0;
+
 	sub_copy = qdf_mem_malloc(subie_len);
 	if (!sub_copy)
 		return 0;
@@ -2622,7 +2629,7 @@ static uint32_t util_gen_new_ie(uint8_t *ie, uint32_t ielen,
 		if (!(tmp_new[0] == WLAN_ELEMID_NONTX_BSSID_CAP ||
 		      tmp_new[0] == WLAN_ELEMID_SSID ||
 		      tmp_new[0] == WLAN_ELEMID_MULTI_BSSID_IDX ||
-		      ((tmp_new[0] == WLAN_ELEMID_EXTN_ELEM) &&
+		      ((tmp_new[0] == WLAN_ELEMID_EXTN_ELEM) && tmp_new[1] &&
 		       (tmp_new[2] == WLAN_EXTN_ELEMID_NONINHERITANCE)))) {
 			if ((pos + tmp_new[1] + MIN_IE_LEN) <=
 			    (new_ie + ielen)) {
@@ -2952,11 +2959,12 @@ static QDF_STATUS util_scan_parse_mbssid(struct wlan_objmgr_pdev *pdev,
 				 * handle such scenario.
 				 */
 
-				qdf_mem_copy(split_prof_end,
-					     (subelement + MIN_IE_LEN),
-					     subie_len);
-				split_prof_end =
-					(split_prof_end + subie_len);
+				if (split_prof_end) {
+					qdf_mem_copy(split_prof_end,
+						     (subelement + MIN_IE_LEN),
+						     subie_len);
+					split_prof_end += subie_len;
+				}
 
 				/*
 				 * When to stop the process of accumulating
@@ -2988,9 +2996,11 @@ static QDF_STATUS util_scan_parse_mbssid(struct wlan_objmgr_pdev *pdev,
 				if (mbssid_info.prof_residue)
 					break;
 
-				split_prof_len =
-					(split_prof_end -
-					 split_prof_start - MIN_IE_LEN);
+				if (split_prof_end) {
+					split_prof_len =
+						(split_prof_end -
+						 split_prof_start - MIN_IE_LEN);
+				}
 			}
 
 			if (mbssid_info.split_prof_continue) {

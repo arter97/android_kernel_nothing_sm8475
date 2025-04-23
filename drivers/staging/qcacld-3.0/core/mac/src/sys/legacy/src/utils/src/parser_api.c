@@ -6967,6 +6967,9 @@ QDF_STATUS populate_dot11f_assoc_rsp_mlo_ie(struct mac_context *mac_ctx,
 	mlo_ie->mld_capab_present = 1;
 
 	assoc_req = session->parsedAssocReq[sta->assocId];
+	if (!assoc_req)
+		goto no_partner;
+
 	for (link = 0; link < assoc_req->mlo_info.num_partner_links; link++) {
 		lle_mode = 0;
 		sta_pro = &mlo_ie->sta_profile[num_sta_pro];
@@ -7463,6 +7466,8 @@ QDF_STATUS populate_dot11f_assoc_rsp_mlo_ie(struct mac_context *mac_ctx,
 		lim_mlo_release_vdev_ref(link_session->vdev);
 		num_sta_pro++;
 	}
+
+no_partner:
 	mlo_ie->num_sta_profile = num_sta_pro;
 	mlo_ie->mld_capabilities.info.max_simultaneous_link_num = num_sta_pro;
 	return QDF_STATUS_SUCCESS;
@@ -8568,6 +8573,17 @@ QDF_STATUS populate_dot11f_btm_extended_caps(struct mac_context *mac_ctx,
 		pe_debug("Disable btm for roaming not suppprted");
 	}
 
+	if (!pe_session->lim_join_req)
+		goto compute_len;
+
+	if (p_ext_cap->bss_transition && !cm_is_open_mode(pe_session->vdev) &&
+	    pe_session->lim_join_req->bssDescription.mbo_oce_enabled_ap &&
+	    !pe_session->limRmfEnabled) {
+		pe_debug("Disable BTM as the MBO AP doesn't support PMF");
+		p_ext_cap->bss_transition = 0;
+	}
+
+compute_len:
 	dot11f->num_bytes = lim_compute_ext_cap_ie_length(dot11f);
 	if (!dot11f->num_bytes) {
 		dot11f->present = 0;

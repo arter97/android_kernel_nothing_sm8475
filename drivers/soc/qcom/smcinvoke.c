@@ -2249,7 +2249,7 @@ static long process_accept_req(struct file *filp, unsigned int cmd,
 		 * new cb requests.
 		 */
 		if (!cb_txn) {
-			pr_err("%s txn %d either invalid or removed from Q\n",
+			pr_debug("%s txn %d either invalid or removed from Q\n",
 					__func__, user_args.txn_id);
 			goto start_waiting_for_requests;
 		}
@@ -2294,7 +2294,7 @@ start_waiting_for_requests:
 			mutex_lock(&g_smcinvoke_lock);
 
 			if (freezing(current)) {
-				pr_err("Server id :%d interrupted probaby due to suspend, pid:%d\n",
+				pr_debug("Server id :%d interrupted probaby due to suspend, pid:%d\n",
 					server_info->server_id, current->pid);
 				/*
 				 * Each accept thread is identified by bits ranging from
@@ -2850,6 +2850,9 @@ static int smcinvoke_probe(struct platform_device *pdev)
 	unsigned int baseminor = 0;
 	unsigned int count = 1;
 	int rc = 0;
+
+	if (!qcom_scm_is_available())
+		return dev_err_probe(&pdev->dev, -EPROBE_DEFER, "qcom_scm is not up!\n");
 
 	rc = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
 	if (rc) {

@@ -389,12 +389,14 @@ void hdd_medium_assess_stop_timer(uint8_t pdev_id, struct hdd_context *hdd_ctx)
 	for (i = 0; i < WLAN_UMAC_MAX_RP_PID; i++)
 		interval += medium_assess_info[i].config.interval;
 
-	if (!interval) {
+	if (!interval && timer_enable) {
 		ucfg_mc_cp_stats_reset_pending_req(hdd_ctx->psoc,
 						   TYPE_CONGESTION_STATS,
 						   &info, &pending);
 		qdf_mc_timer_stop(&hdd_medium_assess_timer);
 		hdd_debug("medium assess atimer stop");
+	} else {
+		hdd_debug("medium assess timer already disabled");
 	}
 }
 

@@ -8631,8 +8631,11 @@ static QDF_STATUS wma_mc_process_msg(struct scheduler_msg *msg)
 		break;
 #endif /* FEATURE_WLAN_AUTO_SHUTDOWN */
 	case WMA_DHCP_START_IND:
+		wma_process_dhcp_ind(wma_handle, (tAniDHCPInd *)msg->bodyptr);
+		qdf_mem_free(msg->bodyptr);
+		break;
 	case WMA_DHCP_STOP_IND:
-		wma_process_dhcp_ind(wma_handle, (tAniDHCPInd *) msg->bodyptr);
+		wma_process_dhcp_ind(wma_handle, (tAniDHCPInd *)msg->bodyptr);
 		qdf_mem_free(msg->bodyptr);
 		break;
 	case WMA_INIT_THERMAL_INFO_CMD:
@@ -9060,6 +9063,16 @@ static QDF_STATUS wma_mc_process_msg(struct scheduler_msg *msg)
 		wma_twt_process_nudge_dialog(wma_handle, msg->bodyptr);
 		qdf_mem_free(msg->bodyptr);
 		break;
+#ifdef FEATURE_WLAN_APF
+	case WMA_ENABLE_ACTIVE_APF_MODE_IND:
+		wma_enable_active_apf_mode(wma_handle, (tAniDHCPInd *)msg->bodyptr);
+		qdf_mem_free(msg->bodyptr);
+		break;
+	case WMA_DISABLE_ACTIVE_APF_MODE_IND:
+		wma_disable_active_apf_mode(wma_handle, (tAniDHCPInd *)msg->bodyptr);
+		qdf_mem_free(msg->bodyptr);
+		break;
+#endif
 	default:
 		wma_debug("Unhandled WMA message of type %d", msg->type);
 		if (msg->bodyptr)
@@ -9639,20 +9652,6 @@ QDF_STATUS wma_get_rx_chainmask(uint8_t pdev_id, uint32_t *chainmask_2g,
 
 	return QDF_STATUS_SUCCESS;
 }
-
-#ifdef MPC_UT_FRAMEWORK
-void wma_enable_dbs_service_ut(void)
-{
-	tp_wma_handle wma;
-
-	wma = cds_get_context(QDF_MODULE_ID_WMA);
-	if (!wma)
-		return;
-
-	WMI_SERVICE_ENABLE(wma->wmi_service_bitmap,
-			   WMI_SERVICE_DUAL_BAND_SIMULTANEOUS_SUPPORT);
-}
-#endif
 
 #ifdef FEATURE_ANI_LEVEL_REQUEST
 QDF_STATUS wma_send_ani_level_request(tp_wma_handle wma_handle,

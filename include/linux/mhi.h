@@ -401,10 +401,10 @@ struct mhi_controller {
 	struct device *cntrl_dev;
 	struct mhi_device *mhi_dev;
 	struct dentry *debugfs_dentry;
-	void __iomem *regs;
-	void __iomem *bhi;
-	void __iomem *bhie;
-	void __iomem *wake_db;
+	u8 __iomem *regs;
+	u8 __iomem *bhi;
+	u8 __iomem *bhie;
+	u8 __iomem *wake_db;
 
 	dma_addr_t iova_start;
 	dma_addr_t iova_stop;

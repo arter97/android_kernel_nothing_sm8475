@@ -1180,7 +1180,9 @@ static void get_htc_send_packets_credit_based(HTC_TARGET *target,
 				QDF_ASSERT(HTC_PACKET_QUEUE_DEPTH(pQueue) == 0);
 				if (ret == -EAGAIN) {
 					pPacket = htc_get_pkt_at_head(tx_queue);
-					if (!pPacket)
+					if (!pPacket ||
+					    (pPacket->Endpoint >= ENDPOINT_MAX) ||
+					    (pPacket->Endpoint <= ENDPOINT_UNUSED))
 						break;
 					log_packet_info(target, pPacket);
 				}
@@ -1339,7 +1341,9 @@ static void get_htc_send_packets(HTC_TARGET *target,
 				QDF_ASSERT(HTC_PACKET_QUEUE_DEPTH(pQueue) == 0);
 				if (ret == -EAGAIN) {
 					pPacket = htc_get_pkt_at_head(tx_queue);
-					if (!pPacket)
+					if (!pPacket ||
+					    (pPacket->Endpoint >= ENDPOINT_MAX) ||
+					    (pPacket->Endpoint <= ENDPOINT_UNUSED))
 						break;
 					log_packet_info(target, pPacket);
 				}

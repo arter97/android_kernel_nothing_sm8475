@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -359,7 +360,7 @@ static int lpass_cdc_va_macro_event_handler(struct snd_soc_component *component,
 		}
 		ret = lpass_cdc_clk_rsc_request_clock(va_priv->dev,
 						va_priv->default_clk_id,
-						VA_CORE_CLK, true);
+						va_priv->clk_id, true);
 		if (ret < 0)
 			dev_err_ratelimited(va_priv->dev,
 				"%s, failed to enable clk, ret:%d\n",
@@ -367,7 +368,7 @@ static int lpass_cdc_va_macro_event_handler(struct snd_soc_component *component,
 		else
 			lpass_cdc_clk_rsc_request_clock(va_priv->dev,
 						va_priv->default_clk_id,
-						VA_CORE_CLK, false);
+						va_priv->clk_id, false);
 		lpass_cdc_va_macro_core_vote(va_priv, false);
 		break;
 	case LPASS_CDC_MACRO_EVT_SSR_UP:
@@ -448,6 +449,13 @@ static int lpass_cdc_va_macro_swr_pwr_event(struct snd_soc_dapm_widget *w,
 					 &va_priv, __func__))
 		return -EINVAL;
 
+	/**
+	 * no need to switch to va_core_clk if va is chosen to
+	 * run based off tx_core_clk
+	 */
+	if (va_priv->clk_id == TX_CORE_CLK)
+		return 0;
+
 	dev_dbg(va_dev, "%s: event = %d, lpi_enable = %d\n",
 		__func__, event, va_priv->lpi_enable);
 
@@ -464,11 +472,14 @@ static int lpass_cdc_va_macro_swr_pwr_event(struct snd_soc_dapm_widget *w,
 			 return 0;
 		} else if ( va_priv->va_swr_clk_cnt != 0 &&
 				va_priv->tx_clk_status)  {
+			pm_runtime_get_sync(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 			ret = lpass_cdc_va_macro_core_vote(va_priv, true);
 			if (ret < 0) {
 				dev_err(va_priv->dev,
 					"%s: va request core vote failed\n",
 					__func__);
+				pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+				pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 				break;
 			}
 			ret = lpass_cdc_clk_rsc_request_clock(va_priv->dev,
@@ -480,6 +491,8 @@ static int lpass_cdc_va_macro_swr_pwr_event(struct snd_soc_dapm_widget *w,
 				dev_dbg(component->dev,
 					"%s: request clock VA_CLK enable failed\n",
 					__func__);
+				pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+				pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 				break;
 			}
 			ret = lpass_cdc_clk_rsc_request_clock(va_priv->dev,
@@ -494,9 +507,13 @@ static int lpass_cdc_va_macro_swr_pwr_event(struct snd_soc_dapm_widget *w,
 					va_priv->default_clk_id,
 					VA_CORE_CLK,
 					false);
+				pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+				pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 				break;
 			}
 			va_priv->current_clk_id = VA_CORE_CLK;
+			pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+			pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
@@ -592,16 +609,10 @@ static int lpass_cdc_va_macro_mclk_event(struct snd_soc_dapm_widget *w,
 		if (!ret)
 			va_priv->dapm_tx_clk_status++;
 
-		if (va_priv->lpi_enable)
-			ret = lpass_cdc_va_macro_mclk_enable(va_priv, 1, true);
-		else
-			ret = lpass_cdc_tx_mclk_enable(component, 1);
+		ret = lpass_cdc_va_macro_mclk_enable(va_priv, 1, true);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if (va_priv->lpi_enable)
-			lpass_cdc_va_macro_mclk_enable(va_priv, 0, true);
-		else
-			lpass_cdc_tx_mclk_enable(component, 0);
+		lpass_cdc_va_macro_mclk_enable(va_priv, 0, true);
 
 		if (va_priv->dapm_tx_clk_status > 0) {
 			lpass_cdc_clk_rsc_request_clock(va_priv->dev,
@@ -1036,6 +1047,7 @@ static int lpass_cdc_va_macro_put_dec_enum(struct snd_kcontrol *kcontrol,
 	}
 	if (strnstr(widget->name, "SMIC", strlen(widget->name))) {
 		if (val != 0) {
+			pm_runtime_get_sync(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 			if (!va_priv->swr_dmic_enable) {
 				snd_soc_component_update_bits(component,
 							mic_sel_reg,
@@ -1054,6 +1066,8 @@ static int lpass_cdc_va_macro_put_dec_enum(struct snd_kcontrol *kcontrol,
 					dmic_clk_reg,
 					0x0E, va_priv->dmic_clk_div << 0x1);
 			}
+			pm_runtime_mark_last_busy(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
+			pm_runtime_put_autosuspend(&va_priv->swr_ctrl_data[0].va_swr_pdev->dev);
 		}
 	} else {
 		/* DMIC selected */
@@ -2532,9 +2546,9 @@ static int lpass_cdc_va_macro_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "%s: could not find %s entry in dt\n",
 			__func__, "qcom,default-clk-id");
-		default_clk_id = VA_CORE_CLK;
+		default_clk_id = TX_CORE_CLK;
 	}
-	va_priv->clk_id = VA_CORE_CLK;
+	va_priv->clk_id = TX_CORE_CLK;
 	va_priv->default_clk_id = default_clk_id;
 	va_priv->current_clk_id = TX_CORE_CLK;
 	va_priv->wlock_holders = 0;

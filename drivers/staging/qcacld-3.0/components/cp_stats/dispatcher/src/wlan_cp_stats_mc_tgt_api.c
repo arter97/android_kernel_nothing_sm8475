@@ -305,8 +305,7 @@ tgt_mc_cp_stats_prepare_raw_peer_rssi(struct wlan_objmgr_psoc *psoc,
 	}
 
 end:
-	if (ev.peer_stats)
-		get_peer_rssi_cb(&ev, last_req->cookie);
+	get_peer_rssi_cb(&ev, last_req->cookie);
 
 	ucfg_mc_cp_stats_free_stats_resources(&ev);
 

@@ -591,7 +591,7 @@ void hif_ipci_irq_set_affinity_hint(struct hif_exec_context *hif_ext_group,
 			}
 		}
 	}
-	for (i = 0; i < hif_ext_group->numirq; i++) {
+	for (i = 0; i < hif_ext_group->numirq && i < HIF_MAX_GRP_IRQ; i++) {
 		if (mask_set) {
 			qdf_dev_modify_irq_status(hif_ext_group->os_irq[i],
 						  IRQ_NO_BALANCING, 0);

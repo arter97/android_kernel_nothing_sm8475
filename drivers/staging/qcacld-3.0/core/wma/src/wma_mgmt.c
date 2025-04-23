@@ -823,10 +823,14 @@ void wma_set_sta_keep_alive(tp_wma_handle wma, uint8_t vdev_id,
 	params.timeperiod = timeperiod;
 	if (intr) {
 		if (intr->bss_max_idle_period) {
-			params.timeperiod = intr->bss_max_idle_period;
+			if (intr->bss_max_idle_period < timeperiod)
+				params.timeperiod = intr->bss_max_idle_period;
+
 			if (method == WMI_KEEP_ALIVE_NULL_PKT)
 				params.method = WMI_KEEP_ALIVE_MGMT_FRAME;
 		}
+
+		wlan_mlme_set_keepalive_period(intr->vdev, params.timeperiod);
 	}
 
 	if (hostv4addr)
@@ -2992,9 +2996,11 @@ void wma_process_update_opmode(tp_wma_handle wma_handle,
 			   WMI_PEER_CHWIDTH, update_vht_opmode->opMode,
 			   update_vht_opmode->smesessionId);
 
-	wma_set_peer_param(wma_handle, update_vht_opmode->peer_mac,
-			   WMI_HOST_PEER_PHYMODE,
-			   fw_phymode, update_vht_opmode->smesessionId);
+	/* send PHYmode only for 11ax capable targets */
+	if (IS_FEATURE_SUPPORTED_BY_FW(DOT11AX))
+		wma_set_peer_param(wma_handle, update_vht_opmode->peer_mac,
+				   WMI_PEER_PHYMODE,
+				   fw_phymode, update_vht_opmode->smesessionId);
 }
 
 /**
@@ -3078,10 +3084,10 @@ QDF_STATUS wma_set_cts2self_for_p2p_go(void *wma_handle,
 {
 	int32_t ret;
 	tp_wma_handle wma = (tp_wma_handle)wma_handle;
-	struct pdev_params pdevparam;
-
-	pdevparam.param_id = WMI_PDEV_PARAM_CTS2SELF_FOR_P2P_GO_CONFIG;
-	pdevparam.param_value = cts2self_for_p2p_go;
+	struct pdev_params pdevparam = {
+		.param_id = WMI_PDEV_PARAM_CTS2SELF_FOR_P2P_GO_CONFIG,
+		.param_value = cts2self_for_p2p_go
+	};
 
 	ret = wmi_unified_pdev_param_send(wma->wmi_handle,
 			&pdevparam,

@@ -173,14 +173,14 @@ static int mhi_debugfs_regdump_show(struct seq_file *m, void *d)
 	enum mhi_ee_type ee;
 	int i, ret = -EIO;
 	u32 val;
-	void __iomem *mhi_base = mhi_cntrl->regs;
-	void __iomem *bhi_base = mhi_cntrl->bhi;
-	void __iomem *bhie_base = mhi_cntrl->bhie;
-	void __iomem *wake_db = mhi_cntrl->wake_db;
+	u8 __iomem *mhi_base = mhi_cntrl->regs;
+	u8 __iomem *bhi_base = mhi_cntrl->bhi;
+	u8 __iomem *bhie_base = mhi_cntrl->bhie;
+	u8 __iomem *wake_db = mhi_cntrl->wake_db;
 	struct {
 		const char *name;
 		int offset;
-		void __iomem *base;
+		u8 __iomem *base;
 	} regs[] = {
 		{ "MHI_REGLEN", MHIREGLEN, mhi_base},
 		{ "MHI_VER", MHIVER, mhi_base},

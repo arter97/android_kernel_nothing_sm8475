@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024,2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _GEN7_REG_H
@@ -54,6 +54,7 @@
 #define GEN7_CP_CHICKEN_DBG              0x841
 #define GEN7_CP_DBG_ECO_CNTL             0x843
 #define GEN7_CP_APRIV_CNTL               0x844
+#define GEN7_CP_SEMAPHORE_REG_0          0x846
 #define GEN7_CP_PROTECT_CNTL             0x84f
 #define GEN7_CP_PROTECT_REG              0x850
 #define GEN7_CP_CONTEXT_SWITCH_CNTL      0x8a0
@@ -107,6 +108,9 @@
 #define GEN7_CP_IB2_BASE                 0x92b
 #define GEN7_CP_IB2_BASE_HI              0x92c
 #define GEN7_CP_IB2_REM_SIZE             0x92d
+#define GEN7_CP_IB3_BASE                 0xa67
+#define GEN7_CP_IB3_BASE_HI              0xa68
+#define GEN7_CP_IB3_REM_SIZE             0xa69
 #define GEN7_CP_ALWAYS_ON_COUNTER_LO     0x980
 #define GEN7_CP_ALWAYS_ON_COUNTER_HI     0x981
 #define GEN7_CP_ALWAYS_ON_CONTEXT_LO     0x982
@@ -1111,8 +1115,6 @@
 #define GEN7_GMU_CX_GMU_POWER_COUNTER_XOCLK_10_L	0x1f878
 #define GEN7_GMU_CX_GMU_POWER_COUNTER_XOCLK_10_H	0x1f879
 #define GEN7_GMU_CX_GMU_POWER_COUNTER_SELECT_3	0x1f87f
-#define GEN7_GMU_CX_GMU_ALWAYS_ON_COUNTER_L	0x1f888
-#define GEN7_GMU_CX_GMU_ALWAYS_ON_COUNTER_H	0x1f889
 #define GEN7_GMU_PWR_COL_INTER_FRAME_CTRL	0x1f8c0
 #define GEN7_GMU_PWR_COL_INTER_FRAME_HYST	0x1f8c1
 #define GEN7_GMU_GFX_PWR_CLK_STATUS		0x1f8d0

@@ -153,6 +153,7 @@ static QDF_STATUS mlme_vdev_obj_destroy_handler(struct wlan_objmgr_vdev *vdev,
 						void *arg)
 {
 	struct vdev_mlme_obj *vdev_mlme;
+	struct wlan_objmgr_psoc *psoc;
 
 	if (!vdev) {
 		mlme_err(" VDEV is NULL");
@@ -160,8 +161,16 @@ static QDF_STATUS mlme_vdev_obj_destroy_handler(struct wlan_objmgr_vdev *vdev,
 	}
 
 	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+
 	if (!vdev_mlme) {
-		mlme_info(" VDEV MLME component object is NULL");
+		mlme_err("VDEV MLME component object is NULL");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	psoc = wlan_vdev_get_psoc(vdev);
+
+	if (!psoc) {
+		mlme_err("PSOC object is NULL");
 		return QDF_STATUS_SUCCESS;
 	}
 
@@ -172,8 +181,7 @@ static QDF_STATUS mlme_vdev_obj_destroy_handler(struct wlan_objmgr_vdev *vdev,
 					      vdev_mlme);
 
 	wlan_minidump_remove(vdev_mlme, sizeof(*vdev_mlme),
-			     wlan_vdev_get_psoc(vdev),
-			     WLAN_MD_OBJMGR_VDEV_MLME, "vdev_mlme");
+			     psoc, WLAN_MD_OBJMGR_VDEV_MLME, "vdev_mlme");
 
 	qdf_mem_free(vdev_mlme);
 

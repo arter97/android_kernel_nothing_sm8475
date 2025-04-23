@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -87,7 +87,7 @@ static int populate_oem_data_cap(struct hdd_adapter *adapter,
 	if (!chan_freq_list)
 		return -ENOMEM;
 
-	strlcpy(data_cap->oem_target_signature, OEM_TARGET_SIGNATURE,
+	strscpy(data_cap->oem_target_signature, OEM_TARGET_SIGNATURE,
 		OEM_TARGET_SIGNATURE_LEN);
 	data_cap->oem_target_type = hdd_ctx->target_type;
 	data_cap->oem_fw_version = hdd_ctx->target_fw_version;

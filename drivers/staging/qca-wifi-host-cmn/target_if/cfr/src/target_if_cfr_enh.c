@@ -2043,6 +2043,11 @@ void target_if_cfr_update_global_cfg(struct wlan_objmgr_pdev *pdev)
 	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev,
 						     WLAN_UMAC_COMP_CFR);
 
+	if (!pcfr) {
+		target_if_err("pcfr is null");
+		return;
+	}
+
 	for (grp_id = 0; grp_id < MAX_TA_RA_ENTRIES; grp_id++) {
 		if (qdf_test_bit(grp_id,
 				 &pcfr->rcc_param.modified_in_curr_session)) {

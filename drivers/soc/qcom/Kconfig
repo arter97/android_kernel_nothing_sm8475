@@ -1171,6 +1171,7 @@ config QCOM_HUNG_TASK_ENH
 
 config QCOM_SMCINVOKE
 	tristate "Secure QSEE Support"
+	depends on QCOM_SCM && QCOM_MEM_BUF
 	help
 	 Enable SMCInvoke driver which supports capability based secure
 	 communication between QTI Secure Execution Environment (QSEE)

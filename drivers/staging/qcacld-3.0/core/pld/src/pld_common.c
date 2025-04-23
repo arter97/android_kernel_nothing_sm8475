@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -96,7 +96,7 @@ int pld_init(void)
 	if (!pld_context)
 		return -ENOMEM;
 
-	spin_lock_init(&pld_context->pld_lock);
+	raw_spin_lock_init(&pld_context->pld_lock);
 
 	INIT_LIST_HEAD(&pld_context->dev_list);
 
@@ -112,9 +112,10 @@ int pld_init(void)
  */
 void pld_deinit(void)
 {
-	struct dev_node *dev_node;
+	struct dev_node *dev_node, *tmp;
 	struct pld_context *pld_context;
 	unsigned long flags;
+	LIST_HEAD(dev_list);
 
 	pld_context = pld_ctx;
 	if (!pld_context) {
@@ -122,14 +123,12 @@ void pld_deinit(void)
 		return;
 	}
 
-	spin_lock_irqsave(&pld_context->pld_lock, flags);
-	while (!list_empty(&pld_context->dev_list)) {
-		dev_node = list_first_entry(&pld_context->dev_list,
-					    struct dev_node, list);
-		list_del(&dev_node->list);
+	raw_spin_lock_irqsave(&pld_context->pld_lock, flags);
+	list_splice_tail_init(&pld_context->dev_list, &dev_list);
+	raw_spin_unlock_irqrestore(&pld_context->pld_lock, flags);
+
+	list_for_each_entry_safe(dev_node, tmp, &dev_list, list)
 		kfree(dev_node);
-	}
-	spin_unlock_irqrestore(&pld_context->pld_lock, flags);
 
 	kfree(pld_context);
 
@@ -213,9 +212,9 @@ int pld_add_dev(struct pld_context *pld_context,
 	dev_node->ifdev = ifdev;
 	dev_node->bus_type = type;
 
-	spin_lock_irqsave(&pld_context->pld_lock, flags);
+	raw_spin_lock_irqsave(&pld_context->pld_lock, flags);
 	list_add_tail(&dev_node->list, &pld_context->dev_list);
-	spin_unlock_irqrestore(&pld_context->pld_lock, flags);
+	raw_spin_unlock_irqrestore(&pld_context->pld_lock, flags);
 
 	return 0;
 }
@@ -232,15 +231,17 @@ void pld_del_dev(struct pld_context *pld_context,
 {
 	unsigned long flags;
 	struct dev_node *dev_node, *tmp;
+	LIST_HEAD(dev_list);
 
-	spin_lock_irqsave(&pld_context->pld_lock, flags);
+	raw_spin_lock_irqsave(&pld_context->pld_lock, flags);
 	list_for_each_entry_safe(dev_node, tmp, &pld_context->dev_list, list) {
-		if (dev_node->dev == dev) {
-			list_del(&dev_node->list);
-			kfree(dev_node);
-		}
+		if (dev_node->dev == dev)
+			list_move(&dev_node->list, &dev_list);
 	}
-	spin_unlock_irqrestore(&pld_context->pld_lock, flags);
+	raw_spin_unlock_irqrestore(&pld_context->pld_lock, flags);
+
+	list_for_each_entry_safe(dev_node, tmp, &dev_list, list)
+		kfree(dev_node);
 }
 
 static struct dev_node *pld_get_dev_node(struct device *dev)
@@ -257,14 +258,14 @@ static struct dev_node *pld_get_dev_node(struct device *dev)
 		return NULL;
 	}
 
-	spin_lock_irqsave(&pld_context->pld_lock, flags);
+	raw_spin_lock_irqsave(&pld_context->pld_lock, flags);
 	list_for_each_entry(dev_node, &pld_context->dev_list, list) {
 		if (dev_node->dev == dev) {
-			spin_unlock_irqrestore(&pld_context->pld_lock, flags);
+			raw_spin_unlock_irqrestore(&pld_context->pld_lock, flags);
 			return dev_node;
 		}
 	}
-	spin_unlock_irqrestore(&pld_context->pld_lock, flags);
+	raw_spin_unlock_irqrestore(&pld_context->pld_lock, flags);
 
 	return NULL;
 }
@@ -593,19 +594,19 @@ void pld_get_default_fw_files(struct pld_fw_files *pfw_files)
 {
 	memset(pfw_files, 0, sizeof(*pfw_files));
 
-	strlcpy(pfw_files->image_file, PREFIX PLD_IMAGE_FILE,
+	strscpy(pfw_files->image_file, PREFIX PLD_IMAGE_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->board_data, PREFIX PLD_BOARD_DATA_FILE,
+	strscpy(pfw_files->board_data, PREFIX PLD_BOARD_DATA_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->otp_data, PREFIX PLD_OTP_FILE,
+	strscpy(pfw_files->otp_data, PREFIX PLD_OTP_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->utf_file, PREFIX PLD_UTF_FIRMWARE_FILE,
+	strscpy(pfw_files->utf_file, PREFIX PLD_UTF_FIRMWARE_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->utf_board_data, PREFIX PLD_BOARD_DATA_FILE,
+	strscpy(pfw_files->utf_board_data, PREFIX PLD_BOARD_DATA_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->epping_file, PREFIX PLD_EPPING_FILE,
+	strscpy(pfw_files->epping_file, PREFIX PLD_EPPING_FILE,
 		PLD_MAX_FILE_NAME);
-	strlcpy(pfw_files->setup_file, PREFIX PLD_SETUP_FILE,
+	strscpy(pfw_files->setup_file, PREFIX PLD_SETUP_FILE,
 		PLD_MAX_FILE_NAME);
 }
 

@@ -1,4 +1,5 @@
 /* Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -205,6 +206,9 @@ typedef struct prm_cmd_request_hw_core_t
 
 #define PARAM_ID_RSC_LPASS_CORE 0x0800102B
 #define PARAM_ID_RSC_HW_CORE 0x08001032
+
+/* Param ID for island vote */
+#define PARAM_ID_RSC_VOTE_AGAINST_ISLAND 0x0800131D
 
 #define HW_RSC_ID_AUDIO_HW_CLK 0x0800102C
 
@@ -530,6 +534,18 @@ struct prm_earpa_hw_intf_config {
 
 #define CLOCK_ID_VA_CORE_MCLK 0x307
 
+/** Clock ID for MCLK for TX */
+#define CLOCK_ID_TX_CORE_MCLK 0x30C
+
+/** Clock ID for RX Core TX MCLK */
+#define CLOCK_ID_RX_CORE_TX_MCLK 0x312
+
+/** Clock ID for WSA core TX MCLK */
+#define CLOCK_ID_WSA_CORE_TX_MCLK 0x314
+
+/** Clock ID for WSA2 core TX MCLK */
+#define CLOCK_ID_WSA2_CORE_TX_MCLK 0x316
+
 /** Clock ID for the primary SPDIF output core. */
 
 #define CLOCK_ID_PRI_SPDIF_OUTPUT_CORE 0x400
@@ -578,9 +594,18 @@ struct prm_earpa_hw_intf_config {
 /** Hardware core identifier for digital codec. */
 #define HW_CORE_ID_DCODEC 0x2
 
+/** Default clock source. */
+#define CLOCK_ROOT_SRC_DEFAULT 0x0
+
+/** Xo Clock source. */
+#define CLOCK_ROOT_SRC_XO 0x1
+
+/** RCO Clock source. */
+#define CLOCK_ROOT_SRC_RCO 0x2
 int audio_prm_set_lpass_clk_cfg(struct clk_cfg *cfg, uint8_t enable);
 int audio_prm_set_lpass_hw_core_req(struct clk_cfg *cfg, uint32_t hw_core_id, uint8_t enable);
 int audio_prm_set_cdc_earpa_duty_cycling_req(struct prm_earpa_hw_intf_config *earpa_config,
 									uint32_t enable);
-
+void audio_prm_set_lpi_logging_status(int lpi_pcm_logging_enable);
+int audio_prm_set_vote_against_sleep(uint8_t enable);
 #endif

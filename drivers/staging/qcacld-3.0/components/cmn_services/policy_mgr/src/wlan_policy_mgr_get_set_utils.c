@@ -3322,10 +3322,6 @@ uint32_t policy_mgr_get_mode_specific_conn_info(
 		policy_mgr_err("Invalid Context");
 		return count;
 	}
-	if (!vdev_id) {
-		policy_mgr_err("Null pointer error");
-		return count;
-	}
 
 	count = policy_mgr_mode_specific_connection_count(
 				psoc, mode, list);
@@ -3334,16 +3330,17 @@ uint32_t policy_mgr_get_mode_specific_conn_info(
 		if (ch_freq_list)
 			*ch_freq_list =
 				pm_conc_connection_list[list[index]].freq;
-		*vdev_id =
-			pm_conc_connection_list[list[index]].vdev_id;
+		if (vdev_id)
+			*vdev_id = pm_conc_connection_list[list[index]].vdev_id;
 	} else {
 		for (index = 0; index < count; index++) {
 			if (ch_freq_list)
 				ch_freq_list[index] =
 			pm_conc_connection_list[list[index]].freq;
 
-			vdev_id[index] =
-			pm_conc_connection_list[list[index]].vdev_id;
+			if (vdev_id)
+				vdev_id[index] =
+				pm_conc_connection_list[list[index]].vdev_id;
 		}
 	}
 	qdf_mutex_release(&pm_ctx->qdf_conc_list_lock);
@@ -6972,35 +6969,6 @@ bool policy_mgr_is_hwmode_offload_enabled(struct wlan_objmgr_psoc *psoc)
 	return wmi_service_enabled(wmi_handle,
 				   wmi_service_hw_mode_policy_offload_support);
 }
-
-#ifdef MPC_UT_FRAMEWORK
-void policy_mgr_set_dbs_cap_ut(struct wlan_objmgr_psoc *psoc, uint32_t dbs)
-{
-	struct policy_mgr_psoc_priv_obj *pm_ctx;
-	uint32_t i;
-
-	pm_ctx = policy_mgr_get_context(psoc);
-	if (!pm_ctx) {
-		policy_mgr_err("Invalid Context");
-		return;
-	}
-
-	if (!pm_ctx->hw_mode.hw_mode_list) {
-		pm_ctx->num_dbs_hw_modes = 1;
-		pm_ctx->hw_mode.hw_mode_list =
-			qdf_mem_malloc(sizeof(*pm_ctx->hw_mode.hw_mode_list) *
-				       pm_ctx->num_dbs_hw_modes);
-		if (!pm_ctx->hw_mode.hw_mode_list)
-			return;
-
-		pm_ctx->hw_mode.hw_mode_list[0] = 0x0000;
-	}
-
-	for (i = 0; i < pm_ctx->num_dbs_hw_modes; i++)
-		POLICY_MGR_HW_MODE_DBS_MODE_SET(pm_ctx->hw_mode.hw_mode_list[i],
-						dbs);
-}
-#endif
 
 void
 policy_mgr_update_indoor_concurrency(struct wlan_objmgr_psoc *psoc,

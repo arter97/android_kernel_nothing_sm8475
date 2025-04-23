@@ -788,6 +788,56 @@ QDF_STATUS sme_neighbor_report_request(mac_handle_t mac_handle,
 		tpRrmNeighborReq pRrmNeighborReq,
 		tpRrmNeighborRspCallbackInfo callbackInfo);
 
+#ifdef FEATURE_WLAN_APF
+
+/*
+ * sme_enable_active_apf_mode_ind() -
+ * API to signal the FW about active APF enablement.
+ *
+ * mac_handle: Opaque handle to the global MAC context.
+ * device_mode - mode(AP,SAP etc) of the device.
+ * macAddr - MAC address of the adapter.
+ * sessionId - session ID.
+ * Return QDF_STATUS  SUCCESS.
+ * FAILURE or RESOURCES  The API finished and failed.
+ */
+
+QDF_STATUS sme_enable_active_apf_mode_ind(mac_handle_t mac_handle,
+					  uint8_t device_mode,
+					  uint8_t *macAddr, uint8_t sessionId);
+
+/*
+ * sme_disable_active_apf_mode_ind() -
+ * API to signal the FW about active APF disablement.
+ *
+ * mac_handle: Opaque handle to the global MAC context.
+ * device_mode - mode(AP,SAP etc) of the device.
+ * macAddr - MAC address of the adapter.
+ * sessionId - session ID.
+ * Return QDF_STATUS  SUCCESS.
+ * FAILURE or RESOURCES  The API finished and failed.
+ */
+QDF_STATUS sme_disable_active_apf_mode_ind(mac_handle_t mac_handle,
+					   uint8_t device_mode,
+					   uint8_t *macAddr, uint8_t sessionId);
+#else
+static inline
+QDF_STATUS sme_enable_active_apf_mode_ind(mac_handle_t mac_handle,
+					  uint8_t device_mode,
+					  uint8_t *macAddr, uint8_t sessionId)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline
+QDF_STATUS sme_disable_active_apf_mode_ind(mac_handle_t mac_handle,
+					   uint8_t device_mode,
+					   uint8_t *macAddr, uint8_t sessionId)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
+
 /**
  * sme_register_ssr_on_pagefault_cb() - Register cb to trigger SSR on pagefault
  * @mac_handle: Opaque handle to the global MAC context.

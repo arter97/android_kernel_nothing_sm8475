@@ -792,9 +792,13 @@ QDF_STATUS reg_dmn_get_6g_opclasses_and_channels(struct wlan_objmgr_pdev *pdev,
 		+ chansize_lst_size
 		+ arr_chan_lists_size;
 
+	if (!total_alloc_size) {
+		reg_err("Number of Opclasses is zero");
+		return QDF_STATUS_E_INVAL;
+	}
+
 	p_total_alloc1 = qdf_mem_malloc(total_alloc_size);
 	if (!p_total_alloc1) {
-		reg_err("out-of-memory");
 		return QDF_STATUS_E_NOMEM;
 	}
 
@@ -847,9 +851,14 @@ QDF_STATUS reg_dmn_get_6g_opclasses_and_channels(struct wlan_objmgr_pdev *pdev,
 	for (i = 0; i < *num_opclasses; i++)
 		total_alloc_size += l_chansize_lst[i] * sizeof(uint8_t *);
 
+	if (!total_alloc_size) {
+		reg_err("Number of Opclasses is zero");
+		qdf_mem_free(p_total_alloc1);
+		return QDF_STATUS_E_INVAL;
+	}
+
 	p_total_alloc2 = qdf_mem_malloc(total_alloc_size);
 	if (!p_total_alloc2) {
-		reg_err("out-of-memory");
 		qdf_mem_free(p_total_alloc1);
 		return QDF_STATUS_E_NOMEM;
 	}

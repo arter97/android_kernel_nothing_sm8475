@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -113,7 +113,7 @@ hdd_sysfs_validate_and_copy_buf(char *dest_buf, size_t dest_buf_size,
 	 * is not needed. Doing this extra copy operation just to ensure
 	 * the local buf is properly null-terminated.
 	 */
-	strlcpy(dest_buf, source_buf, dest_buf_size);
+	strscpy(dest_buf, source_buf, dest_buf_size);
 	/* default 'echo' cmd takes new line character to here */
 	if (dest_buf[source_buf_size - 1] == '\n')
 		dest_buf[source_buf_size - 1] = '\0';
@@ -866,7 +866,6 @@ void hdd_create_sysfs_files(struct hdd_context *hdd_ctx)
 		hdd_sysfs_pktlog_create(driver_kobject);
 		hdd_sysfs_pm_cinfo_create(driver_kobject);
 		hdd_sysfs_pm_pcl_create(driver_kobject);
-		hdd_sysfs_pm_dbs_create(driver_kobject);
 		hdd_sysfs_dp_aggregation_create(driver_kobject);
 		hdd_sysfs_dp_swlm_create(driver_kobject);
 		hdd_sysfs_create_wakeup_logs_to_console();
@@ -885,7 +884,6 @@ void hdd_destroy_sysfs_files(void)
 		hdd_sysfs_destroy_wakeup_logs_to_console();
 		hdd_sysfs_dp_swlm_destroy(driver_kobject);
 		hdd_sysfs_dp_aggregation_destroy(driver_kobject);
-		hdd_sysfs_pm_dbs_destroy(driver_kobject);
 		hdd_sysfs_pm_pcl_destroy(driver_kobject);
 		hdd_sysfs_pm_cinfo_destroy(driver_kobject);
 		hdd_sysfs_pktlog_destroy(driver_kobject);

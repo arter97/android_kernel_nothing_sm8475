@@ -33,6 +33,7 @@
 #include "wlan_mlme_ucfg_api.h"
 #endif
 #include "wlan_crypto_global_api.h"
+#include <osif_cm_req.h>
 
 #ifdef CONN_MGR_ADV_FEATURE
 #ifdef WLAN_FEATURE_FILS_SK
@@ -403,6 +404,7 @@ void osif_indicate_reassoc_results(struct wlan_objmgr_vdev *vdev,
 	struct cfg80211_bss *bss;
 	struct ieee80211_channel *chan;
 	struct wlan_objmgr_psoc *psoc;
+	QDF_STATUS status;
 
 	if (QDF_IS_STATUS_ERROR(rsp->connect_status))
 		return;
@@ -411,13 +413,17 @@ void osif_indicate_reassoc_results(struct wlan_objmgr_vdev *vdev,
 	if (!psoc)
 		return;
 
-	chan = ieee80211_get_channel(osif_priv->wdev->wiphy,
-				     rsp->freq);
+	chan = ieee80211_get_channel(osif_priv->wdev->wiphy, rsp->freq);
+
 	bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy, chan,
 				    rsp->bssid.bytes, rsp->ssid.ssid,
 				    rsp->ssid.length);
-	if (!bss)
-		osif_warn("not able to find bss");
+	if (!bss) {
+		osif_warn("BSS "QDF_MAC_ADDR_FMT" is null, issue disconnect",
+			  QDF_MAC_ADDR_REF(rsp->bssid.bytes));
+		goto issue_disconnect;
+	}
+
 	if (rsp->is_assoc)
 		osif_cm_get_assoc_req_ie_data(&rsp->connect_ies.assoc_req,
 					      &req_len, &req_ie);
@@ -431,6 +437,12 @@ void osif_indicate_reassoc_results(struct wlan_objmgr_vdev *vdev,
 				  rsp_len);
 
 	osif_update_fils_hlp_data(dev, vdev, rsp);
+	return;
+
+issue_disconnect:
+	status = osif_cm_disconnect(dev, vdev, REASON_UNSPEC_FAILURE);
+	if (QDF_IS_STATUS_ERROR(status))
+		osif_err("Disconnect failed with status %d", status);
 }
 
 QDF_STATUS

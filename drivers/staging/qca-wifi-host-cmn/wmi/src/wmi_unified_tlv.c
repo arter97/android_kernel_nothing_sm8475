@@ -7400,19 +7400,16 @@ extract_pdev_sscan_fw_cmd_fixed_param_tlv(
 		return QDF_STATUS_E_INVAL;
 	}
 
-	if (!event) {
-		wmi_err("WMI event is null");
-		return QDF_STATUS_E_INVAL;
-	}
-
 	if (!param) {
 		wmi_err("Spectral startscan response params is null");
 		return QDF_STATUS_E_INVAL;
 	}
 
 	param_buf = (WMI_PDEV_SSCAN_FW_PARAM_EVENTID_param_tlvs *)event;
-	if (!param_buf)
+	if (!param_buf) {
+		wmi_err("WMI_PDEV_SSCAN_FW_PARAM event is null");
 		return QDF_STATUS_E_INVAL;
+	}
 
 	ev = param_buf->fixed_param;
 	if (!ev)
