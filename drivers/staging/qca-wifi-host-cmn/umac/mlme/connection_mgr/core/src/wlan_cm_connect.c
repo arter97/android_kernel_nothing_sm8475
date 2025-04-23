@@ -2187,7 +2187,7 @@ QDF_STATUS cm_connect_complete(struct cnx_mgr *cm_ctx,
 {
 	enum wlan_cm_sm_state sm_state;
 	struct bss_info bss_info;
-	struct mlme_info mlme_info;
+	struct mlme_info mlme_info = {0};
 	bool send_ind = true;
 
 	/*
@@ -2216,7 +2216,7 @@ QDF_STATUS cm_connect_complete(struct cnx_mgr *cm_ctx,
 	/* Update scan entry in case connect is success or fails with bssid */
 	if (!qdf_is_macaddr_zero(&resp->bssid)) {
 		if (QDF_IS_STATUS_SUCCESS(resp->connect_status))
-			mlme_info.assoc_state  = SCAN_ENTRY_CON_STATE_ASSOC;
+			mlme_info.assoc_state = SCAN_ENTRY_CON_STATE_ASSOC;
 		else
 			mlme_info.assoc_state = SCAN_ENTRY_CON_STATE_NONE;
 		qdf_copy_macaddr(&bss_info.bssid, &resp->bssid);

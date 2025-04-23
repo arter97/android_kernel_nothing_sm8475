@@ -3357,7 +3357,8 @@ static int wcd937x_bind(struct device *dev)
 	pdata = wcd937x_populate_dt_data(dev);
 	if (!pdata) {
 		dev_err(dev, "%s: Fail to obtain platform data\n", __func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_pdata;
 	}
 	wcd937x->dev = dev;
 	wcd937x->dev->platform_data = pdata;
@@ -3519,8 +3520,9 @@ err_irq:
 err:
 	component_unbind_all(dev, wcd937x);
 err_bind_all:
-	dev_set_drvdata(dev, NULL);
 	kfree(pdata);
+err_pdata:
+	dev_set_drvdata(dev, NULL);
 	kfree(wcd937x);
 	return ret;
 }

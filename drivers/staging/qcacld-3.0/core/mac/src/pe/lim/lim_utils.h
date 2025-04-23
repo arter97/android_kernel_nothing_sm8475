@@ -1715,6 +1715,9 @@ lim_update_he_6ghz_band_caps(struct mac_context *mac,
 #ifdef WLAN_FEATURE_11BE
 static inline bool lim_is_session_eht_capable(struct pe_session *session)
 {
+	if (!session)
+		return false;
+
 	return session->eht_capable;
 }
 

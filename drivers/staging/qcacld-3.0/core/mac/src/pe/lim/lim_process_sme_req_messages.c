@@ -2574,7 +2574,12 @@ lim_fill_dot11_mode(struct mac_context *mac_ctx, struct pe_session *session,
 #ifdef WLAN_FEATURE_11AX
 static bool lim_enable_twt(struct mac_context *mac_ctx, tDot11fBeaconIEs *ie)
 {
-	if (mac_ctx->mlme_cfg->he_caps.dot11_he_cap.twt_request && ie &&
+	if (!ie) {
+		pe_debug("ie is null");
+		return false;
+	}
+
+	if (mac_ctx->mlme_cfg->he_caps.dot11_he_cap.twt_request &&
 	    (ie->qcn_ie.present || ie->he_cap.twt_responder)) {
 		pe_debug("TWT is supported, hence disable UAPSD; twt req supp: %d,twt respon supp: %d, QCN_IE: %d",
 			  mac_ctx->mlme_cfg->he_caps.dot11_he_cap.twt_request,

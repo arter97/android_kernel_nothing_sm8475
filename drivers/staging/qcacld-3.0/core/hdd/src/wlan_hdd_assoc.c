@@ -2002,10 +2002,14 @@ static void hdd_roam_channel_switch_handler(struct hdd_adapter *adapter,
 	struct hdd_chan_change_params chan_change;
 	QDF_STATUS status;
 	struct hdd_context *hdd_ctx = WLAN_HDD_GET_CTX(adapter);
-	mac_handle_t mac_handle = hdd_adapter_get_mac_handle(adapter);
+	mac_handle_t mac_handle;
 	struct hdd_station_ctx *sta_ctx;
 	uint8_t connected_vdev;
 	bool notify = true;
+
+	mac_handle = hdd_adapter_get_mac_handle(adapter);
+	if (!mac_handle)
+		return;
 
 	/* Enable Roaming on STA interface which was disabled before CSA */
 	if (adapter->device_mode == QDF_STA_MODE)

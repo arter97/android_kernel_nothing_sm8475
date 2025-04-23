@@ -1101,25 +1101,27 @@ dp_rx_pdev_mon_desc_pool_init(struct dp_pdev *pdev)
 	qdf_spinlock_create(&pdev->monitor_pdev->mon_lock);
 }
 
-static void
-dp_rx_pdev_mon_cmn_buffers_free(struct dp_pdev *pdev, int mac_id)
-{
-	uint8_t pdev_id = pdev->pdev_id;
-	int mac_for_pdev;
-
-	mac_for_pdev = dp_get_lmac_id_for_pdev_id(pdev->soc, mac_id, pdev_id);
-	dp_rx_pdev_mon_status_buffers_free(pdev, mac_for_pdev);
-
-	dp_rx_pdev_mon_dest_buffers_free(pdev, mac_for_pdev);
-}
-
 void
 dp_rx_pdev_mon_buffers_free(struct dp_pdev *pdev)
 {
 	int mac_id;
+	int mac_for_pdev;
+	uint8_t pdev_id = pdev->pdev_id;
+	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx = pdev->soc->wlan_cfg_ctx;
 
-	for (mac_id = 0; mac_id < NUM_RXDMA_RINGS_PER_PDEV; mac_id++)
-		dp_rx_pdev_mon_cmn_buffers_free(pdev, mac_id);
+	for (mac_id = 0; mac_id < soc_cfg_ctx->num_rxdma_status_rings_per_pdev;
+	     mac_id++) {
+		mac_for_pdev = dp_get_lmac_id_for_pdev_id(pdev->soc, mac_id,
+							  pdev_id);
+		dp_rx_pdev_mon_status_buffers_free(pdev, mac_for_pdev);
+	}
+
+	for (mac_id = 0; mac_id < soc_cfg_ctx->num_rxdma_dst_rings_per_pdev;
+	     mac_id++) {
+		mac_for_pdev = dp_get_lmac_id_for_pdev_id(pdev->soc, mac_id,
+							  pdev_id);
+		dp_rx_pdev_mon_dest_buffers_free(pdev, mac_for_pdev);
+	}
 	pdev->monitor_pdev->pdev_mon_init = 0;
 }
 

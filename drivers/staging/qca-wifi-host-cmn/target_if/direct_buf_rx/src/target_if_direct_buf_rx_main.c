@@ -1389,7 +1389,7 @@ static QDF_STATUS target_if_dbr_fill_ring(struct wlan_objmgr_pdev *pdev,
 	struct direct_buf_rx_buf_info *dbr_buf_pool;
 	void *buf_vaddr_unaligned, *buf_vaddr_aligned;
 	QDF_STATUS status;
-	uint8_t offset;
+	uint8_t offset = 0;
 
 	direct_buf_rx_enter();
 
@@ -2403,6 +2403,11 @@ QDF_STATUS target_if_direct_buf_rx_print_ring_stat(
 				WLAN_TARGET_IF_COMP_DIRECT_BUF_RX);
 	dbr_psoc_obj = wlan_objmgr_psoc_get_comp_private_obj(psoc,
 				WLAN_TARGET_IF_COMP_DIRECT_BUF_RX);
+	if (!dbr_psoc_obj) {
+		direct_buf_rx_err("dbr_psoc_obj is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
 	hal_soc = dbr_psoc_obj->hal_soc;
 	num_modules = dbr_pdev_obj->num_modules;
 	direct_buf_rx_debug("--------------------------------------------------");

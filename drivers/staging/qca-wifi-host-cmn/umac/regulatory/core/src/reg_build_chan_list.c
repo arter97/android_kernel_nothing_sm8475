@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -330,6 +330,7 @@ static void reg_modify_chan_list_for_dfs_channels(
  * indoor_chan_enabled flag is set to false.
  * @pdev_priv_obj: Pointer to regulatory private pdev structure.
  */
+#ifdef CONFIG_REG_CLIENT
 static void reg_modify_chan_list_for_indoor_channels(
 		struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj)
 {
@@ -364,6 +365,12 @@ static void reg_modify_chan_list_for_indoor_channels(
 		}
 	}
 }
+#else
+static void reg_modify_chan_list_for_indoor_channels(
+		struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj)
+{
+}
+#endif
 
 /**
  *reg_modify_chan_list_for_indoor_concurrency() - Enable/Disable the indoor
@@ -1845,7 +1852,7 @@ reg_modify_chan_list_for_avoid_chan_ext(struct wlan_regulatory_pdev_priv_obj
 }
 #endif
 
-#ifdef CONFIG_REG_CLIENT
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
 /*
  * reg_modify_sp_channels() - Mark 6 GHz channels NO_IR and set state DFS
  * if power type is SP
@@ -2727,6 +2734,11 @@ QDF_STATUS reg_process_master_chan_list_ext(
 	}
 
 	reg_store_regulatory_ext_info_to_socpriv(soc_reg, regulat_info, phy_id);
+
+	if (this_mchan_params->client_type >= REG_MAX_CLIENT_TYPE) {
+		reg_err("6 GHz reg client type invalid");
+		return QDF_STATUS_E_FAILURE;
+	}
 
 	status = reg_fill_master_channels(regulat_info,
 					  &this_mchan_params->reg_rules,
