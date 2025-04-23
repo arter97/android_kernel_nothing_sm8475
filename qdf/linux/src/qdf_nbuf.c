@@ -850,6 +850,11 @@ void qdf_nbuf_map_check_for_leaks(void)
 	qdf_tracker_check_for_leaks(&qdf_nbuf_map_tracker);
 }
 
+void qdf_nbuf_detect_track_list_corruption(void *ptr, uint32_t size)
+{
+	qdf_tracker_check_list_corruption(&qdf_nbuf_map_tracker, ptr, size);
+}
+
 QDF_STATUS qdf_nbuf_map_debug(qdf_device_t osdev,
 			      qdf_nbuf_t buf,
 			      qdf_dma_dir_t dir,

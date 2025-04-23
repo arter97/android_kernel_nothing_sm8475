@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -114,6 +114,17 @@ void qdf_tracker_untrack(struct qdf_tracker *tracker, void *ptr,
 void qdf_tracker_check_for_leaks(struct qdf_tracker *tracker);
 
 /**
+ * qdf_tracker_check_list_corruption() - check nbuf tracker list
+ *	corruption
+ * @tracker: the qdf_tracker to check
+ * @ptr: tracker node ptr
+ * @size: memory size
+ *
+ * Return: None
+ */
+void qdf_tracker_check_list_corruption(struct qdf_tracker *tracker,
+				       void *ptr, uint32_t size);
+/**
  * qdf_tracker_lookup() - query tracking information for @ptr
  * @tracker: the qdf_tracker to check
  * @ptr: the opaque pointer of the resource to lookup
@@ -154,6 +165,12 @@ void qdf_tracker_untrack(struct qdf_tracker *tracker, void *ptr,
 
 static inline
 void qdf_tracker_check_for_leaks(struct qdf_tracker *tracker)
+{
+}
+
+static inline
+void qdf_tracker_check_list_corruption(struct qdf_tracker *tracker,
+				       void *ptr, uint32_t size)
 {
 }
 
