@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -40,6 +40,17 @@ struct qdf_net_if;
  *
  * Return: QDF_STATUS_SUCCESS on success
  */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+static inline QDF_STATUS
+__qdf_net_if_create_dummy_if(struct qdf_net_if *nif)
+{
+	nif = (struct qdf_net_if *)alloc_netdev_dummy(0);
+
+	if (!nif)
+		return QDF_STATUS_E_NOMEM;
+	return QDF_STATUS_SUCCESS;
+}
+#else
 static inline QDF_STATUS
 __qdf_net_if_create_dummy_if(struct qdf_net_if *nif)
 {
@@ -47,6 +58,7 @@ __qdf_net_if_create_dummy_if(struct qdf_net_if *nif)
 
 	return qdf_status_from_os_return(0);
 }
+#endif
 
 /**
  * qdf_net_if_get_dev_by_name() - Find a network device by its name
