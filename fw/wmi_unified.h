@@ -50212,6 +50212,8 @@ typedef struct {
      * CHAIN INDEX where WMI is sent to HOST to start inferencing
      */
     A_UINT32 tx_chain_idx;
+    /* req_id: to distinguish pdev_power_boost event instances */
+    A_UINT32 req_id;
 } wmi_pdev_power_boost_event_fixed_param;
 
 typedef enum {
@@ -50264,6 +50266,8 @@ typedef struct {
      * training, in units of 1/4 (0.25dBm) steps.
      */
     A_INT32 tx_mask_margin;
+    /* req_id: to distinguish pdev_power_boost cmd instances */
+    A_UINT32 req_id;
 } wmi_pdev_power_boost_cmd_fixed_param;
 
 typedef struct {
