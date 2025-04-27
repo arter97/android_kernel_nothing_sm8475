@@ -25,6 +25,7 @@ android/abi_gki_aarch64_paragon
 android/abi_gki_aarch64_rockchip
 android/abi_gki_aarch64_rtkstb
 android/abi_gki_aarch64_telechips
+android/abi_gki_aarch64_tuxera
 "
 
 FILES="${FILES}
