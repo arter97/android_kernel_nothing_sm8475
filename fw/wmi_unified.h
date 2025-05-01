@@ -24782,6 +24782,8 @@ typedef enum wake_reason_e {
     WOW_REASON_C2C_DETECT_EVENT,
     /* wake up the host in case of TDLS packet reception */
     WOW_REASON_TDLS_PACKET_RX,
+    /* wake up the host when USD is enabled */
+    WOW_REASON_USD,
 
 
     /* add new WOW_REASON_ defs before this line */
