@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/string.h>
@@ -296,9 +296,14 @@ int cam_common_user_dump_helper(
 	void*(*func_ptr)(void *dump_struct, uint8_t *addr_ptr);
 
 	dump_args = (struct cam_common_hw_dump_args *)cmd_args;
+
+	if (!dump_args) {
+		CAM_ERR(CAM_UTIL, "dump_args is NULL!");
+		return -EINVAL;
+	}
 	if (!dump_args->cpu_addr || !dump_args->buf_len) {
 		CAM_ERR(CAM_UTIL,
-			"Invalid params %pK %zu",
+			"Invalid params: cpu_addr=%pk, buf_len=%zu",
 			(void *)dump_args->cpu_addr,
 			dump_args->buf_len);
 		return -EINVAL;
@@ -308,6 +313,15 @@ int cam_common_user_dump_helper(
 			"Dump offset overshoot offset %zu buf_len %zu",
 			dump_args->offset, dump_args->buf_len);
 		return -ENOSPC;
+	}
+	if (dump_args->offset + size + sizeof(struct cam_common_hw_dump_header)
+		> dump_args->buf_len) {
+		CAM_ERR(CAM_UTIL,
+			"Insufficient buffer space: offset %zu, required %zu, buf_len %zu",
+			dump_args->offset,
+			size + sizeof(struct cam_common_hw_dump_header),
+			dump_args->buf_len);
+		return -EINVAL;
 	}
 
 	dst = (uint8_t *)dump_args->cpu_addr + dump_args->offset;
@@ -322,11 +336,17 @@ int cam_common_user_dump_helper(
 	addr = (uint8_t *)(dst + sizeof(struct cam_common_hw_dump_header));
 	start = addr;
 
+	if (!func || !dump_struct) {
+		CAM_ERR(CAM_UTIL, "function ptr / dump struct is NULL");
+		return -EINVAL;
+	}
 	func_ptr = func;
 	returned_ptr = func_ptr(dump_struct, addr);
 
-	if (IS_ERR(returned_ptr))
+	if (IS_ERR(returned_ptr) || !returned_ptr) {
+		CAM_ERR(CAM_UTIL, "function call failed!");
 		return PTR_ERR(returned_ptr);
+	}
 
 	addr = (uint8_t *)returned_ptr;
 	hdr->size = addr - start;
