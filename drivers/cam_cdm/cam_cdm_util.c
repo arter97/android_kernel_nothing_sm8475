@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/types.h>
@@ -494,7 +494,7 @@ int cam_cdm_get_ioremap_from_base(uint32_t hw_base,
 static int cam_cdm_util_cmd_buf_validation(void __iomem *base_addr,
 	uint32_t base_array_size,
 	struct cam_soc_reg_map *base_table[CAM_SOC_MAX_BLOCK],
-	uint32_t cmd_buf_size, uint32_t *cmd_buf, void *buf,
+	uint32_t cmd_buf_size, void *buf,
 	resource_size_t *size,
 	enum cam_cdm_command cmd_type)
 {
@@ -532,7 +532,7 @@ static int cam_cdm_util_cmd_buf_validation(void __iomem *base_addr,
 			return -EINVAL;
 		}
 
-		data = cmd_buf + cam_cdm_get_cmd_header_size(CAM_CDM_CMD_REG_RANDOM);
+		data = (uint32_t *)buf + cam_cdm_get_cmd_header_size(CAM_CDM_CMD_REG_RANDOM);
 
 		for (i = 0; i < reg_random->count; i++) {
 			offset = data[0];
@@ -649,7 +649,7 @@ static int cam_cdm_util_reg_cont_write(void __iomem *base_addr,
 
 	memcpy(&reg_cont, cmd_buf, sizeof(struct cdm_regcontinuous_cmd));
 	rc = cam_cdm_util_cmd_buf_validation(base_addr, base_array_size, base_table,
-		cmd_buf_size, cmd_buf, (void *)&reg_cont, &size, CAM_CDM_CMD_REG_CONT);
+		cmd_buf_size, (void *)&reg_cont, &size, CAM_CDM_CMD_REG_CONT);
 	if (rc) {
 		CAM_ERR(CAM_CDM, "Validation failed! rc=%d", rc);
 		return rc;
@@ -670,21 +670,29 @@ static int cam_cdm_util_reg_random_write(void __iomem *base_addr,
 	uint32_t base_array_size, struct cam_soc_reg_map *base_table[CAM_SOC_MAX_BLOCK])
 {
 	int i, rc = 0;
-	struct cdm_regrandom_cmd reg_random;
+	struct cdm_regrandom_cmd *reg_random;
+	void *kbuf = NULL;
 	uint32_t *data;
 	resource_size_t size = 0;
 
-	memcpy(&reg_random, cmd_buf, sizeof(struct cdm_regrandom_cmd));
-	rc = cam_cdm_util_cmd_buf_validation(base_addr, base_array_size, base_table,
-		cmd_buf_size, cmd_buf, (void *)&reg_random, &size, CAM_CDM_CMD_REG_RANDOM);
-	if (rc) {
-		CAM_ERR(CAM_CDM, "Validation failed! rc=%d", rc);
-		return rc;
+	kbuf = kvzalloc(cmd_buf_size, GFP_KERNEL);
+	if (!kbuf) {
+		CAM_ERR(CAM_CDM, "Mem alloc failed! rc=%d", -ENOMEM);
+		return -ENOMEM;
 	}
 
-	data = cmd_buf + cam_cdm_get_cmd_header_size(CAM_CDM_CMD_REG_RANDOM);
+	memcpy(kbuf, cmd_buf, cmd_buf_size);
+	rc = cam_cdm_util_cmd_buf_validation(base_addr, base_array_size, base_table,
+		cmd_buf_size, kbuf, &size, CAM_CDM_CMD_REG_RANDOM);
+	if (rc) {
+		CAM_ERR(CAM_CDM, "Validation failed! rc=%d", rc);
+		goto end;
+	}
 
-	for (i = 0; i < reg_random.count; i++) {
+	data = (uint32_t *)kbuf + cam_cdm_get_cmd_header_size(CAM_CDM_CMD_REG_RANDOM);
+	reg_random = (struct cdm_regrandom_cmd *)kbuf;
+
+	for (i = 0; i < reg_random->count; i++) {
 		CAM_DBG(CAM_CDM, "reg random: offset %pK, value 0x%x",
 			((void __iomem *)(base_addr + data[0])),
 			data[1]);
@@ -692,9 +700,10 @@ static int cam_cdm_util_reg_random_write(void __iomem *base_addr,
 		data += CAM_CDM_REG_RANDOM_CMD_WORDS;
 	}
 
-	*used_bytes = ((reg_random.count * (sizeof(uint32_t) * 2)) +
+	*used_bytes = ((reg_random->count * (sizeof(uint32_t) * 2)) +
 		(4 * cam_cdm_get_cmd_header_size(CAM_CDM_CMD_REG_RANDOM)));
-
+end:
+	kvfree(kbuf);
 	return rc;
 }
 
@@ -710,7 +719,7 @@ static int cam_cdm_util_swd_dmi_write(uint32_t cdm_cmd_type,
 
 	memcpy(&swd_dmi, cmd_buf, sizeof(struct cdm_dmi_cmd));
 	rc = cam_cdm_util_cmd_buf_validation(base_addr, base_array_size, base_table,
-		cmd_buf_size, cmd_buf, (void *)&swd_dmi, &size, cdm_cmd_type);
+		cmd_buf_size, (void *)&swd_dmi, &size, cdm_cmd_type);
 	if (rc) {
 		CAM_ERR(CAM_CDM, "Validation failed! rc=%d", rc);
 		return rc;
