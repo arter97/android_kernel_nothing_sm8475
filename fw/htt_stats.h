@@ -1902,6 +1902,8 @@ typedef struct _htt_tx_tid_stats_v1_tlv {
      */
     A_UINT32 head_msdu_tqm_timestamp_us;
     A_UINT32 head_msdu_tqm_latency_us;
+    A_UINT32 pause_module_id_ext;
+    A_UINT32 block_module_id_ext;
 } htt_stats_tx_tid_details_v1_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_tid_details_v1_tlv htt_tx_tid_stats_v1_tlv;
@@ -1974,9 +1976,9 @@ typedef struct {
     A_UINT32 mpdu_cnt;
     /** Number of rx MSDU */
     A_UINT32 msdu_cnt;
-    /** pause bitmap */
+    /** lower 32 bits of pause bitmap */
     A_UINT32 pause_bitmap;
-    /** block bitmap */
+    /** lower 32 bits of block bitmap */
     A_UINT32 block_bitmap;
     /** current timestamp */
     A_UINT32 current_timestamp;
@@ -2006,6 +2008,10 @@ typedef struct {
     A_UINT32 inactive_time;
     /** Number of MPDUs dropped after max retries */
     A_UINT32 remove_mpdus_max_retries;
+    /** extension with upper 32 bits of pause bitmap */
+    A_UINT32 pause_bitmap_ext;
+    /** extension with upper 32 bits of block bitmap */
+    A_UINT32 block_bitmap_ext;
 } htt_stats_peer_stats_cmn_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_peer_stats_cmn_tlv htt_peer_stats_cmn_tlv;

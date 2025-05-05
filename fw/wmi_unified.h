@@ -12779,224 +12779,240 @@ typedef struct {
      * number of vdev active count
      * (WMI_PDEV_STATS_VDEV_UP_CNT_SET,GET)
      */
-   A_UINT32 opaque_debug_num_macs_phy_vdev_up_active;
-   /** refer wlan_pdev ic flags */
-   A_UINT32 opaque_debug_ic_flags;
-   /** vdev_id that are paused per pdev */
-   A_UINT32 opaque_debug_paused_ap_vdev_bitmap;
-   /** opaque_debug_flags:
-    * refer to WLAN_PS_DESC_BIN_HWM_HIT or WLAN_PS_DESC_BIN_LWM_HIT
-    */
-   A_UINT32 opaque_debug_flags;
-   /** wlan_pdev fields remote_peer_cnt, max_rf_chains_2G and max_rf_chains_5G
-    * remote_peer_cnt_max_rf_chains_2G_5G:
-    * This word contains the following bitfields:
-    * max chains supported in the 2.4 GHz band
-    * (WMI_PDEV_STATS_MAX_RF_CHAIN_2G_SET,GET)
-    * max chains supported in the 5 GHz band,
-    * (WMI_PDEV_STATS_MAX_RF_CHAIN_5G_SET,GET)
-    * number of remote peers
-    * (WMI_PDEV_STATS_REMOTE_PEER_CNT_SET,GET)
-    */
-   A_UINT32 opaque_debug_remote_peer_cnt_max_rf_chains_2G_5G;
-   /** wlan_pdev max HT Capability info, WMI_HT_CAP defines */
-   A_UINT32 opaque_debug_max_ht_cap_info;
-   /** wlan_pdev max VHT capability info, WMI_VHT_CAP defines */
-   A_UINT32 opaque_debug_max_vht_cap_info;
-   /** opaque_debug_max_vht_supp_mcs:
-    * wlan_pdev max VHT Supported MCS which is
-    * vht_supp_mcs_2G or vht_supp_mcs_5G
-    */
-   A_UINT32 opaque_debug_max_vht_supp_mcs;
-   /** wlan_pdev max HE capability info, WMI_HE_CAP defines */
-   A_UINT32 opaque_debug_max_he_cap_info;
-   A_UINT32 opaque_debug_max_he_cap_info_ext;
-   /** the nominal chain mask for transmit */
-   A_UINT32 opaque_debug_tx_chain_mask;
-   /** the nominal chain mask for receive */
-   A_UINT32 opaque_debug_rx_chain_mask;
-   /** opaque_debug_ema_flags:
-    *  This word contains the following bitfields:
-    *  ema_flags: ema_max_vap_cnt and ema_max_profile_period from wlan_pdev
-    *  ema_max_vap_cnt- number of maximum EMA Tx vaps (VAPs having both
-    *  VDEV_FLAGS_EMA_MODE and VDEV_FLAGS_TRANSMIT_AP set)
-    *  (WMI_PDEV_STATS_EMA_MAX_VAP_CNT_SET,GET)
-    *  ema_max_profile_period - maximum profile periodicity
-    *  (maximum number of beacons after which VAP profiles repeat)
-    *  for any EMA VAP on any pdev.
-    *  (WMI_PDEV_STATS_EMA_MAX_PROFILE_PERIOD_SET,GET)
-    */
-   A_UINT32 opaque_debug_ema_flags;
-   /** wlan_pdev - maximum ML peers supported */
-   A_UINT32 opaque_debug_num_ml_peer_entries;
-   /** This word contains the following bitfields:
-    *  wlan_pdev fields - num_max_hw_links, current_chip_id and max_num_chips
-    *      (related to MLO)
-    *  Max number of HW links
-    *  (WMI_PDEV_STATS_NUM_MAX_HW_LINKS_SET,GET)
-    *  Current Chip Id
-    *  (WMI_PDEV_STATS_CURRENT_CHIP_ID_SET,GET)
-    *  Max number of chips
-    *  (WMI_PDEV_STATS_MAX_NUM_CHIPS_SET,GET)
-    */
-   A_UINT32 opaque_debug_mlo_flags;
-   /** Indicate beacon size in bytes */
-   A_UINT32 opaque_debug_large_bcn_size;
-   /** proposed by the host value of MSDUQs per each LinkView peer's TID */
-   A_UINT32 opaque_debug_num_of_linkview_msduqs_per_tid;
-   /** bcn_filter_context variables */
-   A_UINT32 opaque_debug_bcns_dropped;
-   A_UINT32 opaque_debug_bcns_recvd;
-   A_UINT32 opaque_debug_bcns_delivered;
-   /** Tids that are paused/unpaused based on module_id */
-   A_UINT32 opaque_debug_vdev_all_tid_pause_bitmap;
-   /** Tids that are blocked/unblocked based on module_id */
-   A_UINT32 opaque_debug_vdev_all_tid_block_bitmap;
-   /** wal_pdev rx filter, WAL_RX_FILTER_FLAGS defines */
-   A_UINT32 opaque_debug_rx_filter;
-   /** This word contains the following bitfields:
-    *  aggr_nonaggr_retry_th:
-    *      wal_pdev fields - agg_retry_th and non_agg_retry_th
-    *      This value holds max retry threshold up to which a Data packet
-    *      will be retried when ack is not received.
-    *      agg_retry_th - Threshold value used when aggregation is enabled
-    *          (WMI_PDEV_STATS_AGG_RETRY_TH_SET,GET)
-    *      non_agg_retry_th - Threshold value used for non-aggregation.
-    *          (WMI_PDEV_STATS_NON_AGG_RETRY_TH_SET)
-    */
-   A_UINT32 opaque_debug_aggr_nonaggr_retry_th;
-   /** This word contains the following bitfields:
-    *  num_max_rx_ba_sessions:
-    *  Number of rx BA session establised
-    *      (WMI_PDEV_STATS_NUM_RX_BA_SESSIONS_SET,GET)
-    *  Max number of rx BA session from wal_pdev
-    *      (WMI_PDEV_STATS_MAX_RX_BA_SESSIONS_SET,GET)
-    */
-   A_UINT32 opaque_debug_num_max_rx_ba_sessions;
-   /** It holds WHAL_CHANNEL_SWITCH_FLAGS values */
-   A_UINT32 opaque_debug_chan_switch_flags;
-   /** reset_cause holds PDEV_RESET_CONSEC_FAILURE or PDEV_RESET_TXQ_TIMEOUT */
-   A_UINT32 opaque_debug_consecutive_failure_reset_cause;
-   /** PPDU duration limit, in us */
-   A_UINT32 opaque_debug_mu_ppdu_dur_limit_us;
-   /** pdev reset in progress */
-   A_UINT32 opaque_debug_reset_in_progress;
-   /** wal_dev - vdev_migrate_state refer to WAL_VDEV_MIGRATE_STATE */
-   A_UINT32 opaque_debug_vdev_migrate_state;
-   /** opaque_debug_rts_rc_flag:
-    * wal_pdev rts ratecode - this value reflects whatever
-    * WMI_PDEV_PARAM_RTS_FIXED_RATE value the host has specified for the pdev.
-    */
-   A_UINT32 opaque_debug_rts_rc_flag;
-   /* Num of peer delete in progress */
-   A_UINT32 opaque_debug_num_of_peer_delete_in_progress;
-   /** wal_pdev total number of active vdev count */
-   A_UINT32 opaque_debug_total_active_vdev_cnt;
-   /** wal_pdev - max number of vdevs per pdev */
-   A_UINT32 opaque_debug_max_vdevs;
-   /* NonOccupancyList(NOL) context  */
-   A_UINT32 opaque_debug_dfs_nol_count;
-   /** NOL timeout in seconds */
-   A_UINT32 opaque_debug_dfs_nol_timeout;
-   A_UINT32 opaque_debug_dfs_use_nol;
-   /** channel availability check mode, refer enum WMI_ADFS_OCAC_MODE */
-   A_UINT32 opaque_debug_cac_mode;
-   A_UINT32 opaque_debug_dyn_ppdu_dur; /* in ms */
-   /** This word contains the following bitfields:
-    * wal_pdev home channel info
-    * home_chan_mhz_flags:
-    * primary channel frequency in mhz
-    *     (WMI_PDEV_STATS_HOME_CHAN_MHZ_SET,GET)
-    * flags to specify other channel attributes
-    *     (WMI_PDEV_STATS_HOME_CHAN_FLAGS_SET, GET)
-    */
-   A_UINT32 opaque_debug_home_chan_mhz_flags;
-   /** home channel center frequency in MHz */
-   A_UINT32 opaque_debug_home_band_center_freq;
-   /** home channel phy_mode, refer enum WLAN_PHY_MODE */
-   A_UINT32 opaque_debug_home_phy_mode;
-   /** This word contains the following bitfields:
-    * wal_pdev current channel info
-    * cur_chan_mhz_flags:
-    * primary channel frequency in mhz
-    *     (WMI_PDEV_STATS_CUR_CHAN_MHZ_SET,GET)
-    * flags to specify other channel attributes
-    *     (WMI_PDEV_STATS_CUR_CHAN_FLAGS_SET,GET)
-    */
-   A_UINT32 opaque_debug_cur_chan_mhz_flags;
-   /** current channel center frequency in MHz */
-   A_UINT32 opaque_debug_cur_band_center_freq;
-   /** current channel phy_mode, refer enum WLAN_PHY_MODE */
-   A_UINT32 opaque_debug_cur_phy_mode;
-   /* Beacon context info */
-   A_UINT32 opaque_debug_bcn_q_num_bcns_queued_to_hw;
-   /** beacon queue AIFS */
-   A_UINT32 opaque_debug_aifs;
-   /** beacon queue cwmin */
-   A_UINT32 opaque_debug_cwmin;
-   /** beacon queue cwmax */
-   A_UINT32 opaque_debug_cwmax;
-   /** FILS discovery period in TU */
-   A_UINT32 opaque_debug_fils_period;
-   /** Beacon interval in TU */
-   A_UINT32 opaque_debug_beacon_period;
-   A_UINT32 opaque_debug_staggered_beacon_intvl;
-   /** wal_pdev tx context, refer enum WAL_TX_CTXT_FLAGS */
-   A_UINT32 opaque_debug_tx_ctxt_flags;
-   /** opaque_debug_burst_mode_pending_isr
-    * wal_pdev tx_ctxt fields - burst_mode refer enum WAL_TX_BURST_MODE
-    * and pending_isr_status count
-    */
-   A_UINT32 opaque_debug_burst_mode_pending_isr;
-   /** max burst duration from ppdu duration in us */
-   A_UINT32 opaque_debug_burst_dur;
-   /** counter for tx hw stuck */
-   A_UINT32 opaque_debug_tx_hw_stuck_cnt;
-   /** counter for tx consecutive lifetime expiry */
-   A_UINT32 opaque_debug_consecutive_lifetime_expiries;
-   /** wal_pdev rx context, refer enum WAL_RX_CTXT_FLAGS */
-   A_UINT32 opaque_debug_rx_ctxt_flags;
-   /** wal_pdev fields in rx context for rx_suspend or resume count */
-   A_UINT32 opaque_debug_rx_suspend_cnt;
-   A_UINT32 opaque_debug_rx_resume_cnt;
-   A_UINT32 opaque_debug_rx_pcie_suspend_cnt;
-   A_UINT32 opaque_debug_rx_pcie_resume_cnt;
-   /** This word contains the following bitfields:
-    *  wal_pdev fields
-    *  pdev paused - WMI_PDEV_STATS_PAUSED_SET,GET
-    *  pdev suspend - WMI_PDEV_STATS_SUSPENDED_SET,GET
-    *  cac_enabed - MI_PDEV_STATS_CAC_ENABLED_SET,GET
-    *  monitor VAP present - WMI_PDEV_STATS_IS_MONITOR_TYPE_PRESENT_SET,GET
-    *  beacon tx mode - WMI_PDEV_STATS_BCN_TX_MODE_SET,GET
-    *  isTXsuspended - WMI_PDEV_STATS_IS_TXSUSPENDED_SET,GET
-    *  isSCHEDsuspended - WMI_PDEV_STATS_IS_SCHEDSUSPENDED_SET,GET
-    *  sched_algo_resume_needed -
-    *      WMI_PDEV_STATS_SCHED_ALGO_RESUME_NEEDED_SET,GET
-    *  abort_reason - WMI_PDEV_STATS_ABORT_REASON_SET,GET
-    *  atf_cfg - WMI_PDEV_STATS_ATF_CONFIG_SET,GET
-    *  Green AP TX chainmask valid - WMI_PDEV_STATS_GAP_TX_CH_MASK_VALID_SET,GET
-    *  Green AP RX chainmask valid - WMI_PDEV_STATS_GAP_RX_CH_MASK_VALID_SET,GET
-    *  Green AP Phy mode valid - WMI_PDEV_STATS_GAP_PHY_MODE_VALID_SET,GET
-    *  burst_enable - WMI_PDEV_STATS_BURST_ENABLE_SET,GET
-    */
-   A_UINT32 opaque_debug_wal_pdev_bitfield;
-   /** This word contains the following bitfields:
-    *  gap_phy_mode_freq:
-    *  When GreenAP is enabled, phy_mode (WMI_PDEV_STATS_GAP_PHY_MODE_SET,GET)
-    *  and center freq(MHz) (WMI_PDEV_STATS_GAP_BAND_CENTER_FREQ1_SET,GET)
-    *  in GAP context is displayed
-    */
-   A_UINT32 opaque_debug_gap_phy_mode_freq;
-   /**
-    * The following 5 opaque_debug_reserved_field variables are provided
-    * purely for debugging by technicians who have outside knowledge of
-    * what kind of values the target has placed into these fields.
-    */
-   A_UINT32 opaque_debug_reserved_field_1;
-   A_UINT32 opaque_debug_reserved_field_2;
-   A_UINT32 opaque_debug_reserved_field_3;
-   A_UINT32 opaque_debug_reserved_field_4;
-   A_UINT32 opaque_debug_reserved_field_5;
+    A_UINT32 opaque_debug_num_macs_phy_vdev_up_active;
+    /** refer wlan_pdev ic flags */
+    A_UINT32 opaque_debug_ic_flags;
+    /** vdev_id that are paused per pdev */
+    A_UINT32 opaque_debug_paused_ap_vdev_bitmap;
+    /** opaque_debug_flags:
+     * refer to WLAN_PS_DESC_BIN_HWM_HIT or WLAN_PS_DESC_BIN_LWM_HIT
+     */
+    A_UINT32 opaque_debug_flags;
+    /** wlan_pdev fields remote_peer_cnt, max_rf_chains_2G and max_rf_chains_5G
+     * remote_peer_cnt_max_rf_chains_2G_5G:
+     * This word contains the following bitfields:
+     * max chains supported in the 2.4 GHz band
+     * (WMI_PDEV_STATS_MAX_RF_CHAIN_2G_SET,GET)
+     * max chains supported in the 5 GHz band,
+     * (WMI_PDEV_STATS_MAX_RF_CHAIN_5G_SET,GET)
+     * number of remote peers
+     * (WMI_PDEV_STATS_REMOTE_PEER_CNT_SET,GET)
+     */
+    A_UINT32 opaque_debug_remote_peer_cnt_max_rf_chains_2G_5G;
+    /** wlan_pdev max HT Capability info, WMI_HT_CAP defines */
+    A_UINT32 opaque_debug_max_ht_cap_info;
+    /** wlan_pdev max VHT capability info, WMI_VHT_CAP defines */
+    A_UINT32 opaque_debug_max_vht_cap_info;
+    /** opaque_debug_max_vht_supp_mcs:
+     * wlan_pdev max VHT Supported MCS which is
+     * vht_supp_mcs_2G or vht_supp_mcs_5G
+     */
+    A_UINT32 opaque_debug_max_vht_supp_mcs;
+    /** wlan_pdev max HE capability info, WMI_HE_CAP defines */
+    A_UINT32 opaque_debug_max_he_cap_info;
+    A_UINT32 opaque_debug_max_he_cap_info_ext;
+    /** the nominal chain mask for transmit */
+    A_UINT32 opaque_debug_tx_chain_mask;
+    /** the nominal chain mask for receive */
+    A_UINT32 opaque_debug_rx_chain_mask;
+    /** opaque_debug_ema_flags:
+     *  This word contains the following bitfields:
+     *  ema_flags: ema_max_vap_cnt and ema_max_profile_period from wlan_pdev
+     *  ema_max_vap_cnt- number of maximum EMA Tx vaps (VAPs having both
+     *  VDEV_FLAGS_EMA_MODE and VDEV_FLAGS_TRANSMIT_AP set)
+     *  (WMI_PDEV_STATS_EMA_MAX_VAP_CNT_SET,GET)
+     *  ema_max_profile_period - maximum profile periodicity
+     *  (maximum number of beacons after which VAP profiles repeat)
+     *  for any EMA VAP on any pdev.
+     *  (WMI_PDEV_STATS_EMA_MAX_PROFILE_PERIOD_SET,GET)
+     */
+    A_UINT32 opaque_debug_ema_flags;
+    /** wlan_pdev - maximum ML peers supported */
+    A_UINT32 opaque_debug_num_ml_peer_entries;
+    /** This word contains the following bitfields:
+     *  wlan_pdev fields - num_max_hw_links, current_chip_id and max_num_chips
+     *      (related to MLO)
+     *  Max number of HW links
+     *  (WMI_PDEV_STATS_NUM_MAX_HW_LINKS_SET,GET)
+     *  Current Chip Id
+     *  (WMI_PDEV_STATS_CURRENT_CHIP_ID_SET,GET)
+     *  Max number of chips
+     *  (WMI_PDEV_STATS_MAX_NUM_CHIPS_SET,GET)
+     */
+    A_UINT32 opaque_debug_mlo_flags;
+    /** Indicate beacon size in bytes */
+    A_UINT32 opaque_debug_large_bcn_size;
+    /** proposed by the host value of MSDUQs per each LinkView peer's TID */
+    A_UINT32 opaque_debug_num_of_linkview_msduqs_per_tid;
+    /** bcn_filter_context variables */
+    A_UINT32 opaque_debug_bcns_dropped;
+    A_UINT32 opaque_debug_bcns_recvd;
+    A_UINT32 opaque_debug_bcns_delivered;
+    /**
+     * Lower 32 bits bitmap of pause ids for TIDs that are paused/unpaused
+     * based on module_id.
+     */
+    A_UINT32 opaque_debug_vdev_all_tid_pause_bitmap;
+    /**
+     * Lower 32 bits bitmap of pause ids for TIDs that are blocked/unblocked
+     * based on module_id.
+     */
+    A_UINT32 opaque_debug_vdev_all_tid_block_bitmap;
+    /** wal_pdev rx filter, WAL_RX_FILTER_FLAGS defines */
+    A_UINT32 opaque_debug_rx_filter;
+    /** This word contains the following bitfields:
+     *  aggr_nonaggr_retry_th:
+     *      wal_pdev fields - agg_retry_th and non_agg_retry_th
+     *      This value holds max retry threshold up to which a Data packet
+     *      will be retried when ack is not received.
+     *      agg_retry_th - Threshold value used when aggregation is enabled
+     *          (WMI_PDEV_STATS_AGG_RETRY_TH_SET,GET)
+     *      non_agg_retry_th - Threshold value used for non-aggregation.
+     *          (WMI_PDEV_STATS_NON_AGG_RETRY_TH_SET)
+     */
+    A_UINT32 opaque_debug_aggr_nonaggr_retry_th;
+    /** This word contains the following bitfields:
+     *  num_max_rx_ba_sessions:
+     *  Number of rx BA session establised
+     *      (WMI_PDEV_STATS_NUM_RX_BA_SESSIONS_SET,GET)
+     *  Max number of rx BA session from wal_pdev
+     *      (WMI_PDEV_STATS_MAX_RX_BA_SESSIONS_SET,GET)
+     */
+    A_UINT32 opaque_debug_num_max_rx_ba_sessions;
+    /** It holds WHAL_CHANNEL_SWITCH_FLAGS values */
+    A_UINT32 opaque_debug_chan_switch_flags;
+    /** reset_cause holds PDEV_RESET_CONSEC_FAILURE or PDEV_RESET_TXQ_TIMEOUT */
+    A_UINT32 opaque_debug_consecutive_failure_reset_cause;
+    /** PPDU duration limit, in us */
+    A_UINT32 opaque_debug_mu_ppdu_dur_limit_us;
+    /** pdev reset in progress */
+    A_UINT32 opaque_debug_reset_in_progress;
+    /** wal_dev - vdev_migrate_state refer to WAL_VDEV_MIGRATE_STATE */
+    A_UINT32 opaque_debug_vdev_migrate_state;
+    /** opaque_debug_rts_rc_flag:
+     * wal_pdev rts ratecode - this value reflects whatever
+     * WMI_PDEV_PARAM_RTS_FIXED_RATE value the host has specified for the pdev.
+     */
+    A_UINT32 opaque_debug_rts_rc_flag;
+    /* Num of peer delete in progress */
+    A_UINT32 opaque_debug_num_of_peer_delete_in_progress;
+    /** wal_pdev total number of active vdev count */
+    A_UINT32 opaque_debug_total_active_vdev_cnt;
+    /** wal_pdev - max number of vdevs per pdev */
+    A_UINT32 opaque_debug_max_vdevs;
+    /* NonOccupancyList(NOL) context  */
+    A_UINT32 opaque_debug_dfs_nol_count;
+    /** NOL timeout in seconds */
+    A_UINT32 opaque_debug_dfs_nol_timeout;
+    A_UINT32 opaque_debug_dfs_use_nol;
+    /** channel availability check mode, refer enum WMI_ADFS_OCAC_MODE */
+    A_UINT32 opaque_debug_cac_mode;
+    A_UINT32 opaque_debug_dyn_ppdu_dur; /* in ms */
+    /** This word contains the following bitfields:
+     * wal_pdev home channel info
+     * home_chan_mhz_flags:
+     * primary channel frequency in mhz
+     *     (WMI_PDEV_STATS_HOME_CHAN_MHZ_SET,GET)
+     * flags to specify other channel attributes
+     *     (WMI_PDEV_STATS_HOME_CHAN_FLAGS_SET, GET)
+     */
+    A_UINT32 opaque_debug_home_chan_mhz_flags;
+    /** home channel center frequency in MHz */
+    A_UINT32 opaque_debug_home_band_center_freq;
+    /** home channel phy_mode, refer enum WLAN_PHY_MODE */
+    A_UINT32 opaque_debug_home_phy_mode;
+    /** This word contains the following bitfields:
+     * wal_pdev current channel info
+     * cur_chan_mhz_flags:
+     * primary channel frequency in mhz
+     *     (WMI_PDEV_STATS_CUR_CHAN_MHZ_SET,GET)
+     * flags to specify other channel attributes
+     *     (WMI_PDEV_STATS_CUR_CHAN_FLAGS_SET,GET)
+     */
+    A_UINT32 opaque_debug_cur_chan_mhz_flags;
+    /** current channel center frequency in MHz */
+    A_UINT32 opaque_debug_cur_band_center_freq;
+    /** current channel phy_mode, refer enum WLAN_PHY_MODE */
+    A_UINT32 opaque_debug_cur_phy_mode;
+    /* Beacon context info */
+    A_UINT32 opaque_debug_bcn_q_num_bcns_queued_to_hw;
+    /** beacon queue AIFS */
+    A_UINT32 opaque_debug_aifs;
+    /** beacon queue cwmin */
+    A_UINT32 opaque_debug_cwmin;
+    /** beacon queue cwmax */
+    A_UINT32 opaque_debug_cwmax;
+    /** FILS discovery period in TU */
+    A_UINT32 opaque_debug_fils_period;
+    /** Beacon interval in TU */
+    A_UINT32 opaque_debug_beacon_period;
+    A_UINT32 opaque_debug_staggered_beacon_intvl;
+    /** wal_pdev tx context, refer enum WAL_TX_CTXT_FLAGS */
+    A_UINT32 opaque_debug_tx_ctxt_flags;
+    /** opaque_debug_burst_mode_pending_isr
+     * wal_pdev tx_ctxt fields - burst_mode refer enum WAL_TX_BURST_MODE
+     * and pending_isr_status count
+     */
+    A_UINT32 opaque_debug_burst_mode_pending_isr;
+    /** max burst duration from ppdu duration in us */
+    A_UINT32 opaque_debug_burst_dur;
+    /** counter for tx hw stuck */
+    A_UINT32 opaque_debug_tx_hw_stuck_cnt;
+    /** counter for tx consecutive lifetime expiry */
+    A_UINT32 opaque_debug_consecutive_lifetime_expiries;
+    /** wal_pdev rx context, refer enum WAL_RX_CTXT_FLAGS */
+    A_UINT32 opaque_debug_rx_ctxt_flags;
+    /** wal_pdev fields in rx context for rx_suspend or resume count */
+    A_UINT32 opaque_debug_rx_suspend_cnt;
+    A_UINT32 opaque_debug_rx_resume_cnt;
+    A_UINT32 opaque_debug_rx_pcie_suspend_cnt;
+    A_UINT32 opaque_debug_rx_pcie_resume_cnt;
+    /** This word contains the following bitfields:
+     *  wal_pdev fields
+     *  pdev paused - WMI_PDEV_STATS_PAUSED_SET,GET
+     *  pdev suspend - WMI_PDEV_STATS_SUSPENDED_SET,GET
+     *  cac_enabed - MI_PDEV_STATS_CAC_ENABLED_SET,GET
+     *  monitor VAP present - WMI_PDEV_STATS_IS_MONITOR_TYPE_PRESENT_SET,GET
+     *  beacon tx mode - WMI_PDEV_STATS_BCN_TX_MODE_SET,GET
+     *  isTXsuspended - WMI_PDEV_STATS_IS_TXSUSPENDED_SET,GET
+     *  isSCHEDsuspended - WMI_PDEV_STATS_IS_SCHEDSUSPENDED_SET,GET
+     *  sched_algo_resume_needed -
+     *      WMI_PDEV_STATS_SCHED_ALGO_RESUME_NEEDED_SET,GET
+     *  abort_reason - WMI_PDEV_STATS_ABORT_REASON_SET,GET
+     *  atf_cfg - WMI_PDEV_STATS_ATF_CONFIG_SET,GET
+     *  Green AP TX chainmask valid- WMI_PDEV_STATS_GAP_TX_CH_MASK_VALID_SET,GET
+     *  Green AP RX chainmask valid- WMI_PDEV_STATS_GAP_RX_CH_MASK_VALID_SET,GET
+     *  Green AP Phy mode valid - WMI_PDEV_STATS_GAP_PHY_MODE_VALID_SET,GET
+     *  burst_enable - WMI_PDEV_STATS_BURST_ENABLE_SET,GET
+     */
+    A_UINT32 opaque_debug_wal_pdev_bitfield;
+    /** This word contains the following bitfields:
+     *  gap_phy_mode_freq:
+     *  When GreenAP is enabled, phy_mode (WMI_PDEV_STATS_GAP_PHY_MODE_SET,GET)
+     *  and center freq(MHz) (WMI_PDEV_STATS_GAP_BAND_CENTER_FREQ1_SET,GET)
+     *  in GAP context is displayed
+     */
+    A_UINT32 opaque_debug_gap_phy_mode_freq;
+    /**
+     * The following 5 opaque_debug_reserved_field variables are provided
+     * purely for debugging by technicians who have outside knowledge of
+     * what kind of values the target has placed into these fields.
+     */
+    A_UINT32 opaque_debug_reserved_field_1;
+    A_UINT32 opaque_debug_reserved_field_2;
+    A_UINT32 opaque_debug_reserved_field_3;
+    A_UINT32 opaque_debug_reserved_field_4;
+    A_UINT32 opaque_debug_reserved_field_5;
+    /**
+     * Upper 32 bits bitmap of pause ids for TIDs that are paused/unpaused
+     * based on module_id.
+     */
+    A_UINT32 opaque_debug_vdev_all_tid_pause_bitmap_ext;
+    /**
+     * Upper 32 bits bitmap of pause ids for TIDs that are blocked/unblocked
+     * based on module_id.
+     */
+   A_UINT32 opaque_debug_vdev_all_tid_block_bitmap_ext;
 } wmi_ctrl_path_pdev_stats_struct;
 
 #define WMI_PDEV_STATS_NUM_MACS_GET(flag) \
@@ -14453,28 +14469,28 @@ typedef struct {
      */
     A_UINT32 opaque_debug_keyid0_ast_index;
     /* opaque_debug_all_tids_block_module_bitmap:
-     * Bitmap of block IDs requesting block of all TIDs,
+     * Lower 32 bits bitmap of block IDs requesting block of all TIDs,
      * part of wal_peer.
      * Refer to enum WLAN_PAUSE_ID.
      * This block/pause ID can be mapped to a WLAN_MODULE_ID module ID.
      */
     A_UINT32 opaque_debug_all_tids_block_module_bitmap;
     /* opaque_debug_all_tids_pause_module_bitmap:
-     * Bitmap of pause IDs requesting block of all TIDs,
+     * Lower 32 bits bitmap of pause IDs requesting block of all TIDs,
      * part of wal_peer.
      * Refer to enum WLAN_PAUSE_ID.
      * This pause ID can be mapped to a WLAN_MODULE_ID module ID.
      */
     A_UINT32 opaque_debug_all_tids_pause_module_bitmap;
     /* opaque_debug_data_tids_block_module_bitmap:
-     * Bitmap of block ids requesting block of data tids,
+     * Lower 32 bits bitmap of block ids requesting block of data tids,
      * part of wal_peer.
      * Refer to enum WLAN_PAUSE_ID.
      * This block/pause ID can be mapped to a WLAN_MODULE_ID module ID.
      */
     A_UINT32 opaque_debug_data_tids_block_module_bitmap;
     /* opaque_debug_data_tids_pause_module_bitmap:
-     * Bitmap of pause ids requesting block of data tids,
+     * Lower 32 bits bitmap of pause ids requesting block of data tids,
      * part of wal_peer.
      * Refer to enum WLAN_PAUSE_ID.
      * This pause ID can be mapped to a WLAN_MODULE_ID module ID.
@@ -14882,6 +14898,34 @@ typedef struct {
                      reserved: 16;
         };
     };
+    /* opaque_debug_all_tids_block_module_bitmap_ext:
+     * Upper 32 bits bitmap of block IDs requesting block of all TIDs,
+     * part of wal_peer.
+     * Refer to enum WLAN_PAUSE_ID.
+     * This block/pause ID can be mapped to a WLAN_MODULE_ID module ID.
+     */
+    A_UINT32 opaque_debug_all_tids_block_module_bitmap_ext;
+    /* opaque_debug_all_tids_pause_module_bitmap_ext:
+     * Upper 32 bits bitmap of pause IDs requesting pause of all TIDs,
+     * part of wal_peer.
+     * Refer to enum WLAN_PAUSE_ID.
+     * This pause ID can be mapped to a WLAN_MODULE_ID module ID.
+     */
+    A_UINT32 opaque_debug_all_tids_pause_module_bitmap_ext;
+    /* opaque_debug_data_tids_block_module_bitmap_ext:
+     * Upper 32 bits bitmap of block ids requesting block of data tids,
+     * part of wal_peer.
+     * Refer to enum WLAN_PAUSE_ID.
+     * This block/pause ID can be mapped to a WLAN_MODULE_ID module ID.
+     */
+    A_UINT32 opaque_debug_data_tids_block_module_bitmap_ext;
+    /* opaque_debug_data_tids_pause_module_bitmap_ext:
+     * Upper 32 bits bitmap of pause ids requesting pause of data tids,
+     * part of wal_peer.
+     * Refer to enum WLAN_PAUSE_ID.
+     * This pause ID can be mapped to a WLAN_MODULE_ID module ID.
+     */
+    A_UINT32 opaque_debug_data_tids_pause_module_bitmap_ext;
 } wmi_ctrl_path_peer_stats_struct;
 
 #define WMI_PEER_STATS_SM_MASK_SET(flag, val) \
@@ -15604,9 +15648,15 @@ typedef struct {
     A_UINT32 opaque_debug_rx_pkt_on_channel;
     /* Contains the value of Target beacon transmission time offset value */
     A_UINT32 opaque_debug_tbtt_offset;
-    /* Contains the value of tid pause bitmap of the peer from wal_vdev */
+    /*
+     * Contains the value of lower 32 bits of tid pause bitmap of the peer
+     * from wal_vdev
+     */
     A_UINT32 opaque_debug_peer_all_tid_pause_bitmap;
-    /* Contains the value of tid block bitmap of the peer from wal_vdev */
+    /*
+     * Contains the value of lower 32 bits of tid block bitmap of the peer
+     * from wal_vdev
+     */
     A_UINT32 opaque_debug_peer_all_tid_block_bitmap;
     /* Contains the value of tdls peer kickout threshold */
     A_UINT32 opaque_debug_tdls_peer_kickout_th;
@@ -15960,6 +16010,16 @@ typedef struct {
     A_UINT32 opaque_debug_field_2;
     A_UINT32 opaque_debug_field_3;
     A_UINT32 opaque_debug_field_4;
+    /*
+     * Contains the value of upper 32 bits tid pause bitmap of the peer
+     * from wal_vdev
+     */
+    A_UINT32 opaque_debug_peer_all_tid_pause_bitmap_ext;
+    /*
+     * Contains the value of upper 32 bits tid block bitmap of the peer
+     * from wal_vdev
+     */
+    A_UINT32 opaque_debug_peer_all_tid_block_bitmap_ext;
 } wmi_ctrl_path_vdev_stats_struct;
 
 
