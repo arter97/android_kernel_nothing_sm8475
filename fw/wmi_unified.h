@@ -5617,6 +5617,7 @@ typedef enum {
     WMI_VENDOR1_REQ1_VERSION_4_10   = 6,
     WMI_VENDOR1_REQ1_VERSION_4_20   = 7,
     WMI_VENDOR1_REQ1_VERSION_4_40   = 8,
+    WMI_VENDOR1_REQ1_VERSION_4_50   = 9,
 } WMI_VENDOR1_REQ1_VERSION;
 
 typedef enum {
@@ -5624,6 +5625,7 @@ typedef enum {
     WMI_VENDOR1_REQ2_VERSION_3_01   = 1,
     WMI_VENDOR1_REQ2_VERSION_3_20   = 2,
     WMI_VENDOR1_REQ2_VERSION_3_50   = 3,
+    WMI_VENDOR1_REQ2_VERSION_3_61   = 4,
 } WMI_VENDOR1_REQ2_VERSION;
 
 typedef enum {
@@ -41585,6 +41587,11 @@ typedef struct {
     A_UINT32 vdev_id;
     /* 1-Enable, 0-Disable */
     A_UINT32 enable;
+    /* self_roaming_re_enable_time:
+     * Allow next deauth self-roaming only when time gap is more than
+     * self_roaming_re_enable_time w.r.t previous deauth self-roaming.
+     */
+    A_UINT32 self_roaming_re_enable_time; /* units = seconds */
 } wmi_roam_deauth_config_cmd_fixed_param;
 
 /** IDLE roam trigger parameters */
@@ -42299,7 +42306,7 @@ typedef struct {
      * rssi_dbm_abs
      * Last known RSSI of the current BSSID at the moment when the frame
      * was sent and received.
-     * This RSSI value is valid for deauth / disassoc frame only.
+     * Host should ignore this field if its value is 0.
      * The rssi_dbm_abs value is the absolute value of the RSSI in dBm units.
      * For example, if the RSSI is -40 dBm, rssi_dbm_abs will be 40.
      */
