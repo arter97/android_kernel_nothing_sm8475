@@ -430,4 +430,4 @@ error0:
 	return ret;
 }
 
-module_init(qtipm_init_module);
+//module_init(qtipm_init_module);
