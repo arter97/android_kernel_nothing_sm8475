@@ -40,6 +40,23 @@ static bool completed;
  * You can also use this as an ignorelist.
  */
 static const __initconst char * const blacklist[] = {
+	// Disabled
+	"kiwi",
+	"lzo",
+	"lzo_rle",
+	"mem_offline",
+	"msm_show_resume_irq",
+	"qbt_handler",
+	"qca6490",
+	"qca6750",
+	"qcom_logbuf_vendor_hooks",
+	"shared_rail_scmi",
+	"shared_rail_vendor",
+	"wcd937x_dlkm",
+	"wcd937x_slave_dlkm",
+	"zram",
+	"zsmalloc",
+
 	NULL
 };
 
