@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 5
 PATCHLEVEL = 10
-SUBLEVEL = 236
+SUBLEVEL = 237
 EXTRAVERSION =
 NAME = Dare mighty things
 
@@ -398,7 +398,7 @@ override CROSS_COMPILE_ARM32	:= /home/arter97/arm32-gcc/bin/arm-eabi-
 override LLVM := 1
 override LLVM_IAS := 1
 override CLANG_TRIPLE := aarch64-linux-gnu
-override LLVM_PATH := /home/arter97/android/nathan/llvm-20.1.3-x86_64/bin/
+override LLVM_PATH := /home/arter97/android/nathan/llvm-20.1.4-x86_64/bin/
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -1040,6 +1040,9 @@ KBUILD_CFLAGS   += $(call cc-option,-Werror=incompatible-pointer-types)
 
 # Require designated initializers for all marked structures
 KBUILD_CFLAGS   += $(call cc-option,-Werror=designated-init)
+
+# Ensure compilers do not transform certain loops into calls to wcslen()
+KBUILD_CFLAGS += -fno-builtin-wcslen
 
 # change __FILE__ to the relative path from the srctree
 KBUILD_CPPFLAGS += $(call cc-option,-fmacro-prefix-map=$(srctree)/=)
