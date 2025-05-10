@@ -3885,10 +3885,18 @@ typedef struct {
      *     WMI_HAL_REG_CAPABILITIES_EXT2      hal_reg_caps[];
      *     wmi_nan_capabilities               nan_cap;
      *     WMI_SCAN_RADIO_CAPABILITIES_EXT2   wmi_scan_radio_caps[];
+     *     wmi_twt_caps_params                twt_caps[];
      *     wmi_htt_msdu_idx_to_htt_msdu_qtype htt_msdu_idx_to_qtype_map[];
      *     wmi_dbs_or_sbs_cap_ext             dbs_or_sbs_cap_ext;
+     *     wmi_cust_bdf_version_capabilities  cust_bdf_version_capabilities[];
+     *     wmi_sw_cal_ver_cap                 sw_cal_ver_cap[];
      *     A_INT32 hw_tx_power_signed[WMI_HW_TX_POWER_CAPS_MAX];
+     *     WMI_COEX_FIX_CHANNEL_CAPABILITIES  coex_fix_channel_caps[];
      *     wmi_aux_dev_capabilities           aux_dev_caps[];
+     *     wmi_enhanced_aoa_caps_param        aoa_caps_param[];
+     *     wmi_enhanced_aoa_per_band_caps_param
+     *         aoa_per_band_caps_param[];
+     *     wmi_sar_flag_tlv_param             sar_flags[];
      *     WMI_POWER_BOOST_CAPABILITIES       power_boost_capabilities[];
      *     WMI_RSSI_ACCURACY_IMPROVEMENT_CAPABILITIES
      *         rssi_accuracy_improvement_capabilities[];
@@ -22170,6 +22178,8 @@ typedef struct {
     A_UINT32 peer_eht_ops;
     wmi_ppe_threshold peer_eht_ppet;
     A_UINT32 assoc_flags;
+    /** maximum number of spatial streams supported by peer for tx */
+    A_UINT32 peer_max_tx_nss;
 
 /* Following this struct are the TLV's:
  *     A_UINT8 peer_legacy_rates[];
