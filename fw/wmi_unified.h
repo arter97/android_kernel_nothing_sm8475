@@ -19703,6 +19703,13 @@ typedef enum {
          */
         WMI_VDEV_PARAM_SET_SAP_PS_WITH_TWT,            /* 0x8013 */
 
+        /*
+         * Support RTT Bandwidth downgrade
+         *      0 - Disable RTT Bandwidth downgrade
+         *      1 - Enable RTT Bandwidth downgrade
+         */
+        WMI_VDEV_PARAM_ENABLE_DISABLE_RTT_BW_DOWNGRADE,    /* 0x8014 */
+
     /*=== END VDEV_PARAM_PROTOTYPE SECTION ===*/
 } WMI_VDEV_PARAM;
 
