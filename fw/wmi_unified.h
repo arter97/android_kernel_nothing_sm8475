@@ -5001,7 +5001,13 @@ typedef struct {
      *      flow_override set.
      *      Refer to the below definitions of WMI_RSRC_CFG_HOST_SERVICE_FLAG
      *      OPT_DP_ENABLE_BYPASS_FOR_HLOS_TID_OVERRIDE_GET and _SET macros.
-     *  Bits 31:20 - Reserved
+     *  Bit 20
+     *      This bit will set by host to inform FW that action OUI v2 is
+     *      enabled by both host configuration and FW capability.
+     *      Refer to the below definitions of
+     *      WMI_RSRC_CFG_HOST_SERVICE_FLAG_ACTION_OUI_V2_GET and SET.
+     *
+     *  Bits 31:21 - Reserved
      */
     A_UINT32 host_service_flags;
 
@@ -5550,6 +5556,11 @@ typedef struct {
         WMI_GET_BITS(host_service_flags, 19, 1)
 #define WMI_RSRC_CFG_HOST_SERVICE_FLAG_OPT_DP_ENABLE_BYPASS_FOR_HLOS_TID_OVERRIDE_SET(host_service_flags, val) \
         WMI_SET_BITS(host_service_flags, 19, 1, val)
+
+#define WMI_RSRC_CFG_HOST_SERVICE_FLAG_ACTION_OUI_V2_GET(host_service_flags) \
+    WMI_GET_BITS(host_service_flags, 20, 1)
+#define WMI_RSRC_CFG_HOST_SERVICE_FLAG_ACTION_OUI_V2_SET(host_service_flags, val) \
+    WMI_SET_BITS(host_service_flags, 20, 1, val)
 
 
 #define WMI_RSRC_CFG_CARRIER_CFG_CHARTER_ENABLE_GET(carrier_config) \
@@ -26567,6 +26578,11 @@ typedef enum
      * if specific vendor OUI recevied in beacon on 2GHz.
      */
     WMI_VENDOR_OUI_ACTION_AUTH_ASSOC_6MBPS_2GHZ = 17,
+
+    /*
+     * Disable dynamic SMPS if OUI matches
+     */
+    WMI_VENDOR_OUI_ACTION_DISABLE_DYNAMIC_SMPS = 18,
 
 
     /* Add any action before this line */
