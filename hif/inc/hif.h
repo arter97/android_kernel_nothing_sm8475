@@ -209,7 +209,11 @@ struct qca_napi_stat {
  * instances.
  */
 struct qca_napi_info {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device   *netdev; /* dummy net_dev ptr */
+#else
 	struct net_device    netdev; /* dummy net_dev */
+#endif
 	void                 *hif_ctx;
 	struct napi_struct   napi;
 	uint8_t              scale;   /* currently same on all instances */
@@ -222,7 +226,11 @@ struct qca_napi_info {
 	/* will only be present for data rx CE's */
 	void (*offld_flush_cb)(void *);
 	struct napi_struct   rx_thread_napi;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device    *rx_thread_netdev;
+#else
 	struct net_device    rx_thread_netdev;
+#endif
 #endif /* RECEIVE_OFFLOAD */
 	qdf_lro_ctx_t        lro_ctx;
 };

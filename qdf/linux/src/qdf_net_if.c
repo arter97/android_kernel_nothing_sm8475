@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018,2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -27,20 +27,47 @@
 #include "qdf_util.h"
 #include <linux/netdevice.h>
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
 QDF_STATUS
-qdf_net_if_create_dummy_if(struct qdf_net_if *nif)
+qdf_net_if_create_dummy_if(struct qdf_net_if **nif)
+{
+	*nif = (struct qdf_net_if *)alloc_netdev_dummy(0);
+
+	if (!(*nif))
+		return QDF_STATUS_E_NOMEM;
+
+	return QDF_STATUS_SUCCESS;
+}
+#else
+QDF_STATUS
+qdf_net_if_create_dummy_if(struct qdf_net_if **nif)
 {
 	int ret;
 
-	if (!nif)
+	if (!(*nif))
 		return QDF_STATUS_E_INVAL;
 
-	ret = init_dummy_netdev((struct net_device *)nif);
+	ret = init_dummy_netdev((struct net_device *)*nif);
 
 	return qdf_status_from_os_return(ret);
 }
+#endif
 
 qdf_export_symbol(qdf_net_if_create_dummy_if);
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+void
+qdf_net_if_destroy_dummy_if(struct qdf_net_if *nif)
+{
+	if (nif)
+		free_netdev((struct net_device *)nif);
+}
+#else
+void
+qdf_net_if_destroy_dummy_if(struct qdf_net_if *nif)
+{
+}
+#endif
 
 /**
  * qdf_net_if_get_devname() - Retrieve netdevice name

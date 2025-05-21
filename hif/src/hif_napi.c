@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -72,6 +72,26 @@ static int hif_rxthread_napi_poll(struct napi_struct *napi, int budget)
 	return 0;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+/**
+ * hif_rx_thread_napi_get_netdev_ptr() - Get dummy netdev pointer
+ * @napii: qca_napi_info pointer
+ *
+ * Return: dummy netdev pointer
+ */
+static inline struct net_device *
+hif_rx_thread_napi_get_netdev_ptr(struct qca_napi_info *napii)
+{
+	return napii->rx_thread_netdev;
+}
+#else
+static inline struct net_device *
+hif_rx_thread_napi_get_netdev_ptr(struct qca_napi_info *napii)
+{
+	return &napii->rx_thread_netdev;
+}
+#endif
+
 /**
  * hif_init_rx_thread_napi() - Initialize dummy Rx_thread NAPI
  * @napii: Handle to napi_info holding rx_thread napi
@@ -80,10 +100,10 @@ static int hif_rxthread_napi_poll(struct napi_struct *napi, int budget)
  */
 static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
 {
-	struct qdf_net_if *nd = (struct qdf_net_if *)&napii->rx_thread_netdev;
+	struct net_device *nd = hif_rx_thread_napi_get_netdev_ptr(napii);
 
-	qdf_net_if_create_dummy_if(nd);
-	netif_napi_add_ni(&napii->rx_thread_netdev, &napii->rx_thread_napi,
+	qdf_net_if_create_dummy_if((struct qdf_net_if **)&nd);
+	netif_napi_add_ni(nd, &napii->rx_thread_napi,
 		       hif_rxthread_napi_poll, 64);
 	napi_enable(&napii->rx_thread_napi);
 }
@@ -96,6 +116,9 @@ static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
  */
 static void hif_deinit_rx_thread_napi(struct qca_napi_info *napii)
 {
+	struct net_device *nd = hif_rx_thread_napi_get_netdev_ptr(napii);
+
+	qdf_net_if_destroy_dummy_if((struct qdf_net_if *)nd);
 	netif_napi_del(&napii->rx_thread_napi);
 }
 #else /* RECEIVE_OFFLOAD */
@@ -105,6 +128,26 @@ static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
 
 static void hif_deinit_rx_thread_napi(struct qca_napi_info *napii)
 {
+}
+#endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+/**
+ * hif_napi_get_dummy_netdev_ptr() - Get dummy netdev pointer
+ * @napii: qca_napi_info pointer
+ *
+ * Return: dummy netdev pointer
+ */
+static inline struct net_device *
+hif_napi_get_dummy_netdev_ptr(struct qca_napi_info *napii)
+{
+	return napii->netdev;
+}
+#else
+static inline struct net_device *
+hif_napi_get_dummy_netdev_ptr(struct qca_napi_info *napii)
+{
+	return &napii->netdev;
 }
 #endif
 
@@ -141,6 +184,7 @@ int hif_napi_create(struct hif_opaque_softc   *hif_ctx,
 	struct CE_state      *ce_state;
 	struct hif_softc *hif = HIF_GET_SOFTC(hif_ctx);
 	int    rc = 0;
+	struct net_device *dummy_netdev;
 
 	NAPI_DEBUG("-->(budget=%d, scale=%d)",
 		   budget, scale);
@@ -203,22 +247,22 @@ int hif_napi_create(struct hif_opaque_softc   *hif_ctx,
 		if (napii->irq < 0)
 			hif_warn("bad IRQ value for CE %d: %d", i, napii->irq);
 
-		qdf_net_if_create_dummy_if((struct qdf_net_if *)&napii->netdev);
-
+		dummy_netdev = hif_napi_get_dummy_netdev_ptr(napii);
+		qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_netdev);
 		NAPI_DEBUG("adding napi=%pK to netdev=%pK (poll=%pK, bdgt=%d)",
-			   &(napii->napi), &(napii->netdev), poll, budget);
-		netif_napi_add_ni(&(napii->netdev), &(napii->napi),
+			   &(napii->napi), dummy_netdev, poll, budget);
+		netif_napi_add_ni(dummy_netdev, &(napii->napi),
 				      poll, budget);
 
 		NAPI_DEBUG("after napi_add");
 		NAPI_DEBUG("napi=0x%pK, netdev=0x%pK",
-			   &(napii->napi), &(napii->netdev));
+			   &napii->napi, dummy_netdev);
 		NAPI_DEBUG("napi.dev_list.prev=0x%pK, next=0x%pK",
 			   napii->napi.dev_list.prev,
 			   napii->napi.dev_list.next);
 		NAPI_DEBUG("dev.napi_list.prev=0x%pK, next=0x%pK",
-			   napii->netdev.napi_list.prev,
-			   napii->netdev.napi_list.next);
+			   dummy_netdev->napi_list.prev,
+			   dummy_netdev->napi_list.next);
 
 		hif_init_rx_thread_napi(napii);
 		napii->lro_ctx = qdf_lro_init();
@@ -339,6 +383,7 @@ int hif_napi_destroy(struct hif_opaque_softc *hif_ctx,
 	uint8_t ce = NAPI_ID2PIPE(id);
 	int rc = 0;
 	struct hif_softc *hif = HIF_GET_SOFTC(hif_ctx);
+	struct net_device *dummy_nd;
 
 	NAPI_DEBUG("-->(id=%d, force=%d)", id, force);
 
@@ -375,17 +420,19 @@ int hif_napi_destroy(struct hif_opaque_softc *hif_ctx,
 			}
 		}
 		if (0 == rc) {
+			dummy_nd = hif_napi_get_dummy_netdev_ptr(napii);
 			NAPI_DEBUG("before napi_del");
 			NAPI_DEBUG("napi.dlist.prv=0x%pK, next=0x%pK",
 				  napii->napi.dev_list.prev,
 				  napii->napi.dev_list.next);
 			NAPI_DEBUG("dev.napi_l.prv=0x%pK, next=0x%pK",
-				   napii->netdev.napi_list.prev,
-				   napii->netdev.napi_list.next);
+				   dummy_nd->napi_list.prev,
+				   dummy_nd->napi_list.next);
 
 			qdf_lro_deinit(napii->lro_ctx);
 			netif_napi_del(&(napii->napi));
 			hif_deinit_rx_thread_napi(napii);
+			qdf_net_if_destroy_dummy_if((struct qdf_net_if *)dummy_nd);
 
 			napid->ce_map &= ~(0x01 << ce);
 			napid->napis[ce] = NULL;
