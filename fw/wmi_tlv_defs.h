@@ -1483,6 +1483,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_bpf_set_supported_offload_bitmap_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_hw_blacklist_chan_fixed_param,
     WMITLV_TAG_STRUC_wmi_hw_blacklist_chan_data,
+    WMITLV_TAG_STRUC_wmi_pdev_suspend_event_fixed_param,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -2383,6 +2384,7 @@ typedef enum {
     OP(WMI_VDEV_VBSS_CONFIG_EVENTID) \
     OP(WMI_OPT_DP_DIAG_EVENTID) \
     OP(WMI_HW_BLACKLIST_CHAN_EVENTID) \
+    OP(WMI_PDEV_SUSPEND_EVENTID) \
     /* add new EVT_LIST elements above this line */
 
 
@@ -6826,6 +6828,11 @@ WMITLV_CREATE_PARAM_STRUC(WMI_MDNS_STATS_EVENTID);
 #define WMITLV_TABLE_WMI_PDEV_RESUME_EVENTID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_pdev_resume_event_fixed_param, wmi_pdev_resume_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_PDEV_RESUME_EVENTID);
+
+/* pdev suspend event */
+#define WMITLV_TABLE_WMI_PDEV_SUSPEND_EVENTID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_pdev_suspend_event_fixed_param, wmi_pdev_suspend_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_PDEV_SUSPEND_EVENTID);
 
 /* SAP Authentication offload event */
 #define WMITLV_TABLE_WMI_SAP_OFL_ADD_STA_EVENTID(id,op,buf,len) \

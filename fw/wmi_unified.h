@@ -2167,6 +2167,7 @@ typedef enum {
 
     /* send pdev resume event to host after pdev resume. */
     WMI_PDEV_RESUME_EVENTID = WMI_EVT_GRP_START_ID(WMI_GRP_SUSPEND),
+    WMI_PDEV_SUSPEND_EVENTID,
 
     /** WOW wake up host event.generated in response to WMI_WOW_HOSTWAKEUP_FROM_SLEEP_CMDID.
      will cary wake reason */
@@ -31651,6 +31652,11 @@ typedef struct {
     A_UINT32 pdev_id;
 } wmi_pdev_resume_event_fixed_param;
 
+/** WMI_PDEV_SUSPEND_EVENTID: generated in response to WMI_PDEV_SUSPEND_CMDID */
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_pdev_suspend_event_fixed_param */
+    A_UINT32 pdev_id;
+} wmi_pdev_suspend_event_fixed_param;
 
 
 /** value representing all modules */
