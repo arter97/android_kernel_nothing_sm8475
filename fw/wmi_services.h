@@ -701,7 +701,7 @@ typedef  enum  {
     WMI_SERVICE_APF_DATA_OFFLOAD_SUPPORT_ENABLED = 442, /* Indicates FW support for APFv6 handling offloads and disable QC data offloads */
     WMI_SERVICE_PER_VDEV_TWT_RESP_DISABLE_SUPPORT = 443, /* FW supports vdev level TWT responder disable */
     WMI_SERVICE_VENDOR_OUI_ACTION_V2 = 444, /* FW supports vendor OUI action version 2 */
-
+    WMI_SERVICE_HW_BLACKLIST_CHAN_SUPPORT = 445, /* Indicates FW support for computing and sending the HW channel blacklist for the current country and applicable power mode */
 
     WMI_MAX_EXT2_SERVICE
 
