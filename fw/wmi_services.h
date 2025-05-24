@@ -703,6 +703,7 @@ typedef  enum  {
     WMI_SERVICE_VENDOR_OUI_ACTION_V2 = 444, /* FW supports vendor OUI action version 2 */
     WMI_SERVICE_HW_BLACKLIST_CHAN_SUPPORT = 445, /* Indicates FW support for computing and sending the HW channel blacklist for the current country and applicable power mode */
     WMI_SERVICE_NDP_DFS_CHANNEL_SUPPORT = 446, /* FW supports forming NDP on DFS channels */
+    WMI_SERVICE_WFD_R2 = 447, /* Indicates FW supports WiFi-Direct R2 */
 
     WMI_MAX_EXT2_SERVICE
 
