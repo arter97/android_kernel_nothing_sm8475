@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -819,10 +819,10 @@ struct hdd_stats {
 	struct hdd_eapol_stats_s hdd_eapol_stats;
 	struct hdd_dhcp_stats_s hdd_dhcp_stats;
 	struct pmf_bcn_protect_stats bcn_protect_stats;
+	qdf_atomic_t is_ll_stats_req_pending;
 
 #ifdef FEATURE_CLUB_LL_STATS_AND_GET_STATION
 	uint32_t sta_stats_cached_timestamp;
-	bool is_ll_stats_req_in_progress;
 #endif
 };
 
@@ -2021,6 +2021,7 @@ struct hdd_rtpm_tput_policy_context {
  * @hdd_dual_sta_policy: Concurrent STA policy configuration
  * @last_pagefault_ssr_time: Time when last recovery was triggered because of
  * @host wakeup from fw with reason as pagefault
+ * @combination: interface combination register to wiphy
  */
 struct hdd_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -2402,6 +2403,7 @@ struct hdd_context {
 	uint8_t power_type;
 #endif
 	qdf_time_t last_pagefault_ssr_time;
+	struct ieee80211_iface_combination *combination;
 };
 
 /**
@@ -5362,5 +5364,23 @@ static inline int hdd_set_suspend_mode(struct hdd_context *hdd_ctx)
  * Return: none
  */
 void hdd_update_multicast_list(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * wlan_hdd_alloc_iface_combination_mem() - This API will allocate memory for
+ * interface combinations
+ * @hdd_ctx: HDD context
+ *
+ * Return: 0 on success and -ENOMEM on failure
+ */
+int wlan_hdd_alloc_iface_combination_mem(struct hdd_context *hdd_ctx);
+
+/**
+ * wlan_hdd_free_iface_combination_mem() - This API will free memory for
+ * interface combinations
+ * @hdd_ctx: HDD context
+ *
+ * Return: none
+ */
+void wlan_hdd_free_iface_combination_mem(struct hdd_context *hdd_ctx);
 
 #endif /* end #if !defined(WLAN_HDD_MAIN_H) */

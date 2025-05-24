@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1277,12 +1277,6 @@ bool ucfg_nan_is_beamforming_supported(struct wlan_objmgr_psoc *psoc)
 }
 
 static inline bool
-ucfg_is_nan_enabled(struct nan_psoc_priv_obj *psoc_nan_obj)
-{
-	return psoc_nan_obj->cfg_param.enable;
-}
-
-static inline bool
 ucfg_nan_is_vdev_creation_supp_by_fw(struct nan_psoc_priv_obj *psoc_nan_obj)
 {
 	return psoc_nan_obj->nan_caps.nan_vdev_allowed;
@@ -1353,7 +1347,7 @@ bool ucfg_nan_is_vdev_creation_allowed(struct wlan_objmgr_psoc *psoc)
 		return false;
 	}
 
-	if (!ucfg_is_nan_enabled(psoc_nan_obj)) {
+	if (!nan_is_allowed(psoc)) {
 		nan_debug("NAN is not enabled");
 		return false;
 	}
@@ -1447,4 +1441,9 @@ bool ucfg_is_nan_allowed_on_freq(struct wlan_objmgr_pdev *pdev, uint32_t freq)
 bool ucfg_is_mlo_sta_nan_ndi_allowed(struct wlan_objmgr_psoc *psoc)
 {
 	return wlan_is_mlo_sta_nan_ndi_allowed(psoc);
+}
+
+bool ucfg_nan_is_allowed(struct wlan_objmgr_psoc *psoc)
+{
+	return nan_is_allowed(psoc);
 }
