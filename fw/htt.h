@@ -268,9 +268,10 @@
  * 3.138 Add T2H MLO_LATENCY_REQ, H2T _RESP msg defs.
  * 3.139 Add CLASS_INFO_IDX field in MLO_R_PEER_MAP msg.
  * 3.140 Add H2T MPDUQ_AND_MSDUQ_INFO_HDR and MPDUQ_OF_MSDUQ_INFO defs.
+ * 3.141 Add H2T HTT_AST_INFO for RxOLE.
  */
 #define HTT_CURRENT_VERSION_MAJOR 3
-#define HTT_CURRENT_VERSION_MINOR 140
+#define HTT_CURRENT_VERSION_MINOR 141
 
 #define HTT_NUM_TX_FRAG_DESC  1024
 
@@ -924,6 +925,7 @@ enum htt_h2t_msg_type {
     HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_RESP                 = 0x28,
     HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR               = 0x29,
     HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO                    = 0x2a,
+    HTT_H2T_MSG_TYPE_AST_INFO                               = 0x2b,
 
     /* keep this last */
     HTT_H2T_NUM_MSGS
@@ -11903,6 +11905,178 @@ PREPACK struct htt_h2t_mpduq_or_msduq_info {
         HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8, _val);  \
         ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8_S)); \
     } while (0)
+
+
+/*
+ * @brief  host -> target HTT_AST_INFO message
+ *
+ * MSG_TYPE => HTT_H2T_MSG_TYPE_AST_INFO
+ *
+ *    The message would appear as follows:
+ *    |31          24|23 21|20|19|18|17|16|15             8|7                 0|
+ *    |--------------+-------------------------------------+-------------------|
+ *    |ast_max_search|             ast_table_size          |     msg_type      |
+ *    |------------------------------------------------------------------------|
+ *    |                        ast_base_addr_31_0                              |
+ *    |------------------------------------------------------------------------|
+ *    |                           ase_hash_key1                                |
+ *    |------------------------------------------------------------------------|
+ *    |                           ase_hash_key2                                |
+ *    |------------------------------------------------------------------------|
+ *    |                           ase_hash_key3                                |
+ *    |--------------------+--+--+--+--+--+----------------+-------------------|
+ *    |    reserved        |L |K |J |I |H |     tmo        |ast_base_addr_39_32|
+ *    |--------------------+--+--+--+--+--+----------------+-------------------|
+ *
+ * The message is interpreted as follows:
+ * dword0    b'7:0   - msg_type
+ * 0         b'23:8  - ast table size
+ *           b'31:24 - ast max search
+ * dword1  - b'31:0  - ast table base address
+ * dword2  - b'31:0  - ase hash key 1
+ * dword3  - b'31:0  - ase hash key 2
+ * dword4  - b'31:0  - ase hash key 3
+ * dword5  - b'7:0   - ast_base_addr_39_32
+ *           b'15:8  - ast_timeout_threshold
+ *           b'16    - H - ast cache disable knob
+ *           b'17    - I - ast cache faluires disable knob
+ *           b'18    - J - ast cache cmd read bypass
+ *                     Bypassing the reads from memory when an entry is not
+ *                     found in cache, in case of full cache commands,
+ *                     write back or invalidate commands.
+ *           b'19    - K - ast cache write back fx
+ *                     If this fix is disabled, then any write back command
+ *                     for a cache line will also lead to invalidation of
+ *                     that cache line.
+ *           b'20    - L - ast cache only entry command fix
+ *                     If enabled, a new cache entry will always be created
+ *                     for requests for which matching data was found
+ *                     neither in cache nor in memory.
+ */
+PREPACK struct htt_ast_info_t {
+        A_UINT32 msg_type:        8,
+                 ast_table_size: 16, /* number of entries in AST */
+                 ast_max_search:  8;
+        A_UINT32 ast_base_addr;  /* base address of the AST table */
+        A_UINT32 ase_hash_key1;
+        A_UINT32 ase_hash_key2;
+        A_UINT32 ase_hash_key3;
+        A_UINT32 ast_base_addr_39_32:               8, /* 7:0 */
+                 ast_timeout_threshold:             8, /* 15:8 */
+                 ast_cache_disable:                 1, /* 16 */
+                 ast_cache_failures_disable:        1, /* 17 */
+                 ast_cache_cmd_read_bypass_dis:     1, /* 18 */
+                 ast_cache_write_back_fix_dis:      1, /* 19 */
+                 ast_cache_only_entry_cmd_fix_dis:  1, /* 20 */
+                 reserved:                         11;
+} POSTPACK;
+
+
+#define HTT_AST_INFO_SZ    (sizeof(struct htt_ast_info_t))
+
+/* DWORD0 */
+#define HTT_AST_INFO_AST_TABLE_SIZE_M                  0x00ffff00
+#define HTT_AST_INFO_AST_TABLE_SIZE_S                  8
+#define HTT_AST_INFO_AST_TABLE_SIZE_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_TABLE_SIZE_M) >> \
+            HTT_AST_INFO_AST_TABLE_SIZE_S)
+#define HTT_AST_INFO_AST_TABLE_SIZE_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_TABLE_SIZE, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_TABLE_SIZE__S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_MAX_SEARCH_M                  0xff000000
+#define HTT_AST_INFO_AST_MAX_SEARCH_S                  24
+#define HTT_AST_INFO_AST_MAX_SEARCH_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_MAX_SEARCH_M) >> \
+            HTT_AST_INFO_AST_MAX_SEARCH_S)
+#define HTT_AST_INFO_AST_MAX_SEARCH_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_MAX_SEARCH, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_MAX_SEARCH_S)); \
+        } while (0)
+
+
+/* DWORD5 */
+
+#define HTT_AST_INFO_AST_BASE_ADDR_39_32_M                  0x000000ff
+#define HTT_AST_INFO_AST_BASE_ADDR_39_32_S                  0
+#define HTT_AST_INFO_AST_BASE_ADDR_39_32_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_BASE_ADDR_39_32_M) >> \
+            HTT_AST_INFO_AST_BASE_ADDR_39_32_S)
+#define HTT_AST_INFO_AST_BASE_ADDR_39_32_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_BASE_ADDR_39_32, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_BASE_ADDR_39_32_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_M                  0x0000ff00
+#define HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_S                  8
+#define HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_M) >> \
+            HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_S)
+#define HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_TIMEOUT_THRESHOLD, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_DISABLE_M        0x00010000
+#define HTT_AST_INFO_AST_CACHE_DISABLE_s        16
+#define HTT_AST_INFO_AST_CACHE_DISABLE_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_DISABLE_M) >> \
+            HTT_AST_INFO_AST_CACHE_DISABLE_s)
+#define HTT_AST_INFO_AST_CACHE_DISABLE_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_DISABLE, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_DISABLE_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_M        0x00020000
+#define HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_s        17
+#define HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_M) >> \
+            HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_s)
+#define HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_M        0x00040000
+#define HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_s        18
+#define HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_M) >> \
+            HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_s)
+#define HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_M        0x00080000
+#define HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_s        19
+#define HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_M) >> \
+            HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_s)
+#define HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_M        0x00100000
+#define HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_s        20
+#define HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_M) >> \
+            HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_s)
+#define HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_S)); \
+        } while (0)
+
 
 
 /*=== target -> host messages ===============================================*/
