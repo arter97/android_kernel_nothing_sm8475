@@ -1325,6 +1325,7 @@
   vunmap
   vzalloc
   wait_for_completion
+  wait_for_completion_interruptible
   wait_for_completion_timeout
   __wake_up
   wake_up_process
@@ -1897,6 +1898,51 @@
 
 # required by ledtrig-heartbeat.ko
   avenrun
+
+# required by libahci.ko
+  __printk_ratelimit
+  pcim_enable_device
+  pcim_iomap_table
+  pcim_iomap_regions_request_all
+  pcim_pin_device
+
+# required by libata.ko
+  async_synchronize_cookie
+  attribute_container_register
+  attribute_container_unregister
+  blk_abort_request
+  blk_queue_update_dma_alignment
+  blk_queue_update_dma_pad
+  glob_match
+  pci_bus_type
+  pcim_iomap_regions
+  prepare_to_wait
+  __scsi_add_device
+  scsi_add_host_with_dma
+  scsi_change_queue_depth
+  scsi_check_sense
+  scsi_device_set_state
+  scsi_eh_finish_cmd
+  scsi_eh_flush_done_q
+  __scsi_format_command
+  scsi_host_alloc
+  scsi_host_put
+  scsi_remove_device
+  scsi_remove_host
+  scsi_rescan_device
+  scsi_schedule_eh
+  scsi_sense_desc_find
+  scsi_set_sense_field_pointer
+  scsi_set_sense_information
+  sdev_evt_send_simple
+  transport_add_device
+  transport_class_register
+  transport_class_unregister
+  transport_configure_device
+  transport_destroy_device
+  transport_remove_device
+  transport_setup_device
+  vscnprintf
 
 # required by lzo-rle.ko
   lzorle1x_1_compress
