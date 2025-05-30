@@ -2282,6 +2282,9 @@ typedef struct _htt_tx_peer_rate_stats_tlv {
     A_UINT32 tx_bw_320mhz;
     /* MCS 14,15 */
     A_UINT32 tx_mcs_ext_2[HTT_TX_PEER_STATS_NUM_EXTRA2_MCS_COUNTERS];
+    A_UINT32 peer_tx_ppdu_cnt;
+    A_UINT32 peer_tx_mpdu_try_cnt;
+    A_UINT32 peer_tx_mpdu_success_cnt;
 } htt_stats_peer_tx_rate_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_peer_tx_rate_stats_tlv htt_tx_peer_rate_stats_tlv;
@@ -2366,6 +2369,8 @@ typedef struct _htt_rx_peer_rate_stats_tlv {
     A_UINT32 rx_bw_320mhz;
     /* MCS 14,15 */
     A_UINT32 rx_mcs_ext_2[HTT_RX_PEER_STATS_NUM_EXTRA2_MCS_COUNTERS];
+    A_UINT32 tot_rx_ppdu_bytes;
+    A_UINT32 rx_mpdu_try_cnt;
 } htt_stats_peer_rx_rate_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_peer_rx_rate_stats_tlv htt_rx_peer_rate_stats_tlv;
