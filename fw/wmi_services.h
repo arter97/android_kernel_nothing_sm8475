@@ -705,6 +705,7 @@ typedef  enum  {
     WMI_SERVICE_NDP_DFS_CHANNEL_SUPPORT = 446, /* FW supports forming NDP on DFS channels */
     WMI_SERVICE_WFD_R2 = 447, /* Indicates FW supports WiFi-Direct R2 */
     WMI_SERVICE_STA_MLO_RCFG_SUPPORT = 448, /* FW supports STA ML reconfig op */
+    WMI_SERVICE_PDEV_SUSPEND_EVENT_SUPPORT = 449, /* FW supports PDEV_SUSPEND event */
 
     WMI_MAX_EXT2_SERVICE
 
