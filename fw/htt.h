@@ -269,9 +269,10 @@
  * 3.139 Add CLASS_INFO_IDX field in MLO_R_PEER_MAP msg.
  * 3.140 Add H2T MPDUQ_AND_MSDUQ_INFO_HDR and MPDUQ_OF_MSDUQ_INFO defs.
  * 3.141 Add H2T HTT_AST_INFO for RxOLE.
+ * 3.142 Add T2H GLOBAL_PEER_ID_UNMAP def, update H2T MPDUQ_OR_MSDUQ_INFO def.
  */
 #define HTT_CURRENT_VERSION_MAJOR 3
-#define HTT_CURRENT_VERSION_MINOR 141
+#define HTT_CURRENT_VERSION_MINOR 142
 
 #define HTT_NUM_TX_FRAG_DESC  1024
 
@@ -11668,16 +11669,21 @@ PREPACK struct htt_h2t_mpduq_and_msduq_info_hdr {
  *                    what type.
  *                    For an MPDU queue, it will be fixed value of 30 based
  *                    on enum HTT_H2T_TID_MSDUQ_MPDUQ_TYPE.
+ *          b'16:13 - hw_link_id: Indicates which HW link the message is for.
+ *                    This HW link ID is mainly relevant for split PHY
+ *                    usecases to identify the correct link in same SOC.
  * dword1 - b'31:0  - mpduq_address_39_8: 256 byte aligned mpduq physical
  *                    address, since lowest octet is zero for 256 byte aligned
  *                    physical addresses just passing upper 32 bits of
  *                    40 bit address
- * dword2 - b'23:0  - mpduq_number: Queue number for mpduq, encoded as follows
- *                    [0:11]  -> peer_id
- *                    [12:16] -> tid num
- *                    [17:21] -> mpduq_type i.e 30
- *                    [22:23] -> reserved
+ * dword2 - b'11:0  – peer_id
+ *          b'16:12 – tid_num
+ *          b'23:17 – reserved
  *          b'31:24 - pn_addr_32_39: Upper 8 bits of 40 bit pn physical address
+ *          Note that the mpduq_number is formed from the combination of
+ *              peer_id (in bits 11:0)
+ *              tid_num (in bits 16:12)
+ *              msduq_mpduq_type (in bits 21:17)
  * dword3 - b'31:0  - pn_addr_0_31: Lower 32 bits of 40 bit pn physical address
  * Additional reserved dwords for future use cases
  *
@@ -11686,15 +11692,20 @@ PREPACK struct htt_h2t_mpduq_and_msduq_info_hdr {
  * dword0 - b'7:0   - msg_type: Identifies msduq info to fw
  *                    This will be set to 0x2A
  *                    (HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO)
- *          b'12:8  - msduq_mpduq_type : type of the msduq based on
+ *          b'12:8  - msduq_mpduq_type: type of the msduq based on
  *                    enum HTT_H2T_TID_MSDUQ_MPDUQ_TYPE
- * dword1 - b'23:0  - tx_msduq_number: Queue number for the msduq,
- *                    encoded as follows
- *                    [0:11]  -> peer_id
- *                    [12:16] -> tid num
- *                    [17:21] -> msduq_type
- *                    [22:23] -> reserved
+ *          b'16:13 - hw_link_id: Indicates which HW link the message is
+ *                    intended for.
+ *                    This HW link ID is mainly relevant for split PHY
+ *                    usecases to identify the correct link in same SOC.
+ * dword1 - b'11:0  – peer_id
+ *          b'16:12 – tid_num
+ *          b'23:17 – reserved
  *          b'31:24 - svc_class_id : service class id of the msduq
+ *          Note that the tx_msduq_number is formed from the combination of
+ *              peer_id (in bits 11:0)
+ *              tid_num (in bits 16:12)
+ *              msduq_mpduq_type (in bits 21:17)
  * dword2 - b'31:0  - msduq_address_39_8: 256 byte aligned msduq physical
  *                    address, since lowest octet is zero for 256 byte aligned
  *                    addresses just passing upper 32 bits of 40 bit address
@@ -11703,7 +11714,7 @@ PREPACK struct htt_h2t_mpduq_and_msduq_info_hdr {
 
 /*
  * Enum describes the various msduq/mpduq types,
- * First 16 types correspond to the standard msduq types for data
+ * First 8 types correspond to the standard msduq types for data
  * Next come custom flows for specific purposes
  * enum 30 is reserved for mpduq type
  */
@@ -11716,19 +11727,11 @@ typedef enum {
     HTT_H2T_TID_MSDUQ_CUSTOM_3,                                  /* 5 */
     HTT_H2T_TID_MSDUQ_CUSTOM_4,                                  /* 6 */
     HTT_H2T_TID_MSDUQ_CUSTOM_5,                                  /* 7 */
-    HTT_H2T_TID_MSDUQ_CUSTOM_6,                                  /* 8 */
-    HTT_H2T_TID_MSDUQ_CUSTOM_7,                                  /* 9 */
-    HTT_H2T_TID_MSDUQ_CUSTOM_8,                                  /* 10 */
-    HTT_H2T_TID_MSDUQ_CUSTOM_9,                                  /* 11 */
-    HTT_H2T_TID_MSDUQ_CUSTOM_10,                                 /* 12 */
-    HTT_H2T_TID_MSDUQ_CUSTOM_11,                                 /* 13 */
-    HTT_H2T_TID_MSDUQ_CUSTOM_12,                                 /* 14 */
-    HTT_H2T_TID_MSDUQ_CUSTOM_13,                                 /* 15 */
 
-    HTT_H2T_TID_MISC_MSDUQ_TYPE_START,                           /* 16 */
-    HTT_H2T_TID_MSDUQ_HOL = HTT_H2T_TID_MISC_MSDUQ_TYPE_START,   /* also 16 */
-    HTT_H2T_TID_MSDUQ_MCAST,                                     /* 17 */
-    HTT_H2T_TID_MSDUQ_FAST_ROAMING,                              /* 18 */
+    HTT_H2T_TID_MISC_MSDUQ_TYPE_START,                           /* 8 */
+    HTT_H2T_TID_MSDUQ_HOL = HTT_H2T_TID_MISC_MSDUQ_TYPE_START,   /* also 8 */
+    HTT_H2T_TID_MSDUQ_MCAST,                                     /* 9 */
+    HTT_H2T_TID_MSDUQ_FAST_ROAMING,                              /* 10 */
 
     HTT_H2T_TID_MSDUQ_DATA_TYPE_END = 29,                        /* 29 */
     HTT_H2T_TID_MPDUQ_TYPE,                                      /* 30 */
@@ -11752,7 +11755,8 @@ typedef enum {
 PREPACK struct htt_h2t_mpduq_or_msduq_info {
    A_UINT32 msg_type:          8,  /* bits  7:0  */
             msduq_mpduq_type:  5,  /* bits 12:8  */
-            reserved0:        19;  /* bits 31:13 */
+            hw_link_id:        4,  /* bits 16:13 */
+            reserved0:        15;  /* bits 31:17 */
 
     union {
         struct {
@@ -11782,9 +11786,9 @@ PREPACK struct htt_h2t_mpduq_or_msduq_info {
     };
 } POSTPACK;
 
-#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_M    0x000001F0
-#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_S            8
-#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_NUM_MSDUQ_MPDUQ_TYPE_GET(_var) \
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_M    0x00001F00
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_S             8
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_GET(_var) \
         (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_M) >> \
                 HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_S)
 #define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_SET(_var, _val) \
@@ -11792,6 +11796,18 @@ PREPACK struct htt_h2t_mpduq_or_msduq_info {
         HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE, _val);  \
         ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_S)); \
     } while (0)
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_M    0x0001E000
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_S            13
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_S)); \
+    } while (0)
+
 
 #define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID_M           0x00000FFF
 #define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID_S                    0
@@ -12152,6 +12168,7 @@ enum htt_t2h_msg_type {
     HTT_T2H_MSG_TYPE_TX_LCE_SUPER_RULE_SETUP_DONE  = 0x3b,
     HTT_T2H_MSG_TYPE_SDWF_MSDUQ_CFG_IND            = 0x3c,
     HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ               = 0x3d,
+    HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP          = 0x3e,
 
 
     HTT_T2H_MSG_TYPE_TEST,
@@ -23981,6 +23998,61 @@ PREPACK struct htt_t2h_mlo_latency_req_t {
     do { \
         HTT_CHECK_SET_VAL(HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ_PERIODIC_INTVL, _val); \
         ((_var) |= ((_val) << HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ_PERIODIC_INTVL_S)); \
+    } while (0)
+
+
+/* MSG_TYPE => HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP
+ *
+ * The following diagram shows the format of the global peer unmap message sent
+ * from the target to the host. This message is used to send unmap event to host
+ * after tid and msduq/mpduq cleanup in FW, host cleans up msduq/mpduq based on
+ * message.
+ *
+ * |31             24|23             20|19              8|7               0|
+ * |-----------------------------------------------------------------------|
+ * |   reserved      |   hw_link_id    | global_peer_id  |     msg type    |
+ * |-----------------------------------------------------------------------|
+ * @details
+ * struct htt_t2h_global_peer_id_unmap_t:
+ *
+ * The message is interpreted as follows:
+ * dword0 - b'7:0   - msg_type: Identifies a request for MLO latency stats
+ *                    This will be set to 0x3e
+ *                    (HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP)
+ *          b'19:8  - global_peer_id : global peer id assigned by host
+ *          b'23:20 - hw_link_id : hw link id for which unmap is being sent
+ *
+ */
+
+
+/* HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP */
+PREPACK struct htt_t2h_global_peer_id_unmap_t {
+    A_UINT32 msg_type:               8,  /* bits  7:0  */
+             global_peer_id:         12, /* bits 19:8  */
+             hw_link_id:             4,  /* bits 23:20 */
+             reserved:               8;  /* bits 31:16 */
+} POSTPACK;
+
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_M  0x000FFF00
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_S           8
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_GET(_var) \
+        (((_var) & HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_M) >> \
+                HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_S)
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID, _val); \
+        ((_var) |= ((_val) << HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_S)); \
+    } while (0)
+
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_M      0x00F00000
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_S              20
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_GET(_var) \
+        (((_var) & HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_M) >> \
+                HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_S)
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID, _val); \
+        ((_var) |= ((_val) << HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_S)); \
     } while (0)
 
 
