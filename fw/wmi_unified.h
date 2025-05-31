@@ -24894,6 +24894,8 @@ typedef enum wake_reason_e {
     WOW_REASON_TDLS_PACKET_RX,
     /* wake up the host when USD is enabled */
     WOW_REASON_USD,
+    /* wake up the host when MLO link switch happens */
+    WOW_REASON_MLO_LINK_SWITCH_EVENT,
 
 
     /* add new WOW_REASON_ defs before this line */
