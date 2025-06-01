@@ -837,6 +837,14 @@ enum htt_dbg_ext_stats_type {
      */
     HTT_DBG_EXT_STATS_PAPRD_PB = 75,
 
+    /** HTT_DBG_EXT_STATS_HDS_PROF
+     * PARAMS:
+     *   - No Params
+     * RESP MSG:
+     *   - htt_stats_hds_prof_stats_tlv
+     */
+    HTT_DBG_EXT_STATS_HDS_PROF = 76,
+
 
     /* keep this last */
     HTT_DBG_NUM_EXT_STATS = 256,
@@ -10601,6 +10609,73 @@ typedef struct {
      */
     A_UINT32 power_boost_gain[HTT_TX_PDEV_STATS_NUM_BE_BW_COUNTERS][HTT_TX_PDEV_STATS_NUM_BE_MCS_COUNTERS];
 } htt_stats_phy_paprd_pb_tlv;
+
+
+#define HTT_STATS_HDS_PROF_STATS_CIRCULAR_BUF_LEN 10
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    struct {
+        union {
+            A_UINT32 channel_info;
+            struct {
+                A_UINT32 bandwidth_mhz:16,
+                         band_center_freq1:16; /* MHz units */
+            };
+        };
+
+        union {
+            A_UINT32 channel_config;
+            struct {
+                A_UINT32 phyMode:8,     /* phyMode - WLAN_PHY_MODE enum type */
+                         txChainmask:8,
+                         rxChainmask:8,
+                         swProfile:8;
+            };
+        };
+
+        A_UINT32 channelSwitchTime;
+        A_UINT32 calModuleTime;
+        A_UINT32 iniModuleTime;
+        A_UINT32 tpcModuleTime;
+        A_UINT32 miscModuleTime;
+        A_UINT32 ctlModuleTime;
+        A_UINT32 reserved;
+    } channelChange_stats[HTT_STATS_HDS_PROF_STATS_CIRCULAR_BUF_LEN];
+
+    A_UINT32 idx; /* shows how many channel changes have occurred */
+} htt_stats_hds_prof_stats_tlv;
+
+#define HTT_STATS_HDS_PROF_BANDWIDTH_MHZ_GET(word) \
+    ((word) & 0x0000ffff)
+#define HTT_STATS_HDS_PROF_BANDWIDTH_MHZ_SET(word, value) \
+    ((word) |= ((value) & 0x0000ffff))
+
+#define HTT_STATS_HDS_PROF_BAND_CENTER_FREQ1_GET(word) \
+    (((word) & 0xffff0000) >> 16)
+#define HTT_STATS_HDS_PROF_BAND_CENTER_FREQ1_SET(word, value) \
+    ((word) |= (((value) << 16) & 0xffff0000))
+
+#define HTT_STATS_HDS_PROF_PHY_MODE_GET(word) \
+    (((word) & 0x000000ff) >> 0)
+#define HTT_STATS_HDS_PROF_PHY_MODE_SET(word, value) \
+    ((word) |= (((value) << 0) & 0x000000ff))
+
+#define HTT_STATS_HDS_PROF_TX_CHAINMASK_GET(word) \
+    (((word) & 0x0000ff00) >> 8)
+#define HTT_STATS_HDS_PROF_TX_CHAINMASK_SET(word, value) \
+    ((word) |= (((value) << 8) & 0x0000ff00))
+
+#define HTT_STATS_HDS_PROF_RX_CHAINMASK_GET(word) \
+    (((word) & 0x00ff0000) >> 16)
+#define HTT_STATS_HDS_PROF_RX_CHAINMASK_SET(word, value) \
+    ((word) |= (((value) << 16) & 0x00ff0000))
+
+#define HTT_STATS_HDS_PROF_SW_PROFILE_GET(word) \
+    (((word) & 0xff000000) >> 24)
+#define HTT_STATS_HDS_PROF_SW_PROFILE_SET(word, value) \
+    ((word) |= (((value) << 24) & 0xff000000))
+
 
 typedef struct {
     union {
