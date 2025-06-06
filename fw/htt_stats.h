@@ -11081,6 +11081,26 @@ typedef struct {
 #define HTT_ML_PEER_EXT_DETAILS_MLD_AST_INDEX_M                 0x0FFFF000
 #define HTT_ML_PEER_EXT_DETAILS_MLD_AST_INDEX_S                 12
 
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID0_TQM_LINK_ID_M         0x00000007
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID0_TQM_LINK_ID_S         0
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID1_TQM_LINK_ID_M         0x00000038
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID1_TQM_LINK_ID_S         3
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID2_TQM_LINK_ID_M         0x000001C0
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID2_TQM_LINK_ID_S         6
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID3_TQM_LINK_ID_M         0x00000E00
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID3_TQM_LINK_ID_S         9
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID4_TQM_LINK_ID_M         0x00007000
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID4_TQM_LINK_ID_S         12
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID5_TQM_LINK_ID_M         0x00038000
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID5_TQM_LINK_ID_S         15
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID6_TQM_LINK_ID_M         0x001C0000
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID6_TQM_LINK_ID_S         18
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID7_TQM_LINK_ID_M         0x00E00000
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID7_TQM_LINK_ID_S         21
+#define HTT_STATS_ML_PEER_EXT_DETAILS_MLO_MGMT_TID_TQM_LINK_ID_M 0x07000000
+#define HTT_STATS_ML_PEER_EXT_DETAILS_MLO_MGMT_TID_TQM_LINK_ID_S 24
+
+
 #define HTT_ML_PEER_EXT_DETAILS_PEER_ASSOC_IPC_RECVD_GET(_var) \
     (((_var) & HTT_ML_PEER_EXT_DETAILS_PEER_ASSOC_IPC_RECVD_M) >> \
      HTT_ML_PEER_EXT_DETAILS_PEER_ASSOC_IPC_RECVD_S)
@@ -11123,6 +11143,97 @@ typedef struct {
         ((_var) |= ((_val) << HTT_ML_PEER_EXT_DETAILS_MLD_AST_INDEX_S)); \
     } while (0)
 
+
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID0_TQM_LINK_ID_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_EXT_DETAILS_TID0_TQM_LINK_ID_M) >> \
+     HTT_STATS_ML_PEER_EXT_DETAILS_TID0_TQM_LINK_ID_S)
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID0_TQM_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_EXT_DETAILS_TID0_TQM_LINK_ID, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_EXT_DETAILS_TID0_TQM_LINK_ID_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_EXT_DETAILS_TID0_TQM_LINK_ID_S)); \
+    } while (0)
+
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID1_TQM_LINK_ID_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_EXT_DETAILS_TID1_TQM_LINK_ID_M) >> \
+     HTT_STATS_ML_PEER_EXT_DETAILS_TID1_TQM_LINK_ID_S)
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID1_TQM_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_EXT_DETAILS_TID1_TQM_LINK_ID, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_EXT_DETAILS_TID1_TQM_LINK_ID_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_EXT_DETAILS_TID1_TQM_LINK_ID_S)); \
+    } while (0)
+
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID2_TQM_LINK_ID_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_EXT_DETAILS_TID2_TQM_LINK_ID_M) >> \
+     HTT_STATS_ML_PEER_EXT_DETAILS_TID2_TQM_LINK_ID_S)
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID2_TQM_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_EXT_DETAILS_TID2_TQM_LINK_ID, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_EXT_DETAILS_TID2_TQM_LINK_ID_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_EXT_DETAILS_TID2_TQM_LINK_ID_S)); \
+    } while (0)
+
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID3_TQM_LINK_ID_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_EXT_DETAILS_TID3_TQM_LINK_ID_M) >> \
+     HTT_STATS_ML_PEER_EXT_DETAILS_TID3_TQM_LINK_ID_S)
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID3_TQM_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_EXT_DETAILS_TID3_TQM_LINK_ID, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_EXT_DETAILS_TID3_TQM_LINK_ID_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_EXT_DETAILS_TID3_TQM_LINK_ID_S)); \
+    } while (0)
+
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID4_TQM_LINK_ID_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_EXT_DETAILS_TID4_TQM_LINK_ID_M) >> \
+     HTT_STATS_ML_PEER_EXT_DETAILS_TID4_TQM_LINK_ID_S)
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID4_TQM_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_EXT_DETAILS_TID4_TQM_LINK_ID, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_EXT_DETAILS_TID4_TQM_LINK_ID_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_EXT_DETAILS_TID4_TQM_LINK_ID_S)); \
+    } while (0)
+
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID5_TQM_LINK_ID_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_EXT_DETAILS_TID5_TQM_LINK_ID_M) >> \
+     HTT_STATS_ML_PEER_EXT_DETAILS_TID5_TQM_LINK_ID_S)
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID5_TQM_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_EXT_DETAILS_TID5_TQM_LINK_ID, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_EXT_DETAILS_TID5_TQM_LINK_ID_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_EXT_DETAILS_TID5_TQM_LINK_ID_S)); \
+    } while (0)
+
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID6_TQM_LINK_ID_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_EXT_DETAILS_TID6_TQM_LINK_ID_M) >> \
+     HTT_STATS_ML_PEER_EXT_DETAILS_TID6_TQM_LINK_ID_S)
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID6_TQM_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_EXT_DETAILS_TID6_TQM_LINK_ID, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_EXT_DETAILS_TID6_TQM_LINK_ID_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_EXT_DETAILS_TID6_TQM_LINK_ID_S)); \
+    } while (0)
+
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID7_TQM_LINK_ID_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_EXT_DETAILS_TID7_TQM_LINK_ID_M) >> \
+     HTT_STATS_ML_PEER_EXT_DETAILS_TID7_TQM_LINK_ID_S)
+#define HTT_STATS_ML_PEER_EXT_DETAILS_TID7_TQM_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_EXT_DETAILS_TID7_TQM_LINK_ID, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_EXT_DETAILS_TID7_TQM_LINK_ID_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_EXT_DETAILS_TID7_TQM_LINK_ID_S)); \
+    } while (0)
+
+#define HTT_STATS_ML_PEER_EXT_DETAILS_MLO_MGMT_TID_TQM_LINK_ID_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_EXT_DETAILS_MLO_MGMT_TID_TQM_LINK_ID_M) >> \
+     HTT_STATS_ML_PEER_EXT_DETAILS_MLO_MGMT_TID_TQM_LINK_ID_S)
+#define HTT_STATS_ML_PEER_EXT_DETAILS_MLO_MGMT_TID_TQM_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_EXT_DETAILS_MLO_MGMT_TID_TQM_LINK_ID, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_EXT_DETAILS_MLO_MGMT_TID_TQM_LINK_ID_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_EXT_DETAILS_MLO_MGMT_TID_TQM_LINK_ID_S)); \
+    } while (0)
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
     union {
@@ -11133,6 +11244,51 @@ typedef struct {
                      reserved                : 4;
         };
         A_UINT32 msg_dword_1;
+    };
+    union {
+        struct {
+            A_UINT32 tid0_tqm_link0_id    : 3,
+                     tid1_tqm_link0_id    : 3,
+                     tid2_tqm_link0_id    : 3,
+                     tid3_tqm_link0_id    : 3,
+                     tid4_tqm_link0_id    : 3,
+                     tid5_tqm_link0_id    : 3,
+                     tid6_tqm_link0_id    : 3,
+                     tid7_tqm_link0_id    : 3,
+                     mlo_mgmt_tid_tqm_link0_id : 3,
+                     reserved_tqm_link0   : 5;
+        };
+        A_UINT32 msg_dword_tqm_link0;
+    };
+    union {
+        struct {
+            A_UINT32 tid0_tqm_link1_id    : 3,
+                     tid1_tqm_link1_id    : 3,
+                     tid2_tqm_link1_id    : 3,
+                     tid3_tqm_link1_id    : 3,
+                     tid4_tqm_link1_id    : 3,
+                     tid5_tqm_link1_id    : 3,
+                     tid6_tqm_link1_id    : 3,
+                     tid7_tqm_link1_id    : 3,
+                     mlo_mgmt_tid_tqm_link1_id : 3,
+                     reserved_tqm_link1   : 5;
+        };
+        A_UINT32 msg_dword_tqm_link1;
+    };
+    union {
+        struct {
+            A_UINT32 tid0_tqm_link2_id    : 3,
+                     tid1_tqm_link2_id    : 3,
+                     tid2_tqm_link2_id    : 3,
+                     tid3_tqm_link2_id    : 3,
+                     tid4_tqm_link2_id    : 3,
+                     tid5_tqm_link2_id    : 3,
+                     tid6_tqm_link2_id    : 3,
+                     tid7_tqm_link2_id    : 3,
+                     mlo_mgmt_tid_tqm_link2_id : 3,
+                     reserved_tqm_link2   : 5;
+        };
+        A_UINT32 msg_dword_tqm_link2;
     };
 } htt_stats_ml_peer_ext_details_tlv;
 /* preserve old name alias for new name consistent with the tag name */
@@ -11160,11 +11316,16 @@ typedef htt_stats_ml_peer_ext_details_tlv htt_ml_peer_ext_details_tlv;
 #define HTT_ML_LINK_INFO_ANCHOR_LINK_S          21
 #define HTT_ML_LINK_INFO_INITIALIZED_M          0x00400000
 #define HTT_ML_LINK_INFO_INITIALIZED_S          22
+#define HTT_STATS_ML_LINK_INFO_BRIDGE_PEER_M    0x00800000
+#define HTT_STATS_ML_LINK_INFO_BRIDGE_PEER_S    23
 
 #define HTT_ML_LINK_INFO_SW_PEER_ID_M           0x0000ffff
 #define HTT_ML_LINK_INFO_SW_PEER_ID_S           0
 #define HTT_ML_LINK_INFO_VDEV_ID_M              0x00ff0000
 #define HTT_ML_LINK_INFO_VDEV_ID_S              16
+#define HTT_STATS_ML_LINK_INFO_PS_STATE_M       0x01000000
+#define HTT_STATS_ML_LINK_INFO_PS_STATE_S       24
+
 
 #define HTT_ML_LINK_INFO_VALID_GET(_var) \
     (((_var) & HTT_ML_LINK_INFO_VALID_M) >> \
@@ -11320,6 +11481,18 @@ typedef htt_stats_ml_peer_ext_details_tlv htt_ml_peer_ext_details_tlv;
         ((_var) |= ((_val) << HTT_ML_LINK_INFO_INITIALIZED_S)); \
     } while (0)
 
+
+#define HTT_STATS_ML_LINK_INFO_BRIDGE_PEER_GET(_var) \
+    (((_var) & HTT_STATS_ML_LINK_INFO_BRIDGE_PEER_M) >> \
+     HTT_STATS_ML_LINK_INFO_BRIDGE_PEER_S)
+#define HTT_STATS_ML_LINK_INFO_BRIDGE_PEER_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_LINK_INFO_BRIDGE_PEER, _val); \
+        ((_var) &= ~(HTT_STATS_ML_LINK_INFO_BRIDGE_PEER_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_LINK_INFO_BRIDGE_PEER_S)); \
+    } while (0)
+
+
 #define HTT_ML_LINK_INFO_SW_PEER_ID_GET(_var) \
     (((_var) & HTT_ML_LINK_INFO_SW_PEER_ID_M) >> \
      HTT_ML_LINK_INFO_SW_PEER_ID_S)
@@ -11348,6 +11521,17 @@ typedef htt_stats_ml_peer_ext_details_tlv htt_ml_peer_ext_details_tlv;
         ((_var) |= ((_val) << HTT_ML_LINK_INFO_VDEV_ID_S)); \
     } while (0)
 
+#define HTT_STATS_ML_LINK_INFO_PS_STATE_GET(_var) \
+    (((_var) & HTT_STATS_ML_LINK_INFO_PS_STATE_M) >> \
+     HTT_STATS_ML_LINK_INFO_PS_STATE_S)
+#define HTT_STATS_ML_LINK_INFO_PS_STATE_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_LINK_INFO_PS_STATE, _val); \
+        ((_var) &= ~(HTT_STATS_ML_LINK_INFO_PS_STATE_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_LINK_INFO_PS_STATE_S)); \
+    } while (0)
+
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
     union {
@@ -11363,7 +11547,8 @@ typedef struct {
                      master_link     : 1,
                      anchor_link     : 1,
                      initialized     : 1,
-                     reserved        : 9;
+                     bridge_peer     : 1,
+                     reserved        : 8;
         };
         A_UINT32 msg_dword_1;
     };
@@ -11372,7 +11557,8 @@ typedef struct {
         struct {
             A_UINT32 sw_peer_id      : 16,
                      vdev_id         : 8,
-                     reserved1       : 8;
+                     ps              : 1,
+                     reserved1       : 7;
         };
         A_UINT32 msg_dword_2;
     };
@@ -11410,6 +11596,8 @@ typedef htt_stats_ml_link_info_details_tlv htt_ml_link_info_tlv;
 
 #define HTT_ML_PEER_DETAILS_PARTICIPATING_CHIPS_BITMAP_M    0x000000ff
 #define HTT_ML_PEER_DETAILS_PARTICIPATING_CHIPS_BITMAP_S    0
+#define HTT_STATS_ML_PEER_DETAILS_STATUS_REQUIRED_M         0x0000ff00
+#define HTT_STATS_ML_PEER_DETAILS_STATUS_REQUIRED_S         8
 
 #define HTT_ML_PEER_DETAILS_NUM_LINKS_GET(_var) \
     (((_var) & HTT_ML_PEER_DETAILS_NUM_LINKS_M) >> \
@@ -11595,6 +11783,17 @@ typedef htt_stats_ml_link_info_details_tlv htt_ml_link_info_tlv;
         ((_var) |= ((_val) << HTT_ML_PEER_DETAILS_PARTICIPATING_CHIPS_BITMAP_S)); \
     } while (0)
 
+#define HTT_STATS_ML_PEER_DETAILS_STATUS_REQUIRED_GET(_var) \
+    (((_var) & HTT_STATS_ML_PEER_DETAILS_STATUS_REQUIRED_M) >> \
+     HTT_STATS_ML_PEER_DETAILS_STATUS_REQUIRED_S)
+#define HTT_STATS_ML_PEER_DETAILS_STATUS_REQUIRED_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ML_PEER_DETAILS_STATUS_REQUIRED, _val); \
+        ((_var) &= ~(HTT_STATS_ML_PEER_DETAILS_STATUS_REQUIRED_M)); \
+        ((_var) |= ((_val) << HTT_STATS_ML_PEER_DETAILS_STATUS_REQUIRED_S)); \
+    } while (0)
+
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
     htt_mac_addr  remote_mld_mac_addr;
@@ -11627,8 +11826,19 @@ typedef struct {
 
     union {
         struct {
-            A_UINT32  participating_chips_bitmap : 8,
-                     reserved1                  : 24;
+            A_UINT32 participating_chips_bitmap : 8,
+                     /* status_required:
+                      * Bitmap of status-required flags for each chip.
+                      * Bit 0 is always the chip with the primary link.
+                      * The remaining bits are for the other chips,
+                      * in increasing order of chip ID, wrapping around
+                      * to cover the chips whose IDs are smaller than the
+                      * primary link's chip.
+                      * Thus, bit 1 is for the chip whose ID is next after
+                      * the primary link's chip ID, etc.
+                      */
+                     status_required            : 8,
+                     reserved1                  : 16;
         };
         A_UINT32 msg_dword_2;
     };
