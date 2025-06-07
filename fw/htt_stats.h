@@ -2984,6 +2984,20 @@ typedef enum {
 
 #define HTT_MAX_NUM_SBT_INTR 4
 
+typedef enum {
+    HTT_RU_ALLOC_MODE_PF,
+    HTT_RU_ALLOC_MODE_QOS,
+    HTT_RU_ALLOC_MODE_STATIC,
+    HTT_RU_ALLOC_MODE_EQUAL,
+    HTT_RU_ALLOC_MODE_SIMPLIFIED,
+
+    /* Reserving additional modes for future use */
+    HTT_RU_ALLOC_MODE_RESERVED_1,
+    HTT_RU_ALLOC_MODE_RESERVED_2,
+
+    HTT_RU_ALLOC_NUM_MODES
+} HTT_RU_ALLOC_MODE;
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
@@ -3049,6 +3063,7 @@ typedef struct {
      * (Smart basic triggers are only used with intervals <= 40 ms.)
      */
     A_UINT32 smart_basic_trig_sch_histogram[HTT_MAX_NUM_SBT_INTR];
+    A_UINT32 ru_alloc_mode_cnt[HTT_RU_ALLOC_NUM_MODES];
 } htt_stats_tx_selfgen_cmn_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_selfgen_cmn_stats_tlv htt_tx_selfgen_cmn_stats_tlv;
