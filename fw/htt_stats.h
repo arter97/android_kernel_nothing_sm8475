@@ -1274,6 +1274,13 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_flush_tlv htt_tx_pdev_stats_flush_tlv_v;
 
+#define HTT_TX_PDEV_MDSB_MAX_NUM_USERS 8
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    A_UINT32 pdev_id;
+    A_UINT32 mdsb_num_users_histogram[HTT_TX_PDEV_MDSB_MAX_NUM_USERS];
+} htt_stats_tx_pdev_mdsb_num_users_histogram_tlv;
+
 #define HTT_TX_PDEV_STATS_MLO_ABORT_TLV_SZ(_num_elems) (sizeof(A_UINT32) * (_num_elems))
 /* NOTE: Variable length TLV, use length spec to infer array size */
 typedef struct {
