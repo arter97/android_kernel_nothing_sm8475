@@ -1070,7 +1070,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     /** Num PPDUs queued to HW */
     A_UINT32 hw_queued;
     /** Num PPDUs reaped from HW */
@@ -1545,10 +1551,17 @@ typedef htt_stats_hw_wd_timeout_tlv htt_hw_stats_wd_timeout_tlv;
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
-    /* BIT [ 7 :  0]   :- mac_id
+    /**
+     * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     A_UINT32 tx_abort;
     A_UINT32 tx_abort_fail_count;
     A_UINT32 rx_abort;
@@ -1615,10 +1628,17 @@ typedef htt_stats_hw_pdev_errs_tlv htt_hw_stats_pdev_errs_tlv;
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
-    /* BIT [ 7 :  0]   :- mac_id
+    /**
+     * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     A_UINT32 last_unpause_ppdu_id;
     A_UINT32 hwsch_unpause_wait_tqm_write;
     A_UINT32 hwsch_dummy_tlv_skipped;
@@ -1751,7 +1771,15 @@ typedef struct _htt_msdu_flow_stats_tlv {
      * BIT [20 : 20]   :- drop_rule
      * BIT [31 : 21]   :- reserved
      */
-    A_UINT32 tx_flow_no__tid_num__drop_rule;
+    union {
+        struct {
+            A_UINT32 tx_flow_number : 16;
+            A_UINT32 tid_num : 4;
+            A_UINT32 drop_rule : 1;
+            A_UINT32 reserved : 11;
+        };
+        A_UINT32 tx_flow_no__tid_num__drop_rule;
+    };
     A_UINT32 last_cycle_enqueue_count;
     A_UINT32 last_cycle_dequeue_count;
     A_UINT32 last_cycle_drop_count;
@@ -1828,13 +1856,26 @@ typedef struct _htt_tx_tid_stats_tlv {
      * BIT [15 :  0]   :- sw_peer_id
      * BIT [31 : 16]   :- tid_num
      */
-    A_UINT32 sw_peer_id__tid_num;
+    union {
+        struct {
+            A_UINT32 sw_peer_id : 16;
+            A_UINT32 tid_num : 16;
+        };
+        A_UINT32 sw_peer_id__tid_num;
+    };
     /**
      * BIT [ 7 :  0]   :- num_sched_pending
      * BIT [15 :  8]   :- num_ppdu_in_hwq
      * BIT [31 : 16]   :- reserved
      */
-    A_UINT32 num_sched_pending__num_ppdu_in_hwq;
+    union {
+        struct {
+            A_UINT32 num_sched_pending : 8;
+            A_UINT32 num_ppdu_in_hwq : 8;
+            A_UINT32 reserved : 16;
+        };
+        A_UINT32 num_sched_pending__num_ppdu_in_hwq;
+    };
     A_UINT32 tid_flags;
     /** per tid # of hw_queued ppdu */
     A_UINT32 hw_queued;
@@ -1864,13 +1905,26 @@ typedef struct _htt_tx_tid_stats_v1_tlv {
      * BIT [15 :  0]   :- sw_peer_id
      * BIT [31 : 16]   :- tid_num
      */
-    A_UINT32 sw_peer_id__tid_num;
+    union {
+        struct {
+            A_UINT32 sw_peer_id : 16;
+            A_UINT32 tid_num : 16;
+        };
+        A_UINT32 sw_peer_id__tid_num;
+    };
     /**
      * BIT [ 7 :  0]   :- num_sched_pending
      * BIT [15 :  8]   :- num_ppdu_in_hwq
      * BIT [31 : 16]   :- reserved
      */
-    A_UINT32 num_sched_pending__num_ppdu_in_hwq;
+    union {
+        struct {
+            A_UINT32 num_sched_pending : 8;
+            A_UINT32 num_ppdu_in_hwq : 8;
+            A_UINT32 reserved : 16;
+        };
+        A_UINT32 num_sched_pending__num_ppdu_in_hwq;
+    };
     A_UINT32 tid_flags;
     /** Max qdepth in bytes reached by this tid */
     A_UINT32 max_qdepth_bytes;
@@ -1955,7 +2009,13 @@ typedef struct _htt_rx_tid_stats_tlv {
      * BIT [15 : 0] : sw_peer_id
      * BIT [31 : 16] : tid_num
      */
-    A_UINT32 sw_peer_id__tid_num;
+    union {
+        struct {
+            A_UINT32 sw_peer_id : 16;
+            A_UINT32 tid_num : 16;
+        };
+        A_UINT32 sw_peer_id__tid_num;
+    };
     /** Stored as little endian */
     A_UINT8 tid_name[MAX_HTT_TID_NAME];
     /**
@@ -3008,11 +3068,17 @@ typedef enum {
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
-    /*
+    /**
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     /** BAR sent out for SU transmission */
     A_UINT32 su_bar;
     /** SW generated RTS frame sent */
@@ -4311,8 +4377,8 @@ typedef struct {
 /* NOTE: Variable length TLV, use length spec to infer array size */
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
-    /** Scheduler command posted per tx_mode */
-    A_UINT32 sched_cmd_posted[1/* length = num tx modes */];
+    /** Scheduler command posted per tx_mode (length = num tx modes) */
+    HTT_STATS_VAR_LEN_ARRAY1(A_UINT32, sched_cmd_posted);
 } htt_stats_sched_txq_cmd_posted_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_sched_txq_cmd_posted_tlv htt_sched_txq_cmd_posted_tlv_v;
@@ -4322,8 +4388,8 @@ typedef htt_stats_sched_txq_cmd_posted_tlv htt_sched_txq_cmd_posted_tlv_v;
 /* NOTE: Variable length TLV, use length spec to infer array size */
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
-    /** Scheduler command reaped per tx_mode */
-    A_UINT32 sched_cmd_reaped[1/* length = num tx modes */];
+    /** Scheduler command reaped per tx_mode (length = num tx modes) */
+    HTT_STATS_VAR_LEN_ARRAY1(A_UINT32, sched_cmd_reaped);
 } htt_stats_sched_txq_cmd_reaped_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_sched_txq_cmd_reaped_tlv htt_sched_txq_cmd_reaped_tlv_v;
@@ -4442,7 +4508,7 @@ typedef struct {
      * These supercycle trigger counts are not automatically reset, but
      * are reset upon request.
      */
-    A_UINT32 supercycle_triggers[1/*HTT_SCHED_SUPERCYCLE_TRIGGER_MAX*/];
+    HTT_STATS_VAR_LEN_ARRAY1(A_UINT32, supercycle_triggers);
 } htt_stats_sched_txq_supercycle_trigger_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_sched_txq_supercycle_trigger_tlv
@@ -4567,7 +4633,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     /** Current timestamp */
     A_UINT32 current_timestamp;
 } htt_stats_tx_sched_cmn_tlv;
@@ -4586,6 +4658,7 @@ typedef struct {
  * This structure is for documentation, and cannot be safely used directly.
  * Instead, use the constituent TLV structures to fill/parse.
  */
+#ifdef ATH_TARGET
 typedef struct {
     htt_stats_tx_sched_cmn_tlv cmn_tlv;
     struct {
@@ -4597,6 +4670,7 @@ typedef struct {
         htt_stats_sched_txq_supercycle_trigger_tlv  htt_sched_txq_sched_ineligibility_tlv_esched_supercycle_trigger_tlv;
     } txq[1];
 } htt_stats_tx_sched_t;
+#endif
 
 /* == TQM STATS == */
 
@@ -4712,7 +4786,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     A_UINT32 max_cmdq_id;
     A_UINT32 list_mpdu_cnt_hist_intvl;
 
@@ -4828,7 +4908,14 @@ typedef struct {
      * BIT [15 :  8]   :- cmdq_id
      * BIT [31 : 16]   :- reserved
      */
-    A_UINT32 mac_id__cmdq_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id : 8;
+            A_UINT32 cmdq_id : 8;
+            A_UINT32 reserved : 16;
+        };
+        A_UINT32 mac_id__cmdq_id__word;
+    };
     A_UINT32 sync_cmd;
     A_UINT32 write_cmd;
     A_UINT32 gen_mpdu_cmd;
@@ -5064,7 +5151,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
 
     /* Global Stats */
     A_UINT32 tcl2fw_entry_count;
@@ -5272,23 +5365,47 @@ typedef struct {
      * BIT [15 :  0]   :- num_elems
      * BIT [31 : 16]   :- prefetch_tail_idx
      */
-    A_UINT32 num_elems__prefetch_tail_idx;
+    union {
+        struct {
+            A_UINT32 num_elems : 16;
+            A_UINT32 prefetch_tail_idx : 16;
+        };
+        A_UINT32 num_elems__prefetch_tail_idx;
+    };
     /**
      * BIT [15 :  0]   :- head_idx
      * BIT [31 : 16]   :- tail_idx
      */
-    A_UINT32 head_idx__tail_idx;
+    union {
+        struct {
+            A_UINT32 head_idx : 16;
+            A_UINT32 tail_idx : 16;
+        };
+        A_UINT32 head_idx__tail_idx;
+    };
     /**
      * BIT [15 :  0]   :- shadow_head_idx
      * BIT [31 : 16]   :- shadow_tail_idx
      */
-    A_UINT32 shadow_head_idx__shadow_tail_idx;
+    union {
+        struct {
+            A_UINT32 shadow_head_idx : 16;
+            A_UINT32 shadow_tail_idx : 16;
+        };
+        A_UINT32 shadow_head_idx__shadow_tail_idx;
+    };
     A_UINT32 num_tail_incr;
     /**
      * BIT [15 :  0]   :- lwm_thresh
      * BIT [31 : 16]   :- hwm_thresh
      */
-    A_UINT32 lwm_thresh__hwm_thresh;
+    union {
+        struct {
+            A_UINT32 lwm_thresh : 16;
+            A_UINT32 hwm_thresh : 16;
+        };
+        A_UINT32 lwm_thresh__hwm_thresh;
+    };
     A_UINT32 overrun_hit_count;
     A_UINT32 underrun_hit_count;
     A_UINT32 prod_blockwait_count;
@@ -5319,7 +5436,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     A_UINT32 num_records;
 } htt_stats_ring_if_cmn_tlv;
 /* preserve old name alias for new name consistent with the tag name */
@@ -5399,7 +5522,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     /**
      * Indicates the total number of 128 byte buffers in the CMEM
      * that are available for buffer sharing
@@ -5613,7 +5742,16 @@ typedef struct {
      * BIT [24 : 24]   :- EP 0 -consumer, 1 - producer
      * BIT [31 : 25]   :- reserved
      */
-    A_UINT32 mac_id__ring_id__arena__ep;
+    union {
+        struct {
+            A_UINT32 mac_id : 8;
+            A_UINT32 ring_id : 8;
+            A_UINT32 arena : 8;
+            A_UINT32 ep : 1;
+            A_UINT32 reserved : 7;
+        };
+        A_UINT32 mac_id__ring_id__arena__ep;
+    };
     /** DWORD aligned base memory address of the ring */
     A_UINT32 base_addr_lsb;
     A_UINT32 base_addr_msb;
@@ -5627,25 +5765,49 @@ typedef struct {
      * BIT [15 :  0]   :- num_avail_words
      * BIT [31 : 16]   :- num_valid_words
      */
-    A_UINT32 num_avail_words__num_valid_words;
+    union {
+        struct {
+            A_UINT32 num_avail_words : 16;
+            A_UINT32 num_valid_words : 16;
+        };
+        A_UINT32 num_avail_words__num_valid_words;
+    };
 
     /** Index of head and tail
      * BIT [15 :  0]   :- head_ptr
      * BIT [31 : 16]   :- tail_ptr
      */
-    A_UINT32 head_ptr__tail_ptr;
+    union {
+        struct {
+            A_UINT32 head_ptr : 16;
+            A_UINT32 tail_ptr : 16;
+        };
+        A_UINT32 head_ptr__tail_ptr;
+    };
 
     /** Empty or full counter of rings
      * BIT [15 :  0]   :- consumer_empty
      * BIT [31 : 16]   :- producer_full
      */
-    A_UINT32 consumer_empty__producer_full;
+    union {
+        struct {
+            A_UINT32 consumer_empty : 16;
+            A_UINT32 producer_full : 16;
+        };
+        A_UINT32 consumer_empty__producer_full;
+    };
 
     /** Prefetch status of consumer ring
      * BIT [15 :  0]   :- prefetch_count
      * BIT [31 : 16]   :- internal_tail_ptr
      */
-    A_UINT32 prefetch_count__internal_tail_ptr;
+    union {
+        struct {
+            A_UINT32 prefetch_count : 16;
+            A_UINT32 internal_tail_ptr : 16;
+        };
+        A_UINT32 prefetch_count__internal_tail_ptr;
+    };
 } htt_stats_sring_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_sring_stats_tlv htt_sring_stats_tlv;
@@ -5778,7 +5940,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     /** Number of tx ldpc packets */
     A_UINT32 tx_ldpc;
     /** Number of tx rts packets */
@@ -5993,7 +6161,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
 
     /** 11BE EHT DL MU OFDMA LDPC count */
     A_UINT32 be_ofdma_tx_ldpc;
@@ -6158,7 +6332,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     A_UINT32 nsts;
 
     /** Number of rx ldpc packets */
@@ -6423,7 +6603,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
 
     A_UINT32 rx_11ax_ul_ofdma;
 
@@ -6497,7 +6683,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
 
     A_UINT32 rx_11be_ul_ofdma;
 
@@ -6650,12 +6842,18 @@ typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
     /**
-     * BIT [7:0]  :- mac_id
-     * BIT [31:8] :- reserved
+     * BIT [ 7 :  0]   :- mac_id
+     * BIT [31 :  8]   :- reserved
      *
      * Refer to HTT_STATS_CMN_MAC_ID_GET/SET macros.
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
 
     /** Number of times UL MUMIMO RX packets received */
     A_UINT32 rx_11ax_ul_mumimo;
@@ -6709,12 +6907,18 @@ typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
     /**
-     * BIT [7:0]  :- mac_id
-     * BIT [31:8] :- reserved
+     * BIT [ 7 :  0]   :- mac_id
+     * BIT [31 :  8]   :- reserved
      *
      * Refer to HTT_STATS_CMN_MAC_ID_GET/SET macros.
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
 
     /** Number of times UL MUMIMO RX packets received */
     A_UINT32 rx_11be_ul_mumimo;
@@ -6967,7 +7171,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     /** Num PPDU status processed from HW */
     A_UINT32 ppdu_recvd;
     /** Num MPDU across PPDUs with FCS ok */
@@ -7098,7 +7308,13 @@ typedef struct {
      * BIT [ 7 :  0]   :- mac_id
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     /** Num of phy err */
     A_UINT32 total_phy_err_cnt;
     /** Counts of different types of phy errs
@@ -12166,7 +12382,13 @@ typedef struct {
      *                    read/write this bitfield.
      * BIT [31 :  8]   :- reserved
      */
-    A_UINT32 mac_id__word;
+    union {
+        struct {
+            A_UINT32 mac_id:    8,
+                     reserved: 24;
+        };
+        A_UINT32 mac_id__word;
+    };
     A_UINT32 basic_trigger_across_bss;
     A_UINT32 basic_trigger_within_bss;
     A_UINT32 bsr_trigger_across_bss;
@@ -12329,17 +12551,37 @@ typedef struct {
      * BIT [ 15 :  8]  :- pri20_index
      * BIT [ 31 : 16]  :- pri20_freq in Mhz
      */
-    A_UINT32 mac_id__pri20_idx__freq;
+    union {
+        struct {
+            A_UINT32 mac_id : 8;
+            A_UINT32 pri20_idx : 8;
+            A_UINT32 pri20_freq_mhz : 16;
+        };
+        A_UINT32 mac_id__pri20_idx__freq;
+    };
 
     /* BIT [ 15 :  0]  :- centre_freq1
      * BIT [ 31 : 16]  :- centre_freq2
      */
-    A_UINT32 centre_freq1__freq2;
+    union {
+        struct {
+            A_UINT32 centre_freq1 : 16;
+            A_UINT32 centre_freq2 : 16;
+        };
+        A_UINT32 centre_freq1__freq2;
+    };
 
     /* BIT [ 7 :  0]  :- channel_phy_mode
      * BIT [ 23 : 8]  :- static_pattern
      */
-    A_UINT32 phy_mode__static_pattern;
+    union {
+        struct {
+            A_UINT32 phy_mode : 8;
+            A_UINT32 static_pattern : 16;
+            A_UINT32 reserved : 8;
+        };
+        A_UINT32 phy_mode__static_pattern;
+    };
 } htt_stats_pdev_bw_mgr_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_pdev_bw_mgr_stats_tlv htt_pdev_bw_mgr_stats_tlv;
