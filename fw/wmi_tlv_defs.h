@@ -1486,6 +1486,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_pdev_suspend_event_fixed_param,
     WMITLV_TAG_STRUC_wmi_bpf_set_apf_mode_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_peer_assoc_operating_mode_params,
+    WMITLV_TAG_STRUC_wmi_recv_bcn_stats,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -6401,7 +6402,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_HOST_SWFDA_EVENTID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_pmf_bcn_protect_stats, pmf_bcn_protect_stats, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_vdev_extd_stats, vdev_extd_stats, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_pdev_extd_stats, pdev_extd_stats, WMITLV_SIZE_VAR) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_pdev_telemetry_stats, pdev_telemetry_stats, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_pdev_telemetry_stats, pdev_telemetry_stats, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_recv_bcn_stats, recv_bcn_stats, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_UPDATE_STATS_EVENTID);
 
 /* Update PN response Event */
