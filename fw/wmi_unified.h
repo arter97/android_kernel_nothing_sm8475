@@ -18481,6 +18481,7 @@ typedef enum {
     WMI_RATE_PREAMBLE_VHT,
     WMI_RATE_PREAMBLE_HE,
     WMI_RATE_PREAMBLE_EHT,
+    WMI_RATE_PREAMBLE_UHR,
 } WMI_RATE_PREAMBLE;
 
 /** Value to disable fixed rate setting */
