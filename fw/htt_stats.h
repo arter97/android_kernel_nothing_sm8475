@@ -12367,6 +12367,16 @@ typedef struct {
      * only for UL BSR TX mode.
      */
     A_UINT32 running_ul_scheduler_for_bsrp_cnt[HTT_NUM_AC_WMM];
+    /**
+     * Number of instances where we populated TX mode and candidate lists
+     * only for DL, due to skipping UL voluntarily.
+     */
+    A_UINT32 running_dl_scheduler_due_to_skip_ul[HTT_NUM_AC_WMM];
+    /**
+     * Number of instances where we populated TX mode and candidate lists
+     * only for UL, due to skipping DL voluntarily.
+     */
+    A_UINT32 running_ul_scheduler_due_to_skip_dl[HTT_NUM_AC_WMM];
 } htt_stats_pdev_sched_algo_ofdma_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_pdev_sched_algo_ofdma_stats_tlv
