@@ -1020,6 +1020,10 @@ typedef enum {
 #define HTT_PDEV_STATS_PPDU_DUR_HIST_BINS 16
 #define HTT_PDEV_STATS_PPDU_DUR_HIST_EXT_BINS 6
 #define HTT_PDEV_STATS_PPDU_DUR_HIST_INTERVAL_US 250
+/* Max seq ctrl can be active in txq at a given instant */
+#define HTT_PDEV_STATS_MAX_SEQ_CTRL_HIST 4
+/* For BE max active seq_ctrl that can be in HWQ */
+#define HTT_PDEV_STATS_MAX_ACTIVE_SEQ_IN_HWQ_HIST 2
 
 typedef enum {
     HTT_STATS_TX_PDEV_NO_DATA_UNDERRUN = 0,
@@ -1258,6 +1262,33 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_cmn_tlv htt_tx_pdev_stats_cmn_tlv;
 
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    union {
+        A_UINT32 pdev_id__word;
+        struct {
+            A_UINT32
+                pdev_id: 8,
+                reserved: 24;
+        };
+    };
+    A_UINT32 pending_seq_on_sched_post_hist[HTT_PDEV_STATS_MAX_SEQ_CTRL_HIST];
+} htt_stats_tx_pdev_pending_seq_cnt_on_sched_post_hist_tlv;
+
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_PDEV_ID_M 0x000000ff
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_PDEV_ID_S 0
+
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_PDEV_ID_GET(_var) \
+    (((_var) & HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_PDEV_ID_M) >> \
+     HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_PDEV_ID_S)
+
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_PDEV_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_PDEV_ID, _val); \
+        ((_var) |= ((_val) << HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_PDEV_ID_S)); \
+    } while (0)
+
+
 #define HTT_TX_PDEV_STATS_URRN_TLV_SZ(_num_elems) (sizeof(A_UINT32) * (_num_elems))
 /* NOTE: Variable length TLV, use length spec to infer array size */
 typedef struct {
@@ -1491,6 +1522,7 @@ typedef htt_stats_pdev_ctrl_path_tx_stats_tlv htt_pdev_ctrl_path_tx_stats_tlv_v;
  *      - HTT_STATS_TX_PDEV_TRIED_MPDU_CNT_HIST_TAG
  *      - HTT_STATS_PDEV_CTRL_PATH_TX_STATS_TAG
  *      - HTT_STATS_MU_PPDU_DIST_TAG
+ *      - HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_TAG
  */
 /* NOTE:
  * This structure is for documentation, and cannot be safely used directly.
@@ -1508,6 +1540,8 @@ typedef struct _htt_tx_pdev_stats {
     htt_stats_tx_pdev_tried_mpdu_cnt_hist_tlv   tried_mpdu_cnt_hist_tlv;
     htt_stats_pdev_ctrl_path_tx_stats_tlv       ctrl_path_tx_tlv;
     htt_stats_mu_ppdu_dist_tlv                  mu_ppdu_dist_tlv;
+    htt_stats_tx_pdev_pending_seq_cnt_on_sched_post_hist_tlv
+        pending_seq_cnt_on_sched_post_hist_tlv;
 } htt_tx_pdev_stats_t;
 #endif /* ATH_TARGET */
 
@@ -2932,6 +2966,58 @@ typedef struct {
 typedef htt_stats_tx_hwq_txop_used_cnt_hist_tlv
     htt_tx_hwq_txop_used_cnt_hist_tlv_v;
 
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    union {
+        A_UINT32 pdev_id__word;
+        struct {
+            A_UINT32
+                pdev_id: 8,
+                reserved: 24;
+        };
+    };
+    A_UINT32 active_seq_in_hwq_hist[HTT_PDEV_STATS_MAX_ACTIVE_SEQ_IN_HWQ_HIST];
+} htt_stats_tx_pdev_pending_seq_cnt_in_hwq_hist_tlv;
+
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_PDEV_ID_M 0x000000ff
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_PDEV_ID_S 0
+
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_PDEV_ID_GET(_var) \
+    (((_var) & HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_PDEV_ID_M) >> \
+     HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_PDEV_ID_S)
+
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_PDEV_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_PDEV_ID, _val); \
+        ((_var) |= ((_val) << HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_PDEV_ID_S)); \
+    } while (0)
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    union {
+        A_UINT32 pdev_id__word;
+        struct {
+            A_UINT32
+                pdev_id: 8,
+                reserved: 24;
+        };
+    };
+    A_UINT32 active_seq_in_txq_hist[HTT_PDEV_STATS_MAX_SEQ_CTRL_HIST];
+} htt_stats_tx_pdev_pending_seq_cnt_in_txq_hist_tlv;
+
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_PDEV_ID_M 0x000000ff
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_PDEV_ID_S 0
+
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_PDEV_ID_GET(_var) \
+    (((_var) & HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_PDEV_ID_M) >> \
+     HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_PDEV_ID_S)
+
+#define HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_PDEV_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_PDEV_ID, _val); \
+        ((_var) |= ((_val) << HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_PDEV_ID_S)); \
+    } while (0)
+
 /* STATS_TYPE : HTT_DBG_EXT_STATS_PDEV_TX_HWQ
  * TLV_TAGS:
  *    - HTT_STATS_STRING_TAG
@@ -2942,6 +3028,8 @@ typedef htt_stats_tx_hwq_txop_used_cnt_hist_tlv
  *    - HTT_STATS_TX_HWQ_FES_STATUS_TAG
  *    - HTT_STATS_TX_HWQ_TRIED_MPDU_CNT_HIST_TAG
  *    - HTT_STATS_TX_HWQ_TXOP_USED_CNT_HIST_TAG
+ *    - HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_TAG
+ *    - HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_TAG
  */
 /* NOTE:
  * This structure is for documentation, and cannot be safely used directly.
@@ -2962,6 +3050,10 @@ typedef struct _htt_tx_hwq_stats {
     htt_stats_tx_hwq_fes_status_tlv          fes_stats_tlv;
     htt_stats_tx_hwq_tried_mpdu_cnt_hist_tlv tried_mpdu_tlv;
     htt_stats_tx_hwq_txop_used_cnt_hist_tlv  txop_used_tlv;
+    htt_stats_tx_pdev_pending_seq_cnt_in_hwq_hist_tlv
+        active_pending_seq_cnt_in_hwq_hist_tlv;
+    htt_stats_tx_pdev_pending_seq_cnt_in_txq_hist_tlv
+        active_pending_seq_cnt_in_txq_hist_tlv;
 } htt_tx_hwq_stats_t;
 #endif /* ATH_TARGET */
 
@@ -4514,6 +4606,44 @@ typedef struct {
 typedef htt_stats_sched_txq_supercycle_trigger_tlv
     htt_sched_txq_supercycle_triggers_tlv_v;
 
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    union {
+        A_UINT32 pdev_id__word;
+        struct {
+            A_UINT32
+                pdev_id: 8,
+                reserved: 24;
+        };
+    };
+    A_UINT32 ist_txop_end_indicated_cnt;
+    A_UINT32 ist_txop_end_notify_at_cmd_status_end;
+    A_UINT32 ist_txop_end_notify_at_isr_end;
+    A_UINT32 sched_cmd_post_skip_on_seq_unavail;
+    A_UINT32 ist_txop_end_skip_on_seq_unavail;
+    A_UINT32 ist_txop_end_skip_on_mpdu_ownership;
+    A_UINT32 skip_early_schedule_due_to_per;
+    A_UINT32 sched_cmd_posted_at_hw_txop_end;
+    A_UINT32 sched_cmd_missed_at_hw_txop_end;
+    A_UINT32 sched_cmd_posted_at_sched_cmd_compl;
+    A_UINT32 sched_cmd_missed_at_sched_cmd_compl;
+    A_UINT32 num_QoS_sched_runs;
+} htt_stats_sched_txq_early_compl_tlv;
+
+#define HTT_STATS_SCHED_TXQ_EARLY_COMPL_PDEV_ID_M 0x000000ff
+#define HTT_STATS_SCHED_TXQ_EARLY_COMPL_PDEV_ID_S 0
+
+#define HTT_STATS_SCHED_TXQ_EARLY_COMPL_PDEV_ID_GET(_var) \
+    (((_var) & HTT_STATS_SCHED_TXQ_EARLY_COMPL_PDEV_ID_M) >> \
+     HTT_STATS_SCHED_TXQ_EARLY_COMPL_PDEV_ID_S)
+
+#define HTT_STATS_SCHED_TXQ_EARLY_COMPL_PDEV_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_SCHED_TXQ_EARLY_COMPL_PDEV_ID, _val); \
+        ((_var) |= ((_val) << HTT_STATS_SCHED_TXQ_EARLY_COMPL_PDEV_ID_S)); \
+    } while (0)
+
+
 #define HTT_TX_PDEV_STATS_SCHED_PER_TXQ_MAC_ID_M 0x000000ff
 #define HTT_TX_PDEV_STATS_SCHED_PER_TXQ_MAC_ID_S 0
 
@@ -4653,6 +4783,7 @@ typedef struct {
  *     - HTT_STATS_SCHED_TXQ_SCHED_ORDER_SU_TAG
  *     - HTT_STATS_SCHED_TXQ_SCHED_INELIGIBILITY_TAG
  *     - HTT_STATS_SCHED_TXQ_SUPERCYCLE_TRIGGER_TAG
+ *     - HTT_STATS_SCHED_TXQ_EARLY_COMPL_TAG
  */
 /* NOTE:
  * This structure is for documentation, and cannot be safely used directly.
@@ -4662,12 +4793,14 @@ typedef struct {
 typedef struct {
     htt_stats_tx_sched_cmn_tlv cmn_tlv;
     struct {
-        htt_stats_tx_pdev_scheduler_txq_stats_tlv     txq_tlv;
-        htt_stats_sched_txq_cmd_posted_tlv      cmd_posted_tlv;
-        htt_stats_sched_txq_cmd_reaped_tlv      cmd_reaped_tlv;
+        htt_stats_tx_pdev_scheduler_txq_stats_tlv   txq_tlv;
+        htt_stats_sched_txq_cmd_posted_tlv          cmd_posted_tlv;
+        htt_stats_sched_txq_cmd_reaped_tlv          cmd_reaped_tlv;
         htt_stats_sched_txq_sched_order_su_tlv      sched_order_su_tlv;
         htt_stats_sched_txq_sched_ineligibility_tlv sched_ineligibility_tlv;
-        htt_stats_sched_txq_supercycle_trigger_tlv  htt_sched_txq_sched_ineligibility_tlv_esched_supercycle_trigger_tlv;
+        htt_stats_sched_txq_supercycle_trigger_tlv
+            htt_sched_txq_sched_ineligibility_tlv_esched_supercycle_trigger_tlv;
+        htt_stats_sched_txq_early_compl_tlv         early_compl_tlv;
     } txq[1];
 } htt_stats_tx_sched_t;
 #endif

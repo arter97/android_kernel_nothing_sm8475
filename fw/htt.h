@@ -851,6 +851,10 @@ typedef enum {
     HTT_STATS_PHY_PAPRD_PB_TAG                      = 212, /* htt_stats_phy_paprd_pb_tlv */
     HTT_STATS_HDS_PROF_STATS_TAG                    = 213, /* htt_stat_hds_prof_stats_tlv */
     HTT_STATS_TX_PDEV_MDSB_NUM_USERS_HISTOGRAM_TLV_TAG = 214, /* htt_stats_tx_pdev_mdsb_num_users_histogram_tlv */
+    HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_TAG = 215, /* htt_stats_tx_pdev_pending_seq_cnt_on_sched_post_hist_tlv */
+    HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_TAG        = 216, /* htt_stats_tx_pdev_pending_seq_cnt_in_hwq_hist_tlv */
+    HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_TAG        = 217, /* htt_stats_tx_pdev_pending_seq_cnt_in_txq_hist_tlv */
+    HTT_STATS_SCHED_TXQ_EARLY_COMPL_TAG                      = 218, /* htt_stats_sched_txq_early_compl_tlv */
 
     HTT_STATS_MAX_TAG,
 } htt_stats_tlv_tag_t;
