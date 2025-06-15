@@ -1487,6 +1487,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_bpf_set_apf_mode_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_peer_assoc_operating_mode_params,
     WMITLV_TAG_STRUC_wmi_recv_bcn_stats,
+    WMITLV_TAG_STRUC_wmi_vdev_vbss_peer_dyn_info,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -3661,7 +3662,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_UPDATE_MAC_ADDR_CMDID);
 #define WMITLV_TABLE_WMI_VDEV_VBSS_CONFIG_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_vbss_config_cmd_fixed_param, wmi_vdev_vbss_config_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)\
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_vdev_vbss_peer_pn_info, vbss_peer_pn_info, WMITLV_SIZE_VAR) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_vdev_vbss_peer_sn_info, vbss_peer_sn_info, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_vdev_vbss_peer_sn_info, vbss_peer_sn_info, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_vbss_peer_dyn_info, wmi_vdev_vbss_peer_dyn_info, vbss_peer_dyn_info, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_VBSS_CONFIG_CMDID);
 
 /* Pdev suspend Cmd */
@@ -7829,7 +7831,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_VENDOR_PEER_EVENTID);
 #define WMITLV_TABLE_WMI_VDEV_VBSS_CONFIG_EVENTID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_vbss_config_event_fixed_param, wmi_vdev_vbss_config_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)\
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_vdev_vbss_peer_pn_info, vbss_peer_pn_info, WMITLV_SIZE_VAR) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_vdev_vbss_peer_sn_info, vbss_peer_sn_info, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_vdev_vbss_peer_sn_info, vbss_peer_sn_info, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_vbss_peer_dyn_info, wmi_vdev_vbss_peer_dyn_info, vbss_peer_dyn_info, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_VBSS_CONFIG_EVENTID);
 
 /* link switch event */

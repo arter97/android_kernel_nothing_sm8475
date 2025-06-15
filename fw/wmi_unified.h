@@ -51015,8 +51015,9 @@ typedef struct {
     };
     /*
      * The below TLVs follow this TLV in the WMI_VDEV_VBSS_CONFIG_CMDID msg:
-     *   - wmi_vdev_vbss_peer_sn_info[];
      *   - wmi_vdev_vbss_peer_pn_info[];
+     *   - wmi_vdev_vbss_peer_sn_info[];
+     *   - wmi_vdev_vbss_peer_dyn_info;
      */
 } wmi_vdev_vbss_config_cmd_fixed_param;
 
@@ -51049,11 +51050,33 @@ typedef struct {
                 ssn: 16;
         };
     };
-    /* The below TLVs follow this TLV in the WMI_VDEV_VBSS_CONFIG_EVENTID msg:
-     *   - A_UINT32 scan_freq_list[];
-     *   - wmi_vdev_vbss_config_event_fixed_param[];
-     */
 } wmi_vdev_vbss_peer_sn_info;
+
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_vdev_vbss_peer_dyn_info */
+    union {
+        A_UINT32 peer_dyn_info1_word32;
+        struct {
+            /**  15:0  omi
+             *  31:16  eht_omi
+             */
+            A_UINT32
+                omi: 16,
+                eht_omi: 16;
+        };
+    };
+    union {
+        A_UINT32 peer_dyn_info2_word32;
+        struct {
+            /**  1:0 pm
+             *  31:2 reserved
+             */
+            A_UINT32
+                pm   : 1,
+                rsvd : 31;
+        };
+    };
+} wmi_vdev_vbss_peer_dyn_info;
 
 typedef enum {
     WMI_VBSS_GET_PEER_CONTEXT        = 1,
@@ -51072,6 +51095,15 @@ typedef enum {
 
 #define WMI_VDEV_VBSS_SN_INFO_GET_SSN(tid_num_ssn) WMI_GET_BITS(tid_num_ssn, 16, 16)
 #define WMI_VDEV_VBSS_SN_INFO_SET_SSN(action, value) WMI_SET_BITS(tid_num_ssn, 16, 16, value)
+
+#define WMI_VDEV_VBSS_DYN_INFO_GET_OMI(peer_dyn_info1) WMI_GET_BITS(omi, 0, 16)
+#define WMI_VDEV_VBSS_DYN_INFO_SET_OMI(peer_dyn_info1, value) WMI_SET_BITS(omi, 0, 16, value)
+
+#define WMI_VDEV_VBSS_DYN_INFO_GET_EHT_OMI(peer_dyn_info1) WMI_GET_BITS(eht_omi, 16, 16)
+#define WMI_VDEV_VBSS_DYN_INFO_SET_EHT_OMI(peer_dyn_info1, value) WMI_SET_BITS(eht_omi, 16, 16, value)
+
+#define WMI_VDEV_VBSS_DYN_INFO_GET_PM(peer_dyn_info2) WMI_GET_BITS(pm, 0, 1)
+#define WMI_VDEV_VBSS_DYN_INFO_SET_PM(peer_dyn_info2, value) WMI_SET_BITS(pm, 0, 1, value)
 
 
 typedef struct {
