@@ -707,6 +707,7 @@ typedef  enum  {
     WMI_SERVICE_STA_MLO_RCFG_SUPPORT = 448, /* FW supports STA ML reconfig op */
     WMI_SERVICE_PDEV_SUSPEND_EVENT_SUPPORT = 449, /* FW supports PDEV_SUSPEND event */
     WMI_SERVICE_PCC_MODE = 450, /* Indicates FW support for PCC (P2P Connection Compatibility) Mode */
+    WMI_SERVICE_TDLS_NSS_CONFIRM_SUPPORT = 451, /* FW supports confirmation to host requested TDLS NSS operation */
 
     WMI_MAX_EXT2_SERVICE
 
