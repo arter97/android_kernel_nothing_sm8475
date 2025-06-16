@@ -40813,7 +40813,10 @@ typedef struct {
 #define WLM_FLAGS_ROAM_SUPPRESS  1
 #define WLM_FLAGS_ALLOW_FINAL_BMISS_ROAM 2
 
-/* bit 8: reserved for roaming */
+/* bit 8: Final bmiss roam will be triggered when all active links
+ *        are final bmiss reported.
+ */
+#define WLM_FLAGS_ROAM_WHEN_ALL_LINKS_FBMISS 1
 
 /* bit 9-11 of flags is used for powersave operation */
 /* bit 9: WLM_FLAGS_PS_DISABLE_BMPS, disable BMPS if bit is set */
@@ -40857,6 +40860,8 @@ typedef struct {
 #define WLM_FLAGS_TSF_LATENCY_COMPENSATE_ENABLED_SET(flag) WMI_SET_BITS(flag, 4, 1, val)
 #define WLM_FLAGS_ROAM_GET_POLICY(flag)                   WMI_GET_BITS(flag, 6, 2)
 #define WLM_FLAGS_ROAM_SET_POLICY(flag, val)              WMI_SET_BITS(flag, 6, 2, val)
+#define WLM_FLAGS_ROAM_GET_WHEN_ALL_LINKS_FBMISS(flag)    WMI_GET_BITS(flag, 8, 1)
+#define WLM_FLAGS_ROAM_SET_WHEN_ALL_LINKS_FBMISS(flag, val)  WMI_SET_BITS(flag, 8, 1, val)
 #define WLM_FLAGS_PS_IS_BMPS_DISABLED(flag)               WMI_GET_BITS(flag, 9, 1)
 #define WLM_FLAGS_PS_IS_CSS_CLPS_DISABLED(flag)           WMI_GET_BITS(flag, 10, 1)
 #define WLM_FLAGS_PS_SET_CSS_CLPS_DISABLE(flag, val)      WMI_SET_BITS(flag, 10, 1, val)
