@@ -16,6 +16,11 @@ endif
 ifeq ($(TARGET_BOARD_PLATFORM), monaco)
 LOCAL_MODULE_DDK_BUILD := true
 LOCAL_MODULE_DDK_ALLOW_UNSAFE_HEADERS := true
+#For old kernel versions, disable DDK bzl compilation
+ifeq ($(TARGET_KERNEL_VERSION),$(filter $(TARGET_KERNEL_VERSION),4.19 5.15))
+LOCAL_MODULE_DDK_BUILD := false
+LOCAL_MODULE_DDK_ALLOW_UNSAFE_HEADERS := false
+endif
 endif
 
 ifeq ($(TARGET_BOARD_PLATFORM), pitti)
