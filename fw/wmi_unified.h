@@ -369,7 +369,8 @@ typedef enum {
     WMI_GRP_QUIET_OFL,      /* 0x4a Quiet offloads */
     WMI_GRP_ODD,            /* 0x4b ODD */
     WMI_GRP_TDMA,           /* 0x4c TDMA */
-    WMI_GRP_MANUAL_UL_TRIG  /* 0x4d Manual UL OFDMA Trigger */
+    WMI_GRP_MANUAL_UL_TRIG, /* 0x4d Manual UL OFDMA Trigger */
+    WMI_GRP_ENERGY_MGMT,    /* 0x4e energy management */
 } WMI_GRP_ID;
 
 #define WMI_CMD_GRP_START_ID(grp_id) (((grp_id) << 12) | 0x1)
@@ -1728,6 +1729,21 @@ typedef enum {
 
     /** WMI Command to set Manual MU UL OFDMA trigger parameters */
     WMI_VDEV_SET_ULOFDMA_MANUAL_MU_TRIG_CMDID,
+
+
+    /** WMI commands specific to Energy Management **/
+    /** WMI cmd used to control PCIe config */
+    WMI_ENERGY_MGMT_PCIE_CONFIG_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_ENERGY_MGMT),
+    /** WMI cmd used to control PCIe LPM */
+    WMI_ENERGY_MGMT_PCIE_LPM_CMDID,
+    /** WMI cmd used to control Clock and Voltage config */
+    WMI_ENERGY_MGMT_DCVS_CONFIG_CMDID,
+    /** WMI cmd used to control AP Dynamic Power Save feature */
+    WMI_ENERGY_MGMT_EDPS_CONFIG_CMDID,
+    /** WMI cmd used to control periodic unavailability operation */
+    WMI_ENERGY_MGMT_PUO_CONFIG_CMDID,
+    /** WMI cmd used to control ECO mode config */
+    WMI_ENERGY_MGMT_ECO_MODE_CONFIG_CMDID,
 } WMI_CMD_ID;
 
 typedef enum {
@@ -39317,6 +39333,12 @@ static INLINE A_UINT8 *wmi_id_to_name(A_UINT32 wmi_command)
         WMI_RETURN_STRING(WMI_MLO_LINK_TTLM_COMPLETE_CMDID);
         WMI_RETURN_STRING(WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID);
         WMI_RETURN_STRING(WMI_BPF_SET_APF_MODE_CMDID);
+        WMI_RETURN_STRING(WMI_ENERGY_MGMT_PCIE_CONFIG_CMDID);
+        WMI_RETURN_STRING(WMI_ENERGY_MGMT_PCIE_LPM_CMDID);
+        WMI_RETURN_STRING(WMI_ENERGY_MGMT_DCVS_CONFIG_CMDID);
+        WMI_RETURN_STRING(WMI_ENERGY_MGMT_DPS_CONFIG_CMDID);
+        WMI_RETURN_STRING(WMI_ENERGY_MGMT_PUO_CONFIG_CMDID);
+        WMI_RETURN_STRING(WMI_ENERGY_MGMT_ECO_MODE_CONFIG_CMDID);
     }
 
     return (A_UINT8 *) "Invalid WMI cmd";
@@ -51122,6 +51144,93 @@ typedef struct {
      *   - wmi_vdev_vbss_peer_pn_info[];
      */
 } wmi_vdev_vbss_config_event_fixed_param;
+
+
+typedef enum {
+    /* Channel bandwidth based semi static PCIe config */
+    WMI_PCIE_CONFIG_TYPE_CHANNEL_BANDWIDTH,
+    /* Force a specific PCIe config */
+    WMI_PCIE_CONFIG_TYPE_FORCED_STATIC,
+} wmi_pcie_config_type_e;
+
+typedef struct {
+    /** TLV tag and len; tag equals
+    * WMITLV_TAG_STRUC_wmi_energy_mgmt_pcie_config_cmd_fixed_param */
+    A_UINT32 tlv_header;
+    /** enable or disable PCIe config */
+    A_UINT32 enable;
+    /* PCIe config type (holds a wmi_pcie_config_type_e value) */
+    A_UINT32 config_type;
+    /** pcie_gen: pcie generation to be used
+     *  pcie_lane:pcie lane config (lane number) to be used
+     */
+    A_UINT32 pcie_gen;
+    A_UINT32 pcie_lane;
+} wmi_energy_mgmt_pcie_config_cmd_fixed_param;
+
+typedef struct {
+    /** TLV tag and len; tag equals
+    * WMITLV_TAG_STRUC_wmi_energy_mgmt_pcie_lpm_cmd_fixed_param */
+    A_UINT32 tlv_header;
+    /** enable or disable PCIe LPM */
+    A_UINT32 enable;
+} wmi_energy_mgmt_pcie_lpm_cmd_fixed_param;
+
+typedef struct {
+    /** TLV tag and len; tag equals
+    * WMITLV_TAG_STRUC_wmi_energy_mgmt_dcvs_config_cmd_fixed_param */
+    A_UINT32 tlv_header;
+    /** enable or disable DCVS config */
+    A_UINT32 enable;
+} wmi_energy_mgmt_dcvs_config_cmd_fixed_param;
+
+typedef struct {
+    /** TLV tag and len; tag equals
+    * WMITLV_TAG_STRUC_wmi_energy_mgmt_dps_config_cmd_fixed_param */
+    A_UINT32 tlv_header;
+    /** enable or disable DPS config */
+    A_UINT32 enable;
+    /** PDEV identifier */
+    A_UINT32 pdev_id;
+    /** Channel to be used in DPS Low cap mode, freq must match the primary home chan freq */
+    wmi_channel low_cap_channel;
+    /** Tx chainmask to be used in DPS Low cap mode */
+    A_UINT32 low_cap_tx_chainmask;
+    /** Rx chainmask to be used in DPS Low cap mode */
+    A_UINT32 low_cap_rx_chainmask;
+    /** Mbps throughput after which DPS will be exited and notified to Host */
+    A_UINT32 exit_thpt_thrsld_mbps;
+    /** number of wakeups per second after which DPS will be exited and notified to Host */
+    A_UINT32 exit_wakeup_thrsld_per_second;
+} wmi_energy_mgmt_edps_config_cmd_fixed_param;
+
+typedef struct {
+    /** TLV tag and len; tag equals
+    * WMITLV_TAG_STRUC_wmi_energy_mgmt_puo_config_cmd_fixed_param */
+    A_UINT32 tlv_header;
+    /** enable or disable DPS config */
+    A_UINT32 enable;
+    /** PDEV identifier */
+    A_UINT32 pdev_id;
+    /** Channel to be used in PUO Low cap mode, freq must match the primary home chan freq */
+    wmi_channel low_cap_channel;
+    /** Tx chainmask to be used in Low cap mode */
+    A_UINT32 low_cap_tx_chainmask;
+    /** Rx chainmask to be used in Low cap mode */
+    A_UINT32 low_cap_rx_chainmask;
+    /** minimum duration required between SP end and SP start to trigger entering to doze state */
+    A_UINT32 min_doze_thrsld_in_us;
+} wmi_energy_mgmt_puo_config_cmd_fixed_param;
+
+typedef struct {
+    /** TLV tag and len; tag equals
+    * WMITLV_TAG_STRUC_wmi_energy_mgmt_eco_mode_config_cmd_fixed_param */
+    A_UINT32 tlv_header;
+    /** enable or disable DPS config */
+    A_UINT32 enable;
+    /** PDEV identifier */
+    A_UINT32 pdev_id;
+} wmi_energy_mgmt_eco_mode_config_cmd_fixed_param;
 
 
 

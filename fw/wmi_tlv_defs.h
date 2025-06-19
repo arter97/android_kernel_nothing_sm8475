@@ -1488,6 +1488,12 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_peer_assoc_operating_mode_params,
     WMITLV_TAG_STRUC_wmi_recv_bcn_stats,
     WMITLV_TAG_STRUC_wmi_vdev_vbss_peer_dyn_info,
+    WMITLV_TAG_STRUC_wmi_energy_mgmt_pcie_config_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_energy_mgmt_pcie_lpm_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_energy_mgmt_dcvs_config_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_energy_mgmt_edps_config_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_energy_mgmt_puo_config_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_energy_mgmt_eco_mode_config_cmd_fixed_param,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -2053,6 +2059,12 @@ typedef enum {
     OP(WMI_MLO_LINK_TTLM_COMPLETE_CMDID) \
     OP(WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID) \
     OP(WMI_BPF_SET_APF_MODE_CMDID) \
+    OP(WMI_ENERGY_MGMT_PCIE_CONFIG_CMDID) \
+    OP(WMI_ENERGY_MGMT_PCIE_LPM_CMDID) \
+    OP(WMI_ENERGY_MGMT_DCVS_CONFIG_CMDID) \
+    OP(WMI_ENERGY_MGMT_EDPS_CONFIG_CMDID) \
+    OP(WMI_ENERGY_MGMT_PUO_CONFIG_CMDID) \
+    OP(WMI_ENERGY_MGMT_ECO_MODE_CONFIG_CMDID) \
     /* add new CMD_LIST elements above this line */
 
 
@@ -5782,6 +5794,36 @@ WMITLV_CREATE_PARAM_STRUC(WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID);
 #define WMITLV_TABLE_WMI_BPF_SET_APF_MODE_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_bpf_set_apf_mode_cmd_fixed_param, wmi_bpf_set_apf_mode_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_BPF_SET_APF_MODE_CMDID);
+
+/* WMI cmd used to control PCIe config */
+#define WMITLV_TABLE_WMI_ENERGY_MGMT_PCIE_CONFIG_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_energy_mgmt_pcie_config_cmd_fixed_param, wmi_energy_mgmt_pcie_config_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_ENERGY_MGMT_PCIE_CONFIG_CMDID);
+
+/* WMI cmd used for PCIe LPM config */
+#define WMITLV_TABLE_WMI_ENERGY_MGMT_PCIE_LPM_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_energy_mgmt_pcie_lpm_cmd_fixed_param, wmi_energy_mgmt_pcie_lpm_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_ENERGY_MGMT_PCIE_LPM_CMDID);
+
+/* WMI cmd used to control DCVS config */
+#define WMITLV_TABLE_WMI_ENERGY_MGMT_DCVS_CONFIG_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_energy_mgmt_dcvs_config_cmd_fixed_param, wmi_energy_mgmt_dcvs_config_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_ENERGY_MGMT_DCVS_CONFIG_CMDID);
+
+/* WMI cmd used to control Dynamic AP Power Save config */
+#define WMITLV_TABLE_WMI_ENERGY_MGMT_EDPS_CONFIG_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_energy_mgmt_edps_config_cmd_fixed_param, wmi_energy_mgmt_edps_config_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_ENERGY_MGMT_EDPS_CONFIG_CMDID);
+
+/* WMI cmd used to control Scheduled AP Power Save config */
+#define WMITLV_TABLE_WMI_ENERGY_MGMT_PUO_CONFIG_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_energy_mgmt_puo_config_cmd_fixed_param, wmi_energy_mgmt_puo_config_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_ENERGY_MGMT_PUO_CONFIG_CMDID);
+
+/* WMI cmd used to control Un-scheduled AP Power Save config */
+#define WMITLV_TABLE_WMI_ENERGY_MGMT_ECO_MODE_CONFIG_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_energy_mgmt_eco_mode_config_cmd_fixed_param, wmi_energy_mgmt_eco_mode_config_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_ENERGY_MGMT_ECO_MODE_CONFIG_CMDID);
 
 
 
