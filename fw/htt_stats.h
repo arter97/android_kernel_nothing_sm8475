@@ -680,16 +680,18 @@ enum htt_dbg_ext_stats_type {
         HTT_DBG_ODD_PDEV_BE_TX_MU_OFDMA_STATS =
             HTT_DBG_EXT_STATS_ODD_PDEV_BE_TX_MU_OFDMA,
 
-    /** HTT_DBG_EXT_STATS_ODD_UL_BE_OFDMA
+    /** HTT_DBG_EXT_STATS_ODD_UL_BE_BN_OFDMA
      * PARAMS:
      *   - No Params
      * RESP MSG:
      *   - htt_rx_pdev_be_ul_ofdma_user_stats_tlv
      */
-    HTT_DBG_EXT_STATS_ODD_UL_BE_OFDMA = 60,
-        /* retain the deprecated name as an alias */
+    HTT_DBG_EXT_STATS_ODD_UL_BE_BN_OFDMA = 60,
+        /* retain deprecated names as aliases */
+        HTT_DBG_EXT_STATS_ODD_UL_BE_OFDMA =
+            HTT_DBG_EXT_STATS_ODD_UL_BE_BN_OFDMA,
         HTT_DBG_ODD_UL_BE_OFDMA_STATS =
-            HTT_DBG_EXT_STATS_ODD_UL_BE_OFDMA,
+            HTT_DBG_EXT_STATS_ODD_UL_BE_BN_OFDMA,
 
     /** HTT_DBG_EXT_STATS_ODD_BE_TXBF_OFDMA
      */
@@ -931,11 +933,14 @@ typedef enum {
     HTT_TX_RATE_STATS_DEFAULT,
 
     /*
-     * Upload 11be OFDMA TX stats
+     * Upload 11be and 11bn OFDMA TX stats
      *
      * TLV: htt_tx_pdev_rate_stats_be_ofdma_tlv
      */
-    HTT_TX_RATE_STATS_UPLOAD_11BE_OFDMA,
+    HTT_TX_RATE_STATS_UPLOAD_11BE_11BN_OFDMA,
+        /* retain prior name as an alias */
+        HTT_TX_RATE_STATS_UPLOAD_11BE_OFDMA =
+            HTT_TX_RATE_STATS_UPLOAD_11BE_11BN_OFDMA,
 } htt_tx_rate_stats_upload_t;
 
 /* htt_rx_ul_trigger_stats_upload_t
@@ -950,11 +955,14 @@ typedef enum {
     HTT_RX_UL_TRIGGER_STATS_UPLOAD_11AX_OFDMA,
 
     /*
-     * Upload 11be UL OFDMA RX Trigger stats
+     * Upload 11be and 11bn UL OFDMA RX Trigger stats
      *
      * TLV: htt_rx_pdev_be_ul_trigger_stats_tlv
      */
-    HTT_RX_UL_TRIGGER_STATS_UPLOAD_11BE_OFDMA,
+    HTT_RX_UL_TRIGGER_STATS_UPLOAD_11BE_11BN_OFDMA,
+        /* retain prior name as an alias */
+        HTT_RX_UL_TRIGGER_STATS_UPLOAD_11BE_OFDMA =
+            HTT_RX_UL_TRIGGER_STATS_UPLOAD_11BE_11BN_OFDMA,
 } htt_rx_ul_trigger_stats_upload_t;
 
 /*
@@ -6031,9 +6039,13 @@ typedef enum {
 /* 11be related updates */
 #define HTT_TX_PDEV_STATS_NUM_BE_MCS_COUNTERS 16 /* 0...13,-2,-1 */
 #define HTT_TX_PDEV_STATS_NUM_BE_BW_COUNTERS  5  /* 20,40,80,160,320 MHz */
+/* 11bn MCS counters: all BE MCS indices and 4 UHR iMCS */
+#define HTT_TX_PDEV_STATS_NUM_BN_MCS_COUNTERS 20
+#define HTT_TX_PDEV_STATS_NUM_BN_BW_COUNTERS  5  /* 20,40,80,160,320 MHz */
 
 #define HTT_TX_PDEV_STATS_NUM_HE_SIG_B_MCS_COUNTERS 6
 #define HTT_TX_PDEV_STATS_NUM_EHT_SIG_MCS_COUNTERS 4
+#define HTT_TX_PDEV_STATS_NUM_UHR_SIG_MCS_COUNTERS 4
 
 typedef enum {
     HTT_TX_PDEV_STATS_AX_RU_SIZE_26,
@@ -6065,6 +6077,9 @@ typedef enum {
     HTT_TX_PDEV_STATS_BE_RU_SIZE_996x4,
     HTT_TX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS,
 } HTT_TX_PDEV_STATS_BE_RU_SIZE;
+
+#define HTT_TX_PDEV_STATS_NUM_BN_RU_SIZE_COUNTERS \
+    HTT_TX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS
 
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
@@ -6318,10 +6333,32 @@ typedef struct {
     A_UINT32 be_ofdma_tx_ru_size[HTT_TX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS];
     /** 11BE EHT DL MU OFDMA EHT-SIG MCS stats */
     A_UINT32 be_ofdma_eht_sig_mcs[HTT_TX_PDEV_STATS_NUM_EHT_SIG_MCS_COUNTERS];
+    /** 11BE UHT DL MU OFDMA BA RU size stats */
     A_UINT32 be_ofdma_ba_ru_size[HTT_TX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS];
-} htt_stats_tx_pdev_rate_stats_be_ofdma_tlv;
-/* preserve old name alias for new name consistent with the tag name */
-typedef htt_stats_tx_pdev_rate_stats_be_ofdma_tlv
+
+    /** 11BN UHR DL MU OFDMA LDPC count */
+    A_UINT32 bn_ofdma_tx_ldpc;
+    /** 11BE UHR DL MU OFDMA TX MCS stats */
+    A_UINT32 bn_ofdma_tx_mcs[HTT_TX_PDEV_STATS_NUM_BN_MCS_COUNTERS];
+    /**
+     * 11BN UHR DL MU OFDMA TX NSS stats (Indicates NSS for individual users)
+     */
+    A_UINT32 bn_ofdma_tx_nss[HTT_TX_PDEV_STATS_NUM_SPATIAL_STREAMS];
+    /** 11BN UHR DL MU OFDMA TX BW stats */
+    A_UINT32 bn_ofdma_tx_bw[HTT_TX_PDEV_STATS_NUM_BN_BW_COUNTERS];
+    /** 11BN UHR DL MU OFDMA TX guard interval stats */
+    A_UINT32 bn_ofdma_tx_gi[HTT_TX_PDEV_STATS_NUM_GI_COUNTERS][HTT_TX_PDEV_STATS_NUM_BN_MCS_COUNTERS];
+    /** 11BN UHR DL MU OFDMA TX RU Size stats */
+    A_UINT32 bn_ofdma_tx_ru_size[HTT_TX_PDEV_STATS_NUM_BN_RU_SIZE_COUNTERS];
+    /** 11BN UHR DL MU OFDMA UHR-SIG MCS stats */
+    A_UINT32 bn_ofdma_uhr_sig_mcs[HTT_TX_PDEV_STATS_NUM_UHR_SIG_MCS_COUNTERS];
+    /** 11BN UHR DL MU OFDMA BA RU size stats */
+    A_UINT32 bn_ofdma_ba_ru_size[HTT_TX_PDEV_STATS_NUM_BN_RU_SIZE_COUNTERS];
+} htt_stats_tx_pdev_rate_be_bn_ofdma_tlv;
+/* preserve old names as aliases */
+typedef htt_stats_tx_pdev_rate_be_bn_ofdma_tlv
+    htt_stats_tx_pdev_rate_stats_be_ofdma_tlv;
+typedef htt_stats_tx_pdev_rate_be_bn_ofdma_tlv
     htt_tx_pdev_rate_stats_be_ofdma_tlv;
 
 typedef struct {
@@ -6392,6 +6429,9 @@ typedef struct {
 #define HTT_RX_PDEV_STATS_RXEVM_MAX_PILOTS_PER_NSS 16
 #define HTT_RX_PDEV_STATS_NUM_BE_MCS_COUNTERS 16 /* 0-13, -2, -1 */
 #define HTT_RX_PDEV_STATS_NUM_BE_BW_COUNTERS  5  /* 20,40,80,160,320 MHz */
+/* 802.11BN MCS: all 16 EHT MCS indices and 4 UHR iMCS */
+#define HTT_RX_PDEV_STATS_NUM_BN_MCS_COUNTERS 20
+#define HTT_RX_PDEV_STATS_NUM_BN_BW_COUNTERS  5  /* 20,40,80,160,320 MHz */
 
 /* HTT_RX_PDEV_STATS_NUM_RU_SIZE_COUNTERS:
  * RU size index 0: HTT_UL_OFDMA_V0_RU_SIZE_RU_26
@@ -6432,6 +6472,9 @@ typedef enum {
     HTT_RX_PDEV_STATS_BE_RU_SIZE_996x4,
     HTT_RX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS,
 } HTT_RX_PDEV_STATS_BE_RU_SIZE;
+
+#define HTT_RX_PDEV_STATS_NUM_BN_RU_SIZE_COUNTERS \
+    HTT_RX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS
 
 #define HTT_RX_PDEV_RATE_STATS_MAC_ID_M 0x000000ff
 #define HTT_RX_PDEV_RATE_STATS_MAC_ID_S 0
@@ -6879,14 +6922,59 @@ typedef struct {
     A_UINT32 ul_mlo_proc_qdepth_params_count;
     A_UINT32 ul_mlo_proc_accepted_qdepth_params_count;
     A_UINT32 ul_mlo_proc_discarded_qdepth_params_count;
-} htt_stats_rx_pdev_be_ul_trig_stats_tlv;
-/* preserve old name alias for new name consistent with the tag name */
-typedef htt_stats_rx_pdev_be_ul_trig_stats_tlv
+
+    A_UINT32 rx_11bn_ul_ofdma;
+
+    A_UINT32 bn_ul_ofdma_rx_mcs[HTT_RX_PDEV_STATS_NUM_BN_MCS_COUNTERS];
+    A_UINT32 bn_ul_ofdma_rx_gi[HTT_RX_PDEV_STATS_NUM_GI_COUNTERS][HTT_RX_PDEV_STATS_NUM_BN_MCS_COUNTERS];
+    A_UINT32 bn_ul_ofdma_rx_nss[HTT_RX_PDEV_STATS_NUM_SPATIAL_STREAMS];
+    A_UINT32 bn_ul_ofdma_rx_bw[HTT_RX_PDEV_STATS_NUM_BN_BW_COUNTERS];
+    A_UINT32 bn_ul_ofdma_rx_stbc;
+    A_UINT32 bn_ul_ofdma_rx_ldpc;
+
+    /*
+     * These are arrays to hold the number of PPDUs that we received per RU.
+     * E.g. PPDUs (data or non data) received in RU26 will be incremented in
+     * array offset 0 and similarly RU52 will be incremented in array offset 1
+     */
+    /** PPDU level */
+    A_UINT32 bn_rx_ulofdma_data_ru_size_ppdu[HTT_RX_PDEV_STATS_NUM_BN_RU_SIZE_COUNTERS];
+    /** PPDU level */
+    A_UINT32 bn_rx_ulofdma_non_data_ru_size_ppdu[HTT_RX_PDEV_STATS_NUM_BN_RU_SIZE_COUNTERS];
+
+    /**
+     * STA AID array for identifying which STA the
+     * Target-RSSI / FD-RSSI / pwr headroom stats are for
+     */
+    A_UINT32 bn_uplink_sta_aid[HTT_RX_UL_MAX_UPLINK_RSSI_TRACK];
+    /**
+     * Trig Target RSSI for STA AID in same index - UNIT(dBm)
+     */
+    A_INT32 bn_uplink_sta_target_rssi[HTT_RX_UL_MAX_UPLINK_RSSI_TRACK];
+    /**
+     * Trig FD RSSI from STA AID in same index - UNIT(dBm)
+     */
+    A_INT32 bn_uplink_sta_fd_rssi[HTT_RX_UL_MAX_UPLINK_RSSI_TRACK];
+    /**
+     * Trig power headroom for STA AID in same idx - UNIT(dB)
+     */
+    A_UINT32 bn_uplink_sta_power_headroom[HTT_RX_UL_MAX_UPLINK_RSSI_TRACK];
+
+    /*
+     * Number of UHR UL OFDMA per-user responses containing only a QoS null in
+     * response to basic trigger. Typically a data response is expected.
+     */
+    A_UINT32 bn_ul_ofdma_basic_trigger_rx_qos_null_only;
+} htt_stats_rx_pdev_be_bn_ul_trig_tlv;
+/* preserve old names as aliases */
+typedef htt_stats_rx_pdev_be_bn_ul_trig_tlv
+    htt_stats_rx_pdev_be_ul_trig_stats_tlv;
+typedef htt_stats_rx_pdev_be_bn_ul_trig_tlv
     htt_rx_pdev_be_ul_trigger_stats_tlv;
 
 /* STATS_TYPE : HTT_DBG_EXT_STATS_PDEV_UL_TRIG_STATS
  * TLV_TAGS:
- *      - HTT_STATS_RX_PDEV_BE_UL_TRIG_STATS_TAG
+ *      - HTT_STATS_RX_PDEV_BE_BN_UL_TRIG_TAG
  * NOTE:
  * This structure is for documentation, and cannot be safely used directly.
  * Instead, use the constituent TLV structures to fill/parse.
@@ -6934,6 +7022,22 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_rx_pdev_be_ul_ofdma_user_stats_tlv
     htt_rx_pdev_be_ul_ofdma_user_stats_tlv;
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+
+    A_UINT32 user_index;
+    /** PPDU level */
+    A_UINT32 bn_rx_ulofdma_non_data_ppdu;
+    /** PPDU level */
+    A_UINT32 bn_rx_ulofdma_data_ppdu;
+    /** MPDU level */
+    A_UINT32 bn_rx_ulofdma_mpdu_ok;
+    /** MPDU level */
+    A_UINT32 bn_rx_ulofdma_mpdu_fail;
+    A_UINT32 bn_rx_ulofdma_non_data_nusers;
+    A_UINT32 bn_rx_ulofdma_data_nusers;
+} htt_stats_rx_pdev_bn_ul_ofdma_user_tlv;
 
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
