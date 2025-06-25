@@ -5181,6 +5181,13 @@ typedef struct {
                 reserved: 31;
         };
     };
+    /**
+     * @brief HAPS flags setting for power save config
+     * bit 0 : Enable disable haps feature
+     * bit 1 : Sync and update qtime cnss timestamp
+     * BIT 2-31: Reserved
+     */
+    A_UINT32 dp_haps_config;
 } wmi_resource_config;
 #define WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_GET(word32) \
     WMI_GET_BITS(word32, 0, 1)
@@ -20661,91 +20668,96 @@ enum wmi_sta_ps_scheme_cfg {
     WMI_STA_PS_OPM_CONSERVATIVE = 0,
     WMI_STA_PS_OPM_AGGRESSIVE = 1,
     WMI_STA_PS_USER_DEF = 2,
+    WMI_STA_PS_LATENCY_DEF = 3,
 };
 
 enum wmi_sta_powersave_param {
-/**
- * Controls how frames are retrievd from AP while STA is sleeping
- *
- * (see enum wmi_sta_ps_param_rx_wake_policy)
- */
-WMI_STA_PS_PARAM_RX_WAKE_POLICY = 0,
+    /**
+     * Controls how frames are retrievd from AP while STA is sleeping
+     *
+     * (see enum wmi_sta_ps_param_rx_wake_policy)
+     */
+    WMI_STA_PS_PARAM_RX_WAKE_POLICY = 0,
 
-/**
- * The STA will go active after this many TX
- *
- * (see enum wmi_sta_ps_param_tx_wake_threshold)
- */
-WMI_STA_PS_PARAM_TX_WAKE_THRESHOLD = 1,
+    /**
+     * The STA will go active after this many TX
+     *
+     * (see enum wmi_sta_ps_param_tx_wake_threshold)
+     */
+    WMI_STA_PS_PARAM_TX_WAKE_THRESHOLD = 1,
 
-/**
- * Number of PS-Poll to send before STA wakes up
- *
- * (see enum wmi_sta_ps_param_pspoll_count)
- *
- */
-WMI_STA_PS_PARAM_PSPOLL_COUNT = 2,
+    /**
+     * Number of PS-Poll to send before STA wakes up
+     *
+     * (see enum wmi_sta_ps_param_pspoll_count)
+     *
+     */
+    WMI_STA_PS_PARAM_PSPOLL_COUNT = 2,
 
-/**
- * TX/RX inactivity time in msec before going to sleep.
- *
- * The power save SM will monitor tx/rx activity on the VDEV, if no
- * activity for the specified msec of the parameter the Power save SM will
- * go to sleep.
- */
-WMI_STA_PS_PARAM_INACTIVITY_TIME = 3,
+    /**
+     * TX/RX inactivity time in msec before going to sleep.
+     *
+     * The power save SM will monitor tx/rx activity on the VDEV, if no
+     * activity for the specified msec of the parameter the Power save SM will
+     * go to sleep.
+     */
+    WMI_STA_PS_PARAM_INACTIVITY_TIME = 3,
 
-/**
- * Set uapsd configuration.
- *
- * (see enum wmi_sta_ps_param_uapsd)
- */
-WMI_STA_PS_PARAM_UAPSD = 4,
+    /**
+     * Set uapsd configuration.
+     *
+     * (see enum wmi_sta_ps_param_uapsd)
+     */
+    WMI_STA_PS_PARAM_UAPSD = 4,
 
-/**
- * Number of PS-Poll to send before STA wakes up in QPower Mode
- */
-WMI_STA_PS_PARAM_QPOWER_PSPOLL_COUNT = 5,
+    /**
+     * Number of PS-Poll to send before STA wakes up in QPower Mode
+     */
+    WMI_STA_PS_PARAM_QPOWER_PSPOLL_COUNT = 5,
 
-/**
- * Enable OPM
- */
-WMI_STA_PS_ENABLE_QPOWER = 6,
-    WMI_STA_PS_ENABLE_OPM = WMI_STA_PS_ENABLE_QPOWER, /* alias */
+    /**
+     * Enable OPM
+     */
+    WMI_STA_PS_ENABLE_QPOWER = 6,
+        WMI_STA_PS_ENABLE_OPM = WMI_STA_PS_ENABLE_QPOWER, /* alias */
 
-/**
- * Number of TX frames before the entering the Active state
- */
-WMI_STA_PS_PARAM_QPOWER_MAX_TX_BEFORE_WAKE = 7,
+    /**
+     * Number of TX frames before the entering the Active state
+     */
+    WMI_STA_PS_PARAM_QPOWER_MAX_TX_BEFORE_WAKE = 7,
 
-/**
- * QPower SPEC PSPOLL interval
- */
-WMI_STA_PS_PARAM_QPOWER_SPEC_PSPOLL_WAKE_INTERVAL = 8,
+    /**
+     * QPower SPEC PSPOLL interval
+     */
+    WMI_STA_PS_PARAM_QPOWER_SPEC_PSPOLL_WAKE_INTERVAL = 8,
 
-/**
- * Max SPEC PSPOLL to be sent when the PSPOLL response has
- * no-data bit set
- */
-WMI_STA_PS_PARAM_QPOWER_SPEC_MAX_SPEC_NODATA_PSPOLL = 9,
+    /**
+     * Max SPEC PSPOLL to be sent when the PSPOLL response has
+     * no-data bit set
+     */
+    WMI_STA_PS_PARAM_QPOWER_SPEC_MAX_SPEC_NODATA_PSPOLL = 9,
 
-/**
- * Max value of ITO reset when there is no tx-rx
- * after AP has set the TIM bit
- */
-WMI_STA_PS_PARAM_MAX_RESET_ITO_COUNT_ON_TIM_NO_TXRX = 10,
+    /**
+     * Max value of ITO reset when there is no tx-rx
+     * after AP has set the TIM bit
+     */
+    WMI_STA_PS_PARAM_MAX_RESET_ITO_COUNT_ON_TIM_NO_TXRX = 10,
 
-/**
- * Flag to enable/disable Powersave Optimization
- * in WOW
- */
-WMI_STA_PS_PARAM_ENABLE_PS_OPT_IN_WOW = 11,
+    /**
+     * Flag to enable/disable Powersave Optimization
+     * in WOW
+     */
+    WMI_STA_PS_PARAM_ENABLE_PS_OPT_IN_WOW = 11,
 
-/**
- *  Speculative interval in ms
- */
-WMI_STA_PS_PARAM_SPEC_WAKE_INTERVAL = 12,
+    /**
+     *  Speculative interval in ms
+     */
+    WMI_STA_PS_PARAM_SPEC_WAKE_INTERVAL = 12,
 
+    /**
+     *  Value determines the ITO level to apply
+     */
+    WMI_STA_PS_PARAM_ITO_LEVEL = 13,
 };
 
 typedef struct {

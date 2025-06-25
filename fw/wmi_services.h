@@ -717,6 +717,7 @@ typedef  enum  {
     WMI_SERVICE_EM_ECO_MODE_SUPPORT = 457, /* Indicates support for ECO mode config (LP BBF+ADC+SYNCT) */
 
     WMI_SERVICE_11BN = 458, /* Indicates FW supports 802.11bn */
+    WMI_SERVICE_HOST_AWARE_POWERSAVE = 459, /* FW supports indicating the powerstate of FW to host */
 
 
     WMI_MAX_EXT2_SERVICE
