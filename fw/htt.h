@@ -771,7 +771,10 @@ typedef enum {
     HTT_STATS_AST_ENTRY_TAG                        = 132, /* htt_ast_entry_tlv */
     HTT_STATS_TX_PDEV_BE_DL_MU_OFDMA_STATS_TAG     = 133, /* htt_tx_pdev_dl_be_mu_ofdma_sch_stats_tlv, TOPIC=advanced */
     HTT_STATS_TX_PDEV_BE_UL_MU_OFDMA_STATS_TAG     = 134, /* htt_tx_pdev_ul_be_mu_ofdma_sch_stats_tlv, TOPIC=advanced */
-    HTT_STATS_TX_PDEV_RATE_STATS_BE_OFDMA_TAG      = 135, /* htt_tx_pdev_rate_stats_be_ofdma_tlv */
+    HTT_STATS_TX_PDEV_RATE_BE_BN_OFDMA_TAG         = 135, /* htt_stats_tx_pdev_rate_be_bn_ofdma_tlv */
+        /* retain deprecated name as an alias */
+        HTT_STATS_TX_PDEV_RATE_STATS_BE_OFDMA_TAG =
+             HTT_STATS_TX_PDEV_RATE_BE_BN_OFDMA_TAG,
     HTT_STATS_RX_PDEV_UL_MUMIMO_TRIG_BE_STATS_TAG  = 136, /* htt_rx_pdev_ul_mumimo_trig_be_stats_tlv, TOPIC=advanced */
     HTT_STATS_TX_SELFGEN_BE_ERR_STATS_TAG          = 137, /* htt_tx_selfgen_be_err_stats_tlv, TOPIC=advanced */
     HTT_STATS_TX_SELFGEN_BE_STATS_TAG              = 138, /* htt_tx_selfgen_be_stats_tlv, TOPIC=advanced */
@@ -779,7 +782,10 @@ typedef enum {
     HTT_STATS_TX_PDEV_BE_UL_MU_MIMO_STATS_TAG      = 140, /* htt_tx_pdev_be_ul_mu_mimo_sch_stats_tlv */
     HTT_STATS_RX_PDEV_BE_UL_MIMO_USER_STATS_TAG    = 141, /* htt_rx_pdev_be_ul_mimo_user_stats_tlv */
     HTT_STATS_RX_RING_STATS_TAG                    = 142, /* htt_rx_fw_ring_stats_tlv_v */
-    HTT_STATS_RX_PDEV_BE_UL_TRIG_STATS_TAG         = 143, /* htt_rx_pdev_be_ul_trigger_stats_tlv, TOPIC=advanced */
+    HTT_STATS_RX_PDEV_BE_BN_UL_TRIG_TAG            = 143, /* htt_stats_rx_pdev_be_bn_ul_trig_tlv, TOPIC=advanced */
+        /* retain deprecated name as an alias */
+        HTT_STATS_RX_PDEV_BE_UL_TRIG_STATS_TAG =
+            HTT_STATS_RX_PDEV_BE_BN_UL_TRIG_TAG,
     HTT_STATS_TX_PDEV_SAWF_RATE_STATS_TAG          = 144, /* htt_tx_pdev_rate_stats_sawf_tlv, TOPIC=advanced */
     HTT_STATS_STRM_GEN_MPDUS_TAG                   = 145, /* htt_stats_strm_gen_mpdus_tlv_t */
     HTT_STATS_STRM_GEN_MPDUS_DETAILS_TAG           = 146, /* htt_stats_strm_gen_mpdus_details_tlv_t */
@@ -855,6 +861,7 @@ typedef enum {
     HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_TAG        = 216, /* htt_stats_tx_pdev_pending_seq_cnt_in_hwq_hist_tlv */
     HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_TAG        = 217, /* htt_stats_tx_pdev_pending_seq_cnt_in_txq_hist_tlv */
     HTT_STATS_SCHED_TXQ_EARLY_COMPL_TAG                      = 218, /* htt_stats_sched_txq_early_compl_tlv */
+    HTT_STATS_RX_PDEV_BN_UL_OFDMA_USER_TAG                   = 219, /* htt_stats_rx_pdev_bn_ul_ofdma_user_tlv */
 
     HTT_STATS_MAX_TAG,
 } htt_stats_tlv_tag_t;
