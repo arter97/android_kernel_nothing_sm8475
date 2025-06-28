@@ -270,9 +270,10 @@
  * 3.140 Add H2T MPDUQ_AND_MSDUQ_INFO_HDR and MPDUQ_OF_MSDUQ_INFO defs.
  * 3.141 Add H2T HTT_AST_INFO for RxOLE.
  * 3.142 Add T2H GLOBAL_PEER_ID_UNMAP def, update H2T MPDUQ_OR_MSDUQ_INFO def.
+ * 3.143 Add T2H HAPS msg def.
  */
 #define HTT_CURRENT_VERSION_MAJOR 3
-#define HTT_CURRENT_VERSION_MINOR 142
+#define HTT_CURRENT_VERSION_MINOR 143
 
 #define HTT_NUM_TX_FRAG_DESC  1024
 
@@ -12182,6 +12183,7 @@ enum htt_t2h_msg_type {
     HTT_T2H_MSG_TYPE_SDWF_MSDUQ_CFG_IND            = 0x3c,
     HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ               = 0x3d,
     HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP          = 0x3e,
+    HTT_T2H_MSG_TYPE_HAPS                          = 0x3f,
 
 
     HTT_T2H_MSG_TYPE_TEST,
@@ -24067,6 +24069,124 @@ PREPACK struct htt_t2h_global_peer_id_unmap_t {
         HTT_CHECK_SET_VAL(HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID, _val); \
         ((_var) |= ((_val) << HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_S)); \
     } while (0)
+
+
+/*
+ * @brief target -> pause/unpause host tx queues based on FW indication
+ * MSG_TYPE => HTT_T2H_MSG_TYPE_HAPS
+ *
+ * @details * Header fields:
+ *
+ * |31     22|21         20|19       16|15               8|7             0|
+ * |---------+-------------+-----------+------------------+---------------|
+ * | RSVD    |time_type    |action_code|      vdev_id     |   msg type    |
+ * |----------------------------------------------------------------------|
+ * |                          time_high                                   |
+ * |----------------------------------------------------------------------|
+ * |                          time_low                                    |
+ * |----------------------------------------------------------------------|
+ *
+ * dword0 - b'7:0       - msg_type: This will be set to
+ *                        0x3f (HTT_T2H_MSG_TYPE_HAPS)
+ *          b'15:8      - vdev_id
+ *          b'19:16     - action_code (HTT_T2H_HAPS_ACTION_CODE):
+ *                        b'0000: Pause
+ *                        b'0001: Pause with One-Shot Unpause
+ *                        b'0010: Unpause
+ *                        values 3-15: reserved
+ *          b'21:20     - time_type
+ *          b'31:22     - rsvd
+ * reverse action_code at time specified below
+ * (units are specified by the type_type bitfield)
+ * dword1 - b'31:0      uint32_t time_high
+ * dword2 - b'31:0      uint32_t time_low
+ */
+typedef enum {
+    HTT_T2H_HAPS_ACTION_PAUSE                          = 0x00,
+    HTT_T2H_HAPS_ACTION_PAUSE_WITH_ONESHOT_UNPAUSE     = 0x01,
+    HTT_T2H_HAPS_ACTION_UNPAUSE                        = 0x02,
+} HTT_T2H_HAPS_ACTION_CODE;
+
+typedef enum {
+    HTT_T2H_HAPS_TIME_TYPE_HOST_QTIME                  = 0x00,
+    HTT_T2H_HAPS_TIME_TYPE_TSF                         = 0x01,
+} HTT_T2H_HAPS_TIME_TYPE;
+
+PREPACK struct htt_t2h_power_state_info {
+    uint32_t msg_type : 8,           /* [7:0]   */
+             vdev_id : 8,            /* [15:8]  */
+             action_code : 4,        /* [19:16] */
+             time_type: 2,           /* [21:20] */
+             rsvd: 10;               /* [31:22] */
+    uint32_t time_low;
+    uint32_t time_high;
+} POSTPACK;
+
+#define HTT_T2H_POWER_STATE_INFO_SIZE (sizeof(struct htt_t2h_power_state_info))
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_M                 0x0000FF00
+#define HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_S                          8
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_S)
+#define HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_S));\
+    } while (0)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_M                 0x000F0000
+#define HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_S                         16
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_S)
+#define HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_S));\
+    } while (0)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_M                 0x00300000
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_S                         20
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_S)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_S));\
+    } while (0)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_M                 0xFFFFFFFF
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_S                          0
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_S)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_S));\
+    } while (0)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_M                 0xFFFFFFFF
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_S                          0
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_S)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_S));\
+    } while (0)
+
 
 
 #endif
