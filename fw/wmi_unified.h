@@ -11703,10 +11703,6 @@ typedef struct {
  * This TLV is followed by another TLV of array of bytes
  *   num_channels * size of(struct wmi_channel_stats)
  */
-/* If WMI_REQUEST_VDEV_RECV_BCN_STAT is set in stats_id, then TLV
- * wmi_recv_bcn_stats wmi_recv_bcn_stats[]
- * follows the other TLVs
- */
 } wmi_radio_link_stats_event_fixed_param;
 
 /* per rate statistics */
@@ -12201,6 +12197,10 @@ typedef struct {
  */
 /* If WMI_REQUEST_PDEV_TELEMETRY_STAT is set in stats_id, then TLV
  * wmi_pdev_telemetry_stats wmi_pdev_telemetry_stats[]
+ * follows the other TLVs
+ */
+/* If WMI_REQUEST_VDEV_RECV_BCN_STAT is set in stats_id, then TLV
+ * wmi_recv_bcn_stats wmi_recv_bcn_stats[]
  * follows the other TLVs
  */
 } wmi_stats_event_fixed_param;
@@ -37636,8 +37636,9 @@ typedef struct {
                      supports_11ac:1,
                      supports_11ax:1,
                      supports_11be:1,
+                     supports_11bn:1,
 
-                     unused: 21,
+                     unused: 20,
 
                      max_mubfee: 4; /* max MU beamformees supported per MAC */
         };

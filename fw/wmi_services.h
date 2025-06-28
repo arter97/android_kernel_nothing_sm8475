@@ -716,6 +716,8 @@ typedef  enum  {
     WMI_SERVICE_EM_PUO_SUPPORT = 456, /* Indicates support for TWT based periodic unavailability operation. */
     WMI_SERVICE_EM_ECO_MODE_SUPPORT = 457, /* Indicates support for ECO mode config (LP BBF+ADC+SYNCT) */
 
+    WMI_SERVICE_11BN = 458, /* Indicates FW supports 802.11bn */
+
 
     WMI_MAX_EXT2_SERVICE
 
