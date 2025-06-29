@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -140,7 +140,7 @@ struct wsa_ctrl_platform_data {
 #define WSA881X_OCP_CTL_TEMP_CELSIUS 25
 #define WSA881X_OCP_CTL_POLL_TIMER_SEC 60
 
-#define MAX_NAME_LEN	30
+#define MAX_NAME_LEN	40
 #define WSA881X_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 						SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
 						SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000 |\
@@ -1334,9 +1334,11 @@ static int32_t wsa881x_temp_reg_read(struct snd_soc_component *component,
 
 static int wsa881x_probe(struct snd_soc_component *component)
 {
+	char w_name[MAX_NAME_LEN];
 	struct wsa881x_priv *wsa881x = snd_soc_component_get_drvdata(component);
 	struct swr_device *dev;
-
+	struct snd_soc_dapm_context *dapm =
+			snd_soc_component_get_dapm(component);
 	if (!wsa881x)
 		return -EINVAL;
 
@@ -1358,6 +1360,26 @@ static int wsa881x_probe(struct snd_soc_component *component)
 	wsa881x_init_thermal(&wsa881x->tz_pdata);
 	snd_soc_add_component_controls(component, wsa_snd_controls,
 				   ARRAY_SIZE(wsa_snd_controls));
+
+	memset(w_name, 0, sizeof(w_name));
+	strlcpy(w_name, wsa881x->dai_driver->playback.stream_name,
+				sizeof(w_name));
+	snd_soc_dapm_ignore_suspend(dapm, w_name);
+
+	memset(w_name, 0, sizeof(w_name));
+	strlcpy(w_name, "IN", sizeof(w_name));
+	snd_soc_dapm_ignore_suspend(dapm, w_name);
+
+	memset(w_name, 0, sizeof(w_name));
+	strlcpy(w_name, "SWR DAC_Port", sizeof(w_name));
+	snd_soc_dapm_ignore_suspend(dapm, w_name);
+
+	memset(w_name, 0, sizeof(w_name));
+	strlcpy(w_name, "SPKR", sizeof(w_name));
+	snd_soc_dapm_ignore_suspend(dapm, w_name);
+
+	snd_soc_dapm_sync(dapm);
+
 	INIT_DELAYED_WORK(&wsa881x->ocp_ctl_work, wsa881x_ocp_ctl_work);
 	return 0;
 }
