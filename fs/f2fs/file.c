@@ -985,6 +985,18 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
 	if (unlikely(f2fs_cp_error(F2FS_I_SB(inode))))
 		return -EIO;
 
+	err = setattr_prepare(dentry, attr);
+	if (err)
+		return err;
+
+	err = fscrypt_prepare_setattr(dentry, attr);
+	if (err)
+		return err;
+
+	err = fsverity_prepare_setattr(dentry, attr);
+	if (err)
+		return err;
+
 	if (unlikely(IS_IMMUTABLE(inode)))
 		return -EPERM;
 
@@ -1001,18 +1013,6 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
 			F2FS_BLK_TO_BYTES(F2FS_I(inode)->i_cluster_size)))
 			return -EINVAL;
 	}
-
-	err = setattr_prepare(dentry, attr);
-	if (err)
-		return err;
-
-	err = fscrypt_prepare_setattr(dentry, attr);
-	if (err)
-		return err;
-
-	err = fsverity_prepare_setattr(dentry, attr);
-	if (err)
-		return err;
 
 	if (is_quota_modification(inode, attr)) {
 		err = f2fs_dquot_initialize(inode);
