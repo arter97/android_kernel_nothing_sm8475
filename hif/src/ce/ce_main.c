@@ -1957,7 +1957,7 @@ uint32_t hif_ce_history_max = HIF_CE_HISTORY_MAX;
  */
 #if defined(CONFIG_SLUB_DEBUG_ON)
 #define CE_DESC_HISTORY_BUFF_CNT  CE_COUNT_MAX
-#define IS_CE_DEBUG_ONLY_FOR_CRIT_CE  0
+#define IS_CE_DEBUG_ONLY_FOR_CRIT_CE  0UL
 #else
 /* CE2, CE3, CE7 */
 #define CE_DESC_HISTORY_BUFF_CNT  3
