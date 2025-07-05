@@ -10762,6 +10762,16 @@ typedef struct {
  */
 } wmi_pdev_tpc_config_event_fixed_param;
 
+
+typedef enum {
+    WMI_ASD_PRIMARY_ANT   = 0,
+    WMI_ASD_DIVERSITY_ANT = 1,
+    WMI_ASD_THIRD_ANT     = 2,
+    WMI_ASD_FOURTH_ANT    = 3,
+
+    WMI_ASD_MAX_ANTTYPE = 4
+} WMI_ASD_ANT_TYPE;
+
 typedef struct {
     /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_pdev_div_rssi_antid_event_fixed_param */
     A_UINT32 tlv_header;
@@ -10775,6 +10785,17 @@ typedef struct {
     wmi_mac_addr macaddr;
     /* EVM value for stream0 and stream1 20Mhz, dB units */
     A_INT32 chain_evm[WMI_MAX_CHAINS];
+    /** num_antennas_valid:
+     * how many elements in the WMI_ASD_MAX_ANTTYPE arrays below
+     * contain valid info
+     */
+    A_UINT32 num_antennas_valid;
+    /** switch count on each antenna attached to each chain */
+    A_UINT32 ant_cnt[WMI_MAX_CHAINS][WMI_ASD_MAX_ANTTYPE];
+    /** stay duration on each antenna attached to each chain (units: ms) */
+    A_UINT32 ant_dur[WMI_MAX_CHAINS][WMI_ASD_MAX_ANTTYPE];
+    /** RSSI on each antenna attached to each chain in dbm */
+    A_INT32 ant_rssi[WMI_MAX_CHAINS][WMI_ASD_MAX_ANTTYPE];
 } wmi_pdev_div_rssi_antid_event_fixed_param;
 
 typedef struct {

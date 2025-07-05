@@ -718,6 +718,7 @@ typedef  enum  {
 
     WMI_SERVICE_11BN = 458, /* Indicates FW supports 802.11bn */
     WMI_SERVICE_HOST_AWARE_POWERSAVE = 459, /* FW supports indicating the powerstate of FW to host */
+    WMI_SERVICE_PDEV_DIV_STATES_REPORT = 460, /* FW supports reporting antenna diversity states */
 
 
     WMI_MAX_EXT2_SERVICE
