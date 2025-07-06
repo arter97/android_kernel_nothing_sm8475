@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <dt-bindings/regulator/qcom,rpmh-regulator-levels.h>
@@ -1417,6 +1417,10 @@ void a6xx_gmu_register_config(struct adreno_device *adreno_dev)
 	 */
 	if (!adreno_is_a630(adreno_dev))
 		kgsl_regwrite(device, A6XX_GBIF_HALT, 0x0);
+
+	/* Set vrb address before starting GMU */
+	if (!IS_ERR_OR_NULL(gmu->vrb))
+		gmu_core_regwrite(device, A6XX_GMU_GENERAL_11, gmu->vrb->gmuaddr);
 
 	/* Set the log wptr index */
 	gmu_core_regwrite(device, A6XX_GPU_GMU_CX_GMU_PWR_COL_CP_RESP,
