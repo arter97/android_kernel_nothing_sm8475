@@ -2079,7 +2079,7 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
         "//build/kernel/kleaf:socrepo_false": ["//msm-kernel:all_headers"],
     })
 
-    if chipset == "qca6750" or chipset == "wlan":
+    if chipset == "qca6750" or chipset == "wlan" or chipset == "adrastea":
         deps += [
             "//vendor/qcom/opensource/wlan/platform:{}_icnss2".format(tv),
         ]
