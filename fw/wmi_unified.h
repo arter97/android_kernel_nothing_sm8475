@@ -852,6 +852,9 @@ typedef enum {
     /* WMI command to setup reorder queue for multiple TIDs */
     WMI_PEER_MULTIPLE_REORDER_QUEUE_SETUP_CMDID,
 
+    /** Customize MCS range for specific tid */
+    WMI_PEER_TID_RATE_CUSTOM_CMDID,
+
     /* beacon/management specific commands */
 
     /** transmit beacon by reference . used for transmitting beacon on low latency interface like pcie */
@@ -33862,6 +33865,23 @@ typedef struct {
     A_UINT32 tid_mask; /* bits 0 to 15 = QoS TIDs, bit 16 = non-qos TID */
 } wmi_peer_reorder_queue_remove_cmd_fixed_param;
 
+/**
+ * This command is sent from WLAN host driver to firmware for
+ * customizing MCS range & retry count for specific TID of specific peer
+ */
+typedef struct {
+    A_UINT32 tlv_header;
+    A_UINT32 vdev_id;
+    wmi_mac_addr peer_macaddr; /* Peer MAC address */
+    A_UINT32 tid;
+    /* on_off:
+     * Rate customization enable/disable. 1 for enable and 0 for disable.
+     */
+    A_UINT32 on_off;
+    A_UINT32 bw; /* Unit MHz */
+    A_UINT32 retry_count;
+} wmi_peer_tid_rate_custom_cmd_fixed_param;
+
 
 /* DEPRECATED - use wmi_pdev_set_mac_config_response_event_fixed_param instead */
 typedef struct {
@@ -39486,6 +39506,7 @@ static INLINE A_UINT8 *wmi_id_to_name(A_UINT32 wmi_command)
         WMI_RETURN_STRING(WMI_ENERGY_MGMT_EDPS_CONFIG_CMDID);
         WMI_RETURN_STRING(WMI_ENERGY_MGMT_PUO_CONFIG_CMDID);
         WMI_RETURN_STRING(WMI_ENERGY_MGMT_ECO_MODE_CONFIG_CMDID);
+        WMI_RETURN_STRING(WMI_PEER_TID_RATE_CUSTOM_CMDID);
     }
 
     return (A_UINT8 *) "Invalid WMI cmd";

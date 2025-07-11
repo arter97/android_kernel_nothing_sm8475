@@ -1497,6 +1497,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_peer_assoc_mgmt_mpduq_params,
     WMITLV_TAG_STRUC_wmi_peer_assoc_mgmt_msduq_params,
     WMITLV_TAG_STRUC_wmi_peer_assoc_hol_mdsuq_params,
+    WMITLV_TAG_STRUC_wmi_peer_tid_rate_custom_cmd_fixed_param,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -2068,6 +2069,7 @@ typedef enum {
     OP(WMI_ENERGY_MGMT_EDPS_CONFIG_CMDID) \
     OP(WMI_ENERGY_MGMT_PUO_CONFIG_CMDID) \
     OP(WMI_ENERGY_MGMT_ECO_MODE_CONFIG_CMDID) \
+    OP(WMI_PEER_TID_RATE_CUSTOM_CMDID) \
     /* add new CMD_LIST elements above this line */
 
 
@@ -5830,6 +5832,12 @@ WMITLV_CREATE_PARAM_STRUC(WMI_ENERGY_MGMT_PUO_CONFIG_CMDID);
 #define WMITLV_TABLE_WMI_ENERGY_MGMT_ECO_MODE_CONFIG_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_energy_mgmt_eco_mode_config_cmd_fixed_param, wmi_energy_mgmt_eco_mode_config_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_ENERGY_MGMT_ECO_MODE_CONFIG_CMDID);
+
+/* peer tid rate customization cmd */
+#define WMITLV_TABLE_WMI_PEER_TID_RATE_CUSTOM_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_peer_tid_rate_custom_cmd_fixed_param, wmi_peer_tid_rate_custom_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_UINT32, A_UINT32, rate_code, WMITLV_SIZE_VAR)
+WMITLV_CREATE_PARAM_STRUC(WMI_PEER_TID_RATE_CUSTOM_CMDID);
 
 
 
