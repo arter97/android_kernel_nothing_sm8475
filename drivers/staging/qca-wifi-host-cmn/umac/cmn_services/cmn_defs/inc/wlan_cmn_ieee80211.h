@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2137,6 +2137,7 @@ struct wlan_ml_bv_linfo_perstaprof_stainfo_dtiminfo {
  * @primary_channel: HE 6GHz Primary channel number
  * @width: HE 6GHz BSS Channel Width
  * @duplicate_beacon: HE 6GHz Duplicate beacon field
+ * @reg_info: Power mode
  * @reserved: Reserved bits
  * @chan_freq_seg0: HE 6GHz Channel Centre Frequency Segment 0
  * @chan_freq_seg1: HE 6GHz Channel Centre Frequency Segment 1
@@ -2146,7 +2147,8 @@ struct he_oper_6g_param {
 	uint8_t primary_channel;
 	uint8_t width:2,
 		duplicate_beacon:1,
-		reserved:5;
+		reg_info:4,
+		reserved:1;
 	uint8_t chan_freq_seg0;
 	uint8_t chan_freq_seg1;
 	uint8_t minimum_rate;
