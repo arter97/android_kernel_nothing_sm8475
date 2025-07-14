@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -56,6 +56,7 @@
 #include "wlan_crypto_global_def.h"
 #include "wlan_crypto_global_api.h"
 #include "wlan_cm_bss_score_param.h"
+#include "wlan_mlme_api.h"
 
 #ifdef FEATURE_6G_SCAN_CHAN_SORT_ALGO
 
@@ -981,42 +982,6 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef CONFIG_REG_CLIENT
-/**
- * scm_is_bss_allowed_for_country() - Check if bss is allowed to start for a
- * specific country and power mode (VLP?LPI/SP) for 6GHz.
- * @psoc: psoc ptr
- * @scan_entry: ptr to scan entry
- *
- * Return: True if allowed, False if not.
- */
-static bool scm_is_bss_allowed_for_country(struct wlan_objmgr_psoc *psoc,
-					   struct scan_cache_entry *scan_entry)
-{
-	struct wlan_country_ie *cc_ie;
-	uint8_t programmed_country[REG_ALPHA2_LEN + 1];
-
-	if (wlan_reg_is_6ghz_chan_freq(scan_entry->channel.chan_freq)) {
-		cc_ie = util_scan_entry_country(scan_entry);
-		if (!cc_ie)
-			return false;
-		wlan_reg_read_current_country(psoc, programmed_country);
-		if (cc_ie && qdf_mem_cmp(cc_ie->cc, programmed_country,
-					 REG_ALPHA2_LEN)) {
-			if (wlan_reg_is_us(programmed_country))
-				return false;
-		}
-	}
-	return true;
-}
-#else
-static bool scm_is_bss_allowed_for_country(struct wlan_objmgr_psoc *psoc,
-					   struct scan_cache_entry *scan_entry)
-{
-	return true;
-}
-#endif
-
 QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 {
 	struct wlan_objmgr_psoc *psoc;
@@ -1030,6 +995,7 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 	struct scan_cache_node *scan_node;
 	struct wlan_frame_hdr *hdr = NULL;
 	struct wlan_crypto_params sec_params;
+	enum reg_6g_ap_type power_type_6g;
 
 	if (!bcn) {
 		scm_err("bcn is NULL");
@@ -1188,21 +1154,21 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 		if (scan_obj->cb.update_beacon)
 			scan_obj->cb.update_beacon(pdev, scan_entry);
 
-		/**
-		 * Do not drop the frame if Wi-Fi safe mode or RF test mode is
-		 * enabled. wlan_cm_get_check_6ghz_security API returns true if
-		 * neither Safe mode nor RF test mode are enabled.
-		 */
-		if (!wlan_cm_get_standard_6ghz_conn_policy(psoc) &&
-		    !scm_is_bss_allowed_for_country(psoc, scan_entry) &&
-		    wlan_cm_get_check_6ghz_security(psoc)) {
-			scm_info_rl(
-				"Drop frame from "QDF_MAC_ADDR_FMT
-				": AP in VLP mode not supported for US",
-				QDF_MAC_ADDR_REF(scan_entry->bssid.bytes));
-			util_scan_free_cache_entry(scan_entry);
-			qdf_mem_free(scan_node);
-			continue;
+		if (wlan_reg_is_6ghz_chan_freq(scan_entry->channel.chan_freq)) {
+			status = wlan_reg_get_best_6g_power_type(
+					psoc, pdev, &power_type_6g,
+					scan_entry->ap_pwr_type_6g,
+					scan_entry->channel.chan_freq);
+			if (QDF_IS_STATUS_ERROR(status)) {
+				scm_info_rl(QDF_MAC_ADDR_FMT ": Drop frame(%d) freq %d, as power type %d is not supported",
+					QDF_MAC_ADDR_REF(scan_entry->bssid.bytes),
+					bcn->frm_type,
+					scan_entry->channel.chan_freq,
+					scan_entry->ap_pwr_type_6g);
+				util_scan_free_cache_entry(scan_entry);
+				qdf_mem_free(scan_node);
+				continue;
+			}
 		}
 
 		status = scm_add_update_entry(psoc, pdev, scan_entry);
