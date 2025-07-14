@@ -1007,6 +1007,8 @@ static void this_cpu_set_vectors(enum arm64_bp_harden_el1_vectors slot)
 	isb();
 }
 
+static bool spectre_bhb_fw_mitigated;
+
 void spectre_bhb_enable_mitigation(const struct arm64_cpu_capabilities *entry)
 {
 	bp_hardening_cb_t cpu_cb;
@@ -1074,6 +1076,7 @@ void spectre_bhb_enable_mitigation(const struct arm64_cpu_capabilities *entry)
 
 			state = SPECTRE_MITIGATED;
 			set_bit(BHB_FW, &system_bhb_mitigations);
+			spectre_bhb_fw_mitigated = true;
 		}
 	}
 
@@ -1100,6 +1103,11 @@ void noinstr spectre_bhb_patch_fw_mitigation_enabled(struct alt_instr *alt,
 
 	if (test_bit(BHB_FW, &system_bhb_mitigations))
 		*updptr++ = cpu_to_le32(aarch64_insn_gen_nop());
+}
+
+bool is_spectre_bhb_fw_mitigated(void)
+{
+	return spectre_bhb_fw_mitigated;
 }
 
 /* Patched to correct the immediate */
