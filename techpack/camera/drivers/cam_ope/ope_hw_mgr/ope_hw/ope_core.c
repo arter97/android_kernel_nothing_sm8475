@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -495,6 +495,22 @@ static int dump_stripe_cmd(struct ope_frame_process *frm_proc,
 	return 0;
 }
 
+int ope_validate_buff_offset(size_t buf_len,
+		struct ope_cmd_buf_info *cmd_buf)
+{
+	if ((buf_len <= cmd_buf->offset) ||
+		(cmd_buf->size < cmd_buf->length) ||
+		((buf_len - cmd_buf->offset) < cmd_buf->length)) {
+		CAM_ERR(CAM_OPE, "invalid offset:0x%x, mem_hdl:0x%x buf_len:%llu",
+					cmd_buf->offset,
+					cmd_buf->mem_handle,
+					cmd_buf->length);
+
+		return -EINVAL;
+	} else
+		return 0;
+}
+
 static uint32_t *ope_create_frame_cmd_batch(struct cam_ope_hw_mgr *hw_mgr,
 	struct cam_ope_ctx *ctx_data, uint32_t req_idx,
 	uint32_t *kmd_buf, uint32_t buffered, int batch_idx,
@@ -550,21 +566,29 @@ static uint32_t *ope_create_frame_cmd_batch(struct cam_ope_hw_mgr *hw_mgr,
 		rc = cam_mem_get_io_buf(
 			frm_proc->cmd_buf[i][j].mem_handle,
 			hw_mgr->iommu_cdm_hdl, &iova_addr, &buf_len, NULL);
-		if (rc) {
+		if (rc || !iova_addr || !buf_len) {
 			CAM_ERR(CAM_OPE, "get cmd buf failed %x",
 				hw_mgr->iommu_hdl);
 			return NULL;
 		}
+		rc = ope_validate_buff_offset(buf_len, &frm_proc->cmd_buf[i][j]);
+		if (rc)
+			return NULL;
+
 		iova_addr = iova_addr + frm_proc->cmd_buf[i][j].offset;
 
 		rc = cam_mem_get_cpu_buf(
 			frm_proc->cmd_buf[i][j].mem_handle,
 			&cpu_addr, &buf_len);
-		if (rc || !cpu_addr) {
+		if (rc || !cpu_addr || !buf_len) {
 			CAM_ERR(CAM_OPE, "get cmd buf failed %x",
 				hw_mgr->iommu_hdl);
 			return NULL;
 		}
+
+		rc = ope_validate_buff_offset(buf_len, &frm_proc->cmd_buf[i][j]);
+		if (rc)
+			return NULL;
 
 		cpu_addr = cpu_addr + frm_proc->cmd_buf[i][j].offset;
 		if (frm_proc->cmd_buf[i][j].type ==
@@ -715,17 +739,22 @@ static uint32_t *ope_create_frame_cmd(struct cam_ope_hw_mgr *hw_mgr,
 					hw_mgr->iommu_hdl);
 				return NULL;
 			}
+			rc = ope_validate_buff_offset(buf_len, &frm_proc->cmd_buf[i][j]);
+			if (rc)
+				return NULL;
 			iova_addr = iova_addr + frm_proc->cmd_buf[i][j].offset;
 
 			rc = cam_mem_get_cpu_buf(
 				frm_proc->cmd_buf[i][j].mem_handle,
 				&cpu_addr, &buf_len);
-			if (rc || !cpu_addr) {
+			if (rc || !cpu_addr || !buf_len) {
 				CAM_ERR(CAM_OPE, "get cmd buf failed %x",
 					hw_mgr->iommu_hdl);
 				return NULL;
 			}
-
+			rc = ope_validate_buff_offset(buf_len, &frm_proc->cmd_buf[i][j]);
+			if (rc)
+				return NULL;
 			cpu_addr = cpu_addr + frm_proc->cmd_buf[i][j].offset;
 			if (frm_proc->cmd_buf[i][j].type ==
 				OPE_CMD_BUF_TYPE_DIRECT) {
@@ -829,19 +858,25 @@ static uint32_t *ope_create_stripe_cmd(struct cam_ope_hw_mgr *hw_mgr,
 		CAM_DBG(CAM_OPE, "process stripe %d", stripe_idx);
 		rc = cam_mem_get_io_buf(frm_proc->cmd_buf[i][k].mem_handle,
 			hw_mgr->iommu_cdm_hdl, &iova_addr, &buf_len, NULL);
-		if (rc) {
+		if (rc  || !buf_len || !iova_addr) {
 			CAM_DBG(CAM_OPE, "get cmd buf fail %x",
 				hw_mgr->iommu_hdl);
 			return NULL;
 		}
+		rc = ope_validate_buff_offset(buf_len, &frm_proc->cmd_buf[i][k]);
+		if (rc)
+			return NULL;
 		iova_addr = iova_addr + frm_proc->cmd_buf[i][k].offset;
 		rc = cam_mem_get_cpu_buf(frm_proc->cmd_buf[i][k].mem_handle,
 			&cpu_addr, &buf_len);
-		if (rc || !cpu_addr) {
+		if (rc || !cpu_addr || !buf_len) {
 			CAM_DBG(CAM_OPE, "get cmd buf fail %x",
 				hw_mgr->iommu_hdl);
 			return NULL;
 		}
+		rc = ope_validate_buff_offset(buf_len, &frm_proc->cmd_buf[i][k]);
+		if (rc)
+			return NULL;
 		cpu_addr = cpu_addr + frm_proc->cmd_buf[i][k].offset;
 
 		if (frm_proc->cmd_buf[i][k].type == OPE_CMD_BUF_TYPE_DIRECT) {
