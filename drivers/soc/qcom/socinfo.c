@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2009-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2017-2019, Linaro Ltd.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/err.h>
@@ -1059,6 +1059,7 @@ static const struct soc_id soc_id[] = {
 	{ 602, "RAVELINP" },
 	{ 653, "SG_RAVELIN" },
 	{ 654, "SG_RAVELINP" },
+	{ 734, "MONTAGUEQMB" },
 };
 
 static struct qcom_socinfo *qsocinfo;
