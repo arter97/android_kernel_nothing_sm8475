@@ -1600,10 +1600,8 @@ static QDF_STATUS lim_process_csa_wbw_ie(struct mac_context *mac_ctx,
 
 	ap_new_ch_width = csa_params->new_ch_width + 1;
 
-	if (!csa_params->new_ch_freq_seg1 && !csa_params->new_ch_freq_seg2) {
-		pe_err("CSA wide BW IE has invalid center freq");
+	if (!csa_params->new_ch_freq_seg1 && !csa_params->new_ch_freq_seg2)
 		return QDF_STATUS_E_INVAL;
-	}
 
 	csa_cent_freq = csa_params->csa_chan_freq;
 	if (wlan_reg_is_6ghz_op_class(mac_ctx->pdev,
@@ -1647,7 +1645,7 @@ static QDF_STATUS lim_process_csa_wbw_ie(struct mac_context *mac_ctx,
 		csa_cent_freq1 = cent_freq1;
 		break;
 	default:
-		pe_err("CSA wide BW IE has wrong ch_width %d", ap_new_ch_width);
+		pe_debug("CSA wide BW IE has ch_width %d", ap_new_ch_width);
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -1705,17 +1703,18 @@ static QDF_STATUS lim_process_csa_wbw_ie(struct mac_context *mac_ctx,
 	}
 
 	if (ap_new_ch_width > fw_vht_ch_wd) {
-		pe_debug("New BW is not supported, setting BW to %d",
+		pe_debug("New BW is not supported, downgrade BW to %d",
 			 fw_vht_ch_wd);
 		ap_new_ch_width = fw_vht_ch_wd;
-		ch_params.ch_width = ap_new_ch_width;
-		wlan_reg_set_channel_params_for_freq(mac_ctx->pdev,
-						     csa_params->csa_chan_freq,
-						     0, &ch_params);
-		ap_new_ch_width = ch_params.ch_width;
-		csa_params->new_ch_freq_seg1 = ch_params.center_freq_seg0;
-		csa_params->new_ch_freq_seg2 = ch_params.center_freq_seg1;
 	}
+
+	ch_params.ch_width = ap_new_ch_width;
+	wlan_reg_set_channel_params_for_freq(mac_ctx->pdev,
+					     csa_params->csa_chan_freq,
+					     0, &ch_params);
+	ap_new_ch_width = ch_params.ch_width;
+	csa_params->new_ch_freq_seg1 = ch_params.center_freq_seg0;
+	csa_params->new_ch_freq_seg2 = ch_params.center_freq_seg1;
 
 	session_entry->gLimChannelSwitch.state =
 		eLIM_CHANNEL_SWITCH_PRIMARY_AND_SECONDARY;
@@ -1723,18 +1722,6 @@ static QDF_STATUS lim_process_csa_wbw_ie(struct mac_context *mac_ctx,
 	chnl_switch_info->newChanWidth = ap_new_ch_width;
 	chnl_switch_info->newCenterChanFreq0 = csa_params->new_ch_freq_seg1;
 	chnl_switch_info->newCenterChanFreq1 = csa_params->new_ch_freq_seg2;
-
-	if (session_entry->ch_width == ap_new_ch_width)
-		goto prnt_log;
-
-	if (session_entry->ch_width == CH_WIDTH_80MHZ) {
-		chnl_switch_info->newChanWidth = CH_WIDTH_80MHZ;
-		chnl_switch_info->newCenterChanFreq1 = 0;
-	} else {
-		session_entry->ch_width = ap_new_ch_width;
-		chnl_switch_info->newChanWidth = ap_new_ch_width;
-	}
-prnt_log:
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -2035,13 +2022,12 @@ static void lim_handle_sta_csa_param(struct mac_context *mac_ctx,
 			session_entry->htSupportedChannelWidthSet = true;
 		}
 	}
-	pe_debug("new ch %d freq %d width: %d freq0 %d freq1 %d ht width %d",
-		 lim_ch_switch->primaryChannel,
-		 lim_ch_switch->sw_target_freq,
-		 lim_ch_switch->ch_width,
-		 lim_ch_switch->ch_center_freq_seg0,
+	pe_debug("new ch %d: freq %d width: %d freq0 %d freq1 %d ht width %d, current freq %d: bw %d",
+		 lim_ch_switch->primaryChannel, lim_ch_switch->sw_target_freq,
+		 lim_ch_switch->ch_width, lim_ch_switch->ch_center_freq_seg0,
 		 lim_ch_switch->ch_center_freq_seg1,
-		 lim_ch_switch->sec_ch_offset);
+		 lim_ch_switch->sec_ch_offset, session_entry->curr_op_freq,
+		 session_entry->ch_width);
 
 	if (session_entry->curr_op_freq == csa_params->csa_chan_freq &&
 	    session_entry->ch_width == lim_ch_switch->ch_width) {

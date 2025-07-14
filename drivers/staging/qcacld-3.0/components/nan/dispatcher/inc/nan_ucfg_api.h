@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -537,6 +537,14 @@ bool ucfg_get_disable_6g_nan(struct wlan_objmgr_psoc *psoc);
  */
 bool ucfg_is_mlo_sta_nan_ndi_allowed(struct wlan_objmgr_psoc *psoc);
 
+/**
+ * ucfg_nan_is_allowed() - This API is wrapper for function nan_is_allowed()
+ *
+ * @psoc: pointer to PSOC object
+ *
+ * Return: true if nan  is allowed otherwise false
+ */
+bool ucfg_nan_is_allowed(struct wlan_objmgr_psoc *psoc);
 #else /* WLAN_FEATURE_NAN */
 
 static inline
@@ -676,6 +684,11 @@ ucfg_nan_get_peer_mc_list(struct wlan_objmgr_vdev *vdev,
 
 static inline bool
 ucfg_is_mlo_sta_nan_ndi_allowed(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+
+static inline bool ucfg_nan_is_allowed(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
 }
