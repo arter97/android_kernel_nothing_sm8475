@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1661,6 +1661,7 @@ void qdf_mem_free_debug(void *ptr, const char *func, uint32_t line)
 	qdf_mem_header_assert_valid(header, current_domain, error_bitmap,
 				    func, line);
 
+	qdf_nbuf_detect_track_list_corruption(ptr, header->size);
 	qdf_mem_kmalloc_dec(ksize(header));
 	kfree(header);
 }
