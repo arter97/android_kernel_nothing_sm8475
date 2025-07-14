@@ -829,6 +829,14 @@ enum htt_dbg_ext_stats_type {
      */
     HTT_DBG_EXT_STATS_PDEV_UL_MUMIMO_ELIGIBLE = 74,
 
+    /** HTT_DBG_EXT_STATS_PAPRD_PB
+     * PARAMS:
+     *   - No Params
+     * RESP MSG:
+     *   - htt_stats_phy_paprd_pb_tlv
+     */
+    HTT_DBG_EXT_STATS_PAPRD_PB = 75,
+
 
     /* keep this last */
     HTT_DBG_NUM_EXT_STATS = 256,
@@ -1002,6 +1010,7 @@ typedef enum {
 #define HTT_TX_HWQ_MAX_CMD_STALL_STATS 5
 #define HTT_TX_HWQ_MAX_FES_RESULT_STATS 10
 #define HTT_PDEV_STATS_PPDU_DUR_HIST_BINS 16
+#define HTT_PDEV_STATS_PPDU_DUR_HIST_EXT_BINS 6
 #define HTT_PDEV_STATS_PPDU_DUR_HIST_INTERVAL_US 250
 
 typedef enum {
@@ -2016,6 +2025,22 @@ typedef htt_stats_peer_stats_cmn_tlv htt_peer_stats_cmn_tlv;
 #define HTT_PEER_DETAILS_SRC_INFO_M           0x00000fff
 #define HTT_PEER_DETAILS_SRC_INFO_S           0
 
+#define HTT_PEER_DETAILS_PEER_PS_ENTRY_M       0x000000ff
+#define HTT_PEER_DETAILS_PEER_PS_ENTRY_S       0
+#define HTT_PEER_DETAILS_PEER_PS_EXIT_M        0x0000ff00
+#define HTT_PEER_DETAILS_PEER_PS_EXIT_S        8
+#define HTT_PEER_DETAILS_PEER_PSPOLL_TRIGGER_M 0x00ff0000
+#define HTT_PEER_DETAILS_PEER_PSPOLL_TRIGGER_S 16
+#define HTT_PEER_DETAILS_PEER_UAPSD_TRIGGER_M  0xff000000
+#define HTT_PEER_DETAILS_PEER_UAPSD_TRIGGER_S  24
+
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_0_M 0x000003ff
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_0_S 0
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_1_M 0x000ffc00
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_1_S 10
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_2_M 0x3ff00000
+#define HTT_PEER_DETAILS_PEER_PS_HISTOGRAM_2_S 20
+
 
 #define HTT_PEER_DETAILS_SET(word, httsym, val)  \
     do {                                         \
@@ -2061,6 +2086,34 @@ typedef struct {
                          rsvd1             : 20;  /* [31:12] */
         };
     };
+
+    /* Dword 10 */
+    union {
+        A_UINT32 word__peer_ps_entry__peer_ps_exit__peer_pspoll_trigger_received__peer_uapsd_trigger_received;
+        struct {
+            A_UINT32     peer_ps_entry                : 8, /* [7:0] */
+                         peer_ps_exit                 : 8, /* [15:8] */
+                         peer_pspoll_trigger_received : 8, /* [23:16] */
+                         peer_uapsd_trigger_received  : 8; /* [31:24] */
+        };
+   };
+
+    /* Dword 11 */
+    union {
+        A_UINT32 word__peer_ps_histogram_0__peer_ps_histogram_1__peer_ps_histogram_2;
+        struct {
+            /*
+             * This word holds 3 10-bit histograms of power-save durations:
+             * bits  9:0  - count of durations < 200 ms
+             * bits 19:10 - count of durations between 200 to 500 ms
+             * bits 29:20 - count of durations > 500 ms
+             */
+            A_UINT32     peer_ps_histogram_0 : 10, /* [9:0] */
+                         peer_ps_histogram_1 : 10, /* [19:10] */
+                         peer_ps_histogram_2 : 10, /* [29:20] */
+                         rsvd2               : 2;  /* [31:30] */
+        };
+    };
 } htt_stats_peer_details_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_peer_details_tlv htt_peer_details_tlv;
@@ -2071,6 +2124,21 @@ typedef htt_stats_peer_details_tlv htt_peer_details_tlv;
 #define HTT_STATS_PEER_DETAILS_USE_PPE_GET(word)          ((word >> 21) & 0x1)
 
 #define HTT_STATS_PEER_DETAILS_SRC_INFO_GET(word) ((word >> 0) & 0xfff)
+
+#define HTT_STATS_PEER_DETAILS_PEER_PS_ENTRY_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_ENTRY)
+#define HTT_STATS_PEER_DETAILS_PEER_PS_EXIT_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_EXIT)
+#define HTT_STATS_PEER_DETAILS_PEER_PSPOLL_TRIGGER_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PSPOLL_TRIGGER)
+#define HTT_STATS_PEER_DETAILS_PEER_UAPSD_TRIGGER_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_UAPSD_TRIGGER)
+#define HTT_STATS_PEER_DETAILS_PEER_PS_HISTOGRAM_0_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_HISTOGRAM_0)
+#define HTT_STATS_PEER_DETAILS_PEER_PS_HISTOGRAM_1_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_HISTOGRAM_1)
+#define HTT_STATS_PEER_DETAILS_PEER_PS_HISTOGRAM_2_GET(word) \
+    HTT_PEER_DETAILS_GET(word, PEER_PS_HISTOGRAM_2)
 
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
@@ -5913,6 +5981,8 @@ typedef struct {
     /** tx_ppdu_dur_hist:
      * Tx PPDU duration histogram, which holds the tx duration of PPDUs
      * under histogram bins of interval 250us
+     *
+     * Note that this histogram is extended by tx_ppdu_dur_hist_ext[] below.
      */
     A_UINT32 tx_ppdu_dur_hist[HTT_PDEV_STATS_PPDU_DUR_HIST_BINS];
     A_UINT32 tx_success_time_us_low;
@@ -5926,6 +5996,11 @@ typedef struct {
      * OFDMA PPDUs under histogram bins of interval 250us
      */
     A_UINT32 tx_ofdma_ppdu_dur_hist[HTT_PDEV_STATS_PPDU_DUR_HIST_BINS];
+    /* tx_ppdu_dur_hist_ext:
+     * This array extends the PPDU duration histogram contained in the
+     * tx_ppdu_dur_hist[] array from 4 ms to 5.5 ms.
+     */
+    A_UINT32 tx_ppdu_dur_hist_ext[HTT_PDEV_STATS_PPDU_DUR_HIST_EXT_BINS];
 } htt_stats_tx_pdev_ppdu_dur_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_ppdu_dur_tlv htt_tx_pdev_ppdu_dur_stats_tlv;
@@ -8135,6 +8210,8 @@ typedef struct {
 
     A_UINT32 ru_type; /* refer to htt_stats_ru_type enum */
     htt_tx_rate_stats_t per_ru[HTT_TX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS];
+
+    htt_tx_rate_stats_t per_tx_su_punctured_mode[HTT_TX_PDEV_STATS_NUM_PUNCTURED_MODE_COUNTERS];
 } htt_stats_per_rate_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_per_rate_stats_tlv htt_tx_rate_stats_per_tlv;
@@ -10463,6 +10540,56 @@ typedef struct {
     htt_stats_vdev_txrx_stats_hw_stats_tlv vdev_hw_stats[1/*or more*/];
 } htt_vdevs_txrx_stats_t;
 #endif /* ATH_TARGET */
+
+/* PAPRD and power boost stats and counters */
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+
+    /** current pdev_id */
+    A_UINT32 pdev_id;
+    /** DPD and PowerBoost trigger count */
+    A_UINT32 total_dpd_cal_count;
+    A_UINT32 chan_change_dpd_cal_count;
+    A_UINT32 thermal_dpd_cal_count;
+    A_UINT32 recovery_dpd_cal_count;
+    A_UINT32 pb_cal_count;
+    /** DPD and PowerBoost Fail Count */
+    A_UINT32 total_dpd_fail_count;
+    A_UINT32 chan_change_dpd_fail_count;
+    A_UINT32 thermal_dpd_fail_count;
+    A_UINT32 recovery_dpd_fail_count;
+    A_UINT32 pb_fail_count;
+
+    /*
+     * DPD and Power Boost validity status
+     *
+     * BIT 0 - DPD_CAL_STATUS
+     * BIT 1 - PB_CAL_STATUS
+     *
+     * CAL_STATUS can be interpreted as below
+     * CAL_SUCCESS = 1
+     * CAL_FAIL = 0
+     */
+    union {
+        A_UINT32 dpd_pb_validity_status;
+        struct {
+            A_UINT32 is_dpd_valid:1,
+                     is_pb_valid:1,
+                     rsvd:30;
+        };
+    };
+
+    /** Last DPD cal time in ms */
+    A_UINT32 last_dpd_cal_time;
+
+    /** Last Power Boost cal time in ms */
+    A_UINT32 last_pb_cal_time;
+
+    /** Power Boost gain per BW and MCS, in 0.25 dB units
+     * For example, a value of 2 represents a 0.5 dB gain.
+     */
+    A_UINT32 power_boost_gain[HTT_TX_PDEV_STATS_NUM_BE_BW_COUNTERS][HTT_TX_PDEV_STATS_NUM_BE_MCS_COUNTERS];
+} htt_stats_phy_paprd_pb_tlv;
 
 typedef struct {
     union {
