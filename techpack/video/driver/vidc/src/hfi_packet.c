@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "hfi_packet.h"
@@ -295,6 +295,13 @@ int get_hfi_buffer(struct msm_vidc_inst *inst,
 	buf->base_address = buffer->device_addr;
 	buf->addr_offset = 0;
 	buf->buffer_size = buffer->buffer_size;
+	/*
+	 * * for decoder input buffers, firmware (BSE HW) needs 256 aligned
+	 * * buffer size otherwise it will truncate or ignore the data after 256
+	 * * aligned size which may lead to error concealment
+	 */
+	if (is_decode_session(inst) && is_input_buffer(buffer->type))
+		buf->buffer_size = ALIGN(buffer->buffer_size, 256);
 	buf->data_offset = buffer->data_offset;
 	buf->data_size = buffer->data_size;
 	if (buffer->attr & MSM_VIDC_ATTR_READ_ONLY)

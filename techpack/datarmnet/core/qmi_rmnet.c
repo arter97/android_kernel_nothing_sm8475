@@ -637,6 +637,13 @@ qmi_rmnet_setup_client(void *port, struct qmi_info *qmi, struct tcmsg *tcm)
 			err = dfc_qmap_client_init(port, idx, &svc, qmi);
 		else
 			err = dfc_qmi_client_init(port, idx, &svc, qmi);
+
+		if (err) {
+			rmnet_reset_qmi_pt(port);
+			kfree(qmi);
+			return err;
+		}
+
 		qmi->dfc_client_exiting[idx] = false;
 	}
 

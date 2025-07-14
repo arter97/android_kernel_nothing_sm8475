@@ -1,3 +1,6 @@
+261dce3d6402 workqueue: Initialize wq_isolated_cpumask in workqueue_init_early()
+2fba13371fe8 mm/vmalloc: Gracefully unmap huge ptes
+c0d0a9ff6d5b block: remove test of incorrect io priority level
 3685024edd27 mm: don't skip arch_sync_kernel_mappings() in error paths
 fe52c649438b dma-fence: Use kernel's sort for merging fences
 8ce41b0f9d77 mm: fix NULL pointer dereference in alloc_pages_bulk_noprof
