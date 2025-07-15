@@ -3348,6 +3348,22 @@ typedef struct {
     A_UINT32 ax_mu_bar_trigger_per_ac[HTT_NUM_AC_WMM];
     /** 11AX HE MU-BAR Trigger frames per AC completed with error(s) */
     A_UINT32 ax_mu_bar_trigger_errors_per_ac[HTT_NUM_AC_WMM];
+    /** 11AX HE MU Combined UL OFDMA Basic Trigger frame sent over the air */
+    A_UINT32 combined_ax_ulofdma_trigger_tried[HTT_NUM_AC_WMM];
+    /** 11AX HE MU Combined UL OFDMA Basic Trigger completed with error(s) */
+    A_UINT32 combined_ax_ulofdma_trigger_err[HTT_NUM_AC_WMM];
+    /** 11AX HE MU Standalone UL OFDMA Basic Trigger frame sent over the air */
+    A_UINT32 standalone_ax_ulofdma_trigger_tried[HTT_NUM_AC_WMM];
+    /** 11AX HE MU Standalone UL OFDMA Basic Trigger completed with error(s) */
+    A_UINT32 standalone_ax_ulofdma_trigger_err[HTT_NUM_AC_WMM];
+    /** 11AX HE MU Combined UL MU-MIMO Basic Trigger frame sent over the air */
+    A_UINT32 combined_ax_ulmumimo_trigger_tried[HTT_NUM_AC_WMM];
+    /** 11AX HE MU Combined UL MU-MIMO Basic Trigger completed with error(s) */
+    A_UINT32 combined_ax_ulmumimo_trigger_err[HTT_NUM_AC_WMM];
+    /** 11AX HE MU Standalone UL MU-MIMO Basic Trigger frame sent over the air*/
+    A_UINT32 standalone_ax_ulmumimo_trigger_tried[HTT_NUM_AC_WMM];
+    /** 11AX HE MU Standalone UL MU-MIMO Basic Trigger completed with error(s)*/
+    A_UINT32 standalone_ax_ulmumimo_trigger_err[HTT_NUM_AC_WMM];
 } htt_stats_tx_selfgen_ax_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_selfgen_ax_stats_tlv htt_tx_selfgen_ax_stats_tlv;
@@ -3413,6 +3429,22 @@ typedef struct {
     A_UINT32 be_mu_bar_trigger_per_ac[HTT_NUM_AC_WMM];
     /** 11BE EHT MU-BAR Trigger frames per AC completed with error(s) */
     A_UINT32 be_mu_bar_trigger_errors_per_ac[HTT_NUM_AC_WMM];
+    /** 11BE EHT MU Combined UL OFDMA Basic Trigger frame sent over the air */
+    A_UINT32 combined_be_ulofdma_trigger_tried[HTT_NUM_AC_WMM];
+    /** 11BE EHT MU Combined UL OFDMA Basic Trigger completed with error(s) */
+    A_UINT32 combined_be_ulofdma_trigger_err[HTT_NUM_AC_WMM];
+    /** 11BE EHT MU Standalone UL OFDMA Basic Trigger frame sent over the air */
+    A_UINT32 standalone_be_ulofdma_trigger_tried[HTT_NUM_AC_WMM];
+    /** 11BE EHT MU Standalone UL OFDMA Basic Trigger completed with error(s) */
+    A_UINT32 standalone_be_ulofdma_trigger_err[HTT_NUM_AC_WMM];
+    /** 11BE EHT MU Combined UL MU-MIMO Basic Trigger frame sent over the air */
+    A_UINT32 combined_be_ulmumimo_trigger_tried[HTT_NUM_AC_WMM];
+    /** 11BE EHT MU Combined UL MU-MIMO Basic Trigger completed with error(s) */
+    A_UINT32 combined_be_ulmumimo_trigger_err[HTT_NUM_AC_WMM];
+    /** 11BE EHT MU Standalone UL MU-MIMO Basic Trigger frame sent over the air */
+    A_UINT32 standalone_be_ulmumimo_trigger_tried[HTT_NUM_AC_WMM];
+    /** 11BE EHT MU Standalone UL MU-MIMO Basic Trigger completed with error(s) */
+    A_UINT32 standalone_be_ulmumimo_trigger_err[HTT_NUM_AC_WMM];
 } htt_stats_tx_selfgen_be_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_selfgen_be_stats_tlv htt_tx_selfgen_be_stats_tlv;
