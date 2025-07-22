@@ -1498,6 +1498,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_peer_assoc_mgmt_msduq_params,
     WMITLV_TAG_STRUC_wmi_peer_assoc_hol_mdsuq_params,
     WMITLV_TAG_STRUC_wmi_peer_tid_rate_custom_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_co_located_chan_info,
 } WMITLV_TAG_ID;
 /*
  * IMPORTANT: Please add _ALL_ WMI Commands Here.
@@ -3650,7 +3651,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_DELETE_CMDID);
 
 /* Vdev up Cmd */
 #define WMITLV_TABLE_WMI_VDEV_UP_CMDID(id,op,buf,len)   \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_up_cmd_fixed_param, wmi_vdev_up_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_up_cmd_fixed_param, wmi_vdev_up_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_co_located_chan_info, co_located_chan_info, WMITLV_SIZE_VAR)
 
 WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_UP_CMDID);
 
