@@ -9895,6 +9895,29 @@ typedef struct {
     A_UINT32 num_terminate_seq_inefficient;
     /* Histogram of sequence inefficiency */
     A_UINT32 hist_seq_efficiency[HTT_STATS_SEQ_EFFICIENCY_HISTOGRAM];
+    /* CTS2SELF sequences posted */
+    A_UINT32 num_cts2self_ulmumimo_seq_posted;
+    /* Number of times ULMUMIMO classification is set to high */
+    A_UINT32 num_ulmumimo_high_traffic;
+    /* Number of times ULMUMIMO classification is set to medium */
+    A_UINT32 num_ulmumimo_medium_traffic;
+    /* Number of times ULMUMIMO classification is set to low */
+    A_UINT32 num_ulmumimo_low_traffic;
+    /*
+     * Number of times ULMUMIMO sequence is terminated
+     * for high traffic classification
+     */
+    A_UINT32 num_terminate_seq_high_traffic;
+    /*
+     * Number of times ULMUMIMO sequence is terminated
+     * for medium traffic classification
+     */
+    A_UINT32 num_terminate_seq_medium_traffic;
+    /*
+     * Number of times ULMUMIMO sequence is terminated
+     * for low traffic classification
+     */
+    A_UINT32 num_terminate_seq_low_traffic;
 } htt_stats_pdev_ulmumimo_seq_term_stats_tlv;
 
 #define HTT_STATS_MAX_ULMUMIMO_TRIGGERS 6
