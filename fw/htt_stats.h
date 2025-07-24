@@ -6405,6 +6405,7 @@ typedef struct {
     A_UINT32 ofdma_ba_ru_size[HTT_TX_PDEV_STATS_NUM_AX_RU_SIZE_COUNTERS];
     /** Number of tx 2xldpc packets */
     A_UINT32 tx_2xldpc;
+    A_UINT32 rc_state_probe_mismatched;
 } htt_stats_tx_pdev_rate_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_rate_stats_tlv htt_tx_pdev_rate_stats_tlv;
@@ -8891,6 +8892,20 @@ typedef enum {
     HTT_STATS_RU_TYPE_SINGLE_AND_MULTI_RU = 2,
 } htt_stats_ru_type;
 
+typedef enum {
+    HTT_TX_PER_RATE_STATS_LOW_QUEUE_DEPTH = 0,
+    HTT_TX_PER_RATE_STATS_HIGH_QUEUE_DEPTH = 1,
+
+    HTT_TX_PER_RATE_STATS_NUM_QUEUE_DEPTH_COUNTERS = 2
+} HTT_TX_PER_RATE_STATS_NUM_QUEUE_DEPTH_TYPE;
+
+typedef enum {
+    HTT_TX_PER_RATE_STATS_MLO_RA_DD_NO_MCS_DROP = 0,
+    HTT_TX_PER_RATE_STATS_MLO_RA_DD_ONE_OR_MORE_MCS_DROP = 1,
+
+    HTT_TX_PER_RATE_STATS_NUM_MLO_RA_DD_MCS_DROP_COUNTERS = 2
+} HTT_TX_PER_RATE_STATS_NUM_MLO_RA_DD_MCS_DROP_TYPE;
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
@@ -8918,6 +8933,19 @@ typedef struct {
     htt_tx_rate_stats_t per_ru[HTT_TX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS];
 
     htt_tx_rate_stats_t per_tx_su_punctured_mode[HTT_TX_PDEV_STATS_NUM_PUNCTURED_MODE_COUNTERS];
+
+    /* mlo_ra_queue_depth_status:
+     * MLO SU Tx low/high queue depth PPDU counter,
+     *     mlo_ra_queue_depth_status[0]: lowq depth
+     *     mlo_ra_queue_depth_status[1]: high queue depth
+     */
+    A_UINT32 mlo_ra_queue_depth_status[HTT_TX_PER_RATE_STATS_NUM_QUEUE_DEPTH_COUNTERS];
+    /* mlo_rate_drop_down:
+     * MLO RA MCS drop counter,
+     *     mlo_rate_drop_down[0]: No MCS drop
+     *     mlo_rate_drop_down[1]: MCS drop counter
+     */
+    A_UINT32 mlo_rate_drop_down[HTT_TX_PER_RATE_STATS_NUM_MLO_RA_DD_MCS_DROP_COUNTERS];
 } htt_stats_per_rate_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_per_rate_stats_tlv htt_tx_rate_stats_per_tlv;
