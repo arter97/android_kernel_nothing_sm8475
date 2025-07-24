@@ -6163,6 +6163,19 @@ typedef struct {
         ((_var) |= ((_val) << HTT_TX_PDEV_RATE_STATS_MAC_ID_S)); \
     } while (0)
 
+#define HTT_TX_PDEV_RATE_STATS_WIFI_VERSION_M 0x00000f00
+#define HTT_TX_PDEV_RATE_STATS_WIFI_VERSION_S 8
+
+#define HTT_TX_PDEV_RATE_STATS_WIFI_VERSION_GET(_var) \
+    (((_var) & HTT_TX_PDEV_RATE_STATS_WIFI_VERSION_M) >> \
+     HTT_TX_PDEV_RATE_STATS_WIFI_VERSION_S)
+
+#define HTT_TX_PDEV_RATE_STATS_WIFI_VERSION_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_TX_PDEV_RATE_STATS_WIFI_VERSION, _val); \
+        ((_var) |= ((_val) << HTT_TX_PDEV_RATE_STATS_WIFI_VERSION_S)); \
+    } while (0)
+
 #define HTT_TX_PDEV_STATS_NUM_MCS_DROP_COUNTERS \
     (HTT_TX_PDEV_STATS_NUM_MCS_COUNTERS + \
      HTT_TX_PDEV_STATS_NUM_EXTRA_MCS_COUNTERS + \
@@ -6230,17 +6243,33 @@ typedef enum {
 #define HTT_TX_PDEV_STATS_NUM_BN_RU_SIZE_COUNTERS \
     HTT_TX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS
 
+typedef enum {
+    HTT_WIFI_VER_UNKNOWN = 0,
+    HTT_WIFI_VER_11N  = 4,
+    HTT_WIFI_VER_11AC = 5,
+    HTT_WIFI_VER_11AX = 6,
+    HTT_WIFI_VER_11BE = 7,
+    HTT_WIFI_VER_11BN = 8,
+} HTT_RX_TX_PDEV_STATS_WIFI_VERSION;
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
     /**
      * BIT [ 7 :  0]   :- mac_id
-     * BIT [31 :  8]   :- reserved
+     * BIT [11 :  8]   :- wifi_version
+     * BIT [31 : 12]   :- reserved
      */
     union {
         struct {
-            A_UINT32 mac_id:    8,
-                     reserved: 24;
+            A_UINT32 mac_id:        8,
+                     /* wifi_version:
+                      * Holds a HTT_RX_TX_PDEV_STATS_WIFI_VERSION value.
+                      * Refer to HTT_TX_PDEV_RATE_STATS_WIFI_VERSION_GET
+                      * / _SET macros for accessing this bitfield.
+                      */
+                     wifi_version:  4,
+                     reserved:     20;
         };
         A_UINT32 mac_id__word;
     };
@@ -6374,6 +6403,8 @@ typedef struct {
     A_UINT32 extra_eht_ltf_ofdma;
     /** 11AX HE UL_BA RU Size stats */
     A_UINT32 ofdma_ba_ru_size[HTT_TX_PDEV_STATS_NUM_AX_RU_SIZE_COUNTERS];
+    /** Number of tx 2xldpc packets */
+    A_UINT32 tx_2xldpc;
 } htt_stats_tx_pdev_rate_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_rate_stats_tlv htt_tx_pdev_rate_stats_tlv;
@@ -6859,6 +6890,19 @@ typedef struct {
 } htt_rx_pdev_rate_stats_t;
 #endif /* ATH_TARGET */
 
+#define HTT_RX_EXT_PDEV_RATE_STATS_WIFI_VERSION_M 0x0000000f
+#define HTT_RX_EXT_PDEV_RATE_STATS_WIFI_VERSION_S 0
+
+#define HTT_RX_EXT_PDEV_RATE_STATS_WIFI_VERSION_GET(_var) \
+    (((_var) & HTT_RX_EXT_PDEV_RATE_STATS_WIFI_VERSION_M) >> \
+     HTT_RX_EXT_PDEV_RATE_STATS_WIFI_VERSION_S)
+
+#define HTT_RX_EXT_PDEV_RATE_STATS_WIFI_VERSION_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_RX_EXT_PDEV_RATE_STATS_WIFI_VERSION, _val); \
+        ((_var) |= ((_val) << HTT_RX_EXT_PDEV_RATE_STATS_WIFI_VERSION_S)); \
+    } while (0)
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
     /** units = dB above noise floor */
@@ -6888,6 +6932,25 @@ typedef struct {
     A_UINT32 reduced_rx_bw[HTT_RX_PDEV_STATS_NUM_REDUCED_CHAN_TYPES][HTT_RX_PDEV_STATS_NUM_BW_COUNTERS];
     A_UINT8  rssi_chain_ext_2[HTT_RX_PDEV_STATS_NUM_SPATIAL_STREAMS][HTT_RX_PDEV_STATS_NUM_BW_EXT_2_COUNTERS]; /* units = dB above noise floor */
     A_INT8   rx_per_chain_rssi_ext_2_in_dbm[HTT_RX_PDEV_STATS_NUM_SPATIAL_STREAMS][HTT_RX_PDEV_STATS_NUM_BW_EXT_2_COUNTERS];
+    /**
+     * BIT [ 3 :  0]   :- wifi_version
+     * BIT [31 :  4]   :- reserved
+     */
+    union {
+        struct {
+            A_UINT32
+                     /* wifi_version:
+                      * Holds a HTT_RX_TX_PDEV_STATS_WIFI_VERSION value.
+                      * Refer to HTT_RX_EXT_PDEV_RATE_STATS_WIFI_VERSION_GET
+                      * / _SET macros for accessing this bitfield.
+                      */
+                     wifi_version:  4,
+                     reserved:     28;
+        };
+        A_UINT32 wifi_version__word;
+    };
+    /** Number of rx 2xldpc packets */
+    A_UINT32 rx_2xldpc;
 } htt_stats_rx_pdev_rate_ext_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_rx_pdev_rate_ext_stats_tlv htt_rx_pdev_rate_ext_stats_tlv;
