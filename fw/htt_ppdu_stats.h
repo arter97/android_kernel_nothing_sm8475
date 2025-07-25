@@ -1940,6 +1940,19 @@ typedef enum HTT_PPDU_STATS_RESP_PPDU_TYPE HTT_PPDU_STATS_RESP_PPDU_TYPE;
         ((_var) |= ((_val) << HTT_PPDU_STATS_USER_RATE_TLV_IS_MIN_RATE_S)); \
     } while (0)
 
+#define HTT_PPDU_STATS_USER_RATE_TLV_2xLDPC_M  0x00040000
+#define HTT_PPDU_STATS_USER_RATE_TLV_2xLDPC_S          18
+
+#define HTT_PPDU_STATS_USER_RATE_TLV_2xLDPC_GET(_var) \
+    (((_var) & HTT_PPDU_STATS_USER_RATE_TLV_2xLDPC_M) >> \
+    HTT_PPDU_STATS_USER_RATE_TLV_2xLDPC_S)
+
+#define HTT_PPDU_STATS_USER_RATE_TLV_2xLDPC_SET (_var , _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_PPDU_STATS_USER_RATE_TLV_2XLDPC, _val); \
+        ((_var) |= ((_val) << HTT_PPDU_STATS_USER_RATE_TLV_2xLDPC_S)); \
+    } while (0)
+
 typedef enum HTT_PPDU_STATS_RU_SIZE {
     HTT_PPDU_STATS_RU_26,
     HTT_PPDU_STATS_RU_52,
@@ -2127,11 +2140,14 @@ typedef struct {
      *                punctured.
      * BIT 16      :- flag showing whether EHT extra LTF is applied
      *                for current PPDU
+     * BIT 17      :- flag to show is_min_rate
+     * BIT 18      :- flag showing whether PPDU is transmitted with 2xLDPC
      */
     A_UINT32 punc_pattern_bitmap: 16,
              extra_eht_ltf:       1,
              is_min_rate:         1,
-             reserved4:           14;
+             is_2xldpc:           1,
+             reserved4:           13;
 } htt_ppdu_stats_user_rate_tlv;
 
 #define HTT_PPDU_STATS_USR_RATE_VALID_M     0x80000000
