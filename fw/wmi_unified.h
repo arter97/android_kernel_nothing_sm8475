@@ -37633,6 +37633,9 @@ typedef enum wmi_hw_mode_config_type {
 #define WMI_SUPPORT_11BE_GET(flags) WMI_GET_BITS(flags, 6, 1)
 #define WMI_SUPPORT_11BE_SET(flags, value) WMI_SET_BITS(flags, 6, 1, value)
 
+#define WMI_SUPPORT_11BN_GET(flags) WMI_GET_BITS(flags, 7, 1)
+#define WMI_SUPPORT_11BN_SET(flags, value) WMI_SET_BITS(flags, 7, 1, value)
+
 #define WMI_MAX_MUBFEE_GET(flags) WMI_GET_BITS(flags, 28, 4)
 #define WMI_MAX_MUBFEE_SET(flags, value) WMI_SET_BITS(flags, 28, 4, value)
 
