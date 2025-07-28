@@ -866,6 +866,8 @@ typedef enum {
     HTT_STATS_TX_SELFGEN_BN_ERR_TAG                 = 220, /* htt_stats_tx_selfgen_bn_err_tlv, TOPIC=advanced */
     HTT_STATS_TX_SELFGEN_BN_TAG                     = 221, /* htt_stats_tx_selfgen_bn_tlv, TOPIC=advanced */
     HTT_STATS_TX_SELFGEN_BN_SCHED_STATUS_TAG        = 222, /* htt_stats_tx_selfgen_bn_sched_status_tlv, TOPIC=advanced */
+    HTT_STATS_TX_PDEV_BN_DL_MU_OFDMA_STATS_TAG      = 223, /* htt_stats_tx_pdev_bn_dl_mu_ofdma_tlv, TOPIC=advanced */
+    HTT_STATS_TX_PDEV_BN_UL_MU_OFDMA_STATS_TAG      = 224, /* htt_stats_tx_pdev_bn_ul_mu_ofdma_tlv, TOPIC=advanced */
 
     HTT_STATS_MAX_TAG,
 } htt_stats_tlv_tag_t;

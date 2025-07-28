@@ -919,6 +919,25 @@ typedef enum {
      * TLV: htt_tx_pdev_ul_be_mu_ofdma_sch_stats_tlv
      */
     HTT_UPLOAD_BE_UL_MU_OFDMA_STATS,
+
+    /*
+     * Upload BN UL MU-OFDMA + BN DL MU-OFDMA stats,
+     * TLV: htt_stats_tx_pdev_bn_dl_mu_ofdma_tlv and
+     * htt_stats_tx_pdev_bn_ul_mu_ofdma_tlv
+     */
+    HTT_UPLOAD_BN_MU_OFDMA_STATS,
+
+    /*
+     * Upload BN DL MU-OFDMA
+     * TLV: htt_stats_tx_pdev_bn_dl_mu_ofdma_tlv
+     */
+    HTT_UPLOAD_BN_DL_MU_OFDMA_STATS,
+
+    /*
+     * Upload BN UL MU-OFDMA
+     * TLV: htt_stats_tx_pdev_bn_ul_mu_ofdma_tlv
+     */
+    HTT_UPLOAD_BN_UL_MU_OFDMA_STATS,
 } htt_mu_stats_upload_t;
 
 /* htt_tx_rate_stats_upload_t
@@ -3135,6 +3154,7 @@ typedef enum {
 #define HTT_TX_PDEV_STATS_NUM_AX_MUMIMO_USER_STATS 8
 #define HTT_TX_PDEV_STATS_NUM_BE_MUMIMO_USER_STATS 8
 #define HTT_TX_PDEV_STATS_NUM_OFDMA_USER_STATS 74
+#define HTT_TX_PDEV_STATS_NUM_BN_OFDMA_USER_STATS 16
 #define HTT_TX_PDEV_STATS_NUM_UL_MUMIMO_USER_STATS 8
 #define HTT_STATS_MAX_MUMIMO_GRP_SZ 8
 /*
@@ -4400,6 +4420,12 @@ typedef htt_stats_tx_pdev_be_dl_mu_ofdma_stats_tlv
 
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
+    /** Represents the count for 11BN DL MU OFDMA sequences */
+    A_UINT32 bn_mu_ofdma_sch_nusers[HTT_TX_PDEV_STATS_NUM_BN_OFDMA_USER_STATS];
+} htt_stats_tx_pdev_bn_dl_mu_ofdma_tlv;
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
     /**
      * Represents the count for 11AX UL MU OFDMA sequences with Basic Triggers
      */
@@ -4443,6 +4469,25 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_be_ul_mu_ofdma_stats_tlv
     htt_tx_pdev_be_ul_mu_ofdma_sch_stats_tlv;
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    /**
+     * Represents the count for 11BN UL MU OFDMA sequences with Basic Triggers
+     */
+    A_UINT32 bn_ul_mu_ofdma_basic_sch_nusers[HTT_TX_PDEV_STATS_NUM_BN_OFDMA_USER_STATS];
+    /**
+     * Represents the count for 11BN UL MU OFDMA sequences with BSRP Triggers
+     */
+    A_UINT32 bn_ul_mu_ofdma_bsr_sch_nusers[HTT_TX_PDEV_STATS_NUM_BN_OFDMA_USER_STATS];
+    /**
+     * Represents the count for 11BN UL MU OFDMA sequences with BAR Triggers
+     */
+    A_UINT32 bn_ul_mu_ofdma_bar_sch_nusers[HTT_TX_PDEV_STATS_NUM_BN_OFDMA_USER_STATS];
+    /**
+     * TODO_BORON_OFDMA : Add array for BN_BRP number of users
+     */
+} htt_stats_tx_pdev_bn_ul_mu_ofdma_tlv;
 
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
@@ -4530,6 +4575,7 @@ typedef htt_stats_tx_pdev_mumimo_mpdu_stats_tlv
 #define HTT_STATS_TX_SCHED_MODE_MU_OFDMA_AX 3 /* SCHED_TX_MODE_MU_OFDMA_AX */
 #define HTT_STATS_TX_SCHED_MODE_MU_OFDMA_BE 4 /* SCHED_TX_MODE_MU_OFDMA_BE */
 #define HTT_STATS_TX_SCHED_MODE_MU_MIMO_BE  5 /* SCHED_TX_MODE_MU_MIMO_BE */
+#define HTT_STATS_TX_SCHED_MODE_MU_OFDMA_BN 6 /* SCHED_TX_MODE_MU_OFDMA_BN */
 
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
