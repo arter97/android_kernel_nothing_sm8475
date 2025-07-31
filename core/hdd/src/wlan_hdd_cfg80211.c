@@ -17909,6 +17909,22 @@ static uint8_t wlan_hdd_rate_value_to_rate_index(uint8_t rate_type,
 				return 2;
 			else if (rate_value == RATE_11)
 				return 3;
+			else if (rate_value == RATE_6)
+				return 18;
+			else if (rate_value == RATE_9)
+				return 19;
+			else if (rate_value == RATE_12)
+				return 20;
+			else if (rate_value == RATE_18)
+				return 21;
+			else if (rate_value == RATE_24)
+				return 22;
+			else if (rate_value == RATE_36)
+				return 23;
+			else if (rate_value == RATE_48)
+				return 24;
+			else if (rate_value == RATE_54)
+				return 25;
 		} else if (band_index == NL80211_BAND_5GHZ ||
 			   band_index == NL80211_BAND_6GHZ) {
 			if (rate_value == RATE_6)
@@ -17930,6 +17946,8 @@ static uint8_t wlan_hdd_rate_value_to_rate_index(uint8_t rate_type,
 		}
 	} else if (rate_type == RATE_TYPE_MCS) {
 		if (band_index == NL80211_BAND_2GHZ) {
+			if (rate_value > RATE_MCS13)
+				return INVALID_RATE;
 			return rate_value + NUM_LEGACY_RATES_2G;
 		} else if (band_index == NL80211_BAND_5GHZ ||
 			   band_index == NL80211_BAND_6GHZ) {
@@ -18024,7 +18042,8 @@ static int __wlan_hdd_cfg80211_tpc_backoff(struct wiphy *wiphy,
 			max_chain_itr =
 				WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_CHAIN_NUM;
 			max_mcs_itr =
-				WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_RATE_NUM;
+				WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_RATE_NUM +
+				WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_RATE_NUM_EXT;
 		} else { /* 5G/6G Band */
 			max_chain_itr =
 				WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_CHAIN_NUM;

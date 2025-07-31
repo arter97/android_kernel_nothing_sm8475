@@ -55,6 +55,7 @@ struct hdd_context;
 
 #define RATE_TYPE_LEGACY 0
 #define RATE_TYPE_MCS 1
+#define RATE_MCS13 13
 
 /* 2GHz band legacy rates */
 #define RATE_1 1
@@ -62,7 +63,7 @@ struct hdd_context;
 #define RATE_5_5 5
 #define RATE_11 11
 
-/* 5GHz/6GHz band legacy rates */
+/* 2GHz/5GHz/6GHz band legacy rates */
 #define RATE_6 6
 #define RATE_9 9
 #define RATE_12 12
