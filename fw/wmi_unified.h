@@ -51367,12 +51367,18 @@ typedef struct {
     A_UINT32 enable;
 } wmi_energy_mgmt_pcie_lpm_cmd_fixed_param;
 
+typedef enum {
+    WMI_DCVS_ENABLE,                  /* Enable Clock and Voltage Scaling */
+    WMI_DCVS_DISABLE,                 /* Disable Clock and Voltage Scaling */
+    WMI_DCVS_DISABLE_VOLTAGE_SCALING, /* Disable Only Voltage Scaling */
+} wmi_dcvs_config_e;
+
 typedef struct {
     /** TLV tag and len; tag equals
     * WMITLV_TAG_STRUC_wmi_energy_mgmt_dcvs_config_cmd_fixed_param */
     A_UINT32 tlv_header;
-    /** enable or disable DCVS config */
-    A_UINT32 enable;
+    /** DCVS config - holds a wmi_dcvs_config_e value */
+    A_UINT32 config;
 } wmi_energy_mgmt_dcvs_config_cmd_fixed_param;
 
 typedef struct {
