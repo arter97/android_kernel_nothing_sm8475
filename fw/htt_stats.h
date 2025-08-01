@@ -2526,8 +2526,9 @@ typedef enum {
     HTT_RX_TID_STATS_TLV        = 5,
     HTT_MSDU_FLOW_STATS_TLV     = 6,
     HTT_PEER_SCHED_STATS_TLV    = 7,
-    HTT_PEER_AX_OFDMA_STATS_TLV = 8,
-    HTT_PEER_BE_OFDMA_STATS_TLV = 9,
+    HTT_PEER_OFDMA_STATS_TLV    = 8,
+        HTT_PEER_AX_OFDMA_STATS_TLV = HTT_PEER_OFDMA_STATS_TLV, /* DEPRECATED */
+    HTT_PEER_BE_OFDMA_STATS_TLV = 9,                            /* DEPRECATED */
 
     HTT_PEER_STATS_MAX_TLV      = 31,
 } htt_peer_stats_tlv_enum;
@@ -2550,18 +2551,46 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_peer_sched_stats_tlv htt_peer_sched_stats_tlv;
 
+/* Retaining the old structure defs for compatibility */
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
     A_UINT32 peer_id;
-    A_UINT32 ax_basic_trig_count;
-    A_UINT32 ax_basic_trig_err;
-    A_UINT32 ax_bsr_trig_count;
-    A_UINT32 ax_bsr_trig_err;
-    A_UINT32 ax_mu_bar_trig_count;
-    A_UINT32 ax_mu_bar_trig_err;
-    A_UINT32 ax_basic_trig_with_per;
-    A_UINT32 ax_bsr_trig_with_per;
-    A_UINT32 ax_mu_bar_trig_with_per;
+    union{
+        A_UINT32 ax_basic_trig_count; /* retaining the older alias */
+        A_UINT32 basic_trig_count;
+    };
+    union{
+        A_UINT32 ax_basic_trig_err; /* retaining the older alias */
+        A_UINT32 basic_trig_err;
+    };
+    union{
+        A_UINT32 ax_bsr_trig_count; /* retaining the older alias */
+        A_UINT32 bsr_trig_count;
+    };
+    union{
+        A_UINT32 ax_bsr_trig_err; /* retaining the older alias */
+        A_UINT32 bsr_trig_err;
+    };
+    union{
+        A_UINT32 ax_mu_bar_trig_count; /* retaining the older alias */
+        A_UINT32 mu_bar_trig_count;
+    };
+    union{
+        A_UINT32 ax_mu_bar_trig_err;  /* retaining the older alias */
+        A_UINT32 mu_bar_trig_err;
+    };
+    union{
+        A_UINT32 ax_basic_trig_with_per; /* retaining the older alias */
+        A_UINT32 basic_trig_with_per;
+    };
+    union{
+        A_UINT32 ax_bsr_trig_with_per;  /* retaining the older alias */
+        A_UINT32 bsr_trig_with_per;
+    };
+    union{
+        A_UINT32 ax_mu_bar_trig_with_per; /* retaining the older alias */
+        A_UINT32 mu_bar_trig_with_per;
+    };
     /* is_airtime_large_for_dl_ofdma, is_airtime_large_for_ul_ofdma
      * These fields contain 2 counters each.  The first element in each
      * array counts how many times the airtime is short enough to use
@@ -2573,13 +2602,22 @@ typedef struct {
     /* Last updated value of DL and UL queue depths for each peer per AC */
     A_UINT32 last_updated_dl_qdepth[HTT_NUM_AC_WMM];
     A_UINT32 last_updated_ul_qdepth[HTT_NUM_AC_WMM];
-    /* Per peer Manual 11ax UL OFDMA trigger and trigger error counts */
-    A_UINT32 ax_manual_ulofdma_trig_count;
-    A_UINT32 ax_manual_ulofdma_trig_err_count;
-} htt_stats_peer_ax_ofdma_stats_tlv;
-/* preserve old name alias for new name consistent with the tag name */
-typedef htt_stats_peer_ax_ofdma_stats_tlv htt_peer_ax_ofdma_stats_tlv;
 
+    /* Per peer Manual UL OFDMA trigger and trigger error counts */
+    union{
+        A_UINT32 ax_manual_ulofdma_trig_count;  /* retaining the older alias */
+        A_UINT32 manual_ulofdma_trig_count;
+    };
+    union{
+        A_UINT32 ax_manual_ulofdma_trig_err_count;  /* retaining the older alias */
+        A_UINT32 manual_ulofdma_trig_err_count;
+    };
+} htt_stats_peer_ofdma_stats_tlv;
+/* preserve old name alias for new name consistent with the tag name */
+typedef htt_stats_peer_ofdma_stats_tlv htt_peer_ax_ofdma_stats_tlv;
+typedef htt_stats_peer_ofdma_stats_tlv htt_stats_peer_ax_ofdma_stats_tlv;
+
+/* DEPRECATED */
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
     A_UINT32 peer_id;
@@ -2661,7 +2699,8 @@ typedef htt_stats_peer_be_ofdma_stats_tlv htt_peer_be_ofdma_stats_tlv;
  *   - HTT_STATS_PEER_MSDU_FLOWQ_TAG (multiple)
  *   - HTT_STATS_TX_TID_DETAILS_V1_TAG (multiple)
  *   - HTT_STATS_PEER_SCHED_STATS_TAG
- *   - HTT_STATS_PEER_AX_OFDMA_STATS_TAG
+ *   - HTT_STATS_PEER_OFDMA_STATS_TAG / HTT_STATS_PEER_AX_OFDMA_STATS_TAG
+ *   - HTT_STATS_PEER_BE_OFDMA_STATS_TAG
  */
 /* NOTE:
  * This structure is for documentation, and cannot be safely used directly.
@@ -2680,8 +2719,12 @@ typedef struct _htt_peer_stats {
     htt_stats_peer_msdu_flowq_tlv     msdu_flowq[1];
     htt_stats_tx_tid_details_v1_tlv   tx_tid_stats_v1[1];
     htt_stats_peer_sched_stats_tlv    peer_sched_stats;
-    htt_stats_peer_ax_ofdma_stats_tlv ax_ofdma_stats;
-    htt_stats_peer_be_ofdma_stats_tlv be_ofdma_stats;
+    union {
+        htt_stats_peer_ofdma_stats_tlv    peer_ofdma_stats;
+        /* ax_ofdma_stats: DEPRECATED, but retained as alias */
+        htt_stats_peer_ax_ofdma_stats_tlv ax_ofdma_stats;
+    };
+    htt_stats_peer_be_ofdma_stats_tlv be_ofdma_stats; /* DEPRECATED */
 } htt_peer_stats_t;
 #endif /* ATH_TARGET */
 
