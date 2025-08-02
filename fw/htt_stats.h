@@ -6449,6 +6449,22 @@ typedef struct {
     /** Number of tx 2xldpc packets */
     A_UINT32 tx_2xldpc;
     A_UINT32 rc_state_probe_mismatched;
+    /* npca_tx_bw: NPCA bw info
+     * element 0:  20 MHz
+     * element 1:  40 MHz
+     * element 2:  80 MHz
+     * element 3: 160 MHz
+     * element 4: 320 MHz
+     */
+    A_UINT32 npca_tx_bw[HTT_TX_PDEV_STATS_NUM_BN_BW_COUNTERS];
+    /* npca_tx_su_punctured_mode: NPCA punctured mode info
+     * element 0:      no puncture
+     * element 1:  20 MHz punctured
+     * element 2:  40 MHz punctured
+     * element 3:  80 MHz punctured
+     * element 4: 120 MHz punctured
+     */
+    A_UINT32 npca_tx_su_punctured_mode[HTT_TX_PDEV_STATS_NUM_PUNCTURED_MODE_COUNTERS];
 } htt_stats_tx_pdev_rate_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_rate_stats_tlv htt_tx_pdev_rate_stats_tlv;
@@ -6995,6 +7011,8 @@ typedef struct {
     };
     /** Number of rx 2xldpc packets */
     A_UINT32 rx_2xldpc;
+    A_UINT32 npca_rx_bw_ext[HTT_RX_PDEV_STATS_NUM_BN_BW_COUNTERS];
+    A_UINT32 npca_rx_su_punctured_mode[HTT_RX_PDEV_STATS_NUM_PUNCTURED_MODE_COUNTERS];
 } htt_stats_rx_pdev_rate_ext_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_rx_pdev_rate_ext_stats_tlv htt_rx_pdev_rate_ext_stats_tlv;
@@ -8949,6 +8967,19 @@ typedef enum {
     HTT_TX_PER_RATE_STATS_NUM_MLO_RA_DD_MCS_DROP_COUNTERS = 2
 } HTT_TX_PER_RATE_STATS_NUM_MLO_RA_DD_MCS_DROP_TYPE;
 
+#define HTT_PER_RATE_STATS_WIFI_VERSION_M 0x0000000f
+#define HTT_PER_RATE_STATS_WIFI_VERSION_S 0
+
+#define HTT_PER_RATE_STATS_WIFI_VERSION_GET(_var) \
+    (((_var) & HTT_PER_RATE_STATS_WIFI_VERSION_M) >> \
+     HTT_PER_RATE_STATS_WIFI_VERSION_S)
+
+#define HTT_PER_RATE_STATS_WIFI_VERSION_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_PER_RATE_STATS_WIFI_VERSION, _val); \
+        ((_var) |= ((_val) << HTT_PER_RATE_STATS_WIFI_VERSION_S)); \
+    } while (0)
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
 
@@ -8989,6 +9020,28 @@ typedef struct {
      *     mlo_rate_drop_down[1]: MCS drop counter
      */
     A_UINT32 mlo_rate_drop_down[HTT_TX_PER_RATE_STATS_NUM_MLO_RA_DD_MCS_DROP_COUNTERS];
+
+    /**
+     * BIT [ 3 :  0]   :- wifi_version
+     * BIT [31 :  4]   :- reserved
+     */
+    union {
+        struct {
+            A_UINT32
+                /* wifi_version:
+                 * Holds a HTT_RX_TX_PDEV_STATS_WIFI_VERSION value.
+                 * Refer to HTT_PER_RATE_STATS_WIFI_VERSION_GET
+                 * / _SET macros for accessing this bitfield.
+                 */
+                wifi_version:  4,
+                reserved:     28;
+        };
+        A_UINT32 wifi_version__word;
+    };
+
+    htt_tx_rate_stats_t npca_per_bw[HTT_TX_PDEV_STATS_NUM_BN_BW_COUNTERS];
+
+    htt_tx_rate_stats_t npca_per_tx_su_punctured_mode[HTT_TX_PDEV_STATS_NUM_PUNCTURED_MODE_COUNTERS];
 } htt_stats_per_rate_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_per_rate_stats_tlv htt_tx_rate_stats_per_tlv;
@@ -13020,6 +13073,9 @@ typedef htt_stats_pdev_tdma_tlv htt_pdev_tdma_stats_tlv;
 #define HTT_BW_MGR_STATS_STATIC_PATTERN_M       0x00ffff00
 #define HTT_BW_MGR_STATS_STATIC_PATTERN_S       8
 
+#define HTT_BW_MGR_STATS_WIFI_VERSION_M         0x0000000f
+#define HTT_BW_MGR_STATS_WIFI_VERSION_S         0
+
 #define HTT_BW_MGR_STATS_MAC_ID_GET(_var) \
     (((_var) & HTT_BW_MGR_STATS_MAC_ID_M) >> \
      HTT_BW_MGR_STATS_MAC_ID_S)
@@ -13034,68 +13090,102 @@ typedef htt_stats_pdev_tdma_tlv htt_pdev_tdma_stats_tlv;
 #define HTT_BW_MGR_STATS_PRI20_IDX_GET(_var) \
     (((_var) & HTT_BW_MGR_STATS_PRI20_IDX_M) >> \
      HTT_BW_MGR_STATS_PRI20_IDX_S)
+#define HTT_BW_MGR_STATS_NPCA_PRI20_IDX_GET(_var) \
+     HTT_BW_MGR_STATS_PRI20_IDX_GET(_var)
 
 #define HTT_BW_MGR_STATS_PRI20_IDX_SET(_var, _val) \
     do { \
         HTT_CHECK_SET_VAL(HTT_BW_MGR_STATS_PRI20_IDX, _val); \
         ((_var) |= ((_val) << HTT_BW_MGR_STATS_PRI20_IDX_S)); \
     } while (0)
+#define HTT_BW_MGR_STATS_NPCA_PRI20_IDX_SET(_var, _val) \
+    HTT_BW_MGR_STATS_PRI20_IDX_SET(_var, _val)
 
 
 #define HTT_BW_MGR_STATS_PRI20_FREQ_GET(_var) \
     (((_var) & HTT_BW_MGR_STATS_PRI20_FREQ_M) >> \
      HTT_BW_MGR_STATS_PRI20_FREQ_S)
+#define HTT_BW_MGR_STATS_NPCA_PRI20_FREQ_GET(_var) \
+    HTT_BW_MGR_STATS_PRI20_FREQ_GET(_var)
 
 #define HTT_BW_MGR_STATS_PRI20_FREQ_SET(_var, _val) \
     do { \
         HTT_CHECK_SET_VAL(HTT_BW_MGR_STATS_PRI20_FREQ, _val); \
         ((_var) |= ((_val) << HTT_BW_MGR_STATS_PRI20_FREQ_S)); \
     } while (0)
+#define HTT_BW_MGR_STATS_NPCA_PRI20_FREQ_SET(_var, _val) \
+    HTT_BW_MGR_STATS_PRI20_FREQ_SET(_var, _val)
 
 
 #define HTT_BW_MGR_STATS_CENTER_FREQ1_GET(_var) \
     (((_var) & HTT_BW_MGR_STATS_CENTER_FREQ1_M) >> \
      HTT_BW_MGR_STATS_CENTER_FREQ1_S)
+#define HTT_BW_MGR_STATS_NPCA_CENTER_FREQ1_GET(_var) \
+    HTT_BW_MGR_STATS_CENTER_FREQ1_GET(_var)
 
 #define HTT_BW_MGR_STATS_CENTER_FREQ1_SET(_var, _val) \
     do { \
         HTT_CHECK_SET_VAL(HTT_BW_MGR_STATS_CENTER_FREQ1, _val); \
         ((_var) |= ((_val) << HTT_BW_MGR_STATS_CENTER_FREQ1_S)); \
     } while (0)
+#define HTT_BW_MGR_STATS_NPCA_CENTER_FREQ1_SET(_var, _val) \
+    HTT_BW_MGR_STATS_CENTER_FREQ1_SET(_var, _val)
 
 
 #define HTT_BW_MGR_STATS_CENTER_FREQ2_GET(_var) \
     (((_var) & HTT_BW_MGR_STATS_CENTER_FREQ2_M) >> \
      HTT_BW_MGR_STATS_CENTER_FREQ2_S)
+#define HTT_BW_MGR_STATS_NPCA_CENTER_FREQ2_GET(_var) \
+    HTT_BW_MGR_STATS_CENTER_FREQ2_GET(_var)
 
 #define HTT_BW_MGR_STATS_CENTER_FREQ2_SET(_var, _val) \
     do { \
         HTT_CHECK_SET_VAL(HTT_BW_MGR_STATS_CENTER_FREQ2, _val); \
         ((_var) |= ((_val) << HTT_BW_MGR_STATS_CENTER_FREQ2_S)); \
     } while (0)
+#define HTT_BW_MGR_STATS_NPCA_CENTER_FREQ2_SET(_var, _val) \
+    HTT_BW_MGR_STATS_CENTER_FREQ2_SET(_var, _val)
 
 
 #define HTT_BW_MGR_STATS_CHAN_PHY_MODE_GET(_var) \
     (((_var) & HTT_BW_MGR_STATS_CHAN_PHY_MODE_M) >> \
      HTT_BW_MGR_STATS_CHAN_PHY_MODE_S)
+#define HTT_BW_MGR_STATS_CHAN_NPCA_PHY_MODE_GET(_var) \
+    HTT_BW_MGR_STATS_CHAN_PHY_MODE_GET(_var)
 
 #define HTT_BW_MGR_STATS_CHAN_PHY_MODE_SET(_var, _val) \
     do { \
         HTT_CHECK_SET_VAL(HTT_BW_MGR_STATS_CHAN_PHY_MODE, _val); \
         ((_var) |= ((_val) << HTT_BW_MGR_STATS_CHAN_PHY_MODE_S)); \
     } while (0)
+#define HTT_BW_MGR_STATS_CHAN_NPCA_PHY_MODE_SET(_var, _val) \
+    HTT_BW_MGR_STATS_CHAN_PHY_MODE_SET(_var, _val)
 
 
 #define HTT_BW_MGR_STATS_STATIC_PATTERN_GET(_var) \
     (((_var) & HTT_BW_MGR_STATS_STATIC_PATTERN_M) >> \
      HTT_BW_MGR_STATS_STATIC_PATTERN_S)
+#define HTT_BW_MGR_STATS_NPCA_STATIC_PATTERN_GET(_var) \
+     HTT_BW_MGR_STATS_STATIC_PATTERN_GET(_var)
 
 #define HTT_BW_MGR_STATS_STATIC_PATTERN_SET(_var, _val) \
     do { \
         HTT_CHECK_SET_VAL(HTT_BW_MGR_STATS_STATIC_PATTERN, _val); \
         ((_var) |= ((_val) << HTT_BW_MGR_STATS_STATIC_PATTERN_S)); \
     } while (0)
+#define HTT_BW_MGR_STATS_NPCA_STATIC_PATTERN_SET(_var, _val) \
+     HTT_BW_MGR_STATS_STATIC_PATTERN_SET(_var, _val)
 
+
+#define HTT_BW_MGR_STATS_WIFI_VERSION_GET(_var) \
+    (((_var) & HTT_BW_MGR_STATS_WIFI_VERSION_M) >> \
+     HTT_BW_MGR_STATS_WIFI_VERSION_S)
+
+#define HTT_BW_MGR_STATS_WIFI_VERSION_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_BW_MGR_STATS_WIFI_VERSION, _val); \
+        ((_var) |= ((_val) << HTT_BW_MGR_STATS_WIFI_VERSION_S)); \
+    } while (0)
 
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
@@ -13134,6 +13224,45 @@ typedef struct {
             A_UINT32 reserved : 8;
         };
         A_UINT32 phy_mode__static_pattern;
+    };
+
+    /*
+     * BIT [ 3 :  0]   :- wifi_version
+     * BIT [ 7  :  4]  :- Reserved
+     * BIT [ 15 :  8]  :- NPCA_pri20_index
+     * BIT [ 31 : 16]  :- NPCA_pri20_freq in Mhz
+     */
+    union {
+        struct {
+            A_UINT32 wifi_version        :  4;
+            A_UINT32 reserved2           :  4;
+            A_UINT32 npca_pri20_idx      :  8;
+            A_UINT32 npca_pri20_freq_mhz : 16;
+        };
+        A_UINT32 npca__wifi_version__pri20_idx__freq;
+    };
+
+    /* BIT [ 15 :  0]  :- NPCA_centre_freq1
+     * BIT [ 31 : 16]  :- NPCA_centre_freq2
+     */
+    union {
+        struct {
+            A_UINT32 npca_centre_freq1 : 16;
+            A_UINT32 npca_centre_freq2 : 16;
+        };
+        A_UINT32 npca__centre_freq1__freq2;
+    };
+
+    /* BIT [ 7 :  0]  :- NPCA_channel_phy_mode
+     * BIT [ 23 : 8]  :- NPCA_pattern
+     */
+    union {
+        struct {
+            A_UINT32 npca_phy_mode       :  8;
+            A_UINT32 npca_static_pattern : 16;
+            A_UINT32 reserved3           :  8;
+        };
+        A_UINT32 npca__phy_mode__static_pattern;
     };
 } htt_stats_pdev_bw_mgr_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
