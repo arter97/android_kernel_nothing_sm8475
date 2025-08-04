@@ -24889,6 +24889,7 @@ hdd_ml_sap_owe_fill_ml_info(struct hdd_adapter *adapter,
 			    struct cfg80211_update_owe_info *owe_info,
 			    uint8_t *peer_mac)
 {
+	owe_info->assoc_link_id = -1;
 }
 #endif
 
