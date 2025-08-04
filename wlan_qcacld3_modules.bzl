@@ -2063,7 +2063,12 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
 
     srcs = native.glob(iglobs) + _fixed_srcs
 
-    out = "qca_cld3_{}.ko".format(chipset.replace("-", "_"))
+    if target == "monaco" or target == "blair":
+        out = "wlan.ko"
+    else:
+        out = "qca_cld3_{}.ko".format(chipset.replace("-", "_"))
+
+
     kconfig = "Kconfig"
     defconfig = ":configs/{}_defconfig_generate_{}".format(tvc, variant)
 
