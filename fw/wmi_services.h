@@ -722,6 +722,7 @@ typedef  enum  {
     WMI_SERVICE_EAPOL_OVER_RAW = 461, /* FW supports sending EAPOL frames in raw mode even when the vdev is brought up in nwifi/ethernet mode */
     WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT = 462, /* Indicates FW supports MLO SAP link removal operation */
     WMI_SERVICE_TX_POWER_LIMIT = 463, /* FW supports temporary tx power limit indication to HALPHY */
+    WMI_SERVICE_NPCA_SUPPORT = 464, /* Indicates FW supports NPCA (Non-Primary Channel Access) */
 
 
     WMI_MAX_EXT2_SERVICE
