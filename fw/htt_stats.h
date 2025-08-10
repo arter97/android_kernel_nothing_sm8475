@@ -186,6 +186,7 @@ enum htt_dbg_ext_stats_type {
      *           7 bit htt_peer_sched_stats_tlv
      *           8 bit htt_peer_ax_ofdma_stats_tlv
      *           9 bit htt_peer_be_ofdma_stats_tlv
+     *          10 bit htt_stats_rx_peer_tid_reo_queue_ba_tlv
      *   - config_param2: [Bit31 : Bit0] mac_addr31to0
      *   - config_param3: [Bit15 : Bit0] mac_addr47to32
      *                    [Bit 16] If this bit is set, reset per peer stats
@@ -2094,6 +2095,233 @@ typedef struct _htt_rx_tid_stats_tlv {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_rx_tid_details_tlv htt_rx_tid_stats_tlv;
 
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+
+    /**
+     * BIT [15: 0] : sw_peer_id
+     * BIT [31:16] : tid_num
+     */
+    union {
+        A_UINT32 sw_peer_id__tid_num;
+        struct {
+            A_UINT32 sw_peer_id : 16,
+                     tid_num    : 16;
+        };
+    };
+
+    /**
+     * BIT [11: 0] : Starting Sequence number of the session,
+     *               this changes whenever window moves
+     * BIT [21:12] : Points to last forwarded packet
+     */
+    union {
+        A_UINT32 ssn_current_index;
+        struct {
+            A_UINT32 ssn           : 12,
+                     current_index : 10,
+                     reserved_0    : 10;
+        };
+    };
+
+    /** Current PN number */
+    A_UINT32 pn_31_0;
+    A_UINT32 pn_63_32;
+    A_UINT32 pn_95_64;
+    A_UINT32 pn_127_96;
+
+    /**
+     * Timestamp of arrival of the last MPDU for this queue (in microseconds)
+     */
+    A_UINT32 last_rx_enqueue_timestamp_us;
+
+    /** Timestamp of forwarding an MPDU (in microseconds) */
+    A_UINT32 last_rx_dequeue_timestamp_us;
+
+    /** The number of MPDUs, MSDUs in the queue */
+    union {
+        A_UINT32 mpdu_msdu_cnt;
+        struct {
+            A_UINT32 current_mpdu_cnt : 16,
+                     current_msdu_cnt : 16;
+        };
+    };
+
+    /** The number of times the window moved more then 2K */
+    A_UINT32 window_jump_2k_cnt;
+
+    /**
+     * The number of times that REO started forwarding frames even though
+     * there is a hole in the bitmap.
+     * Forwarding reason is Timeout.
+     */
+    A_UINT32 timeout_cnt;
+
+    /**
+     * The number of times that REO started forwarding frames even though
+     * there is a hole in the bitmap.
+     * Forwarding reason is reception of BAR frame.
+     */
+    A_UINT32 forward_due_to_bar_cnt;
+
+    /** The number of duplicate frames that have been detected */
+    A_UINT32 duplicate_cnt;
+
+    /**
+     * The number of frames that have been received in order without a hole
+     * that prevented them from being forwarded immediately.
+     */
+    A_UINT32 frames_in_order_cnt;
+
+    /** The number of times a BAR frame is received. */
+    A_UINT32 bar_received_cnt;
+
+    /**
+     * The total number of MPDU frames that have been processed,
+     * this includes the duplicates.
+     */
+    A_UINT32 mpdu_frames_processed_cnt;
+
+    /**
+     * The total number of MSDU frames that have been processed,
+     * this includes the duplicates.
+     */
+    A_UINT32 msdu_frames_processed_cnt;
+
+    /**
+     * An approximation of the number of bytes received for
+     * this queue, in 64 byte units.
+     */
+    A_UINT32 total_processed_byte_cnt;
+
+    /** The number of MPDUs received after the window had already moved on */
+    A_UINT32 late_receive_mpdu_cnt;
+
+    /** The number of times a hole was created in the receive bitmap */
+    A_UINT32 hole_cnt;
+
+    /**
+     * The number of holes in the bitmap that moved due to aging
+     * counter expiry
+     */
+    A_UINT32 aging_drop_mpdu_cnt;
+
+    /**
+     * The number of times holes got removed from the bitmap due to
+     * aging counter expiry
+     */
+    A_UINT32 aging_drop_interval_cnt;
+
+    /** The number of ADDBA Req received */
+    A_UINT32 addba_req_cnt;
+
+    /** The number of ADDBA Resp replied for RX ADDBA Req */
+    A_UINT32 addba_resp_cnt;
+
+    /** The number of ADDBA Resp sent successfully */
+    A_UINT32 addba_rsp_success_cnt;
+
+    /** The number of ADDBA Resp sent failed */
+    A_UINT32 addba_rsp_fail_cnt;
+
+    /** The number of DELBA Req received */
+    A_UINT32 delba_req_cnt;
+
+    /** The number of DELBA Req sent successfully */
+    A_UINT32 delba_tx_success_cnt;
+
+    /** The number of DELBA Req sent failed */
+    A_UINT32 delba_tx_fail_cnt;
+
+    /** BA window size established */
+    A_UINT32 ba_win_size;
+
+    /** PN size established */
+    A_UINT32 pn_size;
+} htt_stats_rx_peer_tid_reo_queue_ba_tlv;
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SW_PEER_ID_TID_DWORD_OFFSET 1
+
+/* Macros for sw_peer_id and tid_num */
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SW_PEER_ID_M 0x0000ffff
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SW_PEER_ID_S 0
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TID_NUM_M    0xffff0000
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TID_NUM_S    16
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SW_PEER_ID_GET(_var) \
+    (((_var) & HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SW_PEER_ID_M) >> \
+     HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SW_PEER_ID_S)
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SW_PEER_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SW_PEER_ID, _val); \
+        ((_var) |= ((_val) << HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SW_PEER_ID_S)); \
+    } while (0)
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TID_NUM_GET(_var) \
+    (((_var) & HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TID_NUM_M) >> \
+     HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TID_NUM_S)
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TID_NUM_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TID_NUM, _val); \
+        ((_var) |= ((_val) << HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TID_NUM_S)); \
+    } while (0)
+
+/* Macros for ssn and current_index */
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SSN_M           0x00000fff
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SSN_S           0
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_CURRENT_INDEX_M 0x003ff000
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_CURRENT_INDEX_S 12
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SSN_GET(_var) \
+    (((_var) & HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SSN_M) >> \
+     HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SSN_S)
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SSN_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SSN, _val); \
+        ((_var) |= ((_val) << HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_SSN_S)); \
+    } while (0)
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_CURRENT_INDEX_GET(_var) \
+    (((_var) & HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_CURRENT_INDEX_M) >> \
+     HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_CURRENT_INDEX_S)
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_CURRENT_INDEX_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_CURRENT_INDEX, _val); \
+        ((_var) |= ((_val) << HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_CURRENT_INDEX_S)); \
+    } while (0)
+
+/* Macros for mpdu/msdu count */
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MPDU_CNT_M 0x0000ffff
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MPDU_CNT_S 0
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MSDU_CNT_M 0xffff0000
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MSDU_CNT_S 16
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MPDU_CNT_GET(_var) \
+    (((_var) & HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MPDU_CNT_M) >> \
+     HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MPDU_CNT_S)
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MPDU_CNT_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MPDU_CNT, _val); \
+        ((_var) |= ((_val) << HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MPDU_CNT_S)); \
+    } while (0)
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MSDU_CNT_GET(_var) \
+    (((_var) & HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MSDU_CNT_M) >> \
+     HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MSDU_CNT_S)
+
+#define HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MSDU_CNT_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MSDU_CNT, _val); \
+        ((_var) |= ((_val) << HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_MSDU_CNT_S)); \
+    } while (0)
+
+
 #define HTT_MAX_COUNTER_NAME 8
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
@@ -2529,6 +2757,7 @@ typedef enum {
     HTT_PEER_OFDMA_STATS_TLV    = 8,
         HTT_PEER_AX_OFDMA_STATS_TLV = HTT_PEER_OFDMA_STATS_TLV, /* DEPRECATED */
     HTT_PEER_BE_OFDMA_STATS_TLV = 9,                            /* DEPRECATED */
+    HTT_PEER_RX_REO_STATS_TLV   = 10,
 
     HTT_PEER_STATS_MAX_TLV      = 31,
 } htt_peer_stats_tlv_enum;
