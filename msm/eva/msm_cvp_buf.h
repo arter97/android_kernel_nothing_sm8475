@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _MSM_CVP_BUF_H_
@@ -194,7 +195,7 @@ int msm_cvp_mark_user_persist(struct msm_cvp_inst *inst,
 			unsigned int offset, unsigned int buf_num);
 int msm_cvp_map_user_persist(struct msm_cvp_inst *inst,
 			struct eva_kmd_hfi_packet *in_pkt,
-			unsigned int offset, unsigned int buf_num);
+			unsigned int offset, unsigned int buf_num, uint32_t *fd_arr);
 int msm_cvp_unmap_user_persist(struct msm_cvp_inst *inst,
 			struct eva_kmd_hfi_packet *in_pkt,
 			unsigned int offset, unsigned int buf_num);

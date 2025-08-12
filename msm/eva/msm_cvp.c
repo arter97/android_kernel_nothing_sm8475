@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include "msm_cvp.h"
@@ -156,7 +157,7 @@ static int msm_cvp_session_process_hfi(
 	unsigned int in_offset,
 	unsigned int in_buf_num)
 {
-	int pkt_idx, pkt_type, rc = 0;
+	int pkt_idx, pkt_type, rc = 0, i = 0;
 	struct cvp_hfi_device *hdev;
 	unsigned int offset = 0, buf_num = 0, signal;
 	struct cvp_session_queue *sq;
@@ -164,6 +165,8 @@ static int msm_cvp_session_process_hfi(
 	bool is_config_pkt;
 	enum buf_map_type map_type;
 	struct cvp_hfi_cmd_session_hdr *cmd_hdr;
+	uint32_t *fd_arr = NULL;
+	struct cvp_buf_type *buf;
 
 	if (!inst || !inst->core || !in_pkt) {
 		dprintk(CVP_ERR, "%s: invalid params\n", __func__);
@@ -175,6 +178,9 @@ static int msm_cvp_session_process_hfi(
 		return -ECONNRESET;
 
 	hdev = inst->core->device;
+
+	pkt_type = in_pkt->pkt_data[1];
+	map_type = cvp_find_map_type(pkt_type);
 
 	pkt_idx = get_pkt_index((struct cvp_hal_session_cmd_pkt *)in_pkt);
 	if (pkt_idx < 0) {
@@ -216,19 +222,26 @@ static int msm_cvp_session_process_hfi(
 		dprintk(CVP_ERR, "Incorrect buffer num and offset in cmd\n");
 		return -EINVAL;
 	}
-	pkt_type = in_pkt->pkt_data[1];
-	map_type = cvp_find_map_type(pkt_type);
 
 	cmd_hdr = (struct cvp_hfi_cmd_session_hdr *)in_pkt;
 	/* The kdata will be overriden by transaction ID if the cmd has buf */
 	cmd_hdr->client_data.kdata = pkt_idx;
 
-	if (map_type == MAP_PERSIST)
-		rc = msm_cvp_map_user_persist(inst, in_pkt, offset, buf_num);
-	else if (map_type == UNMAP_PERSIST)
-		rc = msm_cvp_mark_user_persist(inst, in_pkt, offset, buf_num);
-	else
+	if (map_type == MAP_PERSIST) {
+		fd_arr = kcalloc(in_buf_num, sizeof(uint32_t), GFP_KERNEL);
+		if (!fd_arr) {
+			dprintk(CVP_ERR, "%s: fd array allocation failed\n", __func__);
+			rc = -ENOMEM;
+			goto exit;
+		} else {
+			memset((void *)fd_arr, -1, sizeof(uint32_t) * in_buf_num);
+		}
+		rc = msm_cvp_map_user_persist(inst, in_pkt, offset, buf_num, fd_arr);
+	} else if (map_type == UNMAP_PERSIST) {
+		rc = msm_cvp_unmap_user_persist(inst, in_pkt, offset, buf_num);
+	} else {
 		rc = msm_cvp_map_frame(inst, in_pkt, offset, buf_num);
+	}
 
 	if (rc)
 		goto exit;
@@ -238,6 +251,19 @@ static int msm_cvp_session_process_hfi(
 		dprintk(CVP_ERR,
 			"%s: Failed in call_hfi_op %d, %x\n",
 			__func__, in_pkt->pkt_data[0], in_pkt->pkt_data[1]);
+		if (map_type == MAP_PERSIST) {
+			offset = in_offset;
+			for (i = 0; i < in_buf_num; i++) {
+				/* Update the in_pkt s.t iova is replaced back with fd */
+				buf = (struct cvp_buf_type *)&in_pkt->pkt_data[offset];
+				offset += sizeof(*buf) >> 2;
+				if (!buf->size || fd_arr[i] < 0)
+					continue;
+				buf->fd = fd_arr[i];
+			}
+			rc = msm_cvp_unmap_user_persist(inst,
+					in_pkt, in_offset, in_buf_num);
+		}
 		goto exit;
 	}
 
@@ -247,6 +273,8 @@ static int msm_cvp_session_process_hfi(
 
 exit:
 	cvp_put_inst(inst);
+	if (map_type == MAP_PERSIST)
+		kfree(fd_arr);
 	return rc;
 }
 
