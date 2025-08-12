@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -141,6 +141,27 @@ QDF_STATUS qdf_tracker_track(struct qdf_tracker *tracker, void *ptr,
 	return QDF_STATUS_SUCCESS;
 }
 qdf_export_symbol(qdf_tracker_track);
+
+void qdf_tracker_check_list_corruption(struct qdf_tracker *tracker,
+				       void *ptr, uint32_t size)
+{
+	struct qdf_tracker_node *node = (struct qdf_tracker_node *)ptr;
+	struct qdf_ptr_hash_bucket *bucket;
+	struct qdf_ptr_hash_entry *entry;
+
+	if (sizeof(struct qdf_tracker_node) != size)
+		return;
+
+	qdf_spin_lock_bh(&tracker->lock);
+	entry = &node->entry;
+	if (!entry || !entry->key) {
+		qdf_spin_unlock_bh(&tracker->lock);
+		return;
+	}
+	bucket = __qdf_ptr_hash_get_bucket(tracker->ht, entry->key);
+	qdf_ptr_hash_dup_check_in_bucket(bucket, entry);
+	qdf_spin_unlock_bh(&tracker->lock);
+}
 
 void qdf_tracker_untrack(struct qdf_tracker *tracker, void *ptr,
 			 const char *func, uint32_t line)

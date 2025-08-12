@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -584,6 +584,7 @@ struct ml_info {
  * @raw_frame: contain raw frame and the length of the raw frame
  * @pdev_id: pdev id
  * @ml_info: Multi link information
+ * @ap_pwr_type_6g: 6GHz AP power type
  */
 struct scan_cache_entry {
 	uint8_t frm_subtype;
@@ -637,6 +638,7 @@ struct scan_cache_entry {
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct ml_info ml_info;
 #endif
+	uint8_t ap_pwr_type_6g;
 };
 
 #define MAX_FAVORED_BSSID 16

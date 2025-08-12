@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -82,6 +82,11 @@ typedef void *hif_handle_t;
 #define HIF_TYPE_KIWI 26
 #define HIF_TYPE_QCN9224 27
 #define HIF_TYPE_QCA9574 28
+#define HIF_TYPE_MANGO 29
+#define HIF_TYPE_QCA5332 30
+#define HIF_TYPE_QCN9160 31
+#define HIF_TYPE_PEACH 32
+#define HIF_TYPE_WCN6450 33
 
 #define DMA_COHERENT_MASK_DEFAULT   37
 

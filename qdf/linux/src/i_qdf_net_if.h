@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -43,11 +43,9 @@ struct qdf_net_if;
 static inline QDF_STATUS
 __qdf_net_if_create_dummy_if(struct qdf_net_if *nif)
 {
-	int ret;
+	init_dummy_netdev((struct net_device *)nif);
 
-	ret = init_dummy_netdev((struct net_device *)nif);
-
-	return qdf_status_from_os_return(ret);
+	return qdf_status_from_os_return(0);
 }
 
 /**

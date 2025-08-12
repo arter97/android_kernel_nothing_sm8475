@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -169,9 +170,9 @@ void host_diag_log_wlock(uint32_t reason, const char *wake_lock_name,
 	wlan_diag_event.reason = reason;
 	wlan_diag_event.timeout = timeout;
 	wlan_diag_event.name_len = strlen(wake_lock_name);
-	strlcpy(&wlan_diag_event.name[0],
-			wake_lock_name,
-			wlan_diag_event.name_len+1);
+	strscpy(&wlan_diag_event.name[0],
+		wake_lock_name,
+		wlan_diag_event.name_len + 1);
 
 	WLAN_HOST_DIAG_EVENT_REPORT(&wlan_diag_event, EVENT_WLAN_WAKE_LOCK);
 }
