@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -294,9 +295,9 @@ wlan_hdd_ns_offload_info_debugfs(struct hdd_context *hdd_ctx,
 
 		if (info.target_ipv6_addr_ac_type[i] ==
 		    PMO_IPV6_ADDR_AC_TYPE)
-			strlcpy(cast_string, "(ANY CAST)", 12);
+			strscpy(cast_string, "(ANY CAST)", 12);
 		else
-			strlcpy(cast_string, "(UNI CAST)", 12);
+			strscpy(cast_string, "(UNI CAST)", 12);
 
 		ret = scnprintf(buf + length, buf_avail_len - length,
 				"%u. %s %s and scope is: %s\n",

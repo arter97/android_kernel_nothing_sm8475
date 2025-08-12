@@ -2166,9 +2166,11 @@ void lim_switch_primary_secondary_channel(struct mac_context *mac,
 	mac->lim.gpchangeChannelData = NULL;
 
 	/* Store the new primary and secondary channel in session entries if different */
-	if (pe_session->curr_op_freq != new_channel_freq) {
-		pe_warn("freq: %d --> freq: %d", pe_session->curr_op_freq,
-			new_channel_freq);
+	if (pe_session->curr_op_freq != new_channel_freq ||
+	    pe_session->ch_width != ch_width) {
+		pe_warn("freq: %d[%d] --> freq: %d[%d]",
+			pe_session->curr_op_freq, pe_session->ch_width,
+			new_channel_freq, ch_width);
 		pe_session->curr_op_freq = new_channel_freq;
 	}
 	if (pe_session->htSecondaryChannelOffset !=

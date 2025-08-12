@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011, 2014-2018-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -407,7 +408,7 @@ struct htt_pdev_t {
 #endif /* defined(HELIUMPLUS) */
 
 	int download_len;
-	void (*tx_send_complete_part2)(void *pdev, A_STATUS status,
+	void (*tx_send_complete_part2)(void *pdev, QDF_STATUS status,
 				       qdf_nbuf_t msdu, uint16_t msdu_id);
 
 	HTT_TX_MUTEX_TYPE htt_tx_mutex;

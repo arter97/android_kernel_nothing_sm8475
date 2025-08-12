@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -287,6 +287,13 @@ bool nan_is_disc_active(struct wlan_objmgr_psoc *psoc);
 QDF_STATUS
 nan_get_connection_info(struct wlan_objmgr_psoc *psoc, uint8_t *chan,
 			uint8_t *mac_id);
-
+/**
+ * nan_is_allowed() - This API will check for NAN enable INI
+ *
+ * @psoc: pointer to PSOC object
+ *
+ * Return: true if NAN is allowed otherwise false
+ */
+bool nan_is_allowed(struct wlan_objmgr_psoc *psoc);
 #endif /* _WLAN_NAN_MAIN_I_H_ */
 #endif /* WLAN_FEATURE_NAN */

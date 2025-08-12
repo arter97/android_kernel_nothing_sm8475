@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -266,7 +266,7 @@ ol_tx_send_nonstd(struct ol_txrx_pdev_t *pdev,
 
 static inline bool
 ol_tx_download_done_base(struct ol_txrx_pdev_t *pdev,
-			 A_STATUS status, qdf_nbuf_t msdu, uint16_t msdu_id)
+			 QDF_STATUS status, qdf_nbuf_t msdu, uint16_t msdu_id)
 {
 	struct ol_tx_desc_t *tx_desc;
 	bool is_frame_freed = false;
@@ -284,11 +284,12 @@ ol_tx_download_done_base(struct ol_txrx_pdev_t *pdev,
 			pdev->tx_mgmt_cb.download_cb;
 		if (download_cb) {
 			download_cb(pdev->tx_mgmt_cb.ctxt,
-				    tx_desc->netbuf, status != A_OK);
+				    tx_desc->netbuf,
+				    status != QDF_STATUS_SUCCESS);
 		}
 	}
 
-	if (status != A_OK) {
+	if (status != QDF_STATUS_SUCCESS) {
 		ol_tx_target_credit_incr(pdev, msdu);
 		ol_tx_desc_frame_free_nonstd(pdev, tx_desc,
 					     1 /* download err */);
@@ -311,7 +312,7 @@ ol_tx_download_done_base(struct ol_txrx_pdev_t *pdev,
 
 void
 ol_tx_download_done_ll(void *pdev,
-		       A_STATUS status, qdf_nbuf_t msdu, uint16_t msdu_id)
+		       QDF_STATUS status, qdf_nbuf_t msdu, uint16_t msdu_id)
 {
 	ol_tx_download_done_base((struct ol_txrx_pdev_t *)pdev, status, msdu,
 				 msdu_id);
@@ -319,7 +320,7 @@ ol_tx_download_done_ll(void *pdev,
 
 void
 ol_tx_download_done_hl_retain(void *txrx_pdev,
-			      A_STATUS status,
+			      QDF_STATUS status,
 			      qdf_nbuf_t msdu, uint16_t msdu_id)
 {
 	struct ol_txrx_pdev_t *pdev = txrx_pdev;
@@ -329,7 +330,8 @@ ol_tx_download_done_hl_retain(void *txrx_pdev,
 
 void
 ol_tx_download_done_hl_free(void *txrx_pdev,
-			    A_STATUS status, qdf_nbuf_t msdu, uint16_t msdu_id)
+			    QDF_STATUS status,
+			    qdf_nbuf_t msdu, uint16_t msdu_id)
 {
 	struct ol_txrx_pdev_t *pdev = txrx_pdev;
 	struct ol_tx_desc_t *tx_desc;
@@ -359,7 +361,8 @@ ol_tx_download_done_hl_free(void *txrx_pdev,
 	if ((tx_desc->pkt_type != OL_TX_FRM_NO_FREE) &&
 	    (tx_desc->pkt_type < OL_TXRX_MGMT_TYPE_BASE)) {
 		qdf_atomic_add(1, &pdev->tx_queue.rsrc_cnt);
-		ol_tx_desc_frame_free_nonstd(pdev, tx_desc, status != A_OK);
+		ol_tx_desc_frame_free_nonstd(pdev, tx_desc,
+					     status != QDF_STATUS_SUCCESS);
 	}
 }
 

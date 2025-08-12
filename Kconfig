@@ -75,6 +75,10 @@ config WLAN_FASTPATH
 	bool "Enable fastpath for datapackets"
 	default n
 
+config ATH_11AC_TXCOMPACT
+	bool "Enable ath 11ac tx compact support"
+	default n
+
 config WLAN_NAPI
 	bool "Enable NAPI - datapath rx"
 	default n
@@ -156,6 +160,10 @@ config HANDLE_RX_REROUTE_ERR
 
 config ICNSS2_MODULE
 	bool "Enable ICNSS2 module"
+	default n
+
+config CNSS2_MODULE
+	bool "Enable CNSS2 module"
 	default n
 
 config CNSS_GENL_MODULE
@@ -1264,7 +1272,7 @@ config WLAN_LOGGING_SOCK_SVC
 
 config WLAN_CTRL_NAME
 	string "Enable WLAN_CTRL_NAME"
-	default wlan
+	default "wlan"
 
 config ROME_IF
 	string "Enable ROME_IF"
@@ -1482,6 +1490,34 @@ config HIF_IPCI
 	bool "Enable HIF_IPCI"
 	default n
 
+config QCA6490_HEADERS_DEF
+	bool "Enable QCA6490_HEADERS_DEF"
+	default n
+
+config PCIE_GEN_SWITCH
+	bool "Enable PCIE_GEN_SWITCH"
+	default n
+
+config PLD_PCIE_CNSS_FLAG
+	bool "Enable PLD_PCIE_CNSS_FLAG"
+	default n
+
+config PLD_PCIE_INIT_FLAG
+	bool "Enable PLD_PCIE_INIT_FLAG"
+	default n
+
+config QCA_WIFI_QCA6490
+	bool "Enable QCA_WIFI_QCA6490"
+	default n
+
+config CNSS_QCA6490
+	bool "Enable CNSS_QCA6490"
+	default n
+
+config HIF_PCI
+	bool "Enable HIF_PCI"
+	default n
+
 config HOST_WAKEUP_OVER_QMI
 	bool "Enable HOST_WAKEUP_OVER_QMI"
 	default n
@@ -1674,6 +1710,12 @@ if CNSS_ADRASTEA
 config MULTI_IF_NAME
 	string "Enable CONFIG_MULTI_IF_NAME"
 	default adrastea
+endif
+
+if QCA_WIFI_QCA6490
+config MULTI_IF_NAME
+    string "Enable CONFIG_MULTI_IF_NAME"
+    default qca6490
 endif
 
 if QCA_WIFI_QCA6750

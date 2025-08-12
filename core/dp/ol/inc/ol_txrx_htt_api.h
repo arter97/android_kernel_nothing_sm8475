@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -73,7 +74,7 @@ static inline int ol_tx_deduct_one_credit(struct ol_txrx_pdev_t *pdev)
  */
 void
 ol_tx_download_done_ll(void *pdev,
-		       A_STATUS status, qdf_nbuf_t msdu, uint16_t msdu_id);
+		       QDF_STATUS status, qdf_nbuf_t msdu, uint16_t msdu_id);
 
 /**
  * @brief Tx MSDU download completion for HL system without tx completion msgs
@@ -89,7 +90,8 @@ ol_tx_download_done_ll(void *pdev,
  */
 void
 ol_tx_download_done_hl_free(void *pdev,
-			    A_STATUS status, qdf_nbuf_t msdu, uint16_t msdu_id);
+			    QDF_STATUS status,
+			    qdf_nbuf_t msdu, uint16_t msdu_id);
 
 /**
  * @brief Tx MSDU download completion for HL system with tx completion msgs
@@ -109,7 +111,7 @@ ol_tx_download_done_hl_free(void *pdev,
  */
 void
 ol_tx_download_done_hl_retain(void *pdev,
-			      A_STATUS status,
+			      QDF_STATUS status,
 			      qdf_nbuf_t msdu, uint16_t msdu_id);
 
 /*

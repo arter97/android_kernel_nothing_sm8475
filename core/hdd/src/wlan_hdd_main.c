@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1762,7 +1762,6 @@ hdd_update_feature_cfg_club_get_sta_in_ll_stats_req(
 static void
 hdd_init_get_sta_in_ll_stats_config(struct hdd_adapter *adapter)
 {
-	adapter->hdd_stats.is_ll_stats_req_in_progress = false;
 	adapter->hdd_stats.sta_stats_cached_timestamp = 0;
 }
 #else
@@ -6271,7 +6270,7 @@ hdd_alloc_station_adapter(struct hdd_context *hdd_ctx, tSirMacAddr mac_addr,
 	qdf_atomic_init(&adapter->cache_sta_count);
 
 	/* Init the net_device structure */
-	strlcpy(dev->name, name, IFNAMSIZ);
+	strscpy(dev->name, name, IFNAMSIZ);
 
 	qdf_net_update_net_device_dev_addr(dev, mac_addr, sizeof(tSirMacAddr));
 	qdf_mem_copy(adapter->mac_addr.bytes, mac_addr, sizeof(tSirMacAddr));
@@ -6307,6 +6306,7 @@ hdd_alloc_station_adapter(struct hdd_context *hdd_ctx, tSirMacAddr mac_addr,
 	adapter->start_time = qdf_system_ticks();
 	adapter->last_time = adapter->start_time;
 
+	qdf_atomic_init(&adapter->hdd_stats.is_ll_stats_req_pending);
 	hdd_init_get_sta_in_ll_stats_config(adapter);
 
 	return adapter;
@@ -6799,14 +6799,6 @@ QDF_STATUS hdd_init_station_mode(struct hdd_adapter *adapter)
 
 	hdd_roam_profile_init(adapter);
 	hdd_register_wext(adapter->dev);
-
-	/* set fast roaming capability in sme session */
-	status = ucfg_user_space_enable_disable_rso(hdd_ctx->pdev,
-						    adapter->vdev_id,
-						    true);
-	if (QDF_IS_STATUS_ERROR(status))
-		hdd_err("ROAM_CONFIG: sme_config_fast_roaming failed with status=%d",
-			status);
 
 	/* Set the default operation channel freq*/
 	sta_ctx->conn_info.chan_freq = hdd_ctx->config->operating_chan_freq;
@@ -10039,6 +10031,8 @@ void hdd_wlan_exit(struct hdd_context *hdd_ctx)
 		wlan_hdd_cfg80211_deinit(wiphy);
 		hdd_lpass_notify_stop(hdd_ctx);
 	}
+
+	wlan_hdd_free_iface_combination_mem(hdd_ctx);
 
 	hdd_deinit_regulatory_update_event(hdd_ctx);
 	hdd_exit_netlink_services(hdd_ctx);
@@ -16401,18 +16395,23 @@ int hdd_wlan_startup(struct hdd_context *hdd_ctx)
 	hdd_driver_memdump_init();
 
 	hdd_dp_trace_init(hdd_ctx->config);
+	errno = wlan_hdd_alloc_iface_combination_mem(hdd_ctx);
+	if (errno) {
+		hdd_err("failed to alloc iface combination mem");
+		goto memdump_deinit;
+	}
 
 	errno = hdd_init_regulatory_update_event(hdd_ctx);
 	if (errno) {
 		hdd_err("Failed to initialize regulatory update event; errno:%d",
 			errno);
-		goto memdump_deinit;
+		goto free_iface_comb;
 	}
 
 	errno = hdd_wlan_start_modules(hdd_ctx, false);
 	if (errno) {
 		hdd_err("Failed to start modules; errno:%d", errno);
-		goto memdump_deinit;
+		goto free_iface_comb;
 	}
 
 	if (hdd_get_conparam() == QDF_GLOBAL_EPPING_MODE)
@@ -16471,6 +16470,9 @@ unregister_wiphy:
 
 stop_modules:
 	hdd_wlan_stop_modules(hdd_ctx, false);
+
+free_iface_comb:
+	wlan_hdd_free_iface_combination_mem(hdd_ctx);
 
 memdump_deinit:
 	hdd_driver_memdump_deinit();

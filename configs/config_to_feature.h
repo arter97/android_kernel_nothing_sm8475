@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1880,22 +1880,6 @@
 #define WLAN_FEATURE_SAP_ACS_OPTIMIZE (1)
 #endif
 
-#ifdef CONFIG_WLAN_FEATURE_NO_STA_SAP_CONCURRENCY
-#define WLAN_FEATURE_NO_STA_SAP_CONCURRENCY (1)
-#endif
-
-#ifdef CONFIG_WLAN_FEATURE_NO_STA_NAN_CONCURRENCY
-#define WLAN_FEATURE_NO_STA_NAN_CONCURRENCY (1)
-#endif
-
-#ifdef CONFIG_WLAN_FEATURE_NO_P2P_CONCURRENCY
-#define WLAN_FEATURE_NO_P2P_CONCURRENCY (1)
-#endif
-
-#ifdef CONFIG_WLAN_FEATURE_NO_SAP_NAN_CONCURRENCY
-#define WLAN_FEATURE_NO_SAP_NAN_CONCURRENCY (1)
-#endif
-
 #ifdef CONFIG_VERBOSE_DEBUG
 #define ENABLE_VERBOSE_DEBUG (1)
 #endif
@@ -2917,6 +2901,10 @@
 #ifdef CONFIG_QDF_TIMER_MULTIPLIER_FRAC
 #define QDF_TIMER_MULTIPLIER_FRAC CONFIG_QDF_TIMER_MULTIPLIER_FRAC
 #endif
+#endif
+
+#ifdef CONFIG_FEATURE_BLACKLIST_MGR
+#define FEATURE_BLACKLIST_MGR (1)
 #endif
 
 #endif /* CONFIG_TO_FEATURE_H */

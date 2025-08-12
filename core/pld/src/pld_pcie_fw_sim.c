@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -722,7 +723,7 @@ int pld_pcie_fw_sim_get_soc_info(struct device *dev, struct pld_soc_info *info)
 	info->board_id = cnss_info.board_id;
 	info->soc_id = cnss_info.soc_id;
 	info->fw_version = cnss_info.fw_version;
-	strlcpy(info->fw_build_timestamp, cnss_info.fw_build_timestamp,
+	strscpy(info->fw_build_timestamp, cnss_info.fw_build_timestamp,
 		sizeof(info->fw_build_timestamp));
 	info->device_version.family_number =
 		cnss_info.device_version.family_number;

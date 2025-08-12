@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -198,12 +199,12 @@ static int wlan_hdd_gen_wlan_version_pack(struct wlan_version_data *data,
 	}
 
 	data->chip_id = chip_id;
-	strlcpy(data->chip_name, chip_name, WLAN_SVC_MAX_STR_LEN);
+	strscpy(data->chip_name, chip_name, WLAN_SVC_MAX_STR_LEN);
 	if (strncmp(chip_name, "Unknown", 7))
-		strlcpy(data->chip_from, "Qualcomm", WLAN_SVC_MAX_STR_LEN);
+		strscpy(data->chip_from, "Qualcomm", WLAN_SVC_MAX_STR_LEN);
 	else
-		strlcpy(data->chip_from, "Unknown", WLAN_SVC_MAX_STR_LEN);
-	strlcpy(data->host_version, QWLAN_VERSIONSTR, WLAN_SVC_MAX_STR_LEN);
+		strscpy(data->chip_from, "Unknown", WLAN_SVC_MAX_STR_LEN);
+	strscpy(data->host_version, QWLAN_VERSIONSTR, WLAN_SVC_MAX_STR_LEN);
 	scnprintf(data->fw_version, WLAN_SVC_MAX_STR_LEN, "%d.%d.%d.%d",
 		  (fw_version & 0xf0000000) >> 28,
 		  (fw_version & 0xf000000) >> 24,
