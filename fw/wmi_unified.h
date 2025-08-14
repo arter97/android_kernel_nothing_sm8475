@@ -47633,6 +47633,17 @@ typedef struct {
 } wmi_wfa_config_ofdma;
 
 typedef struct {
+    /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_wfa_config_ml */
+    A_UINT32 tlv_header;
+    /* force_add_ext_mld_cap_field
+     *   Possible values from host are:
+     *   0  default behavior
+     *   1  add ext mld cap field always when connection
+     */
+    A_UINT32 force_add_ext_mld_cap_field;
+} wmi_wfa_config_ml;
+
+typedef struct {
     /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_wfa_config_cmd_fixed_param */
     A_UINT32 tlv_header;
     /** VDEV identifier */
@@ -47643,6 +47654,7 @@ typedef struct {
      * wmi_wfa_config_ocv     wfa_config_ocv[];     (0 or 1 elements)
      * wmi_wfa_config_saquery wfa_config_saquery[]; (0 or 1 elements)
      * wmi_wfa_config_ofdma   wfa_config_ofdma[];   (0 or 1 elements)
+     * wmi_wfa_config_ml      wmi_wfa_config_ml[];  (0 or 1 elements)
      */
 } wmi_wfa_config_cmd_fixed_param;
 
