@@ -705,13 +705,32 @@ static int gen7_hwsched_gmu_memory_init(struct adreno_device *adreno_dev)
 		gmu->vrb = gen7_reserve_gmu_kernel_block(gmu, 0, GMU_VRB_SIZE,
 						GMU_NONCACHED_KERNEL, 0);
 
+		if (IS_ERR(gmu->vrb))
+			return PTR_ERR(gmu->vrb);
+
 		/* Populate size of the virtual register bank */
-		if (!IS_ERR(gmu->vrb))
-			gmu_core_set_vrb_register(gmu->vrb->hostptr,
-					VRB_SIZE_IDX, gmu->vrb->size >> 2);
+		gmu_core_set_vrb_register(gmu->vrb->hostptr, VRB_SIZE_IDX,
+					gmu->vrb->size >> 2);
 	}
 
-	return PTR_ERR_OR_ZERO(gmu->vrb);
+	/* GMU trace log */
+	if (IS_ERR_OR_NULL(gmu->trace.md)) {
+		gmu->trace.md = gen7_reserve_gmu_kernel_block(gmu, 0,
+					GMU_TRACE_SIZE, GMU_NONCACHED_KERNEL, 0);
+
+		if (IS_ERR(gmu->trace.md))
+			return PTR_ERR(gmu->trace.md);
+
+		/* Pass trace buffer address to GMU through the VRB */
+		gmu_core_set_vrb_register(gmu->vrb->hostptr,
+					VRB_TRACE_BUFFER_ADDR_IDX,
+					gmu->trace.md->gmuaddr);
+
+		/* Initialize the GMU trace buffer header */
+		gmu_core_trace_header_init(&gmu->trace);
+	}
+
+	return 0;
 }
 
 static int gen7_hwsched_gmu_init(struct adreno_device *adreno_dev)
@@ -1531,6 +1550,15 @@ int gen7_hwsched_add_to_minidump(struct adreno_device *adreno_dev)
 					KGSL_GMU_VRB_ENTRY,
 					gen7_dev->gmu.vrb->hostptr,
 					gen7_dev->gmu.vrb->size);
+		if (ret)
+			return ret;
+	}
+
+	if (!IS_ERR_OR_NULL(gen7_dev->gmu.trace.md)) {
+		ret = kgsl_add_va_to_minidump(adreno_dev->dev.dev,
+					KGSL_GMU_TRACE_ENTRY,
+					gen7_dev->gmu.trace.md->hostptr,
+					gen7_dev->gmu.trace.md->size);
 		if (ret)
 			return ret;
 	}
