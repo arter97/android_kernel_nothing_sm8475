@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3112,6 +3112,9 @@ int wma_wow_wakeup_host_event(void *handle, uint8_t *event, uint32_t len)
 	t_wma_handle *wma = handle;
 	WMI_WOW_WAKEUP_HOST_EVENTID_param_tlvs *event_param;
 	WOW_EVENT_INFO_fixed_param *wake_info;
+
+	if (!wma || !wma->psoc)
+		return -EINVAL;
 
 	event_param = (WMI_WOW_WAKEUP_HOST_EVENTID_param_tlvs *)event;
 	if (!event_param) {
