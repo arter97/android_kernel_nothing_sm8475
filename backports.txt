@@ -1,3 +1,12 @@
+7b7aca6d7c0f mm: ignore data-race in __swap_writepage
+3222d8c2a7f8 block: remove ->rw_page
+05cda97ecb70 mm: factor out a swap_writepage_bdev helper
+9b4e30bd7309 mm: use an on-stack bio for synchronous swapin
+48d15436fde6 mm: remove get_swap_bio
+14bd75f57400 mm: factor out a swap_readpage_bdev helper
+7d28631786b2 mpage: stop using bdev_{read,write}_page
+e2ba58ccc909 block: Fix default IO priority if there is no IO context
+b1bf1a782fdf dm-bufio: fix sched in atomic context
 261dce3d6402 workqueue: Initialize wq_isolated_cpumask in workqueue_init_early()
 2fba13371fe8 mm/vmalloc: Gracefully unmap huge ptes
 c0d0a9ff6d5b block: remove test of incorrect io priority level

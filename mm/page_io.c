@@ -27,26 +27,7 @@
 #include <linux/sched/task.h>
 #include <trace/hooks/mm.h>
 
-static struct bio *get_swap_bio(gfp_t gfp_flags,
-				struct page *page, bio_end_io_t end_io)
-{
-	struct bio *bio;
-
-	bio = bio_alloc(gfp_flags, 1);
-	if (bio) {
-		struct block_device *bdev;
-
-		bio->bi_iter.bi_sector = map_swap_page(page, &bdev);
-		bio_set_dev(bio, bdev);
-		bio->bi_iter.bi_sector <<= PAGE_SHIFT - 9;
-		bio->bi_end_io = end_io;
-
-		bio_add_page(bio, page, thp_size(page), 0);
-	}
-	return bio;
-}
-
-void end_swap_bio_write(struct bio *bio)
+static void __end_swap_bio_write(struct bio *bio)
 {
 	struct page *page = bio_first_page_all(bio);
 
@@ -67,13 +48,17 @@ void end_swap_bio_write(struct bio *bio)
 		ClearPageReclaim(page);
 	}
 	end_page_writeback(page);
+}
+
+void end_swap_bio_write(struct bio *bio)
+{
+	__end_swap_bio_write(bio);
 	bio_put(bio);
 }
 
-static void end_swap_bio_read(struct bio *bio)
+static void __end_swap_bio_read(struct bio *bio)
 {
 	struct page *page = bio_first_page_all(bio);
-	struct task_struct *waiter = bio->bi_private;
 
 	if (bio->bi_status) {
 		SetPageError(page);
@@ -81,18 +66,16 @@ static void end_swap_bio_read(struct bio *bio)
 		pr_alert_ratelimited("Read-error on swap-device (%u:%u:%llu)\n",
 				     MAJOR(bio_dev(bio)), MINOR(bio_dev(bio)),
 				     (unsigned long long)bio->bi_iter.bi_sector);
-		goto out;
+	} else {
+		SetPageUptodate(page);
 	}
-
-	SetPageUptodate(page);
-out:
 	unlock_page(page);
-	WRITE_ONCE(bio->bi_private, NULL);
+}
+
+static void end_swap_bio_read(struct bio *bio)
+{
+	__end_swap_bio_read(bio);
 	bio_put(bio);
-	if (waiter) {
-		blk_wake_io_task(waiter);
-		put_task_struct(waiter);
-	}
 }
 
 int generic_swapfile_activate(struct swap_info_struct *sis,
@@ -192,6 +175,32 @@ bad_bmap:
 	goto out;
 }
 
+static bool swap_sched_async_compress(struct page *page)
+{
+	struct swap_info_struct *sis;
+	pg_data_t *pgdat = NODE_DATA(nid);
+
+	if (unlikely(!pgdat->kcompressd))
+		return false;
+
+	if (!current_is_kswapd())
+		return false;
+
+	if (!PageAnon(page))
+		return false;
+
+	sis = page_swap_info(page);
+	if (data_race(sis->flags & SWP_SYNCHRONOUS_IO)) {
+		if (kfifo_avail(&pgdat->kcompress_fifo) >= sizeof(page) &&
+			kfifo_in(&pgdat->kcompress_fifo, &page, sizeof(page))) {
+			wake_up_interruptible(&pgdat->kcompressd_wait);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 /*
  * We may have stale swap cache pages in memory: notice
  * them here and get rid of the unnecessary final write.
@@ -220,9 +229,43 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
 		end_page_writeback(page);
 		goto out;
 	}
-	ret = __swap_writepage(page, wbc, end_swap_bio_write);
+
+	/*
+	 * Compression within zswap and zram might block rmap, unmap
+	 * of both file and anon pages, try to do compression async
+	 * if possible
+	 */
+	if (swap_sched_async_compress(page))
+		return 0;
+
+	ret = __swap_writepage(page, wbc);
 out:
 	return ret;
+}
+
+int kcompressd(void *p)
+{
+	pg_data_t *pgdat = (pg_data_t *)p;
+	struct page *page;
+	struct writeback_control wbc = {
+		.sync_mode = WB_SYNC_NONE,
+		.nr_to_write = SWAP_CLUSTER_MAX,
+		.range_start = 0,
+		.range_end = LLONG_MAX,
+		.for_reclaim = 1,
+	};
+
+	while (!kthread_should_stop()) {
+		wait_event_interruptible(pgdat->kcompressd_wait,
+				!kfifo_is_empty(&pgdat->kcompress_fifo));
+
+		while (!kfifo_is_empty(&pgdat->kcompress_fifo)) {
+			if (kfifo_out(&pgdat->kcompress_fifo, &page, sizeof(page))) {
+				__swap_writepage(page, &wbc);
+			}
+		}
+	}
+	return 0;
 }
 
 static inline void count_swpout_vm_event(struct page *page)
@@ -251,72 +294,88 @@ static void bio_associate_blkg_from_page(struct bio *bio, struct page *page)
 #define bio_associate_blkg_from_page(bio, page)		do { } while (0)
 #endif /* CONFIG_MEMCG && CONFIG_BLK_CGROUP */
 
-int __swap_writepage(struct page *page, struct writeback_control *wbc,
-		bio_end_io_t end_write_func)
+static int swap_writepage_fs(struct page *page, struct writeback_control *wbc)
 {
-	struct bio *bio;
-	int ret;
 	struct swap_info_struct *sis = page_swap_info(page);
+	struct kiocb kiocb;
+	struct file *swap_file = sis->swap_file;
+	struct address_space *mapping = swap_file->f_mapping;
+	struct bio_vec bv = {
+		.bv_page = page,
+		.bv_len  = PAGE_SIZE,
+		.bv_offset = 0
+	};
+	struct iov_iter from;
+	int ret;
+
+	iov_iter_bvec(&from, WRITE, &bv, 1, PAGE_SIZE);
+	init_sync_kiocb(&kiocb, swap_file);
+	kiocb.ki_pos = page_file_offset(page);
+
+	set_page_writeback(page);
+	unlock_page(page);
+	ret = mapping->a_ops->direct_IO(&kiocb, &from);
+	if (ret == PAGE_SIZE) {
+		trace_android_vh_count_pswpout(sis);
+		count_vm_event(PSWPOUT);
+		ret = 0;
+	} else {
+		/*
+		 * In the case of swap-over-nfs, this can be a
+		 * temporary failure if the system has limited
+		 * memory for allocating transmit buffers.
+		 * Mark the page dirty and avoid
+		 * rotate_reclaimable_page but rate-limit the
+		 * messages but do not flag PageError like
+		 * the normal direct-to-bio case as it could
+		 * be temporary.
+		 */
+		set_page_dirty(page);
+		ClearPageReclaim(page);
+		pr_err_ratelimited("Write error on dio swapfile (%llu)\n",
+				   page_file_offset(page));
+	}
+	end_page_writeback(page);
+	return ret;
+}
+
+static void swap_writepage_bdev_sync(struct page *page,
+		struct writeback_control *wbc, struct swap_info_struct *sis)
+{
+	struct bio_vec bv;
+	struct bio bio;
 	bool skip = false;
 
-	VM_BUG_ON_PAGE(!PageSwapCache(page), page);
-	if (data_race(sis->flags & SWP_FS_OPS)) {
-		struct kiocb kiocb;
-		struct file *swap_file = sis->swap_file;
-		struct address_space *mapping = swap_file->f_mapping;
-		struct bio_vec bv = {
-			.bv_page = page,
-			.bv_len  = PAGE_SIZE,
-			.bv_offset = 0
-		};
-		struct iov_iter from;
+	bio_init(&bio, &bv, 1);
+	bio_set_dev(&bio, sis->bdev);
+	bio.bi_iter.bi_sector = swap_page_sector(page);
+	bio.bi_opf = REQ_OP_WRITE | REQ_SWAP | wbc_to_write_flags(wbc);
+	bio_add_page(&bio, page, thp_size(page), 0);
 
-		iov_iter_bvec(&from, WRITE, &bv, 1, PAGE_SIZE);
-		init_sync_kiocb(&kiocb, swap_file);
-		kiocb.ki_pos = page_file_offset(page);
+	bio_associate_blkg_from_page(&bio, page);
+	trace_android_vh_count_swpout_vm_event(sis, page, &skip);
+	if (!skip)
+		count_swpout_vm_event(page);
+	set_page_writeback(page);
+	unlock_page(page);
 
-		set_page_writeback(page);
-		unlock_page(page);
-		ret = mapping->a_ops->direct_IO(&kiocb, &from);
-		if (ret == PAGE_SIZE) {
-			trace_android_vh_count_pswpout(sis);
-			count_vm_event(PSWPOUT);
-			ret = 0;
-		} else {
-			/*
-			 * In the case of swap-over-nfs, this can be a
-			 * temporary failure if the system has limited
-			 * memory for allocating transmit buffers.
-			 * Mark the page dirty and avoid
-			 * rotate_reclaimable_page but rate-limit the
-			 * messages but do not flag PageError like
-			 * the normal direct-to-bio case as it could
-			 * be temporary.
-			 */
-			set_page_dirty(page);
-			ClearPageReclaim(page);
-			pr_err_ratelimited("Write error on dio swapfile (%llu)\n",
-					   page_file_offset(page));
-		}
-		end_page_writeback(page);
-		return ret;
-	}
+	submit_bio_wait(&bio);
+	__end_swap_bio_write(&bio);
+}
 
-	ret = bdev_write_page(sis->bdev, swap_page_sector(page), page, wbc);
-	if (!ret) {
-		trace_android_vh_count_swpout_vm_event(sis, page, &skip);
-		if (!skip)
-			count_swpout_vm_event(page);
-		return 0;
-	}
+static void swap_writepage_bdev_async(struct page *page,
+		struct writeback_control *wbc, struct swap_info_struct *sis)
+{
+	struct bio *bio;
+	bool skip = false;
 
-	bio = get_swap_bio(GFP_NOIO, page, end_write_func);
-	if (bio == NULL) {
-		set_page_dirty(page);
-		unlock_page(page);
-		return -ENOMEM;
-	}
+	bio = bio_alloc(GFP_NOIO, 1);
+	bio_set_dev(bio, sis->bdev);
+	bio->bi_iter.bi_sector = swap_page_sector(page);
 	bio->bi_opf = REQ_OP_WRITE | REQ_SWAP | wbc_to_write_flags(wbc);
+	bio->bi_end_io = end_swap_bio_write;
+	bio_add_page(bio, page, thp_size(page), 0);
+
 	bio_associate_blkg_from_page(bio, page);
 	trace_android_vh_count_swpout_vm_event(sis, page, &skip);
 	if (!skip)
@@ -324,17 +383,81 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
 	set_page_writeback(page);
 	unlock_page(page);
 	submit_bio(bio);
+}
+
+int __swap_writepage(struct page *page, struct writeback_control *wbc)
+{
+	struct swap_info_struct *sis = page_swap_info(page);
+
+	VM_BUG_ON_PAGE(!PageSwapCache(page), page);
+	if (data_race(sis->flags & SWP_FS_OPS))
+		return swap_writepage_fs(page, wbc);
+	/*
+	 * ->flags can be updated non-atomicially (scan_swap_map_slots),
+	 * but that will never affect SWP_SYNCHRONOUS_IO, so the data_race
+	 * is safe.
+	 */
+	else if (data_race(sis->flags & SWP_SYNCHRONOUS_IO))
+		swap_writepage_bdev_sync(page, wbc, sis);
+	else
+		swap_writepage_bdev_async(page, wbc, sis);
 
 	return 0;
 }
 
-int swap_readpage(struct page *page, bool synchronous)
+static void swap_readpage_bdev_sync(struct page *page,
+		struct swap_info_struct *sis)
+{
+	struct bio_vec bv;
+	struct bio bio;
+
+	bio_init(&bio, &bv, 1);
+	bio_set_dev(&bio, sis->bdev);
+	bio.bi_opf = REQ_OP_READ | REQ_HIPRI;
+	bio.bi_iter.bi_sector = swap_page_sector(page);
+	bio_add_page(&bio, page, thp_size(page), 0);
+
+	/*
+	 * Keep this task valid during swap readpage because the oom killer may
+	 * attempt to access it in the page fault retry time check.
+	 */
+	get_task_struct(current);
+
+	trace_android_vh_count_pswpin(sis);
+	count_vm_event(PSWPIN);
+
+	submit_bio_wait(&bio);
+	__end_swap_bio_read(&bio);
+	put_task_struct(current);
+}
+
+static void swap_readpage_bdev_async(struct page *page,
+		struct swap_info_struct *sis)
 {
 	struct bio *bio;
+	struct gendisk *disk;
+
+	bio = bio_alloc(GFP_KERNEL, 1);
+	bio_set_dev(bio, sis->bdev);
+	bio->bi_opf = REQ_OP_READ;
+	bio->bi_iter.bi_sector = swap_page_sector(page);
+	bio->bi_end_io = end_swap_bio_read;
+	bio_add_page(bio, page, thp_size(page), 0);
+
+	disk = bio->bi_disk;
+	/*
+	 * Keep this task valid during swap readpage because the oom killer may
+	 * attempt to access it in the page fault retry time check.
+	 */
+	trace_android_vh_count_pswpin(sis);
+	count_vm_event(PSWPIN);
+	submit_bio(bio);
+}
+
+int swap_readpage(struct page *page, bool synchronous)
+{
 	int ret = 0;
 	struct swap_info_struct *sis = page_swap_info(page);
-	blk_qc_t qc;
-	struct gendisk *disk;
 	unsigned long pflags;
 
 	VM_BUG_ON_PAGE(!PageSwapCache(page) && !synchronous, page);
@@ -351,10 +474,7 @@ int swap_readpage(struct page *page, bool synchronous)
 	if (frontswap_load(page) == 0) {
 		SetPageUptodate(page);
 		unlock_page(page);
-		goto out;
-	}
-
-	if (data_race(sis->flags & SWP_FS_OPS)) {
+	} else if (data_race(sis->flags & SWP_FS_OPS)) {
 		struct file *swap_file = sis->swap_file;
 		struct address_space *mapping = swap_file->f_mapping;
 
@@ -363,52 +483,12 @@ int swap_readpage(struct page *page, bool synchronous)
 			trace_android_vh_count_pswpin(sis);
 			count_vm_event(PSWPIN);
 		}
-		goto out;
+	} else if (synchronous || (sis->flags & SWP_SYNCHRONOUS_IO)) {
+		swap_readpage_bdev_sync(page, sis);
+	} else {
+		swap_readpage_bdev_async(page, sis);
 	}
 
-	if (sis->flags & SWP_SYNCHRONOUS_IO) {
-		ret = bdev_read_page(sis->bdev, swap_page_sector(page), page);
-		if (!ret) {
-			trace_android_vh_count_pswpin(sis);
-			count_vm_event(PSWPIN);
-			goto out;
-		}
-	}
-
-	ret = 0;
-	bio = get_swap_bio(GFP_KERNEL, page, end_swap_bio_read);
-	if (bio == NULL) {
-		unlock_page(page);
-		ret = -ENOMEM;
-		goto out;
-	}
-	disk = bio->bi_disk;
-	/*
-	 * Keep this task valid during swap readpage because the oom killer may
-	 * attempt to access it in the page fault retry time check.
-	 */
-	bio_set_op_attrs(bio, REQ_OP_READ, 0);
-	if (synchronous) {
-		bio->bi_opf |= REQ_HIPRI;
-		get_task_struct(current);
-		bio->bi_private = current;
-	}
-	trace_android_vh_count_pswpin(sis);
-	count_vm_event(PSWPIN);
-	bio_get(bio);
-	qc = submit_bio(bio);
-	while (synchronous) {
-		set_current_state(TASK_UNINTERRUPTIBLE);
-		if (!READ_ONCE(bio->bi_private))
-			break;
-
-		if (!blk_poll(disk->queue, qc, true))
-			blk_io_schedule();
-	}
-	__set_current_state(TASK_RUNNING);
-	bio_put(bio);
-
-out:
 	psi_memstall_leave(&pflags);
 	return ret;
 }

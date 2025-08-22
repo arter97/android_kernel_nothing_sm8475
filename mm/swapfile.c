@@ -48,7 +48,6 @@
 static bool swap_count_continued(struct swap_info_struct *, pgoff_t,
 				 unsigned char);
 static void free_swap_count_continuations(struct swap_info_struct *);
-static sector_t map_swap_entry(swp_entry_t, struct block_device**);
 
 DEFINE_SPINLOCK(swap_lock);
 static unsigned int nr_swapfiles;
@@ -1842,6 +1841,9 @@ int free_swap_and_cache(swp_entry_t entry)
 }
 
 #ifdef CONFIG_HIBERNATION
+
+static sector_t map_swap_entry(swp_entry_t, struct block_device**);
+
 /*
  * Find the swap type that corresponds to given device (if any).
  *
@@ -2335,6 +2337,7 @@ static void drain_mmlist(void)
 	spin_unlock(&mmlist_lock);
 }
 
+#ifdef CONFIG_HIBERNATION
 /*
  * Use this swapdev's extent info to locate the (PAGE_SIZE) block which
  * corresponds to page offset for the specified swap entry.
@@ -2354,16 +2357,7 @@ static sector_t map_swap_entry(swp_entry_t entry, struct block_device **bdev)
 	se = offset_to_swap_extent(sis, offset);
 	return se->start_block + (offset - se->start_page);
 }
-
-/*
- * Returns the page offset into bdev for the specified page's swap entry.
- */
-sector_t map_swap_page(struct page *page, struct block_device **bdev)
-{
-	swp_entry_t entry;
-	entry.val = page_private(page);
-	return map_swap_entry(entry, bdev);
-}
+#endif
 
 /*
  * Free all of a swapdev's extent information
@@ -3302,7 +3296,7 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 	if (p->bdev && blk_queue_stable_writes(p->bdev->bd_disk->queue))
 		p->flags |= SWP_STABLE_WRITES;
 
-	if (p->bdev && p->bdev->bd_disk->fops->rw_page)
+	if (p->bdev && bdev_synchronous(p->bdev))
 		p->flags |= SWP_SYNCHRONOUS_IO;
 
 	if (p->bdev && blk_queue_nonrot(bdev_get_queue(p->bdev))) {
