@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/iopoll.h>
@@ -214,4 +214,14 @@ void gmu_core_dev_force_first_boot(struct kgsl_device *device)
 
 	if (ops && ops->force_first_boot)
 		return ops->force_first_boot(device);
+}
+
+void gmu_core_set_vrb_register(void *ptr, u32 index, u32 val)
+{
+	u32 *vrb = ptr;
+
+	vrb[index] = val;
+
+	/* Make sure the vrb write is posted before moving ahead */
+	wmb();
 }
