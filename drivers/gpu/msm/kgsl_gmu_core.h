@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __KGSL_GMU_CORE_H
 #define __KGSL_GMU_CORE_H
@@ -155,6 +155,22 @@ struct gmu_block_header {
 
 /* For GMU Logs*/
 #define GMU_LOG_SIZE  SZ_16K
+
+/* For GMU virtual register bank */
+#define GMU_VRB_SIZE  SZ_4K
+
+/*
+ * GMU Virtual Register Definitions
+ * These values are dword offsets into the GMU Virtual Register Bank
+ */
+enum gmu_vrb_idx {
+	/* Number of dwords supported by VRB */
+	VRB_SIZE_IDX = 0,
+	/* Contains the address of warmboot scratch buffer */
+	VRB_WARMBOOT_SCRATCH_IDX = 1,
+	/* Contains the address of GMU trace buffer */
+	VRB_TRACE_BUFFER_ADDR_IDX = 2,
+};
 
 /* GMU memdesc entries */
 #define GMU_KERNEL_ENTRIES		16
@@ -342,5 +358,13 @@ int gmu_core_map_memdesc(struct iommu_domain *domain, struct kgsl_memdesc *memde
 void gmu_core_send_tlb_hint(struct kgsl_device *device, bool val);
 
 void gmu_core_dev_force_first_boot(struct kgsl_device *device);
+
+/**
+ * gmu_core_set_vrb_register - set vrb register value at specified index
+ * @ptr: vrb host pointer
+ * @index: vrb index to write the value
+ * @val: value to be writen into vrb
+ */
+void gmu_core_set_vrb_register(void *ptr, u32 index, u32 val);
 
 #endif /* __KGSL_GMU_CORE_H */

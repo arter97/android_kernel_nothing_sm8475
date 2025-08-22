@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
-#if !defined(_KGSL_POWER_TRACE_H) || defined(TRACE_HEADER_MULTI_READ)
+#if 0
 #define _KGSL_POWER_TRACE_H
 
 #undef TRACE_SYSTEM
@@ -52,7 +52,24 @@ DEFINE_EVENT(gpu_work_period_class, gpu_work_period,
 
 	TP_ARGS(gpu_id, uid, start_time_ns, end_time_ns, total_active_duration_ns)
 );
-#endif /* _KGSL_POWER_TRACE_H */
 
-/* This part must be outside protection */
-#include <trace/define_trace.h>
+/*
+ * Tracepoint for power gpu_frequency
+ */
+TRACE_EVENT(gpu_frequency,
+	TP_PROTO(u32 state, u32 gpu_id),
+	TP_ARGS(state, gpu_id),
+	TP_STRUCT__entry(
+		__field(unsigned int, state)
+		__field(unsigned int, gpu_id)
+	),
+	TP_fast_assign(
+		__entry->state = state;
+		__entry->gpu_id = gpu_id;
+	),
+
+	TP_printk("state=%lu gpu_id=%lu",
+		(unsigned long)__entry->state,
+		(unsigned long)__entry->gpu_id)
+);
+#endif /* _KGSL_POWER_TRACE_H */
