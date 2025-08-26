@@ -16,6 +16,7 @@
 #define KGSL_SCRATCH_ENTRY "kgsl_scratch"
 #define KGSL_MEMSTORE_ENTRY "kgsl_memstore"
 #define KGSL_GMU_LOG_ENTRY "kgsl_gmu_log"
+#define KGSL_GMU_TRACE_ENTRY "kgsl_gmu_trace"
 #define KGSL_HFIMEM_ENTRY "kgsl_hfi_mem"
 #define KGSL_GMU_DUMPMEM_ENTRY "kgsl_gmu_dump_mem"
 #define KGSL_GMU_RB_ENTRY "kgsl_gmu_rb"

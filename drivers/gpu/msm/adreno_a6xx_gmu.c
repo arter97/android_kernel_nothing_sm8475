@@ -517,6 +517,7 @@ int a6xx_gmu_device_start(struct adreno_device *adreno_dev)
 	u32 val = 0x00000100;
 	u32 mask = 0x000001FF;
 
+	gmu_core_reset_trace_header(&gmu->trace);
 	gmu_ao_sync_event(adreno_dev);
 
 	/* Check for 0xBABEFACE on legacy targets */
@@ -2889,6 +2890,9 @@ int a6xx_gmu_probe(struct kgsl_device *device,
 	a6xx_gmu_acd_probe(device, gmu, pdev->dev.of_node);
 
 	set_bit(GMU_ENABLED, &device->gmu_core.flags);
+
+	/* Initialize to zero to detect trace packet loss */
+	gmu->trace.seq_num = 0;
 
 	device->gmu_core.dev_ops = &a6xx_gmudev;
 
