@@ -421,6 +421,10 @@ DECLARE_HOOK(android_vh_mmput,
 DECLARE_HOOK(android_vh_rebuild_root_domains_bypass,
 	TP_PROTO(bool tasks_frozen, bool *bypass),
 	TP_ARGS(tasks_frozen, bypass));
+
+DECLARE_HOOK(android_vh_reweight_entity,
+	TP_PROTO(struct sched_entity *se),
+	TP_ARGS(se));
 /* macro versions of hooks are no longer required */
 
 #endif /* _TRACE_HOOK_SCHED_H */
