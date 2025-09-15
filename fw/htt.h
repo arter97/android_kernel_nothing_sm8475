@@ -817,7 +817,8 @@ typedef enum {
     HTT_STATS_TX_PDEV_AP_EDCA_PARAMS_STATS_TAG     = 171, /* htt_tx_pdev_ap_edca_params_stats_tlv_v, TOPIC=advanced */
     HTT_STATS_TXBF_OFDMA_AX_STEER_MPDU_STATS_TAG   = 172, /* htt_txbf_ofdma_ax_steer_mpdu_stats_tlv, TOPIC=advanced */
     HTT_STATS_TXBF_OFDMA_BE_STEER_MPDU_STATS_TAG   = 173, /* htt_txbf_ofdma_be_steer_mpdu_stats_tlv, TOPIC=advanced */
-    HTT_STATS_PEER_AX_OFDMA_STATS_TAG              = 174, /* htt_peer_ax_ofdma_stats_tlv */
+    HTT_STATS_PEER_OFDMA_STATS_TAG                 = 174, /* htt_stats_peer_ofdma_stats_tlv */
+        HTT_STATS_PEER_AX_OFDMA_STATS_TAG = HTT_STATS_PEER_OFDMA_STATS_TAG, /* DEPRECATED */
     HTT_STATS_TX_PDEV_MU_EDCA_PARAMS_STATS_TAG     = 175, /* htt_tx_pdev_mu_edca_params_stats_tlv_v, TOPIC=advanced */
     HTT_STATS_PDEV_MBSSID_CTRL_FRAME_STATS_TAG     = 176, /* htt_pdev_mbssid_ctrl_frame_stats_tlv */
     HTT_STATS_TX_PDEV_MLO_ABORT_TAG                = 177, /* htt_tx_pdev_stats_mlo_abort_tlv_v */
@@ -863,6 +864,12 @@ typedef enum {
     HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_TAG        = 217, /* htt_stats_tx_pdev_pending_seq_cnt_in_txq_hist_tlv */
     HTT_STATS_SCHED_TXQ_EARLY_COMPL_TAG                      = 218, /* htt_stats_sched_txq_early_compl_tlv */
     HTT_STATS_RX_PDEV_BN_UL_OFDMA_USER_TAG                   = 219, /* htt_stats_rx_pdev_bn_ul_ofdma_user_tlv */
+    HTT_STATS_TX_SELFGEN_BN_ERR_TAG                 = 220, /* htt_stats_tx_selfgen_bn_err_tlv, TOPIC=advanced */
+    HTT_STATS_TX_SELFGEN_BN_TAG                     = 221, /* htt_stats_tx_selfgen_bn_tlv, TOPIC=advanced */
+    HTT_STATS_TX_SELFGEN_BN_SCHED_STATUS_TAG        = 222, /* htt_stats_tx_selfgen_bn_sched_status_tlv, TOPIC=advanced */
+    HTT_STATS_TX_PDEV_BN_DL_MU_OFDMA_STATS_TAG      = 223, /* htt_stats_tx_pdev_bn_dl_mu_ofdma_tlv, TOPIC=advanced */
+    HTT_STATS_TX_PDEV_BN_UL_MU_OFDMA_STATS_TAG      = 224, /* htt_stats_tx_pdev_bn_ul_mu_ofdma_tlv, TOPIC=advanced */
+    HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TAG          = 225, /* htt_stats_rx_peer_tid_reo_queue_ba_tlv */
 
     HTT_STATS_MAX_TAG,
 } htt_stats_tlv_tag_t;

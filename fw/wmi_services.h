@@ -718,6 +718,11 @@ typedef  enum  {
 
     WMI_SERVICE_11BN = 458, /* Indicates FW supports 802.11bn */
     WMI_SERVICE_HOST_AWARE_POWERSAVE = 459, /* FW supports indicating the powerstate of FW to host */
+    WMI_SERVICE_PDEV_DIV_STATES_REPORT = 460, /* FW supports reporting antenna diversity states */
+    WMI_SERVICE_EAPOL_OVER_RAW = 461, /* FW supports sending EAPOL frames in raw mode even when the vdev is brought up in nwifi/ethernet mode */
+    WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT = 462, /* Indicates FW supports MLO SAP link removal operation */
+    WMI_SERVICE_TX_POWER_LIMIT = 463, /* FW supports temporary tx power limit indication to HALPHY */
+    WMI_SERVICE_NPCA_SUPPORT = 464, /* Indicates FW supports NPCA (Non-Primary Channel Access) */
 
 
     WMI_MAX_EXT2_SERVICE
