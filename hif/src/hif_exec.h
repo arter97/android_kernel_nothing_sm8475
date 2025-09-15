@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -136,8 +136,12 @@ struct hif_tasklet_exec_context {
  */
 struct hif_napi_exec_context {
 	struct hif_exec_context exec_ctx;
-	struct net_device    netdev; /* dummy net_dev */
-	struct napi_struct   napi;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device *netdev; /* dummy net_dev ptr */
+#else
+	struct net_device netdev; /* dummy net_dev */
+#endif
+	struct napi_struct napi;
 };
 
 static inline struct hif_napi_exec_context*
