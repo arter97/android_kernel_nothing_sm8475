@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012, 2014-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -373,6 +374,25 @@ void hdd_disable_ns_offload(struct hdd_adapter *adapter,
  */
 void hdd_ipv6_notifier_work_queue(struct work_struct *work);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+/**
+ * wlan_hdd_cfg80211_get_txpower() - cfg80211 get power handler function
+ * @wiphy: Pointer to wiphy structure.
+ * @wdev: Pointer to wireless_dev structure.
+ * @link_id: Link index
+ * @dbm: dbm
+ *
+ * This is the cfg80211 get txpower handler function which invokes
+ * the internal function @__wlan_hdd_cfg80211_get_txpower with
+ * SSR protection.
+ *
+ * Return: 0 for success, error number on failure.
+ */
+int wlan_hdd_cfg80211_get_txpower(struct wiphy *wiphy,
+				  struct wireless_dev *wdev,
+				  unsigned int link_id,
+				  int *dbm);
+#else
 /**
  * wlan_hdd_cfg80211_get_txpower() - cfg80211 get power handler function
  * @wiphy: Pointer to wiphy structure.
@@ -388,6 +408,7 @@ void hdd_ipv6_notifier_work_queue(struct work_struct *work);
 int wlan_hdd_cfg80211_get_txpower(struct wiphy *wiphy,
 				  struct wireless_dev *wdev,
 				  int *dbm);
+#endif
 
 /**
  * wlan_hdd_cfg80211_set_txpower() - set TX power

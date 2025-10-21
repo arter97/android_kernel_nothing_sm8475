@@ -3003,7 +3003,7 @@ static void sde_encoder_virt_enable(struct drm_encoder *drm_enc)
 	int i, ret = 0;
 	struct sde_connector_state *c_state;
 	struct drm_display_mode *cur_mode = NULL;
-	struct msm_display_mode *msm_mode;
+	struct msm_display_mode *msm_mode = NULL;
 
 	if (!drm_enc || !drm_enc->crtc) {
 		SDE_ERROR("invalid encoder\n");

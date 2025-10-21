@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -192,6 +192,46 @@ struct sar_limit_event {
 	uint32_t num_limit_rows;
 	struct sar_limit_event_row
 			sar_limit_row[MAX_SAR_LIMIT_ROWS_SUPPORTED];
+};
+
+#define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_BAND_NUM 3
+
+#define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_CHAIN_NUM 2
+#define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_RATE_NUM 18
+#define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_RATE_NUM_EXT 8
+#define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_TXPOWER_BITS \
+				WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_CHAIN_NUM * \
+				(WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_RATE_NUM + \
+				 WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_RATE_NUM_EXT)
+
+#define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_CHAIN_NUM 4
+#define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_RATE_NUM 24
+#define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_TXPOWER_BITS \
+			WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_CHAIN_NUM * \
+			WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_RATE_NUM
+
+#define TXPOWER_ARRAY_LEN \
+	WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_TXPOWER_BITS + \
+	2 * WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_TXPOWER_BITS
+
+/**
+ * struct tx_power_per_mcs_rate - set tx power per mcs rate params
+ * @pdev_id: pdev id
+ * @bitmap_of_2G_band: per chain per mcs bitmap for 2G Band
+ * @bitmap_of_5G_band: per chain per mcs bitmap for 5G Band
+ * @bitmap_of_6G_band: per chain per mcs bitmap for 6G Band
+ * @txpower_array_len: length of the array containing tpc backoff value per mcs
+ * @txpower_array: array containing tpc backoff value to adjust txpower per mcs
+ */
+struct tx_power_per_mcs_rate {
+	uint32_t pdev_id;
+	uint32_t bitmap_of_2G_band[WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_2G_CHAIN_NUM];
+	uint32_t bitmap_of_5G_band[
+				WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_CHAIN_NUM];
+	uint32_t bitmap_of_6G_band[
+				WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_CHAIN_NUM];
+	uint32_t txpower_array_len;
+	uint8_t txpower_array[TXPOWER_ARRAY_LEN];
 };
 
 #define WMI_UNIFIED_MAX_PMKID_LEN   16

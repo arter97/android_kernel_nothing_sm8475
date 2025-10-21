@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,6 +25,7 @@
 #include "ar6320v2def.h"
 #include "hif_main.h"
 #include "adrastea_reg_def.h"
+#include "wcn6450def.h"
 
 #include "targetdef.h"
 #include "hostdef.h"
@@ -197,6 +198,15 @@ void hif_target_register_tbl_attach(struct hif_softc *scn, u32 target_type)
 		hif_info("TARGET_TYPE_QCA6750");
 		break;
 #endif /* QCA6750_HEADERS_DEF */
+
+#if defined(WCN6450_HEADERS_DEF)
+	case TARGET_TYPE_WCN6450:
+		scn->targetdef = &wcn6450_targetdef;
+		scn->target_ce_def = &wcn6450_ce_targetdef;
+		hif_info("TARGET_TYPE_WCN6450");
+		break;
+#endif /* WCN6450_HEADERS_DEF */
+
 	default:
 		break;
 	}
@@ -339,6 +349,15 @@ void hif_register_tbl_attach(struct hif_softc *scn, u32 hif_type)
 		hif_info("HIF_TYPE_QCA6750");
 		break;
 #endif /* QCA6750_HEADERS_DEF */
+
+#if defined(WCN6450_HEADERS_DEF)
+	case HIF_TYPE_WCN6450:
+		scn->hostdef = &wcn6450_hostdef;
+		scn->host_shadow_regs = &wcn6450_host_shadow_regs;
+		hif_info("HIF_TYPE_WCN6450");
+		break;
+#endif /* WCN6450_HEADERS_DEF */
+
 	default:
 		break;
 	}

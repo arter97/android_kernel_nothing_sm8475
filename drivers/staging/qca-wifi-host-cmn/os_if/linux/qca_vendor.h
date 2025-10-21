@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -565,6 +565,10 @@
  *
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_sar_capability.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_ADJUST_TX_POWER: This vendor command is used to
+ *      adjust transmit power. The attributes used with this subcommand are
+ *      defined in enum qca_wlan_vendor_attr_adjust_tx_power.
  */
 
 enum qca_nl80211_vendor_subcmds {
@@ -809,6 +813,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_COAP_OFFLOAD = 217,
 	/* 218 - reserved for QCA */
 	QCA_NL80211_VENDOR_SUBCMD_GET_SAR_CAPABILITY = 219,
+	QCA_NL80211_VENDOR_SUBCMD_ADJUST_TX_POWER = 241,
 };
 
 enum qca_wlan_vendor_tos {
@@ -927,6 +932,130 @@ enum qca_wlan_vendor_hang_reason {
 	QCA_WLAN_HANG_FLUSH_LOGS = 35,
 	/* Host wakeup because of page fault */
 	QCA_WLAN_HANG_HOST_WAKEUP_REASON_PAGE_FAULT = 36,
+};
+
+/**
+ * enum qca_wlan_vendor_data_rate_type - Represents the possible values for
+ * attribute %QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_RATE_TYPE.
+ *
+ * @QCA_WLAN_VENDOR_DATA_RATE_TYPE_LEGACY: Represents data rate type
+ * is legacy rate code used in OFDM/CCK.
+ *
+ * @QCA_WLAN_VENDOR_DATA_RATE_TYPE_MCS: Represents data rate type
+ * is MCS index.
+ *
+ */
+enum qca_wlan_vendor_data_rate_type {
+	QCA_WLAN_VENDOR_DATA_RATE_TYPE_LEGACY = 0,
+	QCA_WLAN_VENDOR_DATA_RATE_TYPE_MCS = 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_adjust_tx_power_rate - Definition
+ * of data rate related attributes which is used inside nested attribute
+ * %QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CHAIN_RATE_CONFIG.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_RATE_TYPE: u8 data rate type.
+ * For this attribute, valid values are enumerated in enum
+ * %qca_wlan_vendor_data_rate_type.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_RATE_VALUE: u8 value.
+ * This attribute value is interpreted according to value of attribute
+ * %QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_RATE_TYPE. For legacy config
+ * type, this attribute value is defined in the units of 0.5 Mbps.
+ * For non legacy config type, this attribute carries MCS index number.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_RATE_POWER_VALUE: u8 value in dBm.
+ * Usually the target computes a final transmit power that is the maximum
+ * power level that doesn't exceed the limits enforced by various sources
+ * like chip-specific conformance test limits(CTL), Specific Absorption
+ * Rate(SAR), Transmit Power Control(TPC), Wiphy-specific limits, STA-specific
+ * limits, Channel avoidance limits, Automated Frequency Coordination(AFC),
+ * and others. In some cases it may be desirable to use a power level that is
+ * lower than the maximum power level allowed by all of these limits, so this
+ * attribute provides an additional limit that can be used to reduce the
+ * transmit power level.
+ *
+ */
+enum qca_wlan_vendor_attr_adjust_tx_power_rate {
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_RATE_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_RATE_TYPE = 1,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_RATE_VALUE = 2,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_RATE_POWER_VALUE = 3,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CONFIG_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CONFIG_MAX =
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CONFIG_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_adjust_tx_power_chain_config - Definition
+ * of chain related attributes which is used inside nested attribute
+ * %QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_CHAIN_CONFIG.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CHAIN_INDEX: u8 value.
+ * Represents a particular chain for which transmit power adjustment needed.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CHAIN_RATE_CONFIG: A nested
+ * attribute containing data rate related information to adjust transmit
+ * power. The attributes used inside this nested attributes are defined in
+ * enum qca_wlan_vendor_attr_adjust_tx_power_rate.
+ */
+enum qca_wlan_vendor_attr_adjust_tx_power_chain_config {
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CHAIN_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CHAIN_INDEX = 1,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CHAIN_RATE_CONFIG = 2,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CHAIN_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CHAIN_MAX =
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_CHAIN_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_adjust_tx_power_band_config - Definition
+ * of band related attributes which is used inside nested attribute
+ * %QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_CONFIG.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_INDEX: u8 value to
+ * indicate band for which configuration applies. Valid
+ * values are enumerated in enum %nl80211_band.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_CHAIN_CONFIG: A nested
+ * attribute containing per chain related information to adjust transmit
+ * power. The attributes used inside this nested attributes are defined in
+ * enum qca_wlan_vendor_attr_adjust_tx_power_chain_config.
+ *
+ */
+enum qca_wlan_vendor_attr_adjust_tx_power_band_config {
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_INDEX = 1,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_CHAIN_CONFIG = 2,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_MAX =
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_adjust_tx_power - Definition of attributes
+ * for %QCA_NL80211_VENDOR_SUBCMD_ADJUST_TX_POWER subcommand.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_CONFIG: A nested attribute
+ * containing per band related information to adjust transmit power.
+ * The attributes used inside this nested attributes are defined in
+ * enum qca_wlan_vendor_attr_adjust_tx_power_band_config.
+ */
+enum qca_wlan_vendor_attr_adjust_tx_power {
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_BAND_CONFIG = 1,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_MAX =
+	QCA_WLAN_VENDOR_ATTR_ADJUST_TX_POWER_AFTER_LAST - 1,
 };
 
 /**

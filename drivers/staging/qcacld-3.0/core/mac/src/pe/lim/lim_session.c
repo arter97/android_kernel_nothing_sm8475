@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -686,6 +686,7 @@ struct pe_session *pe_create_session(struct mac_context *mac,
 	session_ptr->prev_auth_seq_num = 0xFFFF;
 
 	session_ptr->user_edca_set = 0;
+	session_ptr->join_probe_cnt = 0;
 
 	return &mac->lim.gpSession[i];
 

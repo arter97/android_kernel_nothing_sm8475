@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3259,9 +3259,16 @@ static int __wlan_hdd_cfg80211_get_txpower(struct wiphy *wiphy,
 	return 0;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
 int wlan_hdd_cfg80211_get_txpower(struct wiphy *wiphy,
-					 struct wireless_dev *wdev,
-					 int *dbm)
+				  struct wireless_dev *wdev,
+				  unsigned int link_id,
+				  int *dbm)
+#else
+int wlan_hdd_cfg80211_get_txpower(struct wiphy *wiphy,
+				  struct wireless_dev *wdev,
+				  int *dbm)
+#endif
 {
 	struct osif_psoc_sync *psoc_sync;
 	int errno;

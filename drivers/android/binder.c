@@ -3897,7 +3897,7 @@ binder_request_freeze_notification(struct binder_proc *proc,
 		binder_user_error("%d:%d BC_REQUEST_FREEZE_NOTIFICATION invalid ref %d\n",
 				  proc->pid, thread->pid, handle_cookie->handle);
 		binder_proc_unlock(proc);
-		kmem_cache_free(binder_ref_freeze_pool, ref->freeze);
+		kmem_cache_free(binder_ref_freeze_pool, freeze);
 		return -EINVAL;
 	}
 
@@ -3907,7 +3907,7 @@ binder_request_freeze_notification(struct binder_proc *proc,
 				  proc->pid, thread->pid);
 		binder_node_unlock(ref->node);
 		binder_proc_unlock(proc);
-		kmem_cache_free(binder_ref_freeze_pool, ref->freeze);
+		kmem_cache_free(binder_ref_freeze_pool, freeze);
 		return -EINVAL;
 	}
 

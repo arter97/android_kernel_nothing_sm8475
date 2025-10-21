@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -193,6 +194,17 @@ wmi_unified_send_reject_ap_list(struct wmi_unified *wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
+
+QDF_STATUS wmi_unified_send_tx_power_per_mcs_cmd(
+					wmi_unified_t wmi_handle,
+					struct tx_power_per_mcs_rate *params)
+{
+	if (wmi_handle->ops->send_tx_power_per_mcs_cmd)
+		return wmi_handle->ops->send_tx_power_per_mcs_cmd(
+								wmi_handle,
+								params);
+	return QDF_STATUS_E_FAILURE;
+}
 
 QDF_STATUS wmi_unified_send_sar_limit_cmd(wmi_unified_t wmi_handle,
 					  struct sar_limit_cmd_params *params)
