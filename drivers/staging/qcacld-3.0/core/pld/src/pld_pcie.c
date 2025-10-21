@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -250,7 +250,8 @@ static void pld_pcie_notify_handler(struct pci_dev *pdev, int state)
  *
  * Return: void
  */
-static void pld_pcie_uevent(struct pci_dev *pdev, uint32_t status)
+static void pld_pcie_uevent(struct pci_dev *pdev,
+			    enum cnss_driver_status status)
 {
 	struct pld_context *pld_context;
 	struct pld_uevent_data data = {0};

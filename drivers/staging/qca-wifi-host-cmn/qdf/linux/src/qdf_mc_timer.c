@@ -258,7 +258,6 @@ static void qdf_timer_clean(void)
 	for (i = 0; i < QDF_DEBUG_DOMAIN_COUNT; ++i)
 		qdf_mc_timer_free_leaked_timers(&qdf_timer_domains[i]);
 }
-qdf_export_symbol(qdf_timer_clean);
 
 /**
  * qdf_mc_timer_manager_exit() - exit QDF timer debug functionality

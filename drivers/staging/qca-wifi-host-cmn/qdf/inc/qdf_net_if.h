@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -49,7 +49,18 @@ struct qdf_net_if;
  * Return: QDF_STATUS_SUCCESS on success
  */
 QDF_STATUS
-qdf_net_if_create_dummy_if(struct qdf_net_if *nif);
+qdf_net_if_create_dummy_if(struct qdf_net_if **nif);
+
+/**
+ * qdf_net_if_destroy_dummy_if() - destroy dummy interface
+ * @nif: interface handle
+ *
+ * This function will destroy a dummy network interface
+ *
+ * Return: None
+ */
+void
+qdf_net_if_destroy_dummy_if(struct qdf_net_if *nif);
 
 /**
  * qdf_net_if_get_dev_by_name() - Find a network device by its name
@@ -89,9 +100,15 @@ qdf_net_update_net_device_dev_addr(struct net_device *ndev,
 				   size_t len);
 #else /* ENHANCED_OS_ABSTRACTION */
 static inline QDF_STATUS
-qdf_net_if_create_dummy_if(struct qdf_net_if *nif)
+qdf_net_if_create_dummy_if(struct qdf_net_if **nif)
 {
 	return __qdf_net_if_create_dummy_if(nif);
+}
+
+static inline void
+qdf_net_if_destroy_dummy_if(struct qdf_net_if *nif)
+{
+	__qdf_net_if_destroy_dummy_if(nif);
 }
 
 static inline struct qdf_net_if *

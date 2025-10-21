@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -330,14 +330,6 @@ static inline int pld_pcie_force_wake_release(struct device *dev)
 	return 0;
 }
 
-static inline void pld_pcie_lock_pm_sem(struct device *dev)
-{
-}
-
-static inline void pld_pcie_release_pm_sem(struct device *dev)
-{
-}
-
 static inline void pld_pcie_lock_reg_window(struct device *dev,
 					    unsigned long *flags)
 {
@@ -644,16 +636,6 @@ static inline int pld_pcie_is_device_awake(struct device *dev)
 static inline int pld_pcie_force_wake_release(struct device *dev)
 {
 	return cnss_pci_force_wake_release(dev);
-}
-
-static inline void pld_pcie_lock_pm_sem(struct device *dev)
-{
-	cnss_lock_pm_sem(dev);
-}
-
-static inline void pld_pcie_release_pm_sem(struct device *dev)
-{
-	cnss_release_pm_sem(dev);
 }
 
 static inline void pld_pcie_lock_reg_window(struct device *dev,

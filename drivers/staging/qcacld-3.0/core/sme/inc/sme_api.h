@@ -2474,6 +2474,17 @@ QDF_STATUS sme_set_sar_power_limits(mac_handle_t mac_handle,
 		struct sar_limit_cmd_params *sar_limit_cmd);
 
 /**
+ * sme_set_tx_power_per_mcs() - set tx power per mcs
+ * @mac_handle: Opaque handle to the global MAC context
+ * @txpower_adjust_params: struct to send adjust txpower per mcs cmd.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS sme_set_tx_power_per_mcs(
+			   mac_handle_t mac_handle,
+			   struct tx_power_per_mcs_rate *txpower_adjust_params);
+
+/**
  * sme_send_coex_config_cmd() - Send COEX config params
  * @coex_cfg_params: struct to coex config params
  *

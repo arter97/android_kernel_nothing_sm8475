@@ -90,7 +90,7 @@ defined(QCA_WIFI_QCA5018)
 #else
 #define START_RESPONSE_TIMER           8000
 #define STOP_RESPONSE_TIMER            6000
-#define DELETE_RESPONSE_TIMER          4000
+#define DELETE_RESPONSE_TIMER          8000
 #define PEER_DELETE_ALL_RESPONSE_TIMER 6000
 #define RSO_STOP_RESPONSE_TIMER        6000
 #endif

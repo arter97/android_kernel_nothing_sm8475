@@ -47,7 +47,6 @@
 #if defined(MEMORY_DEBUG) || defined(NBUF_MEMORY_DEBUG)
 static bool mem_debug_disabled;
 qdf_declare_param(mem_debug_disabled, bool);
-qdf_export_symbol(mem_debug_disabled);
 #endif
 
 #ifdef MEMORY_DEBUG

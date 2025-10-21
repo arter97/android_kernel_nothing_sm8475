@@ -3443,6 +3443,20 @@ int hdd_softap_set_channel_change(struct net_device *dev, int target_chan_freq,
 				forced,
 				sap_ctx->csa_reason)) {
 		hdd_err("Channel switch failed due to concurrency check failure");
+
+		/**
+		 * In case of SAP + STA concurrency, SAP should get teardown
+		 * when STA is connected with WAPI AP
+		 */
+		if (adapter->device_mode == QDF_SAP_MODE &&
+		    !policy_mgr_is_hw_dbs_capable(hdd_ctx->psoc) &&
+		    mlme_is_wapi_sta_active(hdd_ctx->pdev) &&
+		    policy_mgr_get_connection_count(hdd_ctx->psoc) > 0) {
+			hdd_err("vdev:%d stop sap as wapi sta present",
+				adapter->vdev_id);
+			schedule_work(&adapter->sap_stop_bss_work);
+		}
+
 		qdf_atomic_set(&adapter->ch_switch_in_progress, 0);
 		return -EINVAL;
 	}
