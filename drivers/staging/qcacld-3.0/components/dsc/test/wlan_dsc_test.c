@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -400,7 +400,7 @@ struct thread_ctx {
 	uint32_t step;
 };
 
-static QDF_STATUS dsc_thread_ops(void *context)
+static QDF_STATUS _dsc_thread_ops(void *context)
 {
 	struct thread_ctx *ctx = context;
 	struct dsc_driver *driver = ctx->driver;
@@ -445,7 +445,12 @@ static QDF_STATUS dsc_thread_ops(void *context)
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS dsc_thread_vdev_trans(void *context)
+static int dsc_thread_ops(void *context)
+{
+	return _dsc_thread_ops(context);
+}
+
+static QDF_STATUS _dsc_thread_vdev_trans(void *context)
 {
 	struct thread_ctx *ctx = context;
 	struct dsc_driver *driver = ctx->driver;
@@ -486,7 +491,12 @@ static QDF_STATUS dsc_thread_vdev_trans(void *context)
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS dsc_thread_vdev_wait(void *context)
+static int dsc_thread_vdev_trans(void *context)
+{
+	return _dsc_thread_vdev_trans(context);
+}
+
+static QDF_STATUS _dsc_thread_vdev_wait(void *context)
 {
 	struct thread_ctx *ctx = context;
 	struct dsc_vdev *vdev = nth_vdev(nth_psoc(ctx->driver, 1), 1);
@@ -511,7 +521,12 @@ static QDF_STATUS dsc_thread_vdev_wait(void *context)
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS dsc_thread_psoc_wait(void *context)
+static int dsc_thread_vdev_wait(void *context)
+{
+	return _dsc_thread_vdev_wait(context);
+}
+
+static QDF_STATUS _dsc_thread_psoc_wait(void *context)
 {
 	struct thread_ctx *ctx = context;
 	struct dsc_psoc *psoc = nth_psoc(ctx->driver, 1);
@@ -538,7 +553,12 @@ static QDF_STATUS dsc_thread_psoc_wait(void *context)
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS dsc_thread_driver_wait(void *context)
+static int dsc_thread_psoc_wait(void *context)
+{
+	return _dsc_thread_psoc_wait(context);
+}
+
+static QDF_STATUS _dsc_thread_driver_wait(void *context)
 {
 	struct thread_ctx *ctx = context;
 	struct dsc_driver *driver = ctx->driver;
@@ -563,6 +583,11 @@ static QDF_STATUS dsc_thread_driver_wait(void *context)
 	dsc_exit();
 
 	return QDF_STATUS_SUCCESS;
+}
+
+static int dsc_thread_driver_wait(void *context)
+{
+	return _dsc_thread_driver_wait(context);
 }
 
 static uint32_t dsc_test_trans_wait(void)

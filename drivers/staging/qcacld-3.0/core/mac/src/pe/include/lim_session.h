@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all
@@ -206,6 +206,7 @@ struct mlo_link_ie_info {
  * detect duplicate frames.
  * @prev_auth_mac_addr: mac_addr of the sta correspond to @prev_auth_seq_num
  * @cal_tpc_post_csa: Recalculate tx power power csa
+ * @join_probe_cnt: join probe request count
  */
 struct pe_session {
 	/* To check session table is in use or free */
@@ -660,6 +661,7 @@ struct pe_session {
 #endif /* WLAN_FEATURE_11BE */
 	uint8_t user_edca_set;
 	bool cal_tpc_post_csa;
+	uint8_t join_probe_cnt;
 };
 
 /*-------------------------------------------------------------------------

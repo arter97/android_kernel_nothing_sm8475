@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1137,6 +1137,7 @@ cm_copy_join_params(struct cm_vdev_join_req *join_req,
 	join_req->force_rsne_override = req->force_rsne_override;
 	join_req->is_wps_connection = req->is_wps_connection;
 	join_req->is_osen_connection = req->is_osen_connection;
+	join_req->is_ssid_hidden = req->bss->entry->is_hidden_ssid;
 
 	return QDF_STATUS_SUCCESS;
 }

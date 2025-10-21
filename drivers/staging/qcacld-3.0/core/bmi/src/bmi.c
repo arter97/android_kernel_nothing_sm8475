@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014-2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -558,6 +559,9 @@ QDF_STATUS ol_cds_init(qdf_device_t qdf_dev, void *hif_ctx)
 	qdf_create_work(qdf_dev, &ol_info->fw_indication_work,
 			fw_indication_work_handler, ol_info);
 
+	qdf_wake_lock_create(&ol_info->fw_dl_wakelock,
+			     "fw_download_wakelock");
+
 	return status;
 }
 
@@ -573,5 +577,6 @@ void ol_cds_free(void)
 	if (NO_BMI)
 		return;
 
+	qdf_wake_lock_destroy(&ol_info->fw_dl_wakelock);
 	cds_free_context(QDF_MODULE_ID_BMI, ol_info);
 }
