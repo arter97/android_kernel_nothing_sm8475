@@ -214,6 +214,7 @@ struct kgsl_snapshot_ib_v2 {
 #define SNAPSHOT_GMU_MEM_BIN_BLOCK	0x05
 #define SNAPSHOT_GMU_MEM_CONTEXT_QUEUE	0x06
 #define SNAPSHOT_GMU_MEM_VRB		0x09
+#define SNAPSHOT_GMU_MEM_TRACE		0x0a
 
 /* GMU memory section data */
 struct kgsl_snapshot_gmu_mem {

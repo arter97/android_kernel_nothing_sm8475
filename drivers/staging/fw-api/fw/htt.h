@@ -267,9 +267,13 @@
  * 3.137 Add more HTT_SDWF_MSDUQ_CFG_IND_ERROR codes.
  * 3.138 Add T2H MLO_LATENCY_REQ, H2T _RESP msg defs.
  * 3.139 Add CLASS_INFO_IDX field in MLO_R_PEER_MAP msg.
+ * 3.140 Add H2T MPDUQ_AND_MSDUQ_INFO_HDR and MPDUQ_OF_MSDUQ_INFO defs.
+ * 3.141 Add H2T HTT_AST_INFO for RxOLE.
+ * 3.142 Add T2H GLOBAL_PEER_ID_UNMAP def, update H2T MPDUQ_OR_MSDUQ_INFO def.
+ * 3.143 Add T2H HAPS msg def.
  */
 #define HTT_CURRENT_VERSION_MAJOR 3
-#define HTT_CURRENT_VERSION_MINOR 139
+#define HTT_CURRENT_VERSION_MINOR 143
 
 #define HTT_NUM_TX_FRAG_DESC  1024
 
@@ -768,7 +772,10 @@ typedef enum {
     HTT_STATS_AST_ENTRY_TAG                        = 132, /* htt_ast_entry_tlv */
     HTT_STATS_TX_PDEV_BE_DL_MU_OFDMA_STATS_TAG     = 133, /* htt_tx_pdev_dl_be_mu_ofdma_sch_stats_tlv, TOPIC=advanced */
     HTT_STATS_TX_PDEV_BE_UL_MU_OFDMA_STATS_TAG     = 134, /* htt_tx_pdev_ul_be_mu_ofdma_sch_stats_tlv, TOPIC=advanced */
-    HTT_STATS_TX_PDEV_RATE_STATS_BE_OFDMA_TAG      = 135, /* htt_tx_pdev_rate_stats_be_ofdma_tlv */
+    HTT_STATS_TX_PDEV_RATE_BE_BN_OFDMA_TAG         = 135, /* htt_stats_tx_pdev_rate_be_bn_ofdma_tlv */
+        /* retain deprecated name as an alias */
+        HTT_STATS_TX_PDEV_RATE_STATS_BE_OFDMA_TAG =
+             HTT_STATS_TX_PDEV_RATE_BE_BN_OFDMA_TAG,
     HTT_STATS_RX_PDEV_UL_MUMIMO_TRIG_BE_STATS_TAG  = 136, /* htt_rx_pdev_ul_mumimo_trig_be_stats_tlv, TOPIC=advanced */
     HTT_STATS_TX_SELFGEN_BE_ERR_STATS_TAG          = 137, /* htt_tx_selfgen_be_err_stats_tlv, TOPIC=advanced */
     HTT_STATS_TX_SELFGEN_BE_STATS_TAG              = 138, /* htt_tx_selfgen_be_stats_tlv, TOPIC=advanced */
@@ -776,7 +783,10 @@ typedef enum {
     HTT_STATS_TX_PDEV_BE_UL_MU_MIMO_STATS_TAG      = 140, /* htt_tx_pdev_be_ul_mu_mimo_sch_stats_tlv */
     HTT_STATS_RX_PDEV_BE_UL_MIMO_USER_STATS_TAG    = 141, /* htt_rx_pdev_be_ul_mimo_user_stats_tlv */
     HTT_STATS_RX_RING_STATS_TAG                    = 142, /* htt_rx_fw_ring_stats_tlv_v */
-    HTT_STATS_RX_PDEV_BE_UL_TRIG_STATS_TAG         = 143, /* htt_rx_pdev_be_ul_trigger_stats_tlv, TOPIC=advanced */
+    HTT_STATS_RX_PDEV_BE_BN_UL_TRIG_TAG            = 143, /* htt_stats_rx_pdev_be_bn_ul_trig_tlv, TOPIC=advanced */
+        /* retain deprecated name as an alias */
+        HTT_STATS_RX_PDEV_BE_UL_TRIG_STATS_TAG =
+            HTT_STATS_RX_PDEV_BE_BN_UL_TRIG_TAG,
     HTT_STATS_TX_PDEV_SAWF_RATE_STATS_TAG          = 144, /* htt_tx_pdev_rate_stats_sawf_tlv, TOPIC=advanced */
     HTT_STATS_STRM_GEN_MPDUS_TAG                   = 145, /* htt_stats_strm_gen_mpdus_tlv_t */
     HTT_STATS_STRM_GEN_MPDUS_DETAILS_TAG           = 146, /* htt_stats_strm_gen_mpdus_details_tlv_t */
@@ -807,7 +817,8 @@ typedef enum {
     HTT_STATS_TX_PDEV_AP_EDCA_PARAMS_STATS_TAG     = 171, /* htt_tx_pdev_ap_edca_params_stats_tlv_v, TOPIC=advanced */
     HTT_STATS_TXBF_OFDMA_AX_STEER_MPDU_STATS_TAG   = 172, /* htt_txbf_ofdma_ax_steer_mpdu_stats_tlv, TOPIC=advanced */
     HTT_STATS_TXBF_OFDMA_BE_STEER_MPDU_STATS_TAG   = 173, /* htt_txbf_ofdma_be_steer_mpdu_stats_tlv, TOPIC=advanced */
-    HTT_STATS_PEER_AX_OFDMA_STATS_TAG              = 174, /* htt_peer_ax_ofdma_stats_tlv */
+    HTT_STATS_PEER_OFDMA_STATS_TAG                 = 174, /* htt_stats_peer_ofdma_stats_tlv */
+        HTT_STATS_PEER_AX_OFDMA_STATS_TAG = HTT_STATS_PEER_OFDMA_STATS_TAG, /* DEPRECATED */
     HTT_STATS_TX_PDEV_MU_EDCA_PARAMS_STATS_TAG     = 175, /* htt_tx_pdev_mu_edca_params_stats_tlv_v, TOPIC=advanced */
     HTT_STATS_PDEV_MBSSID_CTRL_FRAME_STATS_TAG     = 176, /* htt_pdev_mbssid_ctrl_frame_stats_tlv */
     HTT_STATS_TX_PDEV_MLO_ABORT_TAG                = 177, /* htt_tx_pdev_stats_mlo_abort_tlv_v */
@@ -846,6 +857,19 @@ typedef enum {
     HTT_STATS_PDEV_UL_MUMIMO_SEQ_TERM_STATS_TAG     = 210, /* htt_stats_pdev_ulmumimo_seq_term_stats_tlv */
     HTT_STATS_PDEV_UL_MUMIMO_HIST_INELIGIBILITY_TAG = 211, /* htt_stats_pdev_ulmumimo_hist_ineligibility_tlv */
     HTT_STATS_PHY_PAPRD_PB_TAG                      = 212, /* htt_stats_phy_paprd_pb_tlv */
+    HTT_STATS_HDS_PROF_STATS_TAG                    = 213, /* htt_stat_hds_prof_stats_tlv */
+    HTT_STATS_TX_PDEV_MDSB_NUM_USERS_HISTOGRAM_TLV_TAG = 214, /* htt_stats_tx_pdev_mdsb_num_users_histogram_tlv */
+    HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_ON_SCHED_POST_HIST_TAG = 215, /* htt_stats_tx_pdev_pending_seq_cnt_on_sched_post_hist_tlv */
+    HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_HWQ_HIST_TAG        = 216, /* htt_stats_tx_pdev_pending_seq_cnt_in_hwq_hist_tlv */
+    HTT_STATS_TX_PDEV_PENDING_SEQ_CNT_IN_TXQ_HIST_TAG        = 217, /* htt_stats_tx_pdev_pending_seq_cnt_in_txq_hist_tlv */
+    HTT_STATS_SCHED_TXQ_EARLY_COMPL_TAG                      = 218, /* htt_stats_sched_txq_early_compl_tlv */
+    HTT_STATS_RX_PDEV_BN_UL_OFDMA_USER_TAG                   = 219, /* htt_stats_rx_pdev_bn_ul_ofdma_user_tlv */
+    HTT_STATS_TX_SELFGEN_BN_ERR_TAG                 = 220, /* htt_stats_tx_selfgen_bn_err_tlv, TOPIC=advanced */
+    HTT_STATS_TX_SELFGEN_BN_TAG                     = 221, /* htt_stats_tx_selfgen_bn_tlv, TOPIC=advanced */
+    HTT_STATS_TX_SELFGEN_BN_SCHED_STATUS_TAG        = 222, /* htt_stats_tx_selfgen_bn_sched_status_tlv, TOPIC=advanced */
+    HTT_STATS_TX_PDEV_BN_DL_MU_OFDMA_STATS_TAG      = 223, /* htt_stats_tx_pdev_bn_dl_mu_ofdma_tlv, TOPIC=advanced */
+    HTT_STATS_TX_PDEV_BN_UL_MU_OFDMA_STATS_TAG      = 224, /* htt_stats_tx_pdev_bn_ul_mu_ofdma_tlv, TOPIC=advanced */
+    HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TAG          = 225, /* htt_stats_rx_peer_tid_reo_queue_ba_tlv */
 
     HTT_STATS_MAX_TAG,
 } htt_stats_tlv_tag_t;
@@ -880,47 +904,50 @@ typedef htt_stats_tlv_tag_t htt_tlv_tag_t;
 /*=== host -> target messages ===============================================*/
 
 enum htt_h2t_msg_type {
-    HTT_H2T_MSG_TYPE_VERSION_REQ           = 0x0,
-    HTT_H2T_MSG_TYPE_TX_FRM                = 0x1,
-    HTT_H2T_MSG_TYPE_RX_RING_CFG           = 0x2,
-    HTT_H2T_MSG_TYPE_STATS_REQ             = 0x3,
-    HTT_H2T_MSG_TYPE_SYNC                  = 0x4,
-    HTT_H2T_MSG_TYPE_AGGR_CFG              = 0x5,
-    HTT_H2T_MSG_TYPE_FRAG_DESC_BANK_CFG    = 0x6,
-    DEPRECATED_HTT_H2T_MSG_TYPE_MGMT_TX    = 0x7, /* no longer used */
-    HTT_H2T_MSG_TYPE_WDI_IPA_CFG           = 0x8,
-    HTT_H2T_MSG_TYPE_WDI_IPA_OP_REQ        = 0x9,
-    HTT_H2T_MSG_TYPE_AGGR_CFG_EX           = 0xa, /* per vdev amsdu subfrm limit */
-    HTT_H2T_MSG_TYPE_SRING_SETUP           = 0xb,
-    HTT_H2T_MSG_TYPE_RX_RING_SELECTION_CFG = 0xc,
-    HTT_H2T_MSG_TYPE_ADD_WDS_ENTRY         = 0xd,
-    HTT_H2T_MSG_TYPE_DELETE_WDS_ENTRY      = 0xe,
-    HTT_H2T_MSG_TYPE_RFS_CONFIG            = 0xf,
-    HTT_H2T_MSG_TYPE_EXT_STATS_REQ         = 0x10,
-    HTT_H2T_MSG_TYPE_PPDU_STATS_CFG        = 0x11,
-    HTT_H2T_MSG_TYPE_RX_FSE_SETUP_CFG      = 0x12,
-    HTT_H2T_MSG_TYPE_RX_FSE_OPERATION_CFG  = 0x13,
-    HTT_H2T_MSG_TYPE_CHAN_CALDATA          = 0x14,
-    HTT_H2T_MSG_TYPE_RX_FISA_CFG           = 0x15,
-    HTT_H2T_MSG_TYPE_3_TUPLE_HASH_CFG      = 0x16,
-    HTT_H2T_MSG_TYPE_RX_FULL_MONITOR_MODE  = 0x17,
-    HTT_H2T_MSG_TYPE_HOST_PADDR_SIZE       = 0x18,
-    HTT_H2T_MSG_TYPE_RXDMA_RXOLE_PPE_CFG   = 0x19,
-    HTT_H2T_MSG_TYPE_VDEVS_TXRX_STATS_CFG  = 0x1a,
-    HTT_H2T_MSG_TYPE_TX_MONITOR_CFG        = 0x1b,
-    HTT_H2T_SAWF_DEF_QUEUES_MAP_REQ        = 0x1c,
-    HTT_H2T_SAWF_DEF_QUEUES_UNMAP_REQ      = 0x1d,
-    HTT_H2T_SAWF_DEF_QUEUES_MAP_REPORT_REQ = 0x1e,
-    HTT_H2T_MSG_TYPE_MSI_SETUP             = 0x1f,
-    HTT_H2T_MSG_TYPE_STREAMING_STATS_REQ   = 0x20,
-    HTT_H2T_MSG_TYPE_UMAC_HANG_RECOVERY_PREREQUISITE_SETUP = 0x21,
+    HTT_H2T_MSG_TYPE_VERSION_REQ                            = 0x0,
+    HTT_H2T_MSG_TYPE_TX_FRM                                 = 0x1,
+    HTT_H2T_MSG_TYPE_RX_RING_CFG                            = 0x2,
+    HTT_H2T_MSG_TYPE_STATS_REQ                              = 0x3,
+    HTT_H2T_MSG_TYPE_SYNC                                   = 0x4,
+    HTT_H2T_MSG_TYPE_AGGR_CFG                               = 0x5,
+    HTT_H2T_MSG_TYPE_FRAG_DESC_BANK_CFG                     = 0x6,
+    DEPRECATED_HTT_H2T_MSG_TYPE_MGMT_TX                     = 0x7, /* no longer used */
+    HTT_H2T_MSG_TYPE_WDI_IPA_CFG                            = 0x8,
+    HTT_H2T_MSG_TYPE_WDI_IPA_OP_REQ                         = 0x9,
+    HTT_H2T_MSG_TYPE_AGGR_CFG_EX                            = 0xa, /* per vdev amsdu subfrm limit */
+    HTT_H2T_MSG_TYPE_SRING_SETUP                            = 0xb,
+    HTT_H2T_MSG_TYPE_RX_RING_SELECTION_CFG                  = 0xc,
+    HTT_H2T_MSG_TYPE_ADD_WDS_ENTRY                          = 0xd,
+    HTT_H2T_MSG_TYPE_DELETE_WDS_ENTRY                       = 0xe,
+    HTT_H2T_MSG_TYPE_RFS_CONFIG                             = 0xf,
+    HTT_H2T_MSG_TYPE_EXT_STATS_REQ                          = 0x10,
+    HTT_H2T_MSG_TYPE_PPDU_STATS_CFG                         = 0x11,
+    HTT_H2T_MSG_TYPE_RX_FSE_SETUP_CFG                       = 0x12,
+    HTT_H2T_MSG_TYPE_RX_FSE_OPERATION_CFG                   = 0x13,
+    HTT_H2T_MSG_TYPE_CHAN_CALDATA                           = 0x14,
+    HTT_H2T_MSG_TYPE_RX_FISA_CFG                            = 0x15,
+    HTT_H2T_MSG_TYPE_3_TUPLE_HASH_CFG                       = 0x16,
+    HTT_H2T_MSG_TYPE_RX_FULL_MONITOR_MODE                   = 0x17,
+    HTT_H2T_MSG_TYPE_HOST_PADDR_SIZE                        = 0x18,
+    HTT_H2T_MSG_TYPE_RXDMA_RXOLE_PPE_CFG                    = 0x19,
+    HTT_H2T_MSG_TYPE_VDEVS_TXRX_STATS_CFG                   = 0x1a,
+    HTT_H2T_MSG_TYPE_TX_MONITOR_CFG                         = 0x1b,
+    HTT_H2T_SAWF_DEF_QUEUES_MAP_REQ                         = 0x1c,
+    HTT_H2T_SAWF_DEF_QUEUES_UNMAP_REQ                       = 0x1d,
+    HTT_H2T_SAWF_DEF_QUEUES_MAP_REPORT_REQ                  = 0x1e,
+    HTT_H2T_MSG_TYPE_MSI_SETUP                              = 0x1f,
+    HTT_H2T_MSG_TYPE_STREAMING_STATS_REQ                    = 0x20,
+    HTT_H2T_MSG_TYPE_UMAC_HANG_RECOVERY_PREREQUISITE_SETUP  = 0x21,
     HTT_H2T_MSG_TYPE_UMAC_HANG_RECOVERY_SOC_START_PRE_RESET = 0x22,
-    HTT_H2T_MSG_TYPE_RX_CCE_SUPER_RULE_SETUP = 0x23,
-    HTT_H2T_MSG_TYPE_PRIMARY_LINK_PEER_MIGRATE_RESP = 0x24,
-    HTT_H2T_MSG_TYPE_TX_LATENCY_STATS_CFG  = 0x25,
-    HTT_H2T_MSG_TYPE_TX_LCE_SUPER_RULE_SETUP = 0x26,
-    HTT_H2T_MSG_TYPE_SDWF_MSDUQ_RECFG_REQ  = 0x27,
-    HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_RESP = 0x28,
+    HTT_H2T_MSG_TYPE_RX_CCE_SUPER_RULE_SETUP                = 0x23,
+    HTT_H2T_MSG_TYPE_PRIMARY_LINK_PEER_MIGRATE_RESP         = 0x24,
+    HTT_H2T_MSG_TYPE_TX_LATENCY_STATS_CFG                   = 0x25,
+    HTT_H2T_MSG_TYPE_TX_LCE_SUPER_RULE_SETUP                = 0x26,
+    HTT_H2T_MSG_TYPE_SDWF_MSDUQ_RECFG_REQ                   = 0x27,
+    HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_RESP                 = 0x28,
+    HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR               = 0x29,
+    HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO                    = 0x2a,
+    HTT_H2T_MSG_TYPE_AST_INFO                               = 0x2b,
 
     /* keep this last */
     HTT_H2T_NUM_MSGS
@@ -11586,6 +11613,507 @@ PREPACK struct htt_h2t_mlo_latency_stats {
         ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_NUM_OF_TX_PKT_S)); \
     } while (0)
 
+/**
+ * @brief host -> target msg to provide MSDUQ or MPDUQ for new TID in a peer
+ *
+ * MSG_TYPE => HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR
+ *
+ * @details
+ * struct htt_h2t_mpduq_and_msduq_info_hdr:
+ *    HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR message is sent by the host to
+ *    target to tell how many mpduq and msduq info TLVs, in units of bytes,
+ *    are present in the htt payload
+ * Example message contents:
+ *-------------------------------------------------------------------
+ *|           htt_h2t_mpduq_and_msduq_info_hdr                      |
+ *-------------------------------------------------------------------
+ *|           mpduq_info_tlv  -> tid 0 , peer_id 1                  |
+ *-------------------------------------------------------------------
+ *|           mpduq_info_tlv  -> tid 6,  peer_id 1                  |
+ *-------------------------------------------------------------------
+ *|           msduq_info_tlv  -> tid 0,  peer_id 1                  |
+ *-------------------------------------------------------------------
+ *|           msduq_info_tlv  -> tid 0,  peer_id 1                  |
+ *-------------------------------------------------------------------
+ *|           msduq_info_tlv  -> tid 6,  peer_id 1                  |
+ *-------------------------------------------------------------------
+ *
+ * As shown in the above exampple, a single htt buffer can hold multiple mpduq
+ * and msduq info tlvs, the info within the tlvs will indicate the peer and tid
+ * to which they belong.
+ */
+
+/* HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR */
+PREPACK struct htt_h2t_mpduq_and_msduq_info_hdr {
+    A_UINT32 msg_type:                   8, /* bits  7:0  */
+             payload_size_bytes:        12, /* bits 19:8  */
+             reserved_1a:               12; /* bits 31:20 */
+} POSTPACK;
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR_PAYLOAD_SIZE_BYTES_M    0x000FFF00
+#define HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR_PAYLOAD_SIZE_BYTES_S            8
+#define HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR_PAYLOAD_SIZE_BYTES_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR_PAYLOAD_SIZE_BYTES_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR_PAYLOAD_SIZE_BYTES_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR_PAYLOAD_SIZE_BYTES_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR_PAYLOAD_SIZE_BYTES, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_AND_MSDUQ_INFO_HDR_PAYLOAD_SIZE_BYTES_S)); \
+    } while (0)
+
+
+/**
+ * @brief host -> target message to provide mpduq for a tid in a peer
+ *
+ * MSG_TYPE => HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO
+ *
+ * @details
+ * struct htt_h2t_mpduq_or_msduq_info:
+ *    HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO message is sent by the host to
+ *    specify the configuration of new MPDUQ/MSDUQ for a tid in a peer.
+ *    This message supports the following configuration information:
+ *    1.  Info provided per MPDUQ:
+ *        upper 32 bit address of 256 byte aligned physical address for mpduq
+ *        mpduq number
+ *        pn address space
+ *    2. Info provided per MSDUQ:
+ *        upper 32 bit address of 256 byte aligned physical address for msduq
+ *        msduq_number
+ *        service class id
+ *
+ * The message is interpreted as follows for mpduq type:
+ * dword0 - b'7:0   - msg_type: Identifies msduq and mpduq info to FW
+ *                    This will be set to 0x2a
+ *                    (HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO)
+ *          b'12:8  - msduq_mpduq_type: Indicate whether this TLV is for
+ *                    a MPDU queue or MSDU queue, and if for a MSDU queue,
+ *                    what type.
+ *                    For an MPDU queue, it will be fixed value of 30 based
+ *                    on enum HTT_H2T_TID_MSDUQ_MPDUQ_TYPE.
+ *          b'16:13 - hw_link_id: Indicates which HW link the message is for.
+ *                    This HW link ID is mainly relevant for split PHY
+ *                    usecases to identify the correct link in same SOC.
+ * dword1 - b'31:0  - mpduq_address_39_8: 256 byte aligned mpduq physical
+ *                    address, since lowest octet is zero for 256 byte aligned
+ *                    physical addresses just passing upper 32 bits of
+ *                    40 bit address
+ * dword2 - b'11:0  – peer_id
+ *          b'16:12 – tid_num
+ *          b'23:17 – reserved
+ *          b'31:24 - pn_addr_32_39: Upper 8 bits of 40 bit pn physical address
+ *          Note that the mpduq_number is formed from the combination of
+ *              peer_id (in bits 11:0)
+ *              tid_num (in bits 16:12)
+ *              msduq_mpduq_type (in bits 21:17)
+ * dword3 - b'31:0  - pn_addr_0_31: Lower 32 bits of 40 bit pn physical address
+ * Additional reserved dwords for future use cases
+ *
+ *
+ * The message is interpreted as follows for any msduq type:
+ * dword0 - b'7:0   - msg_type: Identifies msduq info to fw
+ *                    This will be set to 0x2A
+ *                    (HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO)
+ *          b'12:8  - msduq_mpduq_type: type of the msduq based on
+ *                    enum HTT_H2T_TID_MSDUQ_MPDUQ_TYPE
+ *          b'16:13 - hw_link_id: Indicates which HW link the message is
+ *                    intended for.
+ *                    This HW link ID is mainly relevant for split PHY
+ *                    usecases to identify the correct link in same SOC.
+ * dword1 - b'11:0  – peer_id
+ *          b'16:12 – tid_num
+ *          b'23:17 – reserved
+ *          b'31:24 - svc_class_id : service class id of the msduq
+ *          Note that the tx_msduq_number is formed from the combination of
+ *              peer_id (in bits 11:0)
+ *              tid_num (in bits 16:12)
+ *              msduq_mpduq_type (in bits 21:17)
+ * dword2 - b'31:0  - msduq_address_39_8: 256 byte aligned msduq physical
+ *                    address, since lowest octet is zero for 256 byte aligned
+ *                    addresses just passing upper 32 bits of 40 bit address
+ * Additional reserved dwords for future use cases
+ */
+
+/*
+ * Enum describes the various msduq/mpduq types,
+ * First 8 types correspond to the standard msduq types for data
+ * Next come custom flows for specific purposes
+ * enum 30 is reserved for mpduq type
+ */
+typedef enum {
+    HTT_H2T_TID_MSDUQ_NONUDP,                                    /* 0 */
+    HTT_H2T_TID_MSDUQ_UDP,                                       /* 1 */
+    HTT_H2T_TID_MSDUQ_CUSTOM_0,                                  /* 2 */
+    HTT_H2T_TID_MSDUQ_CUSTOM_1,                                  /* 3 */
+    HTT_H2T_TID_MSDUQ_CUSTOM_2,                                  /* 4 */
+    HTT_H2T_TID_MSDUQ_CUSTOM_3,                                  /* 5 */
+    HTT_H2T_TID_MSDUQ_CUSTOM_4,                                  /* 6 */
+    HTT_H2T_TID_MSDUQ_CUSTOM_5,                                  /* 7 */
+
+    HTT_H2T_TID_MISC_MSDUQ_TYPE_START,                           /* 8 */
+    HTT_H2T_TID_MSDUQ_HOL = HTT_H2T_TID_MISC_MSDUQ_TYPE_START,   /* also 8 */
+    HTT_H2T_TID_MSDUQ_MCAST,                                     /* 9 */
+    HTT_H2T_TID_MSDUQ_FAST_ROAMING,                              /* 10 */
+
+    HTT_H2T_TID_MSDUQ_DATA_TYPE_END = 29,                        /* 29 */
+    HTT_H2T_TID_MPDUQ_TYPE,                                      /* 30 */
+    HTT_H2T_TID_MSDUQ_MPDUQ_TYPE_END,                            /* 31 */
+} HTT_H2T_TID_MSDUQ_MPDUQ_TYPE;
+
+/*
+ * Enum to denote tid nums that can be used
+ * first 8 {0 - 7} numbers correspond to data access category
+ * {8 - 15} are for user defined usecases
+ * 16 is used to denote the non-qos tid
+ */
+typedef enum {
+    HTT_H2T_DEFAULT_TID_NUM        = 0,
+    HTT_H2T_MAX_VALID_DATA_TID_NUM = 7,
+    HTT_H2T_NON_QOS_TID_NUM        = 16,
+    HTT_H2T_MAX_TID_NUM            = 31,
+} H2T_TX_TID;
+
+/* HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO */
+PREPACK struct htt_h2t_mpduq_or_msduq_info {
+   A_UINT32 msg_type:          8,  /* bits  7:0  */
+            msduq_mpduq_type:  5,  /* bits 12:8  */
+            hw_link_id:        4,  /* bits 16:13 */
+            reserved0:        15;  /* bits 31:17 */
+
+    union {
+        struct {
+            A_UINT32 mpduq_address_39_8;     /* bits 31:0  */
+            A_UINT32 mpduq_number:       24, /* bits 23:0  */
+                     pn_addr_39_32:       8; /* bits 31:24 */
+            A_UINT32 pn_addr_31_0;           /* bits 31:0  */
+            A_UINT32 reserved1a;             /* bits 31:0  */
+            A_UINT32 reserved1b;             /* bits 31:0  */
+            A_UINT32 reserved1c;             /* bits 31:0  */
+            A_UINT32 reserved1d;             /* bits 31:0  */
+            A_UINT32 reserved1e;             /* bits 31:0  */
+            A_UINT32 reserved1f;             /* bits 31:0  */
+        };
+        struct {
+            A_UINT32 tx_msduq_number:    24, /* bits 23:0  */
+                     svc_class_id:        8; /* bits 31:24 */
+            A_UINT32 msduq_address_39_8;     /* bits 31:0  */
+            A_UINT32 reserved2a;             /* bits 31:0  */
+            A_UINT32 reserved2b;             /* bits 31:0  */
+            A_UINT32 reserved2c;             /* bits 31:0  */
+            A_UINT32 reserved2d;             /* bits 31:0  */
+            A_UINT32 reserved2e;             /* bits 31:0  */
+            A_UINT32 reserved2f;             /* bits 31:0  */
+            A_UINT32 reserved2g;             /* bits 31:0  */
+        };
+    };
+} POSTPACK;
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_M    0x00001F00
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_S             8
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_MSDUQ_MPDUQ_TYPE_S)); \
+    } while (0)
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_M    0x0001E000
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_S            13
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_INFO_HW_LINK_ID_S)); \
+    } while (0)
+
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID_M           0x00000FFF
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID_S                    0
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_PEER_ID_S)); \
+    } while (0)
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_TID_NUM_M    0x0001F000
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_TID_NUM_S            12
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_TID_NUM_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_TID_NUM_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_TID_NUM_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_TID_NUM_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_TID_NUM, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_TID_NUM_S)); \
+    } while (0)
+
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_MSDUQ_MPDUQ_TYPE_M    0x003E0000
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_MSDUQ_MPDUQ_TYPE_S            17
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_MSDUQ_MPDUQ_TYPE_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_MSDUQ_MPDUQ_TYPE_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_MSDUQ_MPDUQ_TYPE_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_MSDUQ_MPDUQ_TYPE_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_MSDUQ_MPDUQ_TYPE, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_OR_MSDUQ_NUMBER_MSDUQ_MPDUQ_TYPE_S)); \
+    } while (0)
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_ADDRESS_39_8_M   0xFFFFFFFF
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_ADDRESS_39_8_S            0
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_ADDRESS_39_8_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_ADDRESS_39_8_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_ADDRESS_39_8_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_ADDRESS_39_8_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_ADDRESS_39_8, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_ADDRESS_39_8_S)); \
+    } while (0)
+
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_NUMBER_M    0x00FFFFFF
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_NUMBER_S            0
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_NUMBER_GET(_var) \
+        (((_var) & HTT_H2T_MSG_MPDUQ_INFO_MPDUQ_NUMBER_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_NUMBER_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_NUMBER_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_NUMBER, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_INFO_MPDUQ_NUMBER_S)); \
+    } while (0)
+
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_39_32_M    0xFF000000
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_39_32_S            24
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_39_32_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_39_32_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_39_32_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_39_32_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_39_32, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_39_32_S)); \
+    } while (0)
+
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_31_0_M    0xFFFFFFFF
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_31_0_S            0
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_31_0_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_31_0_M) >> \
+                HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_31_0_S)
+#define HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_31_0_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_31_0, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MPDUQ_INFO_PN_ADDRESS_31_0_S)); \
+    } while (0)
+
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_TX_MSDUQ_NUMBER_M           0x00FFFFFF
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_TX_MSDUQ_NUMBER_S                    0
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_TX_MSDUQ_NUMBER_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MSDUQ_INFO_TX_MSDUQ_NUMBER_M) >> \
+                HTT_H2T_MSG_TYPE_MSDUQ_INFO_TX_MSDUQ_NUMBER_S)
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_TX_MSDUQ_NUMBER_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MSDUQ_INFO_TX_MSDUQ_NUMBER, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MSDUQ_INFO_TX_MSDUQ_NUMBER_S)); \
+    } while (0)
+
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_SVC_CLASS_ID_M    0xFF000000
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_SVC_CLASS_ID_S            24
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_SVC_CLASS_ID_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MSDUQ_INFO_SVC_CLASS_ID_M) >> \
+                HTT_H2T_MSG_TYPE_MSDUQ_INFO_SVC_CLASS_ID_S)
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_SVC_CLASS_ID_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MSDUQ_INFO_SVC_CLASS_ID, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MSDUQ_INFO_SVC_CLASS_ID_S)); \
+    } while (0)
+
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8_M           0xFFFFFFFF
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8_S                    0
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8_GET(_var) \
+        (((_var) & HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8_M) >> \
+                HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8_S)
+#define HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8_SET(_var, _val) \
+    do {                                                     \
+        HTT_CHECK_SET_VAL(HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8, _val);  \
+        ((_var) |= ((_val) << HTT_H2T_MSG_TYPE_MSDUQ_INFO_MSDUQ_ADDRESS_39_8_S)); \
+    } while (0)
+
+
+/*
+ * @brief  host -> target HTT_AST_INFO message
+ *
+ * MSG_TYPE => HTT_H2T_MSG_TYPE_AST_INFO
+ *
+ *    The message would appear as follows:
+ *    |31          24|23 21|20|19|18|17|16|15             8|7                 0|
+ *    |--------------+-------------------------------------+-------------------|
+ *    |ast_max_search|             ast_table_size          |     msg_type      |
+ *    |------------------------------------------------------------------------|
+ *    |                        ast_base_addr_31_0                              |
+ *    |------------------------------------------------------------------------|
+ *    |                           ase_hash_key1                                |
+ *    |------------------------------------------------------------------------|
+ *    |                           ase_hash_key2                                |
+ *    |------------------------------------------------------------------------|
+ *    |                           ase_hash_key3                                |
+ *    |--------------------+--+--+--+--+--+----------------+-------------------|
+ *    |    reserved        |L |K |J |I |H |     tmo        |ast_base_addr_39_32|
+ *    |--------------------+--+--+--+--+--+----------------+-------------------|
+ *
+ * The message is interpreted as follows:
+ * dword0    b'7:0   - msg_type
+ * 0         b'23:8  - ast table size
+ *           b'31:24 - ast max search
+ * dword1  - b'31:0  - ast table base address
+ * dword2  - b'31:0  - ase hash key 1
+ * dword3  - b'31:0  - ase hash key 2
+ * dword4  - b'31:0  - ase hash key 3
+ * dword5  - b'7:0   - ast_base_addr_39_32
+ *           b'15:8  - ast_timeout_threshold
+ *           b'16    - H - ast cache disable knob
+ *           b'17    - I - ast cache faluires disable knob
+ *           b'18    - J - ast cache cmd read bypass
+ *                     Bypassing the reads from memory when an entry is not
+ *                     found in cache, in case of full cache commands,
+ *                     write back or invalidate commands.
+ *           b'19    - K - ast cache write back fx
+ *                     If this fix is disabled, then any write back command
+ *                     for a cache line will also lead to invalidation of
+ *                     that cache line.
+ *           b'20    - L - ast cache only entry command fix
+ *                     If enabled, a new cache entry will always be created
+ *                     for requests for which matching data was found
+ *                     neither in cache nor in memory.
+ */
+PREPACK struct htt_ast_info_t {
+        A_UINT32 msg_type:        8,
+                 ast_table_size: 16, /* number of entries in AST */
+                 ast_max_search:  8;
+        A_UINT32 ast_base_addr;  /* base address of the AST table */
+        A_UINT32 ase_hash_key1;
+        A_UINT32 ase_hash_key2;
+        A_UINT32 ase_hash_key3;
+        A_UINT32 ast_base_addr_39_32:               8, /* 7:0 */
+                 ast_timeout_threshold:             8, /* 15:8 */
+                 ast_cache_disable:                 1, /* 16 */
+                 ast_cache_failures_disable:        1, /* 17 */
+                 ast_cache_cmd_read_bypass_dis:     1, /* 18 */
+                 ast_cache_write_back_fix_dis:      1, /* 19 */
+                 ast_cache_only_entry_cmd_fix_dis:  1, /* 20 */
+                 reserved:                         11;
+} POSTPACK;
+
+
+#define HTT_AST_INFO_SZ    (sizeof(struct htt_ast_info_t))
+
+/* DWORD0 */
+#define HTT_AST_INFO_AST_TABLE_SIZE_M                  0x00ffff00
+#define HTT_AST_INFO_AST_TABLE_SIZE_S                  8
+#define HTT_AST_INFO_AST_TABLE_SIZE_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_TABLE_SIZE_M) >> \
+            HTT_AST_INFO_AST_TABLE_SIZE_S)
+#define HTT_AST_INFO_AST_TABLE_SIZE_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_TABLE_SIZE, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_TABLE_SIZE__S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_MAX_SEARCH_M                  0xff000000
+#define HTT_AST_INFO_AST_MAX_SEARCH_S                  24
+#define HTT_AST_INFO_AST_MAX_SEARCH_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_MAX_SEARCH_M) >> \
+            HTT_AST_INFO_AST_MAX_SEARCH_S)
+#define HTT_AST_INFO_AST_MAX_SEARCH_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_MAX_SEARCH, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_MAX_SEARCH_S)); \
+        } while (0)
+
+
+/* DWORD5 */
+
+#define HTT_AST_INFO_AST_BASE_ADDR_39_32_M                  0x000000ff
+#define HTT_AST_INFO_AST_BASE_ADDR_39_32_S                  0
+#define HTT_AST_INFO_AST_BASE_ADDR_39_32_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_BASE_ADDR_39_32_M) >> \
+            HTT_AST_INFO_AST_BASE_ADDR_39_32_S)
+#define HTT_AST_INFO_AST_BASE_ADDR_39_32_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_BASE_ADDR_39_32, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_BASE_ADDR_39_32_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_M                  0x0000ff00
+#define HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_S                  8
+#define HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_M) >> \
+            HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_S)
+#define HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_TIMEOUT_THRESHOLD, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_TIMEOUT_THRESHOLD_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_DISABLE_M        0x00010000
+#define HTT_AST_INFO_AST_CACHE_DISABLE_s        16
+#define HTT_AST_INFO_AST_CACHE_DISABLE_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_DISABLE_M) >> \
+            HTT_AST_INFO_AST_CACHE_DISABLE_s)
+#define HTT_AST_INFO_AST_CACHE_DISABLE_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_DISABLE, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_DISABLE_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_M        0x00020000
+#define HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_s        17
+#define HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_M) >> \
+            HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_s)
+#define HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_FALUIRES_DISABLE_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_M        0x00040000
+#define HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_s        18
+#define HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_M) >> \
+            HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_s)
+#define HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_CMD_READ_BYPASS_DIS_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_M        0x00080000
+#define HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_s        19
+#define HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_M) >> \
+            HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_s)
+#define HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_WRITE_BACK_FIX_DIS_S)); \
+        } while (0)
+
+#define HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_M        0x00100000
+#define HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_s        20
+#define HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_GET(_var) \
+        (((_var) & HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_M) >> \
+            HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_s)
+#define HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_SET(_var, _val) \
+        do { \
+            HTT_CHECK_SET_VAL(HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS, _val); \
+            ((_var) |= ((_val) << HTT_AST_INFO_AST_CACHE_ONLY_ENTRY_CMD_FIX_DIS_S)); \
+        } while (0)
+
 
 
 /*=== target -> host messages ===============================================*/
@@ -11661,6 +12189,8 @@ enum htt_t2h_msg_type {
     HTT_T2H_MSG_TYPE_TX_LCE_SUPER_RULE_SETUP_DONE  = 0x3b,
     HTT_T2H_MSG_TYPE_SDWF_MSDUQ_CFG_IND            = 0x3c,
     HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ               = 0x3d,
+    HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP          = 0x3e,
+    HTT_T2H_MSG_TYPE_HAPS                          = 0x3f,
 
 
     HTT_T2H_MSG_TYPE_TEST,
@@ -23491,6 +24021,179 @@ PREPACK struct htt_t2h_mlo_latency_req_t {
         HTT_CHECK_SET_VAL(HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ_PERIODIC_INTVL, _val); \
         ((_var) |= ((_val) << HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ_PERIODIC_INTVL_S)); \
     } while (0)
+
+
+/* MSG_TYPE => HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP
+ *
+ * The following diagram shows the format of the global peer unmap message sent
+ * from the target to the host. This message is used to send unmap event to host
+ * after tid and msduq/mpduq cleanup in FW, host cleans up msduq/mpduq based on
+ * message.
+ *
+ * |31             24|23             20|19              8|7               0|
+ * |-----------------------------------------------------------------------|
+ * |   reserved      |   hw_link_id    | global_peer_id  |     msg type    |
+ * |-----------------------------------------------------------------------|
+ * @details
+ * struct htt_t2h_global_peer_id_unmap_t:
+ *
+ * The message is interpreted as follows:
+ * dword0 - b'7:0   - msg_type: Identifies a request for MLO latency stats
+ *                    This will be set to 0x3e
+ *                    (HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP)
+ *          b'19:8  - global_peer_id : global peer id assigned by host
+ *          b'23:20 - hw_link_id : hw link id for which unmap is being sent
+ *
+ */
+
+
+/* HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP */
+PREPACK struct htt_t2h_global_peer_id_unmap_t {
+    A_UINT32 msg_type:               8,  /* bits  7:0  */
+             global_peer_id:         12, /* bits 19:8  */
+             hw_link_id:             4,  /* bits 23:20 */
+             reserved:               8;  /* bits 31:16 */
+} POSTPACK;
+
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_M  0x000FFF00
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_S           8
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_GET(_var) \
+        (((_var) & HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_M) >> \
+                HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_S)
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID, _val); \
+        ((_var) |= ((_val) << HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_GLOBAL_PEER_ID_S)); \
+    } while (0)
+
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_M      0x00F00000
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_S              20
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_GET(_var) \
+        (((_var) & HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_M) >> \
+                HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_S)
+#define HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID, _val); \
+        ((_var) |= ((_val) << HTT_T2H_MSG_TYPE_GLOBAL_PEER_ID_UNMAP_HW_LINK_ID_S)); \
+    } while (0)
+
+
+/*
+ * @brief target -> pause/unpause host tx queues based on FW indication
+ * MSG_TYPE => HTT_T2H_MSG_TYPE_HAPS
+ *
+ * @details * Header fields:
+ *
+ * |31     22|21         20|19       16|15               8|7             0|
+ * |---------+-------------+-----------+------------------+---------------|
+ * | RSVD    |time_type    |action_code|      vdev_id     |   msg type    |
+ * |----------------------------------------------------------------------|
+ * |                          time_high                                   |
+ * |----------------------------------------------------------------------|
+ * |                          time_low                                    |
+ * |----------------------------------------------------------------------|
+ *
+ * dword0 - b'7:0       - msg_type: This will be set to
+ *                        0x3f (HTT_T2H_MSG_TYPE_HAPS)
+ *          b'15:8      - vdev_id
+ *          b'19:16     - action_code (HTT_T2H_HAPS_ACTION_CODE):
+ *                        b'0000: Pause
+ *                        b'0001: Pause with One-Shot Unpause
+ *                        b'0010: Unpause
+ *                        values 3-15: reserved
+ *          b'21:20     - time_type
+ *          b'31:22     - rsvd
+ * reverse action_code at time specified below
+ * (units are specified by the type_type bitfield)
+ * dword1 - b'31:0      uint32_t time_high
+ * dword2 - b'31:0      uint32_t time_low
+ */
+typedef enum {
+    HTT_T2H_HAPS_ACTION_PAUSE                          = 0x00,
+    HTT_T2H_HAPS_ACTION_PAUSE_WITH_ONESHOT_UNPAUSE     = 0x01,
+    HTT_T2H_HAPS_ACTION_UNPAUSE                        = 0x02,
+} HTT_T2H_HAPS_ACTION_CODE;
+
+typedef enum {
+    HTT_T2H_HAPS_TIME_TYPE_HOST_QTIME                  = 0x00,
+    HTT_T2H_HAPS_TIME_TYPE_TSF                         = 0x01,
+} HTT_T2H_HAPS_TIME_TYPE;
+
+PREPACK struct htt_t2h_power_state_info {
+    uint32_t msg_type : 8,           /* [7:0]   */
+             vdev_id : 8,            /* [15:8]  */
+             action_code : 4,        /* [19:16] */
+             time_type: 2,           /* [21:20] */
+             rsvd: 10;               /* [31:22] */
+    uint32_t time_low;
+    uint32_t time_high;
+} POSTPACK;
+
+#define HTT_T2H_POWER_STATE_INFO_SIZE (sizeof(struct htt_t2h_power_state_info))
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_M                 0x0000FF00
+#define HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_S                          8
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_S)
+#define HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_S));\
+    } while (0)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_M                 0x000F0000
+#define HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_S                         16
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_S)
+#define HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_S));\
+    } while (0)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_M                 0x00300000
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_S                         20
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_S)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_S));\
+    } while (0)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_M                 0xFFFFFFFF
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_S                          0
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_S)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_S));\
+    } while (0)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_M                 0xFFFFFFFF
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_S                          0
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_GET(_var) \
+    (((_var) & HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_M) >> \
+     HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_S)
+
+#define HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW, _val); \
+        ((_var) |= ((_val) << HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_S));\
+    } while (0)
+
 
 
 #endif

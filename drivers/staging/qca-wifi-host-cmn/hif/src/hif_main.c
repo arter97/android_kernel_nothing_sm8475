@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -379,6 +379,11 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.id = WCN6750_V2,
 		.subid = 0,
 		.name = "WCN6750_V2",
+	},
+	{
+		.id = WCN6450_V1,
+		.subid = 0,
+		.name = "WCN6450_V1",
 	},
 	{
 		.id = QCA6490_v2_1,
@@ -1157,6 +1162,19 @@ QDF_STATUS hif_try_complete_tasks(struct hif_softc *scn)
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef HIF_HAL_REG_ACCESS_SUPPORT
+void hif_reg_window_write(struct hif_softc *scn, uint32_t offset,
+			  uint32_t value)
+{
+	hal_write32_mb(scn->hal_soc, offset, value);
+}
+
+uint32_t hif_reg_window_read(struct hif_softc *scn, uint32_t offset)
+{
+	return hal_read32_mb(scn->hal_soc, offset);
+}
+#endif
+
 #if defined(HIF_IPCI) && defined(FEATURE_HAL_DELAYED_REG_WRITE)
 QDF_STATUS hif_try_prevent_ep_vote_access(struct hif_opaque_softc *hif_ctx)
 {
@@ -1705,6 +1723,12 @@ int hif_get_device_type(uint32_t device_id,
 		*hif_type = HIF_TYPE_QCA9574;
 		*target_type = TARGET_TYPE_QCA9574;
 		hif_info(" *********** QCA9574 *************");
+		break;
+
+	case WCN6450_DEVICE_ID:
+		*hif_type = HIF_TYPE_WCN6450;
+		*target_type = TARGET_TYPE_WCN6450;
+		hif_info(" *********** WCN6450 *************");
 		break;
 
 	default:

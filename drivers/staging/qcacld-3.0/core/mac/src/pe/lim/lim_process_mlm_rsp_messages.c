@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -298,6 +298,7 @@ void lim_process_mlm_join_cnf(struct mac_context *mac_ctx,
 		return;
 	}
 
+	session_entry->join_probe_cnt = 0;
 	if (session_entry->limSmeState != eLIM_SME_WT_JOIN_STATE) {
 		pe_err("received unexpected MLM_JOIN_CNF in state %X",
 			session_entry->limSmeState);
@@ -2939,6 +2940,7 @@ static void lim_process_switch_channel_join_req(
 		goto error;
 	}
 
+	session_entry->join_probe_cnt++;
 	return;
 error:
 	if (session_entry) {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -422,7 +423,6 @@ static int lpass_cdc_rx_macro_hw_params(struct snd_pcm_substream *substream,
 static int lpass_cdc_rx_macro_get_channel_map(struct snd_soc_dai *dai,
 				unsigned int *tx_num, unsigned int *tx_slot,
 				unsigned int *rx_num, unsigned int *rx_slot);
-static int lpass_cdc_rx_macro_mute_stream(struct snd_soc_dai *dai, int mute, int stream);
 static int lpass_cdc_rx_macro_int_dem_inp_mux_put(struct snd_kcontrol *kcontrol,
 				     struct snd_ctl_elem_value *ucontrol);
 static int lpass_cdc_rx_macro_mux_get(struct snd_kcontrol *kcontrol,
@@ -731,7 +731,6 @@ static const struct snd_kcontrol_new rx_mix_tx0_mux =
 static struct snd_soc_dai_ops lpass_cdc_rx_macro_dai_ops = {
 	.hw_params = lpass_cdc_rx_macro_hw_params,
 	.get_channel_map = lpass_cdc_rx_macro_get_channel_map,
-	.mute_stream = lpass_cdc_rx_macro_mute_stream,
 };
 
 static struct snd_soc_dai_driver lpass_cdc_rx_macro_dai[] = {
@@ -1279,60 +1278,6 @@ static int lpass_cdc_rx_macro_get_channel_map(struct snd_soc_dai *dai,
 	return 0;
 }
 
-static int lpass_cdc_rx_macro_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
-{
-	struct snd_soc_component *component = dai->component;
-	struct device *rx_dev = NULL;
-	struct lpass_cdc_rx_macro_priv *rx_priv = NULL;
-	uint16_t j = 0, reg = 0, mix_reg = 0, dsm_reg = 0;
-	u16 int_mux_cfg0 = 0, int_mux_cfg1 = 0;
-	u8 int_mux_cfg0_val = 0, int_mux_cfg1_val = 0;
-
-	if (mute)
-		return 0;
-
-	if (!lpass_cdc_rx_macro_get_data(component, &rx_dev, &rx_priv, __func__))
-		return -EINVAL;
-
-	switch (dai->id) {
-	case RX_MACRO_AIF1_PB:
-	case RX_MACRO_AIF2_PB:
-	case RX_MACRO_AIF3_PB:
-	case RX_MACRO_AIF4_PB:
-	for (j = 0; j < INTERP_MAX; j++) {
-		reg = LPASS_CDC_RX_RX0_RX_PATH_CTL +
-				(j * LPASS_CDC_RX_MACRO_RX_PATH_OFFSET);
-		mix_reg = LPASS_CDC_RX_RX0_RX_PATH_MIX_CTL +
-				(j * LPASS_CDC_RX_MACRO_RX_PATH_OFFSET);
-		dsm_reg = LPASS_CDC_RX_RX0_RX_PATH_DSM_CTL +
-				(j * LPASS_CDC_RX_MACRO_RX_PATH_OFFSET);
-		if (j == INTERP_AUX)
-			dsm_reg = LPASS_CDC_RX_RX2_RX_PATH_DSM_CTL;
-		int_mux_cfg0 = LPASS_CDC_RX_INP_MUX_RX_INT0_CFG0 + j * 8;
-		int_mux_cfg1 = int_mux_cfg0 + 4;
-		int_mux_cfg0_val = snd_soc_component_read(component,
-							int_mux_cfg0);
-		int_mux_cfg1_val = snd_soc_component_read(component,
-							int_mux_cfg1);
-		if (snd_soc_component_read(component, dsm_reg) & 0x01) {
-			if (int_mux_cfg0_val || (int_mux_cfg1_val & 0xF0))
-				snd_soc_component_update_bits(component,
-							reg, 0x20, 0x20);
-			if (int_mux_cfg1_val & 0x0F) {
-				snd_soc_component_update_bits(component,
-							reg, 0x20, 0x20);
-				snd_soc_component_update_bits(component,
-							mix_reg, 0x20, 0x20);
-			}
-		}
-	}
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
 static int lpass_cdc_rx_macro_mclk_enable(
 				struct lpass_cdc_rx_macro_priv *rx_priv,
 				bool mclk_enable, bool dapm)
@@ -1777,6 +1722,8 @@ static int lpass_cdc_rx_macro_enable_mix_path(struct snd_soc_dapm_widget *w,
 		lpass_cdc_rx_macro_set_idle_detect_thr(component, rx_priv, w->shift,
 					INTERP_MIX_PATH);
 		lpass_cdc_rx_macro_enable_interp_clk(component, event, w->shift);
+		/* Clk Enable */
+		snd_soc_component_update_bits(component, mix_reg, 0x20, 0x20);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		snd_soc_component_write(component, gain_reg,
@@ -2776,6 +2723,9 @@ static int lpass_cdc_rx_macro_enable_interp_clk(struct snd_soc_component *compon
 					0x10, 0x10);
 			snd_soc_component_update_bits(component, dsm_reg,
 					0x01, 0x01);
+			/* Clk Enable */
+			snd_soc_component_update_bits(component, main_reg,
+					0x20, 0x20);
 			snd_soc_component_update_bits(component, rx_cfg2_reg,
 					0x03, 0x03);
 			lpass_cdc_rx_macro_idle_detect_control(component, rx_priv,

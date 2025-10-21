@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3113,6 +3113,9 @@ int wma_wow_wakeup_host_event(void *handle, uint8_t *event, uint32_t len)
 	WMI_WOW_WAKEUP_HOST_EVENTID_param_tlvs *event_param;
 	WOW_EVENT_INFO_fixed_param *wake_info;
 
+	if (!wma || !wma->psoc)
+		return -EINVAL;
+
 	event_param = (WMI_WOW_WAKEUP_HOST_EVENTID_param_tlvs *)event;
 	if (!event_param) {
 		wma_err("Wake event data is null");
@@ -4872,6 +4875,27 @@ QDF_STATUS wma_set_sar_limit(WMA_HANDLE handle,
 
 	ret = wmi_unified_send_sar_limit_cmd(wmi_handle,
 				sar_limit_params);
+
+	return ret;
+}
+
+QDF_STATUS wma_set_tx_power_per_mcs(
+			   WMA_HANDLE handle,
+			   struct tx_power_per_mcs_rate *txpower_adjust_params)
+{
+	int ret;
+	tp_wma_handle wma = (tp_wma_handle) handle;
+	struct wmi_unified *wmi_handle;
+
+	if (wma_validate_handle(wma))
+		return QDF_STATUS_E_INVAL;
+
+	wmi_handle = wma->wmi_handle;
+	if (wmi_validate_handle(wmi_handle))
+		return QDF_STATUS_E_INVAL;
+
+	ret = wmi_unified_send_tx_power_per_mcs_cmd(wmi_handle,
+						    txpower_adjust_params);
 
 	return ret;
 }

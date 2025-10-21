@@ -50,6 +50,8 @@ struct gen7_gmu_device {
 	struct kgsl_memdesc *gmu_log;
 	/** @vrb: GMU virtual register bank memory */
 	struct kgsl_memdesc *vrb;
+	/** @trace: gmu trace container */
+	struct kgsl_gmu_trace trace;
 	struct gen7_hfi hfi;
 	/** @pwrlevels: Array of GMU power levels */
 	struct regulator *cx_gdsc;
