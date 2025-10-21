@@ -1112,7 +1112,7 @@ static bool _sde_rm_check_lm_and_get_connected_blks(
 		u32 conn_lm_mask)
 {
 	const struct sde_lm_cfg *lm_cfg = to_sde_hw_mixer(lm->hw)->cap;
-	const struct sde_pingpong_cfg *pp_cfg;
+	const struct sde_pingpong_cfg *pp_cfg = NULL;
 	bool ret, is_conn_primary, is_conn_secondary;
 	u32 lm_primary_pref, lm_secondary_pref, cwb_pref, dcwb_pref;
 
