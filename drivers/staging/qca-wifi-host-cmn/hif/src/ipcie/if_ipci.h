@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -76,6 +76,14 @@ struct hif_ipci_stats {
 #define EP_WAKE_DELAY_TIMEOUT_MS 10
 #define EP_WAKE_RESET_DELAY_US 50
 #define EP_WAKE_DELAY_US 200
+#endif
+
+#if defined(QCA_WIFI_WCN6450)
+#define HIF_IPCI_DEVICE_ID WCN6450_DEVICE_ID
+#elif defined(QCA_WIFI_QCA6750)
+#define HIF_IPCI_DEVICE_ID QCA6750_DEVICE_ID
+#else
+#define HIF_IPCI_DEVICE_ID 0
 #endif
 
 struct hif_ipci_softc {

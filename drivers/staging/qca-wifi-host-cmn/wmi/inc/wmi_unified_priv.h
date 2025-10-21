@@ -1191,6 +1191,9 @@ QDF_STATUS (*send_get_link_speed_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_wlm_latency_level_cmd)(wmi_unified_t wmi_handle,
 				struct wlm_latency_level_param *param);
 
+QDF_STATUS (*send_tx_power_per_mcs_cmd)(wmi_unified_t wmi_handle,
+					struct tx_power_per_mcs_rate *params);
+
 QDF_STATUS (*send_sar_limit_cmd)(wmi_unified_t wmi_handle,
 				struct sar_limit_cmd_params *params);
 
