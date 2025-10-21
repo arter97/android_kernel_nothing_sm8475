@@ -700,6 +700,29 @@ typedef  enum  {
     WMI_SERVICE_CTRL_PATH_STA_DAR_STATS_SUPPORT = 441, /* FW supports DAR stats reporting for STA mode */
     WMI_SERVICE_APF_DATA_OFFLOAD_SUPPORT_ENABLED = 442, /* Indicates FW support for APFv6 handling offloads and disable QC data offloads */
     WMI_SERVICE_PER_VDEV_TWT_RESP_DISABLE_SUPPORT = 443, /* FW supports vdev level TWT responder disable */
+    WMI_SERVICE_VENDOR_OUI_ACTION_V2 = 444, /* FW supports vendor OUI action version 2 */
+    WMI_SERVICE_HW_BLACKLIST_CHAN_SUPPORT = 445, /* Indicates FW support for computing and sending the HW channel blacklist for the current country and applicable power mode */
+    WMI_SERVICE_NDP_DFS_CHANNEL_SUPPORT = 446, /* FW supports forming NDP on DFS channels */
+    WMI_SERVICE_WFD_R2 = 447, /* Indicates FW supports WiFi-Direct R2 */
+    WMI_SERVICE_STA_MLO_RCFG_SUPPORT = 448, /* FW supports STA ML reconfig op */
+    WMI_SERVICE_PDEV_SUSPEND_EVENT_SUPPORT = 449, /* FW supports PDEV_SUSPEND event */
+    WMI_SERVICE_PCC_MODE = 450, /* Indicates FW support for PCC (P2P Connection Compatibility) Mode */
+    WMI_SERVICE_TDLS_NSS_CONFIRM_SUPPORT = 451, /* FW supports confirmation to host requested TDLS NSS operation */
+
+    WMI_SERVICE_EM_PCIE_CONFIG_CBW_SUPPORT = 452, /* Indicates support for channel bandwidth based PCIe config adjustment */
+    WMI_SERVICE_EM_PCIE_CONFIG_LPM_SUPPORT = 453, /* Indicates support for PCIe low power mode L0S/L1 */
+    WMI_SERVICE_EM_DCVS_SUPPORT = 454, /* Indicates support for Dynamic clock and voltage scaling */
+    WMI_SERVICE_EM_EDPS_SUPPORT = 455, /* Indicates support for Dynamic AP power save */
+    WMI_SERVICE_EM_PUO_SUPPORT = 456, /* Indicates support for TWT based periodic unavailability operation. */
+    WMI_SERVICE_EM_ECO_MODE_SUPPORT = 457, /* Indicates support for ECO mode config (LP BBF+ADC+SYNCT) */
+
+    WMI_SERVICE_11BN = 458, /* Indicates FW supports 802.11bn */
+    WMI_SERVICE_HOST_AWARE_POWERSAVE = 459, /* FW supports indicating the powerstate of FW to host */
+    WMI_SERVICE_PDEV_DIV_STATES_REPORT = 460, /* FW supports reporting antenna diversity states */
+    WMI_SERVICE_EAPOL_OVER_RAW = 461, /* FW supports sending EAPOL frames in raw mode even when the vdev is brought up in nwifi/ethernet mode */
+    WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT = 462, /* Indicates FW supports MLO SAP link removal operation */
+    WMI_SERVICE_TX_POWER_LIMIT = 463, /* FW supports temporary tx power limit indication to HALPHY */
+    WMI_SERVICE_NPCA_SUPPORT = 464, /* Indicates FW supports NPCA (Non-Primary Channel Access) */
 
 
     WMI_MAX_EXT2_SERVICE

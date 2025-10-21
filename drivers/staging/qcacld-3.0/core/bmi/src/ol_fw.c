@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -50,6 +50,8 @@
 #ifdef FEATURE_SECURE_FIRMWARE
 static struct hash_fw fw_hash;
 #endif
+
+#define MAX_WAKELOCK_FOR_FW_DOWNLOAD 1000
 
 static uint32_t refclk_speed_to_hz[] = {
 	48000000,               /* SOC_REFCLK_48_MHZ */
@@ -519,14 +521,13 @@ ol_transfer_bin_file(struct ol_context *ol_ctx, enum ATH_BIN_FILE file,
 		     uint32_t address, bool compressed)
 {
 	int ret;
-	qdf_device_t qdf_dev = ol_ctx->qdf_dev;
 
-	/* Wait until suspend and resume are completed before loading FW */
-	pld_lock_pm_sem(qdf_dev->dev);
+	qdf_wake_lock_timeout_acquire(&ol_ctx->fw_dl_wakelock,
+				      MAX_WAKELOCK_FOR_FW_DOWNLOAD);
 
 	ret = __ol_transfer_bin_file(ol_ctx, file, address, compressed);
 
-	pld_release_pm_sem(qdf_dev->dev);
+	qdf_wake_lock_release(&ol_ctx->fw_dl_wakelock, 0);
 
 	return ret;
 }

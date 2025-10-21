@@ -694,9 +694,16 @@ int32_t cam_handle_mem_ptr(uint64_t handle, uint32_t cmd,
 		goto put_ref;
 	}
 
-	if ((len < sizeof(struct cam_packet)) ||
-		(pkt->cmd_buf_offset >= (len - sizeof(struct cam_packet)))) {
+	if ((len < sizeof(struct cam_packet)) || (pkt->cmd_buf_offset +
+		sizeof(struct cam_cmd_buf_desc) >= (len - sizeof(struct cam_packet)))) {
 		CAM_ERR(CAM_SENSOR, "Not enough buf provided");
+		rc = -EINVAL;
+		goto end;
+	}
+
+	if ((sizeof(struct cam_packet) +
+		(sizeof(struct cam_cmd_buf_desc) * pkt->num_cmd_buf)) > len) {
+		CAM_INFO(CAM_SENSOR, "Not enough buf provided");
 		rc = -EINVAL;
 		goto end;
 	}

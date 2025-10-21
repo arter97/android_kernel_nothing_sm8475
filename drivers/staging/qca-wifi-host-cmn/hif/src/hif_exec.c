@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021, 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -680,6 +680,26 @@ static void hif_exec_napi_schedule(struct hif_exec_context *ctx)
 	napi_schedule(&n_ctx->napi);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+/**
+ * qdf_napi_get_dummy_nd_ptr() - Get dummy netdev pointer
+ * @ctx: hif_napi_exec_context pointer
+ *
+ * Return: dummy netdev pointer
+ */
+static inline struct net_device *
+qdf_napi_get_dummy_nd_ptr(struct hif_napi_exec_context *ctx)
+{
+	return ctx->netdev;
+}
+#else
+static inline struct net_device *
+qdf_napi_get_dummy_nd_ptr(struct hif_napi_exec_context *ctx)
+{
+	return &ctx->netdev;
+}
+#endif
+
 /**
  * hif_exec_napi_kill() - stop a napi exec context from being rescheduled
  * @ctx: a hif_exec_context known to be of napi type
@@ -688,6 +708,7 @@ static void hif_exec_napi_kill(struct hif_exec_context *ctx)
 {
 	struct hif_napi_exec_context *n_ctx = hif_exec_get_napi(ctx);
 	int irq_ind;
+	struct net_device *dummy_nd = qdf_napi_get_dummy_nd_ptr(n_ctx);
 
 	if (ctx->inited) {
 		napi_disable(&n_ctx->napi);
@@ -699,6 +720,7 @@ static void hif_exec_napi_kill(struct hif_exec_context *ctx)
 
 	hif_core_ctl_set_boost(false);
 	netif_napi_del(&(n_ctx->napi));
+	qdf_net_if_destroy_dummy_if((struct qdf_net_if *)dummy_nd);
 }
 
 struct hif_execution_ops napi_sched_ops = {
@@ -714,6 +736,7 @@ struct hif_execution_ops napi_sched_ops = {
 static struct hif_exec_context *hif_exec_napi_create(uint32_t scale)
 {
 	struct hif_napi_exec_context *ctx;
+	struct net_device *dummy_nd;
 
 	ctx = qdf_mem_malloc(sizeof(struct hif_napi_exec_context));
 	if (!ctx)
@@ -722,8 +745,9 @@ static struct hif_exec_context *hif_exec_napi_create(uint32_t scale)
 	ctx->exec_ctx.sched_ops = &napi_sched_ops;
 	ctx->exec_ctx.inited = true;
 	ctx->exec_ctx.scale_bin_shift = scale;
-	qdf_net_if_create_dummy_if((struct qdf_net_if *)&ctx->netdev);
-	netif_napi_add_ni(&(ctx->netdev), &(ctx->napi), hif_exec_poll,
+	dummy_nd = qdf_napi_get_dummy_nd_ptr(ctx);
+	qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_nd);
+	netif_napi_add_ni(dummy_nd, &(ctx->napi), hif_exec_poll,
 		       QCA_NAPI_BUDGET);
 	napi_enable(&ctx->napi);
 

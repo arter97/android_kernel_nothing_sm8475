@@ -922,6 +922,10 @@
 #define FEATURE_SYSFS_RF_TEST_MODE (1)
 #endif
 
+#ifdef CONFIG_WLAN_SYSFS_BITRATES
+#define WLAN_SYSFS_BITRATES (1)
+#endif
+
 #ifdef CONFIG_RX_PERFORMANCE
 #define RX_PERFORMANCE (1)
 #endif
