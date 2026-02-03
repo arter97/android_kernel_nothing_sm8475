@@ -202,4 +202,20 @@ bool qdf_cpumask_empty(const qdf_cpu_mask *srcp);
  */
 void qdf_cpumask_copy(qdf_cpu_mask *dstp,
 		      const qdf_cpu_mask *srcp);
+
+/**
+ * qdf_thread_cpumap_print_to_pagebuf  - copies the cpumask into the buffer
+ * either as comma-separated list of cpus or hex values of cpumask
+ * @list: indicates whether the cpumap is list or not
+ * @new_mask: the cpumask to copy
+ * @new_mask_str: the buffer to copy into
+ *
+ * This functions copies the cpu mask set for the thread by
+ * qdf_thread_set_cpus_allowed_mask() to new_mask_str
+ *
+ * Return: None
+ */
+void
+qdf_thread_cpumap_print_to_pagebuf(bool list, char *new_mask_str,
+				   qdf_cpu_mask *new_mask);
 #endif /* __QDF_THREADS_H */

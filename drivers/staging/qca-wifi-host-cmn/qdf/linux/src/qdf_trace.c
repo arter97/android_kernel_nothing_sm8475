@@ -441,10 +441,19 @@ void qdf_mtrace_log(QDF_MODULE_ID src_module, QDF_MODULE_ID dst_module,
 		    uint16_t message_id, uint8_t vdev_id)
 {
 	uint32_t trace_log, payload;
-	static uint16_t counter;
+	static __qdf_atomic_t counter;
+	static bool initialized = false;
+
+	// Initialize counter only once
+	if (!initialized) {
+		qdf_atomic_init(&counter);
+		initialized = true;
+	}
 
 	trace_log = (src_module << 23) | (dst_module << 15) | message_id;
-	payload = (vdev_id << 16) | counter++;
+
+	qdf_atomic_add(1, &counter);
+	payload = ((uint32_t)vdev_id << 16) | (qdf_atomic_read(&counter) & 0xFFFF);
 
 	QDF_TRACE(src_module, QDF_TRACE_LEVEL_TRACE, "%x %x",
 		  trace_log, payload);

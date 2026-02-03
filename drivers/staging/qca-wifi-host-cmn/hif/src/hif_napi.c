@@ -84,11 +84,24 @@ hif_rx_thread_napi_get_netdev_ptr(struct qca_napi_info *napii)
 {
 	return napii->rx_thread_netdev;
 }
+
+static inline void
+hif_rx_thread_napi_set_netdev_ptr(struct qca_napi_info *napii,
+				  struct net_device *nd)
+{
+	napii->rx_thread_netdev = nd;
+}
 #else
 static inline struct net_device *
 hif_rx_thread_napi_get_netdev_ptr(struct qca_napi_info *napii)
 {
 	return &napii->rx_thread_netdev;
+}
+
+static inline void
+hif_rx_thread_napi_set_netdev_ptr(struct qca_napi_info *napii,
+				  struct net_device *nd)
+{
 }
 #endif
 
@@ -103,6 +116,7 @@ static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
 	struct net_device *nd = hif_rx_thread_napi_get_netdev_ptr(napii);
 
 	qdf_net_if_create_dummy_if((struct qdf_net_if **)&nd);
+	hif_rx_thread_napi_set_netdev_ptr(napii, nd);
 	netif_napi_add_ni(nd, &napii->rx_thread_napi,
 		       hif_rxthread_napi_poll, 64);
 	napi_enable(&napii->rx_thread_napi);
@@ -118,8 +132,10 @@ static void hif_deinit_rx_thread_napi(struct qca_napi_info *napii)
 {
 	struct net_device *nd = hif_rx_thread_napi_get_netdev_ptr(napii);
 
-	qdf_net_if_destroy_dummy_if((struct qdf_net_if *)nd);
+	napi_disable(&napii->rx_thread_napi);
 	netif_napi_del(&napii->rx_thread_napi);
+	qdf_net_if_destroy_dummy_if((struct qdf_net_if *)nd);
+	hif_rx_thread_napi_set_netdev_ptr(napii, NULL);
 }
 #else /* RECEIVE_OFFLOAD */
 static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
@@ -143,11 +159,24 @@ hif_napi_get_dummy_netdev_ptr(struct qca_napi_info *napii)
 {
 	return napii->netdev;
 }
+
+static inline void
+hif_napi_set_dummy_netdev_ptr(struct qca_napi_info *napii,
+			      struct net_device *nd)
+{
+	napii->netdev = nd;
+}
 #else
 static inline struct net_device *
 hif_napi_get_dummy_netdev_ptr(struct qca_napi_info *napii)
 {
 	return &napii->netdev;
+}
+
+static inline void
+hif_napi_set_dummy_netdev_ptr(struct qca_napi_info *napii,
+			      struct net_device *nd)
+{
 }
 #endif
 
@@ -249,6 +278,7 @@ int hif_napi_create(struct hif_opaque_softc   *hif_ctx,
 
 		dummy_netdev = hif_napi_get_dummy_netdev_ptr(napii);
 		qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_netdev);
+		hif_napi_set_dummy_netdev_ptr(napii, dummy_netdev);
 		NAPI_DEBUG("adding napi=%pK to netdev=%pK (poll=%pK, bdgt=%d)",
 			   &(napii->napi), dummy_netdev, poll, budget);
 		netif_napi_add_ni(dummy_netdev, &(napii->napi),
@@ -433,7 +463,7 @@ int hif_napi_destroy(struct hif_opaque_softc *hif_ctx,
 			netif_napi_del(&(napii->napi));
 			hif_deinit_rx_thread_napi(napii);
 			qdf_net_if_destroy_dummy_if((struct qdf_net_if *)dummy_nd);
-
+			hif_napi_set_dummy_netdev_ptr(napii, NULL);
 			napid->ce_map &= ~(0x01 << ce);
 			napid->napis[ce] = NULL;
 			napii->scale  = 0;

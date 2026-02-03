@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -7983,6 +7983,11 @@ void wmi_copy_resource_config(wmi_resource_config *resource_cfg,
 
 	WMI_RSRC_CFG_FLAGS2_RX_PEER_METADATA_VERSION_SET(resource_cfg->flags2,
 						 tgt_res_cfg->target_cap_flags);
+
+	if (tgt_res_cfg->apfv6_offload_disabled != 0) {
+		WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_SET(
+				resource_cfg->apf_data_ofload_enable__word, 1);
+	}
 }
 
 /* copy_hw_mode_id_in_init_cmd() - Helper routine to copy hw_mode in init cmd
@@ -16079,9 +16084,14 @@ extract_roam_scan_ap_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (ap_idx >= param_buf->num_roam_ap_info) {
-		wmi_err("Invalid roam scan AP tlv ap_idx:%d total_ap:%d",
-			ap_idx, param_buf->num_roam_ap_info);
+	/*
+	 * Check to validate that the requested number of APs do not exceed the
+	 * remaining APs in param_buf after ap_idx to prevent out of bounds
+	 * access.
+	 */
+	if ((ap_idx + num_cand) > param_buf->num_roam_ap_info) {
+		wmi_err("Invalid roam scan AP tlv ap_idx:%d, num_cand:%d, total_ap:%d",
+			ap_idx, num_cand, param_buf->num_roam_ap_info);
 		return QDF_STATUS_E_FAILURE;
 	}
 
@@ -16749,6 +16759,12 @@ static QDF_STATUS extract_pdev_csa_switch_count_status_tlv(
 							wmi_handle,
 							csa_status->pdev_id);
 	param->current_switch_count = csa_status->current_switch_count;
+
+	if (param_buf->num_vdev_ids != csa_status->num_vdevs) {
+		wmi_err("Invalid number of vdevs: received = %d, expected = %d",
+			csa_status->num_vdevs, param_buf->num_vdev_ids);
+		return QDF_STATUS_E_INVAL;
+	}
 	param->num_vdevs = csa_status->num_vdevs;
 	param->vdev_ids = param_buf->vdev_ids;
 
@@ -17333,6 +17349,8 @@ struct wmi_ops tlv_ops =  {
 				wmi_send_apf_read_work_memory_cmd_tlv,
 	.extract_apf_read_memory_resp_event =
 				wmi_extract_apf_read_memory_resp_event_tlv,
+	.send_set_apf_supported_offload_bitmap_cmd =
+			wmi_send_set_apf_supported_offload_bitmap_cmd_tlv,
 #endif /* FEATURE_WLAN_APF */
 	.init_cmd_send = init_cmd_send_tlv,
 	.send_vdev_set_custom_aggr_size_cmd =
@@ -18443,6 +18461,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 			WMI_SERVICE_SCAN_CONFIG_PER_CHANNEL;
 	wmi_service[wmi_service_csa_beacon_template] =
 			WMI_SERVICE_CSA_BEACON_TEMPLATE;
+	wmi_service[wmi_service_apf_data_offload_support_enabled] =
+			WMI_SERVICE_APF_DATA_OFFLOAD_SUPPORT_ENABLED;
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 	wmi_service[wmi_service_rtt_11az_ntb_support] =
 			WMI_SERVICE_RTT_11AZ_NTB_SUPPORT;
