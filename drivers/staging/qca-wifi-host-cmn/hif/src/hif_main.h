@@ -349,6 +349,18 @@ struct hif_softc {
 	uint64_t cmem_size;
 };
 
+#if defined(NUM_SOC_PERF_CLUSTER) && (NUM_SOC_PERF_CLUSTER > 1)
+static inline uint16_t hif_get_perf_cluster_bitmap(void)
+{
+	return (BIT(CPU_CLUSTER_TYPE_PERF) | BIT(CPU_CLUSTER_TYPE_PERF2));
+}
+#else /* NUM_SOC_PERF_CLUSTER > 1 */
+static inline uint16_t hif_get_perf_cluster_bitmap(void)
+{
+	return BIT(CPU_CLUSTER_TYPE_PERF);
+}
+#endif /* NUM_SOC_PERF_CLUSTER > 1 */
+
 static inline
 void *hif_get_hal_handle(struct hif_opaque_softc *hif_hdl)
 {

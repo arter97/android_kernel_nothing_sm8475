@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -22,6 +22,9 @@
 #include <qdf_atomic.h>
 #include <qdf_module.h>
 #include <qdf_platform.h>
+#ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
+#include "hif_main.h"
+#endif
 
 struct sched_qdf_mc_timer_cb_wrapper {
 	qdf_mc_timer_callback_t timer_callback;
@@ -789,3 +792,48 @@ QDF_STATUS scheduler_post_message_debug(QDF_MODULE_ID src_id,
 }
 
 qdf_export_symbol(scheduler_post_message_debug);
+
+#ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
+void scheduler_perfd_clear_cpumask(void)
+{
+	qdf_cpu_mask new_mask;
+	struct scheduler_ctx *sched_ctx = scheduler_get_context();
+
+	if (!sched_ctx || !sched_ctx->sch_thread) {
+		sched_err("Failed to get scheduler thread context");
+		return;
+	}
+
+	qdf_cpumask_clear(&new_mask);
+	qdf_cpumask_setall(&new_mask);
+	qdf_thread_set_cpus_allowed_mask(sched_ctx->sch_thread, &new_mask);
+}
+
+void scheduler_perfd_set_cpumask(void)
+{
+	unsigned int cpus;
+	int package_id;
+	char new_mask_str[10];
+	qdf_cpu_mask new_mask;
+	int perf_cpu_cluster = hif_get_perf_cluster_bitmap();
+	struct scheduler_ctx *sched_ctx = scheduler_get_context();
+
+	if (!sched_ctx || !sched_ctx->sch_thread) {
+		sched_err("Failed to get scheduler thread context");
+		return;
+	}
+
+	qdf_cpumask_clear(&new_mask);
+	qdf_for_each_online_cpu(cpus) {
+		package_id = qdf_topology_physical_package_id(cpus);
+		if (package_id >= 0 &&
+		    QDF_HAS_PARAM(perf_cpu_cluster, package_id))
+			qdf_cpumask_set_cpu(cpus, &new_mask);
+	}
+
+	qdf_thread_set_cpus_allowed_mask(sched_ctx->sch_thread, &new_mask);
+
+	qdf_thread_cpumap_print_to_pagebuf(false, new_mask_str, &new_mask);
+	sched_debug("Set scheduler thread CPU mask : %s", new_mask_str);
+}
+#endif
