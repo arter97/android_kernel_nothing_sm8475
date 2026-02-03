@@ -522,6 +522,10 @@ static void sde_hw_intr_dispatch_irq(struct sde_hw_intr *intr,
 					~intr->sde_irq_map[irq_idx].irq_mask;
 			}
 	}
+
+	/* ensure register writes go through */
+	wmb();
+
 	spin_unlock_irqrestore(&intr->irq_lock, irq_flags);
 }
 
