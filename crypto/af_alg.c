@@ -1030,7 +1030,7 @@ ssize_t af_alg_sendpage(struct socket *sock, struct page *page,
 	ctx->used += size;
 
 done:
-	ctx->more = flags & MSG_MORE;
+	ctx->more = !!(flags & MSG_MORE);
 
 unlock:
 	af_alg_data_wakeup(sk);
@@ -1127,14 +1127,13 @@ struct af_alg_async_req *af_alg_alloc_areq(struct sock *sk,
 	if (unlikely(!areq))
 		return ERR_PTR(-ENOMEM);
 
+	memset(areq, 0, areqlen);
+
 	ctx->inflight = true;
 
 	areq->areqlen = areqlen;
 	areq->sk = sk;
-	areq->last_rsgl = NULL;
 	INIT_LIST_HEAD(&areq->rsgl_list);
-	areq->tsgl = NULL;
-	areq->tsgl_entries = 0;
 
 	return areq;
 }

@@ -2591,5 +2591,14 @@ QDF_STATUS wma_vdev_detach(struct del_vdev_params *pdel_vdev_req_param);
 
 QDF_STATUS wma_p2p_self_peer_remove(struct wlan_objmgr_vdev *vdev);
 #endif
+
+/**
+ * wma_send_reduce_pwr_scan_mode() - Send reduce power scan mode to FW
+ * @pdev_id: pdev id
+ * @param_val: value
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code.
+ */
+QDF_STATUS wma_send_reduce_pwr_scan_mode(uint32_t pdev_id, uint32_t param_val);
 #endif
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1690,7 +1690,8 @@ peer_detach:
 			cdp_peer_delete(soc, vdev_id, peer_addr, bitmap);
 	}
 
-	wlan_release_peer_key_wakelock(wma->pdev, peer_mac);
+	wlan_release_peer_key_wakelock(wma->interfaces[vdev_id].vdev,
+				       peer_mac);
 	wma_remove_objmgr_peer(wma, wma->interfaces[vdev_id].vdev, peer_mac);
 
 	wma->interfaces[vdev_id].peer_count--;
@@ -2786,6 +2787,7 @@ QDF_STATUS wma_post_vdev_create_setup(struct wlan_objmgr_vdev *vdev)
 	struct wlan_mlme_qos *qos_aggr;
 	struct vdev_mlme_obj *vdev_mlme;
 	tp_wma_handle wma_handle;
+	uint32_t offload_bitmap;
 
 	if (!mac)
 		return QDF_STATUS_E_FAILURE;
@@ -3000,6 +3002,20 @@ QDF_STATUS wma_post_vdev_create_setup(struct wlan_objmgr_vdev *vdev)
 		}
 	} else {
 		wma_err("Failed to get value for WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, leaving unchanged");
+	}
+
+	if (vdev_mlme->mgmt.generic.type == WMI_VDEV_TYPE_STA &&
+	    ucfg_pmo_is_apf_enabled(wma_handle->psoc) &&
+	    wmi_service_enabled(wma_handle->wmi_handle,
+				wmi_service_apf_data_offload_support_enabled)) {
+		offload_bitmap = ucfg_pmo_get_apfv6_offload_bitmap(
+							wma_handle->psoc);
+		ret = wmi_unified_set_apf_supported_offload_bitmap_cmd(
+							wma_handle->wmi_handle,
+							vdev_id,
+							offload_bitmap);
+		if (QDF_IS_STATUS_ERROR(ret))
+			wma_err("Failed to configure APF supported offload bitmap");
 	}
 
 	if (vdev_mlme->mgmt.generic.type == WMI_VDEV_TYPE_STA &&

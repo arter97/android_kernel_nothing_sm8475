@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1363,7 +1363,7 @@ enum scan_mode_6ghz {
  * scan_mode_6ghz_duty_cycle - 6ghz Scan mode duty cycle
  * @Min: 0
  * @Max: 0xFFFF
- * @Default: 4
+ * @Default: 2
  *
  * Configure the 6Ghz scan mode duty cycle
  * 0 - No full scan needed, all scans are optimized
@@ -1386,7 +1386,7 @@ enum scan_mode_6ghz {
 			"scan_mode_6ghz_duty_cycle", \
 			0, \
 			0xFFFF, \
-			4, \
+			2, \
 			CFG_VALUE_OR_DEFAULT, \
 			"6ghz scan mode duty cycle")
 

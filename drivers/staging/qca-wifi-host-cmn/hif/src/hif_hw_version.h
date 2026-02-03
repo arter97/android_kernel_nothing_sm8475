@@ -58,6 +58,8 @@
 #define WCN3990_STRAIT                  0x400E0000
 #define WCN3990_NETRANI                 0x400F0000
 #define WCN3990_CLARENCE                0x406A0000
+#define WCN3990_ALDABRA                 0x900A0000
+#define WCN3990_PORUS                   0xA02E0000
 
 struct qwlan_hw {
 	u32 id;

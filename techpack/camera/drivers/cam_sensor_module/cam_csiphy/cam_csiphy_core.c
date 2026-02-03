@@ -1322,11 +1322,8 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 	struct cam_hw_soc_info *soc_info;
 	struct csiphy_reg_parms_t *csiphy_reg;
 	int32_t i = 0;
-	CAM_DBG(CAM_CSIPHY, "csiphy shutdown E: state:%d, acquire_count:%u, start_dev_count:%u",
-			csiphy_dev->csiphy_state, csiphy_dev->acquire_count, csiphy_dev->start_dev_count);
 
-	if (csiphy_dev->start_dev_count == 0)
-	{
+	if (csiphy_dev->start_dev_count == 0) {
 		if (csiphy_dev->csiphy_state == CAM_CSIPHY_INIT)
 			return;
 
@@ -1389,7 +1386,6 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 	csiphy_dev->acquire_count = 0;
 	csiphy_dev->start_dev_count = 0;
 	csiphy_dev->csiphy_state = CAM_CSIPHY_INIT;
-	CAM_DBG(CAM_CSIPHY, "csiphy shutdown X: state:%d, acquire_count:%u,", csiphy_dev->csiphy_state, csiphy_dev->acquire_count);
 }
 
 static int32_t cam_csiphy_external_cmd(struct csiphy_device *csiphy_dev,

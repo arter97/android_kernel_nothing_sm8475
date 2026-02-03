@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -11466,7 +11466,7 @@ typedef struct sDot11fRadioMeasurementReport{
 	tDot11fFfAction                   Action;
 	tDot11fFfDialogToken              DialogToken;
 	uint16_t                          num_MeasurementReport;
-	tDot11fIEMeasurementReport        MeasurementReport[1];
+	tDot11fIEMeasurementReport        MeasurementReport[8];
 } tDot11fRadioMeasurementReport;
 
 #define DOT11F_RADIOMEASUREMENTREPORT (24)

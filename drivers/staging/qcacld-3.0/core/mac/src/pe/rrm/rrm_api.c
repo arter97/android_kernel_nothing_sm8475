@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -935,6 +935,7 @@ rrm_fill_beacon_ies(struct mac_context *mac, uint8_t *pIes,
 	return rem_len;
 }
 
+#define RRM_MAX_NUM_MEASUREMENT_REPORT 8
 /**
  * rrm_process_beacon_report_xmit() - create a rrm action frame
  * @mac_ctx: Global pointer to MAC context
@@ -962,9 +963,9 @@ rrm_process_beacon_report_xmit(struct mac_context *mac_ctx,
 	uint16_t offset = 0;
 	uint8_t frag_id = 0;
 	uint8_t num_frames, num_reports_in_frame, final_measurement_index;
-	uint32_t populated_beacon_report_size = 0;
+	uint32_t populated_beacon_report_size = 0, dot11_meas_rpt_size = 0;
 	uint32_t max_reports_in_frame = 0;
-	uint32_t radio_meas_rpt_size = 0, dot11_meas_rpt_size = 0;
+	uint32_t radio_meas_rpt_size = 0;
 	bool is_last_measurement_frame;
 
 
@@ -1150,12 +1151,16 @@ rrm_process_beacon_report_xmit(struct mac_context *mac_ctx,
 			num_frames++;
 
 		/* Calculate num of maximum mgmt reports per frame */
-		dot11_meas_rpt_size = sizeof(tDot11fRadioMeasurementReport);
+		dot11_meas_rpt_size =
+			sizeof(tDot11fIEMeasurementReport) +
+			qdf_offsetof(tDot11fRadioMeasurementReport,
+				     MeasurementReport);
 		max_reports_in_frame = MAX_MGMT_MPDU_LEN / dot11_meas_rpt_size;
 
 		for (j = 0; j < num_frames; j++) {
-			num_reports_in_frame = QDF_MIN((i - report_index),
-						max_reports_in_frame);
+			num_reports_in_frame = QDF_MIN(i - report_index,
+						       QDF_MIN(max_reports_in_frame,
+							       RRM_MAX_NUM_MEASUREMENT_REPORT));
 
 			final_measurement_index =
 				mac_ctx->rrm.rrmPEContext.num_active_request;

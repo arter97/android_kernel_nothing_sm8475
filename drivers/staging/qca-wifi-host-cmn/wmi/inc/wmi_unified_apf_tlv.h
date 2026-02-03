@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -95,6 +96,20 @@ wmi_extract_apf_read_memory_resp_event_tlv(wmi_unified_t wmi_handle,
 				void *evt_buf,
 				struct wmi_apf_read_memory_resp_event_params
 									 *resp);
+/**
+ * wmi_send_set_apf_supported_offload_bitmap_cmd_tlv() - configure APF supported
+ * offload bitmap in FW
+ * @wmi_handle: the WMI handle
+ * @vdev_id: the Id of the vdev to apply the configuration to
+ * @offload_bitmap: the bitmap for APF supported offloads
+ *
+ * Return: QDF status
+ */
+QDF_STATUS
+wmi_send_set_apf_supported_offload_bitmap_cmd_tlv(wmi_unified_t wmi_handle,
+						  uint8_t vdev_id,
+						  uint32_t offload_bitmap);
+
 #endif /* FEATURE_WLAN_APF */
 
 #endif /* _WMI_UNIFIED_APF_TLV_H_ */

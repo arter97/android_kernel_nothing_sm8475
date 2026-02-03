@@ -723,6 +723,31 @@ typedef  enum  {
     WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT = 462, /* Indicates FW supports MLO SAP link removal operation */
     WMI_SERVICE_TX_POWER_LIMIT = 463, /* FW supports temporary tx power limit indication to HALPHY */
     WMI_SERVICE_NPCA_SUPPORT = 464, /* Indicates FW supports NPCA (Non-Primary Channel Access) */
+    WMI_SERVICE_EXT_TLV_SUPPORT = 465, /* FW supports WMI_MAX_NUM_EXT_TLVS */
+    WMI_SERVICE_VDEV_TRAFFIC_MONITORING = 466, /* FW supports traffic monitoring */
+    WMI_SERVICE_EM_DPS_ASSISTING_ROLE_SUPPORT = 467, /* Indicates support for Energy Mgmt DPS assisting role operation */
+    WMI_SERVICE_XPAN_SAP_STA_PWRSAVE_SUPPORT = 468, /* Indicates support for power optimization in XPAN + STA */
+    WMI_SERVICE_CFP_SUPPORT = 469, /* FW supports control frame protection */
+    WMI_SERVICE_CFP_PADDING_SUPPORT = 470, /* FW supports control frame protection padding */
+
+    /* Service caps related to 11BI */
+    WMI_SERVICE_11BI_EPPKE_SUPPORT = 471,
+    WMI_SERVICE_11BI_1X_OVER_AUTH_SUPPORT = 472,
+    WMI_SERVICE_11BI_PMKID_PRIVACY_SUPPORT = 473,
+    WMI_SERVICE_11BI_DS_MAC_ADDR_SUPPORT = 474,
+
+    WMI_SERVICE_CCK_RX_SUPPORT_5GHZ = 475, /* Indicates FW supports CCK RX in 5 GHz band */
+    WMI_SERVICE_CCK_TX_SUPPORT_5GHZ = 476, /* Indicates FW supports CCK TX in 5 GHZ band */
+    WMI_SERVICE_DIRECT_REFILL_SUPPORT = 477, /* Indicates FW supports direct refill for RX buffer ring */
+    WMI_SERVICE_NAN_STANDARD_MODE_SUPPORT = 478, /* Indicates FW supports NAN in standard mode (supplicant-based NAN architecture model) */
+    WMI_SERVICE_CONC_2VDEV_DCS_STATS_SUPPORT = 479, /* Indicate FW support for collecting DCS stats for more than 1 vdev (max 2 concurrent vdevs) */
+    WMI_SERVICE_CFR_UNASSOC_RX_CAPTURE_SUPPORT = 480, /* Indicates FW supports RX-based unassociated CFR capture */
+    WMI_SERVICE_CFR_ASSOC_TX_CAPTURE_SUPPORT = 481, /* Indicates FW supports TX-based CFR capture */
+    WMI_SERVICE_VDEV_UNIFIED_CONNECT_DISCONNECT_SUPPORT = 482, /* Indicates FW support for unified connect and disconnect vdev cmds for link switch */
+    WMI_SERVICE_ENHANCED_STATS_SUPPORT = 483, /* Indicates FW supports "enhanced stats" */
+    WMI_SERVICE_RADAR_FLAGS_RSSI_DBM_SUPPORT = 484, /* Indicates FW support to add RSSI in dBm units in WMI radar event */
+    WMI_SERVICE_WOW_STA_PS_PARAM_CACHE_SUPPORT = 485,  /* Indicates FW support for WOW timeline optimization feature */
+    WMI_SERVICE_VENDOR_OUI_SUPPORT_EXCLUSIVE_MAC_ADDRESS = 486, /* FW supports parse exclusive_mac_address in wmi_vendor_oui_ext */
 
 
     WMI_MAX_EXT2_SERVICE

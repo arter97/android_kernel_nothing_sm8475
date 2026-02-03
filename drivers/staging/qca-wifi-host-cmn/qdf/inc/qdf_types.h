@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -52,6 +52,9 @@
 
 #define CPU_CLUSTER_TYPE_LITTLE 0
 #define CPU_CLUSTER_TYPE_PERF 1
+#if defined(NUM_SOC_PERF_CLUSTER) && (NUM_SOC_PERF_CLUSTER > 1)
+#define CPU_CLUSTER_TYPE_PERF2 2
+#endif
 
 /**
  * struct qdf_sglist - scatter-gather list

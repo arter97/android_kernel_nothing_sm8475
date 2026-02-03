@@ -1859,49 +1859,6 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 		SDE_ERROR("capping number of displays to %d", max_encoders);
 	}
 
-	/* wb */
-	for (i = 0; i < sde_kms->wb_display_count &&
-		priv->num_encoders < max_encoders; ++i) {
-		display = sde_kms->wb_displays[i];
-		encoder = NULL;
-
-		memset(&info, 0x0, sizeof(info));
-		rc = sde_wb_get_info(NULL, &info, display);
-		if (rc) {
-			SDE_ERROR("wb get_info %d failed\n", i);
-			continue;
-		}
-
-		encoder = sde_encoder_init(dev, &info);
-		if (IS_ERR_OR_NULL(encoder)) {
-			SDE_ERROR("encoder init failed for wb %d\n", i);
-			continue;
-		}
-
-		rc = sde_wb_drm_init(display, encoder);
-		if (rc) {
-			SDE_ERROR("wb bridge %d init failed, %d\n", i, rc);
-			sde_encoder_destroy(encoder);
-			continue;
-		}
-
-		connector = sde_connector_init(dev,
-				encoder,
-				0,
-				display,
-				&wb_ops,
-				DRM_CONNECTOR_POLL_HPD,
-				DRM_MODE_CONNECTOR_VIRTUAL);
-		if (connector) {
-			priv->encoders[priv->num_encoders++] = encoder;
-			priv->connectors[priv->num_connectors++] = connector;
-		} else {
-			SDE_ERROR("wb %d connector init failed\n", i);
-			sde_wb_drm_deinit(display);
-			sde_encoder_destroy(encoder);
-		}
-	}
-
 	/* dsi */
 	for (i = 0; i < sde_kms->dsi_display_count &&
 		priv->num_encoders < max_encoders; ++i) {
@@ -1975,6 +1932,7 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 	if (sde_kms->catalog->allowed_dsc_reservation_switch &
 			SDE_DP_DSC_RESERVATION_SWITCH)
 		max_dp_dsc_count = sde_kms->catalog->dsc_count;
+
 	/* dp */
 	for (i = 0; i < sde_kms->dp_display_count &&
 			priv->num_encoders < max_encoders; ++i) {
@@ -2040,6 +1998,49 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 				continue;
 			}
 			priv->encoders[priv->num_encoders++] = encoder;
+		}
+	}
+
+	/* wb */
+	for (i = 0; i < sde_kms->wb_display_count &&
+		priv->num_encoders < max_encoders; ++i) {
+		display = sde_kms->wb_displays[i];
+		encoder = NULL;
+
+		memset(&info, 0x0, sizeof(info));
+		rc = sde_wb_get_info(NULL, &info, display);
+		if (rc) {
+			SDE_ERROR("wb get_info %d failed\n", i);
+			continue;
+		}
+
+		encoder = sde_encoder_init(dev, &info);
+		if (IS_ERR_OR_NULL(encoder)) {
+			SDE_ERROR("encoder init failed for wb %d\n", i);
+			continue;
+		}
+
+		rc = sde_wb_drm_init(display, encoder);
+		if (rc) {
+			SDE_ERROR("wb bridge %d init failed, %d\n", i, rc);
+			sde_encoder_destroy(encoder);
+			continue;
+		}
+
+		connector = sde_connector_init(dev,
+				encoder,
+				0,
+				display,
+				&wb_ops,
+				DRM_CONNECTOR_POLL_HPD,
+				DRM_MODE_CONNECTOR_VIRTUAL);
+		if (connector) {
+			priv->encoders[priv->num_encoders++] = encoder;
+			priv->connectors[priv->num_connectors++] = connector;
+		} else {
+			SDE_ERROR("wb %d connector init failed\n", i);
+			sde_wb_drm_deinit(display);
+			sde_encoder_destroy(encoder);
 		}
 	}
 
@@ -2181,8 +2182,12 @@ static int _sde_kms_drm_obj_init(struct sde_kms *sde_kms)
 	}
 
 	/* All CRTCs are compatible with all encoders */
-	for (i = 0; i < priv->num_encoders; i++)
+	for (i = 0; i < priv->num_encoders; i++) {
 		priv->encoders[i]->possible_crtcs = (1 << priv->num_crtcs) - 1;
+		if (catalog->max_cwb > 0)
+			priv->encoders[i]->possible_clones =
+				sde_encoder_get_clones(priv->encoders[i]);
+	}
 
 	return 0;
 fail:
@@ -2962,7 +2967,6 @@ static int sde_kms_check_vm_request(struct msm_kms *kms,
 	return rc;
 }
 
-
 static int sde_kms_check_secure_transition(struct msm_kms *kms,
 		struct drm_atomic_state *state)
 {
@@ -3077,6 +3081,44 @@ static void sde_kms_vm_res_release(struct msm_kms *kms,
 	sde_vm_unlock(sde_kms);
 }
 
+static int sde_kms_check_cwb_concurreny(struct msm_kms *kms,
+		struct drm_atomic_state *state)
+{
+	struct sde_kms *sde_kms;
+	struct drm_crtc *crtc;
+	struct drm_crtc_state *old_crtc_state, *new_crtc_state;
+	struct drm_encoder *encoder;
+	struct sde_crtc_state *cstate;
+	int i = 0, cnt = 0, max_cwb = 0;
+
+	if (!kms || !state) {
+		SDE_ERROR("invalid arguments\n");
+		return -EINVAL;
+	}
+
+	sde_kms = to_sde_kms(kms);
+	max_cwb = sde_kms->catalog->max_cwb;
+	if (!max_cwb)
+		return 0;
+
+	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state, new_crtc_state, i) {
+		cstate = to_sde_crtc_state(new_crtc_state);
+		drm_for_each_encoder_mask(encoder, crtc->dev, cstate->cwb_enc_mask) {
+			cnt++;
+			SDE_DEBUG("crtc%d has cwb%d attached to it\n", crtc->base.id,
+					encoder->base.id);
+		}
+
+		if (cnt > max_cwb) {
+			SDE_ERROR("found %d cwb in the atomic state, max supported %d\n",
+					cnt, max_cwb);
+			return -EOPNOTSUPP;
+		}
+	}
+
+	return 0;
+}
+
 static int sde_kms_atomic_check(struct msm_kms *kms,
 		struct drm_atomic_state *state)
 {
@@ -3127,6 +3169,11 @@ static int sde_kms_atomic_check(struct msm_kms *kms,
 	 * Secure state
 	 */
 	ret = sde_kms_check_secure_transition(kms, state);
+	if (ret)
+		goto vm_clean_up;
+
+
+	ret = sde_kms_check_cwb_concurreny(kms, state);
 	if (ret)
 		goto vm_clean_up;
 
