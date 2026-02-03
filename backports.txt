@@ -1,3 +1,4 @@
+e36bce4466d7 workqueue: Update the rescuer's affinity only when it is detached
 7b7aca6d7c0f mm: ignore data-race in __swap_writepage
 3222d8c2a7f8 block: remove ->rw_page
 05cda97ecb70 mm: factor out a swap_writepage_bdev helper

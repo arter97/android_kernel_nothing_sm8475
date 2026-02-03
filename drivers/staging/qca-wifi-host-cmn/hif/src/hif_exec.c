@@ -692,11 +692,24 @@ qdf_napi_get_dummy_nd_ptr(struct hif_napi_exec_context *ctx)
 {
 	return ctx->netdev;
 }
+
+static inline void
+qdf_napi_set_dummy_nd_ptr(struct hif_napi_exec_context *ctx,
+			  struct net_device *nd)
+{
+	ctx->netdev = nd;
+}
 #else
 static inline struct net_device *
 qdf_napi_get_dummy_nd_ptr(struct hif_napi_exec_context *ctx)
 {
 	return &ctx->netdev;
+}
+
+static inline void
+qdf_napi_set_dummy_nd_ptr(struct hif_napi_exec_context *ctx,
+			  struct net_device *nd)
+{
 }
 #endif
 
@@ -712,6 +725,7 @@ static void hif_exec_napi_kill(struct hif_exec_context *ctx)
 
 	if (ctx->inited) {
 		napi_disable(&n_ctx->napi);
+		netif_napi_del(&n_ctx->napi);
 		ctx->inited = 0;
 	}
 
@@ -719,8 +733,8 @@ static void hif_exec_napi_kill(struct hif_exec_context *ctx)
 		hif_irq_affinity_remove(ctx->os_irq[irq_ind]);
 
 	hif_core_ctl_set_boost(false);
-	netif_napi_del(&(n_ctx->napi));
 	qdf_net_if_destroy_dummy_if((struct qdf_net_if *)dummy_nd);
+	qdf_napi_set_dummy_nd_ptr(n_ctx, NULL);
 }
 
 struct hif_execution_ops napi_sched_ops = {
@@ -747,6 +761,7 @@ static struct hif_exec_context *hif_exec_napi_create(uint32_t scale)
 	ctx->exec_ctx.scale_bin_shift = scale;
 	dummy_nd = qdf_napi_get_dummy_nd_ptr(ctx);
 	qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_nd);
+	qdf_napi_set_dummy_nd_ptr(ctx, dummy_nd);
 	netif_napi_add_ni(dummy_nd, &(ctx->napi), hif_exec_poll,
 		       QCA_NAPI_BUDGET);
 	napi_enable(&ctx->napi);

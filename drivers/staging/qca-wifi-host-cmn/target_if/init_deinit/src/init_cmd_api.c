@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -485,6 +485,10 @@ void init_deinit_prepare_send_init_cmd(
 	} else {
 		target_if_debug("0x%x\n", info->target_caps.fw_version_1);
 	}
+
+	if (!wmi_service_enabled(wmi_handle,
+				 wmi_service_apf_data_offload_support_enabled))
+		info->wlan_res_cfg.apfv6_offload_disabled = 0;
 
 	target_if_ext_res_cfg_enable(psoc, tgt_hdl, NULL);
 

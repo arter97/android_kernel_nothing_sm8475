@@ -221,4 +221,7 @@ CONFIG_ICNSS2_HELIUM := y
 CONFIG_PLD_SNOC_ICNSS_FLAG :=y
 CONFIG_SMMU_S1_UNMAP := y
 CONFIG_WLAN_FEATURE_BMI := n
+
+#Flag to enable Android Packet Filtering
+CONFIG_QCACLD_FEATURE_APF := y
 ###################################

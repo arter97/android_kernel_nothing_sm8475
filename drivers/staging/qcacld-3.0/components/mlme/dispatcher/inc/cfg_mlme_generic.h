@@ -980,6 +980,24 @@ enum wlan_wds_mode {
 		"", \
 		"Set mgmt action frame hw tx retry count")
 
+/*
+ * <ini>
+ *
+ * enable_reduce_pwr_scan - Enable/Disable reduced power scan mode
+ * @Min: 0 Disable
+ * @Max: 1 Enable
+ * @Default: 0
+ *
+ * Related: None
+ *
+ *
+ * </ini>
+ */
+#define CFG_REDUCE_PWR_SCAN_MODE CFG_INI_BOOL( \
+	"enable_reduce_pwr_scan", \
+	1, \
+	"Reduce power scan mode")
+
 #define CFG_GENERIC_ALL \
 	CFG(CFG_ENABLE_DEBUG_PACKET_LOG) \
 	CFG(CFG_PMF_SA_QUERY_MAX_RETRIES) \
@@ -1018,5 +1036,6 @@ enum wlan_wds_mode {
 	CFG_WDS_MODE_ALL \
 	CFG(CFG_TX_RETRY_MULTIPLIER) \
 	CFG(CFG_MGMT_FRAME_HW_TX_RETRY_COUNT)\
-	CFG_6GHZ_STD_CONN_POLICY
+	CFG_6GHZ_STD_CONN_POLICY \
+	CFG(CFG_REDUCE_PWR_SCAN_MODE)
 #endif /* __CFG_MLME_GENERIC_H */

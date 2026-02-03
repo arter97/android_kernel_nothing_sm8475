@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -390,4 +390,33 @@ void scheduler_mc_timer_callback(qdf_mc_timer_t *timer);
  * Return: QDF Status
  */
 QDF_STATUS scheduler_get_queue_size(QDF_MODULE_ID qid, uint32_t *size);
+
+#ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
+/**
+ * scheduler_perfd_set_cpumask() - Function to set perf core CPU mask
+ * for the scheduler thread.
+ *
+ * This function sets the perf cores CPU mask for the scheduler
+ * thread.
+ *
+ * Return: void
+ */
+void scheduler_perfd_set_cpumask(void);
+
+/**
+ * scheduler_perfd_clear_cpumask() - Function to clear the CPU mask
+ * for the scheduler thread.
+ *
+ * This function clears the CPU mask for the scheduler thread.
+ *
+ * Return: void
+ */
+void scheduler_perfd_clear_cpumask(void);
+#else
+static inline
+void scheduler_perfd_set_cpumask(void) {}
+
+static inline
+void scheduler_perfd_clear_cpumask(void) {}
+#endif
 #endif

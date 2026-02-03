@@ -148,11 +148,11 @@ static void __av8l_clean_range(struct device *dev, void *start, void *end)
 {
 	size_t size;
 	void *region_end;
-	unsigned long page_end;
+	void *page_end;
 
 	if (is_vmalloc_addr(start)) {
 		while (start < end) {
-			page_end = round_down((unsigned long)start + PAGE_SIZE,
+			page_end = (void *)round_down((unsigned long)start + PAGE_SIZE,
 					      PAGE_SIZE);
 			region_end = min_t(void *, end, page_end);
 			size = region_end - start;

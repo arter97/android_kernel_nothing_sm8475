@@ -301,3 +301,12 @@ void qdf_cpumask_copy(qdf_cpu_mask *dstp,
 }
 
 qdf_export_symbol(qdf_cpumask_copy);
+
+void
+qdf_thread_cpumap_print_to_pagebuf(bool list, char *new_mask_str,
+				   qdf_cpu_mask *new_mask)
+{
+	cpumap_print_to_pagebuf(list, new_mask_str, new_mask);
+}
+
+qdf_export_symbol(qdf_thread_cpumap_print_to_pagebuf);

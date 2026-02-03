@@ -128,6 +128,7 @@ __qdf_dev_set_irq_affinity(uint32_t irnum, struct qdf_cpu_mask *cpmask)
 	return qdf_status_from_os_return(ret);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
 /**
  * __qdf_topology_physical_package_id() - API to retrieve the
  * cluster info
@@ -136,12 +137,28 @@ __qdf_dev_set_irq_affinity(uint32_t irnum, struct qdf_cpu_mask *cpmask)
  * This function returns the cluster information for give cpu
  * core
  *
- * Return: 1 for perf and 0 for non-perf cluster
+ * Return: Cluster ID of the CPU
+ */
+static inline int __qdf_topology_physical_package_id(unsigned int cpu)
+{
+	return topology_cluster_id(cpu);
+}
+#else
+/**
+ * __qdf_topology_physical_package_id() - API to retrieve the
+ * cluster info
+ * @cpu: cpu core
+ *
+ * This function returns the cluster information for give cpu
+ * core
+ *
+ * Return: Cluster ID of the CPU
  */
 static inline int __qdf_topology_physical_package_id(unsigned int cpu)
 {
 	return topology_physical_package_id(cpu);
 }
+#endif
 
 /**
  * __qdf_cpumask_subset() - API to check for subset in cpumasks

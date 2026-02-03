@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2911,4 +2911,11 @@
 #define FEATURE_BLACKLIST_MGR (1)
 #endif
 
+#ifdef CONFIG_FEATURE_ENABLE_CE_DP_IRQ_AFFINE
+#define FEATURE_ENABLE_CE_DP_IRQ_AFFINE (1)
+#endif
+
+#ifdef CONFIG_WLAN_BOOST_CPU_FREQ_IN_ROAM
+#define WLAN_BOOST_CPU_FREQ_IN_ROAM (1)
+#endif
 #endif /* CONFIG_TO_FEATURE_H */
