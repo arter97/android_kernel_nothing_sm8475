@@ -3867,6 +3867,67 @@ static int hdd_get_acs_evt_data_len(struct sap_config *sap_cfg)
 	return len;
 }
 
+#define REDUCE_POWER_SCAN_MODE_DISABLE 0
+#define REDUCE_POWER_SCAN_MODE_ENABLE 1
+/**
+ * hdd_set_reduce_power_scan_mode() - Set reduce power scan mode to allow
+ * lower level to optimize power consumption for given interface.
+ * @adapter: HDD adapter pointer
+ * @attr: pointer to nla attr
+ *
+ * Return: 0 on success, negative on failure
+ */
+static int hdd_set_reduce_power_scan_mode(struct hdd_adapter *adapter,
+					  const struct nlattr *attr)
+{
+	struct hdd_context *hdd_ctx = NULL;
+	QDF_STATUS status;
+	bool scan_mode;
+	uint8_t cfg_val;
+	uint32_t param_val;
+
+	hdd_ctx = WLAN_HDD_GET_CTX(adapter);
+	cfg_val = nla_get_u8(attr);
+
+	status = ucfg_mlme_get_reduce_power_scan_mode(hdd_ctx->psoc,
+						      &scan_mode);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		hdd_err("get scan only mode failed");
+		return -EINVAL;
+	}
+
+	if (!scan_mode) {
+		hdd_debug("Set Reduced Scan mode is not supported");
+		return -EOPNOTSUPP;
+	}
+	hdd_debug("vdev_id %d scan_mode %d cfg_val %d",
+		  adapter->vdev_id, scan_mode, cfg_val);
+
+	switch (cfg_val) {
+	case REDUCE_POWER_SCAN_MODE_DISABLE:
+		param_val = REDUCE_POWER_SCAN_MODE_DISABLE;
+		break;
+	case REDUCE_POWER_SCAN_MODE_ENABLE:
+		param_val = REDUCE_POWER_SCAN_MODE_ENABLE;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (scan_mode) {
+		if (wma_send_reduce_pwr_scan_mode(
+				hdd_ctx->pdev->pdev_objmgr.wlan_pdev_id,
+				param_val)) {
+			hdd_err("Set Scan only mode failed");
+			return -EINVAL;
+		}
+	} else {
+		hdd_debug("enable_reduce_pwr_mode INI is not enabled");
+		return -EINVAL;
+	}
+	return 0;
+}
+
 #ifdef WLAN_FEATURE_11BE
 /**
  * wlan_hdd_acs_get_puncture_bitmap() - get puncture_bitmap for acs result
@@ -7666,6 +7727,8 @@ const struct nla_policy wlan_hdd_wifi_config_policy[
 		.type = NLA_U8 },
 	[QCA_WLAN_VENDOR_ATTR_CONFIG_KEEP_ALIVE_INTERVAL] = {
 		.type = NLA_U16},
+	[QCA_WLAN_VENDOR_ATTR_CONFIG_REDUCED_POWER_SCAN_MODE] = {
+		.type = NLA_U8},
 };
 
 static const struct nla_policy
@@ -10221,6 +10284,8 @@ static const struct independent_setters independent_setters[] = {
 	 hdd_set_wfc_state},
 	{QCA_WLAN_VENDOR_ATTR_CONFIG_KEEP_ALIVE_INTERVAL,
 	 hdd_vdev_set_sta_keep_alive_interval},
+	{QCA_WLAN_VENDOR_ATTR_CONFIG_REDUCED_POWER_SCAN_MODE,
+	 hdd_set_reduce_power_scan_mode},
 };
 
 #ifdef WLAN_FEATURE_ELNA
@@ -17230,7 +17295,7 @@ static int wlan_hdd_cfg80211_get_usable_channel(struct wiphy *wiphy,
 						int data_len)
 {
 	hdd_debug("get usable channel feature not supported");
-	return -EPERM;
+	return -EOPNOTSUPP;
 }
 #endif
 
@@ -24884,12 +24949,21 @@ hdd_ml_sap_owe_fill_ml_info(struct hdd_adapter *adapter,
 	wlan_objmgr_peer_release_ref(peer, WLAN_HDD_ID_OBJ_MGR);
 }
 #else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
 static void
 hdd_ml_sap_owe_fill_ml_info(struct hdd_adapter *adapter,
 			    struct cfg80211_update_owe_info *owe_info,
 			    uint8_t *peer_mac)
 {
 }
+#else
+static void
+hdd_ml_sap_owe_fill_ml_info(struct hdd_adapter *adapter,
+			    struct cfg80211_update_owe_info *owe_info,
+			    uint8_t *peer_mac)
+{
+}
+#endif
 #endif
 
 void hdd_send_update_owe_info_event(struct hdd_adapter *adapter,

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1299,6 +1299,11 @@ static void mlme_ext_handler_destroy(struct vdev_mlme_obj *vdev_mlme)
 		&vdev_mlme->ext_vdev_ptr->bss_color_change_runtime_lock);
 	qdf_wake_lock_destroy(
 		&vdev_mlme->ext_vdev_ptr->bss_color_change_wakelock);
+	qdf_runtime_lock_deinit(
+			&vdev_mlme->ext_vdev_ptr->peer_set_key_rt_wakelock);
+	qdf_wake_lock_destroy(
+		&vdev_mlme->ext_vdev_ptr->peer_set_key_wakelock);
+	qdf_atomic_set(&vdev_mlme->ext_vdev_ptr->set_key_wakelock_counter, 0);
 	mlme_free_self_disconnect_ies(vdev_mlme->vdev);
 	mlme_free_peer_disconnect_ies(vdev_mlme->vdev);
 	mlme_free_sae_auth_retry(vdev_mlme->vdev);
@@ -1348,6 +1353,12 @@ QDF_STATUS vdevmgr_mlme_ext_hdl_create(struct vdev_mlme_obj *vdev_mlme)
 		mlme_ext_handler_destroy(vdev_mlme);
 		return status;
 	}
+
+	qdf_atomic_init(&vdev_mlme->ext_vdev_ptr->set_key_wakelock_counter);
+	qdf_wake_lock_create(&vdev_mlme->ext_vdev_ptr->peer_set_key_wakelock,
+			     "peer_set_key");
+	qdf_runtime_lock_init(
+			&vdev_mlme->ext_vdev_ptr->peer_set_key_rt_wakelock);
 
 	status = vdev_mgr_create_send(vdev_mlme);
 	if (QDF_IS_STATUS_ERROR(status)) {

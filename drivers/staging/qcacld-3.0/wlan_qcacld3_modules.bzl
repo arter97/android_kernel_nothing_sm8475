@@ -16,6 +16,7 @@ _target_chipset_map = {
                 "adrastea",
         ],
         "parrot":[
+                "qca6490",
                 "qca6750",
                 "adrastea",
         ],
@@ -24,6 +25,12 @@ _target_chipset_map = {
                 "qca6750",
                 "wlan",
         ],
+	"bengal":[
+		"wlan",
+	],
+	"malabar":[
+		"adrastea",
+	]
 }
 
 _chipset_hw_map = {
@@ -2068,7 +2075,7 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
 
     srcs = native.glob(iglobs) + _fixed_srcs
 
-    if target == "monaco" or target == "blair":
+    if target == "monaco" or target == "blair" or target == "bengal":
         out = "wlan.ko"
     else:
         out = "qca_cld3_{}.ko".format(chipset.replace("-", "_"))
@@ -2105,7 +2112,7 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
         "//vendor/qcom/opensource/wlan/platform:wlan-platform-headers",
     ]
 
-    if target != "lahaina":
+    if target != "lahaina" and target != "parrot" and target != "malabar":
         deps = deps + [
             "//vendor/qcom/opensource/dataipa:include_headers",
             "//vendor/qcom/opensource/dataipa:{}_{}_ipam".format(target, variant),
@@ -2157,7 +2164,7 @@ def define_dist(target, variant, chipsets):
             mode_overrides = {"**/*": "644"},
             log = "info",
         )
-    if target == "blair" or target == "monaco":
+    if target == "bilair" or target == "monaco" or target == "bengal":
         return
     copy_to_dist_dir(
         name = "{}_all_modules_dist".format(tv),

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,6 +25,7 @@
 #include <cdp_txrx_peer_ops.h>
 #include <cds_sched.h>
 #include "dp_rx.h"
+#include "qdf_net_if.h"
 
 /* Timeout in ms to wait for a DP rx thread */
 #ifdef HAL_CONFIG_SLUB_DEBUG_ON
@@ -770,6 +771,40 @@ static int dp_rx_tm_thread_napi_poll(struct napi_struct *napi, int budget)
 	return 0;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+/**
+ * dp_rx_thread_get_dummy_netdev_ptr() - Get dummy netdev pointer
+ * fromdp rx thread
+ * @rx_thread: DP RX thread pointer
+ *
+ * Return: dummy netdev pointer
+ */
+static inline struct net_device *
+dp_rx_thread_get_dummy_netdev_ptr(struct dp_rx_thread *rx_thread)
+{
+	return rx_thread->netdev;
+}
+
+static inline void
+dp_rx_thread_set_dummy_netdev_ptr(struct dp_rx_thread *rx_thread,
+				  struct net_device *nd)
+{
+	rx_thread->netdev = nd;
+}
+#else
+static inline struct net_device *
+dp_rx_thread_get_dummy_netdev_ptr(struct dp_rx_thread *rx_thread)
+{
+	return &rx_thread->netdev;
+}
+
+static inline void
+dp_rx_thread_set_dummy_netdev_ptr(struct dp_rx_thread *rx_thread,
+				  struct net_device *nd)
+{
+}
+#endif
+
 /**
  * dp_rx_tm_thread_napi_init() - Initialize dummy rx_thread NAPI
  * @rx_thread: dp_rx_thread structure containing dummy napi and netdev
@@ -778,13 +813,17 @@ static int dp_rx_tm_thread_napi_poll(struct napi_struct *napi, int budget)
  */
 static void dp_rx_tm_thread_napi_init(struct dp_rx_thread *rx_thread)
 {
+	struct net_device *dummy_nd;
+
+	dummy_nd = dp_rx_thread_get_dummy_netdev_ptr(rx_thread);
 	/* Todo - optimize to use only one dummy netdev for all thread napis */
-	init_dummy_netdev(&rx_thread->netdev);
+	qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_nd);
+	dp_rx_thread_set_dummy_netdev_ptr(rx_thread, dummy_nd);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0))
-	netif_napi_add_weight(&rx_thread->netdev, &rx_thread->napi,
+	netif_napi_add_weight(dummy_nd, &rx_thread->napi,
 			      dp_rx_tm_thread_napi_poll, 64);
 #else
-	netif_napi_add(&rx_thread->netdev, &rx_thread->napi,
+	netif_napi_add(dummy_nd, &rx_thread->napi,
 		       dp_rx_tm_thread_napi_poll, 64);
 #endif
 	napi_enable(&rx_thread->napi);
@@ -798,7 +837,12 @@ static void dp_rx_tm_thread_napi_init(struct dp_rx_thread *rx_thread)
  */
 static void dp_rx_tm_thread_napi_deinit(struct dp_rx_thread *rx_thread)
 {
+	struct net_device *dummy_nd;
+
+	dummy_nd = dp_rx_thread_get_dummy_netdev_ptr(rx_thread);
 	netif_napi_del(&rx_thread->napi);
+	qdf_net_if_destroy_dummy_if((struct qdf_net_if *)dummy_nd);
+	dp_rx_thread_set_dummy_netdev_ptr(rx_thread, NULL);
 }
 
 /*

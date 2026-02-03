@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1613,7 +1613,7 @@ QDF_STATUS wma_send_peer_assoc(tp_wma_handle wma,
 	    ) {
 		if (!params->no_ptk_4_way) {
 			cmd->need_ptk_4_way = 1;
-			wlan_acquire_peer_key_wakelock(wma->pdev,
+			wlan_acquire_peer_key_wakelock(intr->vdev,
 						       cmd->peer_mac);
 		}
 	}

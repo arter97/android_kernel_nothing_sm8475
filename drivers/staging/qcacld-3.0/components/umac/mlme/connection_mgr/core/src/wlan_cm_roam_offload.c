@@ -5273,6 +5273,8 @@ void cm_update_session_assoc_ie(struct wlan_objmgr_psoc *psoc,
 	if (!rso_cfg->assoc_ie.ptr)
 		goto rel_vdev_ref;
 
+	cm_update_ext_cap_ie_at_source(psoc, assoc_ie);
+
 	rso_cfg->assoc_ie.len = assoc_ie->len;
 	qdf_mem_copy(rso_cfg->assoc_ie.ptr, assoc_ie->ptr, assoc_ie->len);
 rel_vdev_ref:

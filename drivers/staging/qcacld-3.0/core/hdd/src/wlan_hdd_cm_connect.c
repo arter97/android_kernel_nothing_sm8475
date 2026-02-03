@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1299,7 +1299,7 @@ hdd_cm_connect_success_pre_user_update(struct wlan_objmgr_vdev *vdev,
 			is_auth_required =
 				hdd_cm_is_roam_auth_required(sta_ctx, rsp);
 		if (is_auth_required)
-			wlan_acquire_peer_key_wakelock(hdd_ctx->pdev,
+			wlan_acquire_peer_key_wakelock(vdev,
 						       rsp->bssid.bytes);
 		hdd_roam_register_sta(adapter, &rsp->bssid, is_auth_required);
 	} else {
