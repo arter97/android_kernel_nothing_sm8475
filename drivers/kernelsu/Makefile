@@ -1,12 +1,20 @@
 kernelsu-objs := ksu.o
 kernelsu-objs += allowlist.o
+kernelsu-objs += app_profile.o
 kernelsu-objs += apk_sign.o
 kernelsu-objs += sucompat.o
+kernelsu-objs += syscall_hook_manager.o
 kernelsu-objs += throne_tracker.o
-kernelsu-objs += core_hook.o
+kernelsu-objs += pkg_observer.o
+kernelsu-objs += setuid_hook.o
+kernelsu-objs += kernel_umount.o
+kernelsu-objs += supercalls.o
+kernelsu-objs += feature.o
 kernelsu-objs += ksud.o
 kernelsu-objs += embed_ksud.o
-kernelsu-objs += kernel_compat.o
+kernelsu-objs += seccomp_cache.o
+kernelsu-objs += file_wrapper.o
+kernelsu-objs += util.o
 
 kernelsu-objs += selinux/selinux.o
 kernelsu-objs += selinux/sepolicy.o
@@ -16,7 +24,7 @@ ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-
 
 obj-$(CONFIG_KSU) += kernelsu.o
 
-ccflags-y += -DKSU_VERSION=12081
+ccflags-y += -DKSU_VERSION=32179
 
 ifndef KSU_EXPECTED_SIZE
 KSU_EXPECTED_SIZE := 0x033b
@@ -37,7 +45,7 @@ $(info -- KernelSU Manager signature hash: $(KSU_EXPECTED_HASH))
 ccflags-y += -DEXPECTED_SIZE=$(KSU_EXPECTED_SIZE)
 ccflags-y += -DEXPECTED_HASH=\"$(KSU_EXPECTED_HASH)\"
 
-ccflags-y += -Wno-implicit-function-declaration -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat
+ccflags-y += -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat -Wno-missing-prototypes
 ccflags-y += -Wno-declaration-after-statement -Wno-unused-function
 
 # Keep a new line here!! Because someone may append config
