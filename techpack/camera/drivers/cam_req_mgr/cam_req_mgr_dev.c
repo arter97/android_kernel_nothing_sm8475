@@ -30,7 +30,7 @@
 #include "cam_cpas_hw.h"
 #include "cam_compat.h"
 
-#define CAM_REQ_MGR_EVENT_MAX 50
+#define CAM_REQ_MGR_EVENT_MAX 30
 
 static struct cam_req_mgr_device g_dev;
 struct kmem_cache *g_cam_req_mgr_timer_cachep;
@@ -206,7 +206,6 @@ static int cam_req_mgr_close(struct file *filep)
 
 	list_for_each_entry(csd, &cam_req_mgr_ordered_sd_list, list) {
 		sd = &csd->sd;
-		CAM_DBG(CAM_CRM, "subdev close for device:%s,flags:%d",sd->name,sd->flags);
 		if (!(sd->flags & V4L2_SUBDEV_FL_HAS_DEVNODE))
 			continue;
 		if (sd->internal_ops) {
