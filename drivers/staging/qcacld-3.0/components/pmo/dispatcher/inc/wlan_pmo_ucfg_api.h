@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1260,10 +1260,24 @@ ucfg_pmo_get_active_mc_bc_apf_mode(struct wlan_objmgr_psoc *psoc);
  * Return: true if enabled, it is intersection of ini and target cap
  */
 bool ucfg_pmo_is_apf_enabled(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * ucfg_pmo_get_apfv6_offload_bitmap() - to get APFv6 offload bitmap
+ * @psoc: objmgr psoc handle
+ *
+ * Return: Offload bitmap in APFv6 mode
+ */
+uint32_t ucfg_pmo_get_apfv6_offload_bitmap(struct wlan_objmgr_psoc *psoc);
 #else
 static inline bool ucfg_pmo_is_apf_enabled(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
+}
+
+static inline uint32_t ucfg_pmo_get_apfv6_offload_bitmap(
+					struct wlan_objmgr_psoc *psoc)
+{
+	return 0;
 }
 #endif
 

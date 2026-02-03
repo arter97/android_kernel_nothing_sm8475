@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -177,86 +177,43 @@ QDF_STATUS mlme_get_peer_mic_len(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id,
 }
 
 void
-wlan_acquire_peer_key_wakelock(struct wlan_objmgr_pdev *pdev, uint8_t *mac_addr)
+wlan_acquire_peer_key_wakelock(struct wlan_objmgr_vdev *vdev, uint8_t *mac_addr)
 {
-	uint8_t pdev_id;
-	struct wlan_objmgr_peer *peer;
-	struct peer_mlme_priv_obj *peer_priv;
-	struct wlan_objmgr_psoc *psoc;
+	struct mlme_legacy_priv *mlme_priv;
 
-	psoc = wlan_pdev_get_psoc(pdev);
-	if (!psoc)
+	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
+	if (!mlme_priv)
 		return;
 
-	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
-	peer = wlan_objmgr_get_peer(psoc, pdev_id, mac_addr,
-				    WLAN_LEGACY_MAC_ID);
-	if (!peer)
-		return;
+	qdf_atomic_inc(&mlme_priv->set_key_wakelock_counter);
+	mlme_debug(QDF_MAC_ADDR_FMT " VDEV-%d Acquire set key wake lock cnt %d",
+		   QDF_MAC_ADDR_REF(mac_addr), wlan_vdev_get_id(vdev),
+		   qdf_atomic_read(&mlme_priv->set_key_wakelock_counter));
 
-	peer_priv = wlan_objmgr_peer_get_comp_private_obj(peer,
-							  WLAN_UMAC_COMP_MLME);
-	if (!peer_priv) {
-		wlan_objmgr_peer_release_ref(peer, WLAN_LEGACY_MAC_ID);
-		return;
-	}
-
-	if (peer_priv->is_key_wakelock_set) {
-		wlan_objmgr_peer_release_ref(peer, WLAN_LEGACY_MAC_ID);
-		return;
-	}
-
-	mlme_debug(QDF_MAC_ADDR_FMT ": Acquire set key wake lock for %d ms",
-		   QDF_MAC_ADDR_REF(mac_addr),
-		   MLME_PEER_SET_KEY_WAKELOCK_TIMEOUT);
-	qdf_wake_lock_timeout_acquire(&peer_priv->peer_set_key_wakelock,
+	qdf_wake_lock_timeout_acquire(&mlme_priv->peer_set_key_wakelock,
 				      MLME_PEER_SET_KEY_WAKELOCK_TIMEOUT);
-	qdf_runtime_pm_prevent_suspend(
-			&peer_priv->peer_set_key_runtime_wakelock);
-	peer_priv->is_key_wakelock_set = true;
-
-	wlan_objmgr_peer_release_ref(peer, WLAN_LEGACY_MAC_ID);
+	qdf_runtime_pm_prevent_suspend(&mlme_priv->peer_set_key_rt_wakelock);
 }
 
 void
-wlan_release_peer_key_wakelock(struct wlan_objmgr_pdev *pdev, uint8_t *mac_addr)
+wlan_release_peer_key_wakelock(struct wlan_objmgr_vdev *vdev, uint8_t *mac_addr)
 {
-	uint8_t pdev_id;
-	struct wlan_objmgr_peer *peer;
-	struct peer_mlme_priv_obj *peer_priv;
-	struct wlan_objmgr_psoc *psoc;
+	struct mlme_legacy_priv *mlme_priv;
 
-	psoc = wlan_pdev_get_psoc(pdev);
-	if (!psoc)
+	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
+	if (!mlme_priv ||
+	    qdf_atomic_read(&mlme_priv->set_key_wakelock_counter) <= 0)
 		return;
 
-	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
-	peer = wlan_objmgr_get_peer(psoc, pdev_id, mac_addr,
-				    WLAN_LEGACY_MAC_ID);
-	if (!peer)
-		return;
+	qdf_atomic_dec(&mlme_priv->set_key_wakelock_counter);
+	if (qdf_atomic_read(&mlme_priv->set_key_wakelock_counter) == 0)
+		qdf_wake_lock_release(&mlme_priv->peer_set_key_wakelock,
+				      WIFI_POWER_EVENT_WAKELOCK_WMI_CMD_RSP);
 
-	peer_priv = wlan_objmgr_peer_get_comp_private_obj(peer,
-							  WLAN_UMAC_COMP_MLME);
-	if (!peer_priv) {
-		wlan_objmgr_peer_release_ref(peer, WLAN_LEGACY_MAC_ID);
-		return;
-	}
-
-	if (!peer_priv->is_key_wakelock_set) {
-		wlan_objmgr_peer_release_ref(peer, WLAN_LEGACY_MAC_ID);
-		return;
-	}
-
-	peer_priv->is_key_wakelock_set = false;
-	mlme_debug(QDF_MAC_ADDR_FMT ": Release set key wake lock",
-		   QDF_MAC_ADDR_REF(mac_addr));
-	qdf_wake_lock_release(&peer_priv->peer_set_key_wakelock,
-			      WIFI_POWER_EVENT_WAKELOCK_WMI_CMD_RSP);
-	qdf_runtime_pm_allow_suspend(
-			&peer_priv->peer_set_key_runtime_wakelock);
-
-	wlan_objmgr_peer_release_ref(peer, WLAN_LEGACY_MAC_ID);
+	qdf_runtime_pm_allow_suspend(&mlme_priv->peer_set_key_rt_wakelock);
+	mlme_debug(QDF_MAC_ADDR_FMT " VDEV-%d Release set key wake lock cnt %d",
+		   QDF_MAC_ADDR_REF(mac_addr), wlan_vdev_get_id(vdev),
+		   qdf_atomic_read(&mlme_priv->set_key_wakelock_counter));
 }
 
 QDF_STATUS
@@ -286,10 +243,6 @@ mlme_peer_object_created_notification(struct wlan_objmgr_peer *peer,
 		return status;
 	}
 
-	qdf_wake_lock_create(&peer_priv->peer_set_key_wakelock, "peer_set_key");
-	qdf_runtime_lock_init(&peer_priv->peer_set_key_runtime_wakelock);
-	peer_priv->is_key_wakelock_set = false;
-
 	return status;
 }
 
@@ -311,10 +264,6 @@ mlme_peer_object_destroyed_notification(struct wlan_objmgr_peer *peer,
 		mlme_legacy_err(" peer MLME component object is NULL");
 		return QDF_STATUS_E_FAILURE;
 	}
-
-	peer_priv->is_key_wakelock_set = false;
-	qdf_runtime_lock_deinit(&peer_priv->peer_set_key_runtime_wakelock);
-	qdf_wake_lock_destroy(&peer_priv->peer_set_key_wakelock);
 
 	status = wlan_objmgr_peer_component_obj_detach(peer,
 						       WLAN_UMAC_COMP_MLME,
@@ -2823,6 +2772,20 @@ mlme_init_dual_sta_config(struct wlan_mlme_generic *gen)
 				QCA_WLAN_CONCURRENT_STA_POLICY_UNBIASED;
 }
 
+/**
+ * mlme_init_is_reduced_pwr_scan_mode - Update INI reduced power scan mode
+ * enable/disable
+ * @psoc: PSOC pointer
+ * @scan_mode: scan mode
+ *
+ * Return: None
+ */
+static void mlme_init_is_reduced_pwr_scan_mode(struct wlan_objmgr_psoc *psoc,
+					       bool *scan_mode)
+{
+	*scan_mode = cfg_get(psoc, CFG_REDUCE_PWR_SCAN_MODE);
+}
+
 QDF_STATUS mlme_cfg_on_psoc_enable(struct wlan_objmgr_psoc *psoc)
 {
 	struct wlan_mlme_psoc_ext_obj *mlme_obj;
@@ -2878,6 +2841,8 @@ QDF_STATUS mlme_cfg_on_psoc_enable(struct wlan_objmgr_psoc *psoc)
 	mlme_init_ratemask_cfg(psoc, &mlme_cfg->ratemask_cfg);
 	mlme_init_iot_cfg(psoc, &mlme_cfg->iot);
 	mlme_init_dual_sta_config(&mlme_cfg->gen);
+	mlme_init_is_reduced_pwr_scan_mode(psoc,
+					   &mlme_cfg->reduce_pwr_scan_mode);
 
 	return status;
 }

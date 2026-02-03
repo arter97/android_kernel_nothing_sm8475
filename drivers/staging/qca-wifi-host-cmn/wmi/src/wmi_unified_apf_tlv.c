@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -221,6 +222,52 @@ wmi_extract_apf_read_memory_resp_event_tlv(wmi_unified_t wmi_handle,
 	if (data_event->length && param_buf->data) {
 		resp->length = data_event->length;
 		resp->data = (uint8_t *)param_buf->data;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+wmi_send_set_apf_supported_offload_bitmap_cmd_tlv(wmi_unified_t wmi_handle,
+						  uint8_t vdev_id,
+						  uint32_t offload_bitmap)
+{
+	const WMITLV_TAG_ID tag_id =
+	WMITLV_TAG_STRUC_wmi_bpf_set_supported_offload_bitmap_cmd_fixed_param;
+	const uint32_t tlv_len = WMITLV_GET_STRUCT_TLVLEN(
+			wmi_bpf_set_supported_offload_bitmap_cmd_fixed_param);
+	QDF_STATUS status;
+	wmi_bpf_set_supported_offload_bitmap_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+
+	wmi_debug("Sending WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID(%u, %u)",
+		  vdev_id, offload_bitmap);
+
+	/* allocate command buffer */
+	buf = wmi_buf_alloc(wmi_handle, sizeof(*cmd));
+	if (!buf) {
+		wmi_err("wmi_buf_alloc failed");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	/* set TLV header */
+	cmd = (wmi_bpf_set_supported_offload_bitmap_cmd_fixed_param *)
+		wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header, tag_id, tlv_len);
+
+	/* populate data */
+	cmd->vdev_id = vdev_id;
+	cmd->ofld_bitmap = offload_bitmap;
+
+	/* send to FW */
+	status = wmi_unified_cmd_send(wmi_handle, buf, sizeof(*cmd),
+				      WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID
+				      );
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send WMI_BPF_SET_SUPPORTED_OFFLOAD_BITMAP_CMDID:%d",
+			status);
+		wmi_buf_free(buf);
+		return status;
 	}
 
 	return QDF_STATUS_SUCCESS;

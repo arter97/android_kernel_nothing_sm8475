@@ -5511,16 +5511,15 @@ static void wma_send_set_key_rsp(uint8_t vdev_id, bool pairwise,
 	}
 	crypto_key = wlan_crypto_get_key(vdev, key_index);
 
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_LEGACY_WMA_ID);
 	if (!crypto_key) {
 		wma_debug("crypto_key not found");
-		return;
+		goto err;
 	}
 
 	if (pairwise) {
 		key_info_uc = qdf_mem_malloc(sizeof(*key_info_uc));
 		if (!key_info_uc)
-			return;
+			goto err;
 		key_info_uc->vdev_id = vdev_id;
 		key_info_uc->status = QDF_STATUS_SUCCESS;
 		key_info_uc->key[0].keyLength = crypto_key->keylen;
@@ -5528,11 +5527,11 @@ static void wma_send_set_key_rsp(uint8_t vdev_id, bool pairwise,
 			     QDF_MAC_ADDR_SIZE);
 		wma_send_msg_high_priority(wma, WMA_SET_STAKEY_RSP,
 					   key_info_uc, 0);
-		wlan_release_peer_key_wakelock(wma->pdev, crypto_key->macaddr);
+		wlan_release_peer_key_wakelock(vdev, crypto_key->macaddr);
 	} else {
 		key_info_mc = qdf_mem_malloc(sizeof(*key_info_mc));
 		if (!key_info_mc)
-			return;
+			goto err;
 		key_info_mc->vdev_id = vdev_id;
 		key_info_mc->status = QDF_STATUS_SUCCESS;
 		key_info_mc->key[0].keyLength = crypto_key->keylen;
@@ -5541,6 +5540,9 @@ static void wma_send_set_key_rsp(uint8_t vdev_id, bool pairwise,
 		wma_send_msg_high_priority(wma, WMA_SET_BSSKEY_RSP,
 					   key_info_mc, 0);
 	}
+
+err:
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_LEGACY_WMA_ID);
 }
 
 void wma_set_peer_ucast_cipher(uint8_t *mac_addr, int32_t uc_cipher,

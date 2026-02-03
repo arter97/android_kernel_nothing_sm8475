@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -382,6 +382,8 @@ static void wma_set_default_tgt_config(tp_wma_handle wma_handle,
 
 	cfg_nan_get_max_ndi(wma_handle->psoc,
 			    &tgt_cfg->max_ndi);
+	tgt_cfg->apfv6_offload_disabled = cfg_get(wma_handle->psoc,
+						  CFG_OFFLOAD_APFV6_MODE);
 
 	if (cds_get_conparam() == QDF_GLOBAL_MONITOR_MODE)
 		tgt_cfg->rx_decap_mode = CFG_TGT_RX_DECAP_MODE_RAW;
@@ -5770,6 +5772,10 @@ static void wma_set_pmo_caps(struct wlan_objmgr_psoc *psoc)
 	caps.li_offload =
 		wmi_service_enabled(wma->wmi_handle,
 				    wmi_service_listen_interval_offload_support
+				    );
+	caps.apf_offload_enabled =
+		wmi_service_enabled(wma->wmi_handle,
+				    wmi_service_apf_data_offload_support_enabled
 				    );
 
 	status = ucfg_pmo_psoc_set_caps(psoc, &caps);

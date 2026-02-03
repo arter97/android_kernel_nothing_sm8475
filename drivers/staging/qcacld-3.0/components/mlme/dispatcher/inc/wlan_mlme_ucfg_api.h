@@ -4555,4 +4555,19 @@ uint16_t ucfg_mlme_get_keepalive_period(struct wlan_objmgr_vdev *vdev)
 {
 	return wlan_mlme_get_keepalive_period(vdev);
 }
+
+/**
+ * ucfg_mlme_get_reduce_power_scan_mode() - Get reduce power scan mode
+ * enabled or disabled
+ * @psoc: pointer to psoc object
+ * @scan_mode: pointer to hold value of scan mode
+ *
+ * Return: Success if able to get scan mode of failure
+ */
+static inline QDF_STATUS
+ucfg_mlme_get_reduce_power_scan_mode(struct wlan_objmgr_psoc *psoc,
+				     bool *scan_mode)
+{
+	return wlan_mlme_get_reduce_pwr_scan_mode(psoc, scan_mode);
+}
 #endif /* _WLAN_MLME_UCFG_API_H_ */

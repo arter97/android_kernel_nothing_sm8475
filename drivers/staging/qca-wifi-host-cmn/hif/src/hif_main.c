@@ -449,7 +449,17 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.id = WCN3990_CLARENCE,
 		.subid = 0,
 		.name = "WCN3990",
-	}
+	},
+	{
+		.id = WCN3990_ALDABRA,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_PORUS,
+		.subid = 0,
+		.name = "WCN3990",
+	},
 };
 
 /**

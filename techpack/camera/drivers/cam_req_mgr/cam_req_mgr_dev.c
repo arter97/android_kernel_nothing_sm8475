@@ -591,6 +591,11 @@ static long cam_private_ioctl(struct file *file, void *fh,
 	case CAM_REQ_MGR_REQUEST_DUMP: {
 		struct cam_dump_req_cmd cmd;
 
+		if (!cam_debugfs_available()) {
+			CAM_DBG(CAM_CORE, "Dump request disabled");
+			return 0;
+		}
+
 		if (k_ioctl->size != sizeof(cmd))
 			return -EINVAL;
 
