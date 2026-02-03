@@ -1984,6 +1984,64 @@ static int nt_adp_power_open(struct inode *inode, struct file *file)
 	return single_open(file, nt_adp_power_show, PDE_DATA(inode));
 }
 
+static ssize_t nt_report_update_write(struct file *file, const char __user *buff,
+	size_t count, loff_t *ppos)
+{
+	struct battery_chg_dev *bcdev = PDE_DATA(file_inode(file));
+	struct psy_state *pst = &bcdev->psy_list[PSY_TYPE_BATTERY];
+	u8 *buf_tmp = NULL;
+	int buflen = count;
+	u32 val = 0;
+
+	if((pst == NULL) || (bcdev == NULL)) {
+		pr_err("bcdev is NULL\n");
+		return -EINVAL;
+	}
+	if (buflen < 0) {
+		pr_err("proc count fail:%d\n", buflen);
+		return -EINVAL;
+	}
+
+	buf_tmp = (u8 *)kzalloc(buflen * sizeof(u8), GFP_KERNEL);
+	if (buf_tmp == NULL) {
+		pr_err("proc write buf zalloc fail\n");
+		return -ENOMEM;
+	}
+
+	if (copy_from_user(buf_tmp, buff, buflen)) {
+		pr_err("proc report_update write fail\n");
+		goto exit;
+	}
+
+	if (kstrtou32(buf_tmp, 0, &val)) {
+		pr_err("kstrtou32 fail\n");
+		goto exit;
+	}
+
+	if (val && pst->psy) {
+		power_supply_changed(pst->psy);
+		pr_err("report_update done\n");
+	}
+
+	exit:
+	kfree(buf_tmp);
+	buf_tmp = NULL;
+
+	return buflen;
+}
+
+static int nt_report_update_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", 0);
+
+	return 0;
+}
+
+static int nt_report_update_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, nt_report_update_show, PDE_DATA(inode));
+}
+
 static ssize_t is_aging_test_write(struct file *file, const char __user *buff,
                size_t count, loff_t *ppos)
 {
@@ -2085,6 +2143,12 @@ const struct nt_proc entries[] = {
 	                  .proc_read = seq_read,
 	                  .proc_lseek = seq_lseek,
 	                  .proc_release = single_release,}
+	},
+	{"report_update",{.proc_open = nt_report_update_open,
+	                  .proc_read = seq_read,
+	                  .proc_lseek = seq_lseek,
+	                  .proc_release = single_release,
+	                  .proc_write = nt_report_update_write,}
 	}
 };
 

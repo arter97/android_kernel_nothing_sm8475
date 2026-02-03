@@ -5003,6 +5003,7 @@ static ssize_t manual_gc_store(struct device *dev,
 
 	u32 value;
 	int err = 0;
+	u8 index = 0;
 
 	if (kstrtou32(buf, 0, &value))
 		return -EINVAL;
@@ -5027,19 +5028,18 @@ static ssize_t manual_gc_store(struct device *dev,
 	pm_runtime_get_sync(hba->dev);
 
 	if (!host->manual_gc.hagc_support) {
+		enum query_opcode opcode = (value == MANUAL_GC_ON) ?
+						UPIU_QUERY_OPCODE_SET_FLAG:
+						UPIU_QUERY_OPCODE_CLEAR_FLAG;
+
 		err = ufshcd_bkops_ctrl(hba, (value == MANUAL_GC_ON) ?
 					BKOPS_STATUS_NON_CRITICAL:
 					BKOPS_STATUS_CRITICAL);
 		if (!hba->auto_bkops_enabled)
 			err = -EAGAIN;
-	}
 
-	/* flush wb buffer */
-	if (hba->dev_info.wspecversion >= 0x0310) {
-		enum query_opcode opcode = (value == MANUAL_GC_ON) ?
-						UPIU_QUERY_OPCODE_SET_FLAG:
-						UPIU_QUERY_OPCODE_CLEAR_FLAG;
-		u8 index = ufshcd_wb_get_query_index(hba);
+		/* flush wb buffer */
+		index = ufshcd_wb_get_query_index(hba);
 
 		ufshcd_query_flag_retry(hba, opcode,
 				QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8,
