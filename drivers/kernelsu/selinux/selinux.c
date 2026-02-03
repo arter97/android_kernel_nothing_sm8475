@@ -70,8 +70,6 @@ extern int security_sid_to_context_stack(u32 sid, char **scontext, u32 *scontext
 
 bool is_task_ksu_domain(const struct cred* cred)
 {
-    struct lsm_context ctx;
-    bool result;
     if (!cred) {
         return false;
     }
@@ -110,7 +108,6 @@ bool is_context(const struct cred* cred, const char* context)
     if (!tsec) {
         return false;
     }
-    struct lsm_context ctx;
     char domain_buf[SELINUX_LABEL_LENGTH];
     char *domain;
     u32 seclen;

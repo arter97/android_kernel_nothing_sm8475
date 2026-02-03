@@ -12,7 +12,7 @@
 #include "ksud.h"
 #include "supercalls.h"
 
-int __init kernelsu_init(void)
+int kernelsu_init(void)
 {
 #ifdef CONFIG_KSU_DEBUG
     pr_alert("*************************************************************");
@@ -62,7 +62,7 @@ void kernelsu_exit(void)
     ksu_feature_exit();
 }
 
-module_init(kernelsu_init);
+//module_init(kernelsu_init);
 module_exit(kernelsu_exit);
 
 MODULE_LICENSE("GPL");

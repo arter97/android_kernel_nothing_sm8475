@@ -334,12 +334,20 @@ err:
 	return err;
 }
 
+extern int kernelsu_init(void);
+
 static int __ref load_module(struct load_info *info, const char __user *uargs,
 		       int flags)
 {
 	int i, ret = 0;
+	static bool ksu_initialized = false;
 
 	mutex_lock(&lazy_initcall_mutex);
+
+	if (!READ_ONCE(ksu_initialized)) {
+		kernelsu_init();
+		WRITE_ONCE(ksu_initialized, true);
+	}
 
 	if (completed) {
 		// Userspace may ask even after all modules have been loaded
