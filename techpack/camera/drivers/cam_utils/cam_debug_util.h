@@ -360,4 +360,20 @@ const struct camera_debug_settings *cam_debug_get_settings(void);
 ssize_t cam_debug_sysfs_node_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+/**
+ * cam_debugfs_available()
+ *
+ * @brief:  Check if debugfs is enabled for camera. Use this function before creating any
+ *          debugfs entries.
+ *
+ * @return: true if enabled, false otherwise
+ */
+static inline bool cam_debugfs_available(void)
+{
+	#if defined(CONFIG_DEBUG_FS)
+		return true;
+	#else
+		return false;
+	#endif
+}
 #endif /* _CAM_DEBUG_UTIL_H_ */
