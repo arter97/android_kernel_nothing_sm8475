@@ -57,6 +57,11 @@ static const __initconst char * const blacklist[] = {
 	"zram",
 	"zsmalloc",
 
+	// Custom load order
+	"ep_pcie_drv",
+	"pci_edma",
+	"pci_msm_drv",
+
 	NULL
 };
 
