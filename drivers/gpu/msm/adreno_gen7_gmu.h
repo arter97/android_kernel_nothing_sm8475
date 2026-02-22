@@ -70,6 +70,8 @@ struct gen7_gmu_device {
 	/** @global_entries: To keep track of number of gmu buffers */
 	u32 global_entries;
 	struct gmu_vma_entry *vma;
+	/** @num_vmas: Number of entries in the @vma array */
+	u32 num_vmas;
 	unsigned int log_wptr_retention;
 	/** @cm3_fault: whether gmu received a cm3 fault interrupt */
 	atomic_t cm3_fault;
@@ -499,5 +501,12 @@ int gen7_gmu_register_gdsc_notifier(struct adreno_device *adreno_dev);
  * Returns the AB value that needs to be prefixed to bandwidth vote in kbps
  */
 u32 gen7_bus_ab_quantize(struct adreno_device *adreno_dev, u32 ab);
+
+/**
+ * adreno_gmu_ab_support() - Return true for targets where AB voting
+ * is supported through GMU
+ * @adreno_dev: A pointer to the adreno_device
+ */
+int adreno_gmu_ab_support(struct adreno_device *adreno_dev);
 
 #endif

@@ -416,7 +416,7 @@ static int find_vma_block(struct gen7_gmu_device *gmu, u32 addr, u32 size)
 {
 	int i;
 
-	for (i = 0; i < GMU_MEM_TYPE_MAX; i++) {
+	for (i = 0; i < gmu->num_vmas; i++) {
 		struct gmu_vma_entry *vma = &gmu->vma[i];
 
 		if ((addr >= vma->start) &&
@@ -1852,9 +1852,14 @@ static int gen7_gmu_first_boot(struct adreno_device *adreno_dev)
 	if (ret)
 		goto err;
 
-	if (gen7_hfi_send_get_value(adreno_dev, HFI_VALUE_GMU_AB_VOTE, 0) == 1) {
-		adreno_dev->gmu_ab = true;
+	if (adreno_dev->gmu_ab &&
+		gen7_hfi_send_get_value(adreno_dev, HFI_VALUE_GMU_AB_VOTE, 0) == 1 &&
+		!WARN_ONCE(!adreno_dev->gpucore->num_ddr_channels,
+			"Number of DDR channel is not specified in gpu core")) {
 		set_bit(ADRENO_DEVICE_GMU_AB, &adreno_dev->priv);
+	} else {
+		/* If gmu_ab feature flag is enabled but GMU doesn't support it, set it to false */
+		adreno_dev->gmu_ab = false;
 	}
 
 	icc_set_bw(pwr->icc_path, 0, 0);
@@ -2061,7 +2066,7 @@ static int gen7_gmu_bus_set(struct adreno_device *adreno_dev, int buslevel,
 	if (buslevel == pwr->cur_buslevel)
 		buslevel = INVALID_DCVS_IDX;
 
-	if ((ab == pwr->cur_ab) || (ab == 0))
+	if ((ab == pwr->cur_ab) || ((ab == 0) && (adreno_dev->gmu_ab)))
 		ab = INVALID_AB_VALUE;
 
 	if ((ab == INVALID_AB_VALUE) && (buslevel == INVALID_DCVS_IDX))
@@ -2072,10 +2077,8 @@ static int gen7_gmu_bus_set(struct adreno_device *adreno_dev, int buslevel,
 	if (ret)
 		return ret;
 
-	if (buslevel != INVALID_DCVS_IDX) {
+	if (buslevel != INVALID_DCVS_IDX)
 		pwr->cur_buslevel = buslevel;
-		trace_kgsl_buslevel(device, pwr->active_pwrlevel, buslevel);
-	}
 
 	if (ab != INVALID_AB_VALUE) {
 		if (!adreno_dev->gmu_ab)
@@ -2083,10 +2086,9 @@ static int gen7_gmu_bus_set(struct adreno_device *adreno_dev, int buslevel,
 		pwr->cur_ab = ab;
 	}
 
+	trace_kgsl_buslevel(device, pwr->active_pwrlevel, pwr->cur_buslevel, pwr->cur_ab);
 	return ret;
 }
-
-#define NUM_CHANNELS 4
 
 u32 gen7_bus_ab_quantize(struct adreno_device *adreno_dev, u32 ab)
 {
@@ -2102,7 +2104,7 @@ u32 gen7_bus_ab_quantize(struct adreno_device *adreno_dev, u32 ab)
 	 * max ddr bandwidth (kbps) = (Max bw in kbps per channel * number of channel)
 	 * max ab (Mbps) = max ddr bandwidth (kbps) / 1000
 	 */
-	max_bw = pwr->ddr_table[pwr->ddr_table_count - 1] * NUM_CHANNELS;
+	max_bw = pwr->ddr_table[pwr->ddr_table_count - 1] * adreno_dev->gpucore->num_ddr_channels;
 	max_ab = max_bw / 1000;
 
 	/*
@@ -2147,7 +2149,7 @@ static void gen7_free_gmu_globals(struct gen7_gmu_device *gmu)
 
 		iommu_unmap(gmu->domain, md->gmuaddr, md->size);
 
-		if (md->priv & KGSL_MEMDESC_SYSMEM)
+		if (TEST_FLAG(KGSL_MEMDESC_SYSMEM, &md->priv))
 			kgsl_sharedmem_free(md);
 
 		memset(md, 0, sizeof(*md));
@@ -2479,7 +2481,9 @@ int gen7_gmu_probe(struct kgsl_device *device,
 		goto error;
 
 	gmu->vma = gen7_gmu_vma;
-	for (i = 0; i < ARRAY_SIZE(gen7_gmu_vma); i++) {
+	gmu->num_vmas = ARRAY_SIZE(gen7_gmu_vma);
+
+	for (i = 0; i < gmu->num_vmas; i++) {
 		struct gmu_vma_entry *vma = &gen7_gmu_vma[i];
 
 		vma->vma_root = RB_ROOT;
@@ -2490,6 +2494,9 @@ int gen7_gmu_probe(struct kgsl_device *device,
 	ret = gen7_gmu_reg_probe(adreno_dev);
 	if (ret)
 		goto error;
+
+	if (ADRENO_FEATURE(adreno_dev, ADRENO_GMU_AB))
+		adreno_dev->gmu_ab = true;
 
 	/* Populates RPMh configurations */
 	ret = gen7_build_rpmh_tables(adreno_dev);

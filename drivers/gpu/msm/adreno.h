@@ -165,7 +165,8 @@
 #define ADRENO_HW_FENCE BIT(16)
 /* Dynamic Mode Switching supported on this target */
 #define ADRENO_DMS BIT(17)
-
+/* Enable GMU Based AB voting */
+#define ADRENO_GMU_AB BIT(28)
 
 /*
  * Adreno GPU quirks - control bits for various workarounds
@@ -483,6 +484,8 @@ struct adreno_gpu_core {
 	u32 bus_width;
 	/** @snapshot_size: Size of the static snapshot region in bytes */
 	u32 snapshot_size;
+	/** @num_ddr_channels: Number of DDR channels */
+	u32 num_ddr_channels;
 };
 
 /**

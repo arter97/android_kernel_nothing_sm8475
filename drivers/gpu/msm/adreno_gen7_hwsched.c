@@ -435,9 +435,14 @@ static int gen7_hwsched_gmu_first_boot(struct adreno_device *adreno_dev)
 
 	adreno_hwsched_register_hw_fence(adreno_dev);
 
-	if (gen7_hwsched_hfi_get_value(adreno_dev, HFI_VALUE_GMU_AB_VOTE) == 1) {
-		adreno_dev->gmu_ab = true;
+	if (adreno_dev->gmu_ab &&
+		gen7_hwsched_hfi_get_value(adreno_dev, HFI_VALUE_GMU_AB_VOTE) == 1 &&
+		!WARN_ONCE(!adreno_dev->gpucore->num_ddr_channels,
+			"Number of DDR channel is not specified in gpu core")) {
 		set_bit(ADRENO_DEVICE_GMU_AB, &adreno_dev->priv);
+	} else {
+		/* If gmu_ab feature flag is enabled but GMU doesn't support it, set it to false */
+		adreno_dev->gmu_ab = false;
 	}
 
 	icc_set_bw(pwr->icc_path, 0, 0);
@@ -1208,7 +1213,7 @@ static int gen7_hwsched_bus_set(struct adreno_device *adreno_dev, int buslevel,
 	if (buslevel == pwr->cur_buslevel)
 		buslevel = INVALID_DCVS_IDX;
 
-	if ((ab == pwr->cur_ab) || (ab == 0))
+	if ((ab == pwr->cur_ab) || ((ab == 0) && (adreno_dev->gmu_ab)))
 		ab = INVALID_AB_VALUE;
 
 	if ((ab == INVALID_AB_VALUE) && (buslevel == INVALID_DCVS_IDX))
@@ -1224,8 +1229,6 @@ static int gen7_hwsched_bus_set(struct adreno_device *adreno_dev, int buslevel,
 		scale_gmu_frequency(adreno_dev, buslevel);
 
 		pwr->cur_buslevel = buslevel;
-
-		trace_kgsl_buslevel(device, pwr->active_pwrlevel, buslevel);
 	}
 
 	if (ab != INVALID_AB_VALUE) {
@@ -1234,6 +1237,7 @@ static int gen7_hwsched_bus_set(struct adreno_device *adreno_dev, int buslevel,
 		pwr->cur_ab = ab;
 	}
 
+	trace_kgsl_buslevel(device, pwr->active_pwrlevel, pwr->cur_buslevel, pwr->cur_ab);
 	return ret;
 }
 
