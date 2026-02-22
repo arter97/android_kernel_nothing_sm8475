@@ -491,4 +491,13 @@ size_t gen7_snapshot_gmu_mem(struct kgsl_device *device,
  */
 int gen7_gmu_register_gdsc_notifier(struct adreno_device *adreno_dev);
 
+/**
+ * gen7_bus_ab_quantize - Calculate the AB vote that needs to be sent to GMU
+ * @adreno_dev: Handle to the adreno device
+ * @ab: ab request that needs to be scaled in MBps
+ *
+ * Returns the AB value that needs to be prefixed to bandwidth vote in kbps
+ */
+u32 gen7_bus_ab_quantize(struct adreno_device *adreno_dev, u32 ab);
+
 #endif
