@@ -5,7 +5,6 @@ config KSU
 	default y
 	help
 	  Enable kernel-level root privileges on Android System.
-	  Requires CONFIG_KPROBES for kernel hooking support.
 	  To compile as a module, choose M here: the
 	  module will be called kernelsu.
 

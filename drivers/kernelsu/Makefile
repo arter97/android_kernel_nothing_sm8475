@@ -1,51 +1,24 @@
-kernelsu-objs := ksu.o
-kernelsu-objs += allowlist.o
-kernelsu-objs += app_profile.o
-kernelsu-objs += apk_sign.o
-kernelsu-objs += sucompat.o
-kernelsu-objs += syscall_hook_manager.o
-kernelsu-objs += throne_tracker.o
-kernelsu-objs += pkg_observer.o
-kernelsu-objs += setuid_hook.o
-kernelsu-objs += kernel_umount.o
-kernelsu-objs += supercalls.o
-kernelsu-objs += feature.o
-kernelsu-objs += ksud.o
-kernelsu-objs += embed_ksud.o
-kernelsu-objs += seccomp_cache.o
-kernelsu-objs += file_wrapper.o
-kernelsu-objs += util.o
+KDIR := $(KDIR)
+MDIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-kernelsu-objs += selinux/selinux.o
-kernelsu-objs += selinux/sepolicy.o
-kernelsu-objs += selinux/rules.o
-ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
-ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
+$(info -- KDIR: $(KDIR))
+$(info -- MDIR: $(MDIR))
 
-obj-$(CONFIG_KSU) += kernelsu.o
+.PHONY: all compdb clean format check-format
 
-ccflags-y += -DKSU_VERSION=32179
-
-ifndef KSU_EXPECTED_SIZE
-KSU_EXPECTED_SIZE := 0x033b
-endif
-
-ifndef KSU_EXPECTED_HASH
-KSU_EXPECTED_HASH := c371061b19d8c7d7d6133c6a9bafe198fa944e50c1b31c9d8daa8d7f1fc2d2d6
-endif
-
-ifdef KSU_MANAGER_PACKAGE
-ccflags-y += -DKSU_MANAGER_PACKAGE=\"$(KSU_MANAGER_PACKAGE)\"
-$(info -- KernelSU Manager package name: $(KSU_MANAGER_PACKAGE))
-endif
-
-$(info -- KernelSU Manager signature size: $(KSU_EXPECTED_SIZE))
-$(info -- KernelSU Manager signature hash: $(KSU_EXPECTED_HASH))
-
-ccflags-y += -DEXPECTED_SIZE=$(KSU_EXPECTED_SIZE)
-ccflags-y += -DEXPECTED_HASH=\"$(KSU_EXPECTED_HASH)\"
-
-ccflags-y += -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat -Wno-missing-prototypes
-ccflags-y += -Wno-declaration-after-statement -Wno-unused-function
+all: check_symbol
+	make -C $(KDIR) M=$(MDIR) modules
+	./check_symbol kernelsu.ko $(KDIR)/vmlinux
+compdb:
+	python3 $(MDIR)/.vscode/generate_compdb.py -O $(KDIR) $(MDIR)
+clean:
+	make -C $(KDIR) M=$(MDIR) clean
+	rm check_symbol
+check_symbol: tools/check_symbol.c
+	$(CC) tools/check_symbol.c -o check_symbol
+format:
+	find . \( -name "*.c" -o -name "*.h" \) -print0 | xargs -0 clang-format -i
+check-format:
+	find . \( -name "*.c" -o -name "*.h" \) -print0 | xargs -0 clang-format --dry-run --Werror
 
 # Keep a new line here!! Because someone may append config

@@ -11,6 +11,10 @@
 #include "syscall_hook_manager.h"
 #include "ksud.h"
 #include "supercalls.h"
+#include "ksu.h"
+#include "file_wrapper.h"
+
+struct cred *ksu_cred;
 
 int kernelsu_init(void)
 {
@@ -24,6 +28,11 @@ int kernelsu_init(void)
     pr_alert("*************************************************************");
 #endif
 
+    ksu_cred = prepare_creds();
+    if (!ksu_cred) {
+        pr_err("prepare cred failed!\n");
+    }
+
     ksu_feature_init();
 
     ksu_supercalls_init();
@@ -35,6 +44,8 @@ int kernelsu_init(void)
     ksu_throne_tracker_init();
 
     ksu_ksud_init();
+
+    ksu_file_wrapper_init();
 
 #ifdef MODULE
 #ifndef CONFIG_KSU_DEBUG
@@ -60,6 +71,10 @@ void kernelsu_exit(void)
     ksu_supercalls_exit();
 
     ksu_feature_exit();
+
+    if (ksu_cred) {
+        put_cred(ksu_cred);
+    }
 }
 
 //module_init(kernelsu_init);
@@ -73,4 +88,3 @@ MODULE_IMPORT_NS("VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver");
 #else
 MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
 #endif
-
