@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include "msm_vidc_control.h"
@@ -985,7 +985,7 @@ int msm_vidc_adjust_bitrate_mode(void *instance, struct v4l2_ctrl *ctrl)
 		goto update;
 	}
 
-	if (!frame_rc && !is_image_session(inst)) {
+	if (!frame_rc) {
 		hfi_value = HFI_RC_OFF;
 		goto update;
 	}
