@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023,2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __ADRENO_H
 #define __ADRENO_H
@@ -165,7 +165,8 @@
 #define ADRENO_HW_FENCE BIT(16)
 /* Dynamic Mode Switching supported on this target */
 #define ADRENO_DMS BIT(17)
-
+/* Enable GMU Based AB voting */
+#define ADRENO_GMU_AB BIT(28)
 
 /*
  * Adreno GPU quirks - control bits for various workarounds
@@ -481,6 +482,8 @@ struct adreno_gpu_core {
 	u32 uche_gmem_alignment;
 	size_t gmem_size;
 	u32 bus_width;
+	/** @num_ddr_channels: Number of DDR channels */
+	u32 num_ddr_channels;
 };
 
 /**
@@ -722,6 +725,8 @@ struct adreno_device {
 	struct dentry *bcl_debugfs_dir;
 	/** @bcl_throttle_time_us: Total time in us spent in BCL throttling */
 	u32 bcl_throttle_time_us;
+	/** @gmu_ab: Track if GMU supports ab vote */
+	bool gmu_ab;
 };
 
 /**
@@ -757,6 +762,8 @@ enum adreno_device_flags {
 	ADRENO_DEVICE_CACHE_FLUSH_TS_SUSPENDED = 13,
 	/** @ADRENO_DEVICE_DMS: Set if DMS is enabled */
 	ADRENO_DEVICE_DMS = 15,
+	/** @ADRENO_DEVICE_GMU_AB: Set if AB vote via GMU is enabled */
+	ADRENO_DEVICE_GMU_AB = 16,
 };
 
 /**
