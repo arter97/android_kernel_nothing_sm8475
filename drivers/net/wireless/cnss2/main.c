@@ -62,6 +62,8 @@
 #define CNSS_TIME_SYNC_PERIOD_INVALID	0xFFFFFFFF
 #define CNSS_NV_NO_REDDY_ERROR_CODE 16
 
+#define REBOOT_TIMEOUT_MS 30000
+
 enum cnss_cal_db_op {
 	CNSS_CAL_DB_UPLOAD,
 	CNSS_CAL_DB_DOWNLOAD,
@@ -1104,6 +1106,8 @@ int cnss_idle_restart(struct device *dev)
 		ret = -EINVAL;
 		goto out;
 	}
+
+	clear_bit(CNSS_DRIVER_IDLE_RESTART, &plat_priv->driver_state);
 
 	mutex_unlock(&plat_priv->driver_ops_lock);
 	return 0;
@@ -3343,6 +3347,32 @@ static ssize_t recovery_store(struct device *dev,
 	return count;
 }
 
+static void cnss_reboot_timeout_hdlr(struct timer_list *t)
+{
+	struct cnss_plat_data *plat_priv =
+		from_timer(plat_priv, t, reboot_timeout);
+
+	if (!plat_priv)
+		return;
+
+	/* Only clear CNSS_IN_REBOOT if we are not in the middle of
+	 * shutdown/power/recovery/suspend transitions, and at least one
+	 * liveness bit is set to indicate a sane runtime context.
+	 */
+	if (test_bit(CNSS_DRIVER_LOADING, &plat_priv->driver_state) ||
+	    test_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state) ||
+	    test_bit(CNSS_DRIVER_IDLE_RESTART, &plat_priv->driver_state) ||
+	    test_bit(CNSS_DEV_ERR_NOTIFY, &plat_priv->driver_state)) {
+		cnss_pr_dbg("Reboot timeout: transitional state active, keep CNSS_IN_REBOOT (state=0x%lx)\n",
+			    plat_priv->driver_state);
+		return;
+	}
+
+	clear_bit(CNSS_IN_REBOOT, &plat_priv->driver_state);
+	cnss_pr_dbg("Reboot timeout expired, CNSS_IN_REBOOT cleared (state=0x%lx)\n",
+		    plat_priv->driver_state);
+}
+
 static ssize_t shutdown_store(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t count)
@@ -3357,6 +3387,10 @@ static ssize_t shutdown_store(struct device *dev,
 		complete_all(&plat_priv->power_up_complete);
 		complete_all(&plat_priv->cal_complete);
 		cnss_pr_dbg("Shutdown notification handled\n");
+
+		/* Start reboot timeout for 2 minutes */
+		mod_timer(&plat_priv->reboot_timeout,
+			  jiffies + msecs_to_jiffies(REBOOT_TIMEOUT_MS));
 	}
 
 	return count;
@@ -3597,6 +3631,8 @@ static int cnss_reboot_notifier(struct notifier_block *nb,
 	struct cnss_plat_data *plat_priv =
 		container_of(nb, struct cnss_plat_data, reboot_nb);
 
+	cnss_pr_dbg("Reboot: (state=0x%lx)\n", plat_priv->driver_state);
+	del_timer(&plat_priv->reboot_timeout);
 	set_bit(CNSS_IN_REBOOT, &plat_priv->driver_state);
 	cnss_bus_update_status(plat_priv, CNSS_SYS_REBOOT);
 	del_timer(&plat_priv->fw_boot_timer);
@@ -3617,6 +3653,8 @@ static int cnss_misc_init(struct cnss_plat_data *plat_priv)
 
 	timer_setup(&plat_priv->fw_boot_timer,
 		    cnss_bus_fw_boot_timeout_hdlr, 0);
+	timer_setup(&plat_priv->reboot_timeout,
+		    cnss_reboot_timeout_hdlr, 0);
 
 	ret = register_pm_notifier(&cnss_pm_notifier);
 	if (ret)
@@ -3674,6 +3712,7 @@ static void cnss_misc_deinit(struct cnss_plat_data *plat_priv)
 	unregister_reboot_notifier(&plat_priv->reboot_nb);
 	unregister_pm_notifier(&cnss_pm_notifier);
 	del_timer(&plat_priv->fw_boot_timer);
+	del_timer(&plat_priv->reboot_timeout);
 	wakeup_source_unregister(plat_priv->recovery_ws);
 	cnss_deinit_sol_gpio(plat_priv);
 	kfree(plat_priv->sram_dump);

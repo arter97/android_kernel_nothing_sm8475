@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -372,6 +372,7 @@ enum dsi_video_traffic_mode {
  * @post_wait_ms:        post wait duration
  * @ctrl:                index of DSI controller
  * @ctrl_flags:          controller flags
+ * @ts:                  dsi command time stamp in nano-seconds.
  */
 struct dsi_cmd_desc {
 	struct mipi_dsi_msg msg;
@@ -379,6 +380,7 @@ struct dsi_cmd_desc {
 	u32  post_wait_ms;
 	u32 ctrl;
 	u32 ctrl_flags;
+	ktime_t ts;
 };
 
 /**

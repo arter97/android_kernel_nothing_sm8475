@@ -253,7 +253,7 @@ DEFINE_EVENT(msm_vidc_perf, msm_vidc_perf_power_scale,
 
 DECLARE_EVENT_CLASS(msm_vidc_buffer_dma_ops,
 
-	TP_PROTO(const char *buffer_op, void *dmabuf, u8 size, void *kvaddr,
+	TP_PROTO(const char *buffer_op, void *dmabuf, u32 size, void *kvaddr,
 			const char *buf_name, u8 secure, u32 region),
 
 	TP_ARGS(buffer_op, dmabuf, size, kvaddr, buf_name, secure, region),
@@ -261,7 +261,7 @@ DECLARE_EVENT_CLASS(msm_vidc_buffer_dma_ops,
 	TP_STRUCT__entry(
 		__field(const char *, buffer_op)
 		__field(void *, dmabuf)
-		__field(u8, size)
+		__field(u32, size)
 		__field(void *, kvaddr)
 		__field(const char *, buf_name)
 		__field(u8, secure)
@@ -279,14 +279,14 @@ DECLARE_EVENT_CLASS(msm_vidc_buffer_dma_ops,
 	),
 
 	TP_printk(
-		"%s: dmabuf %pK, size %d, kvaddr %pK, buffer_type %s, secure %d, region %d\n",
+		"%s: dmabuf %pK, size %u, kvaddr %pK, buffer_type %s, secure %d, region %d\n",
 		__entry->buffer_op, __entry->dmabuf, __entry->size, __entry->kvaddr,
 		__entry->buf_name, __entry->secure, __entry->region)
 );
 
 DEFINE_EVENT(msm_vidc_buffer_dma_ops, msm_vidc_dma_buffer,
 
-	TP_PROTO(const char *buffer_op, void *dmabuf, u8 size, void *kvaddr,
+	TP_PROTO(const char *buffer_op, void *dmabuf, u32 size, void *kvaddr,
 			const char *buf_name, u8 secure, u32 region),
 
 	TP_ARGS(buffer_op, dmabuf, size, kvaddr, buf_name, secure, region)
